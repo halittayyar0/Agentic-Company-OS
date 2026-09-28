@@ -1,12 +1,22 @@
 # Release readiness — updated 28 September 2026
 
-**Status: the current local/source-export checkpoint passed, including runtime
-message localization. Not a verified public release candidate.**
-This audits the uncommitted working tree. No staging, commit, push, tag or
-publication was performed. Goal 7 is not complete; external and user-controlled
-release requirements remain.
+**Status: local source/history secret scanning and a repaired real PostgreSQL
+process smoke passed. GitHub publication remains pending authentication and CI.**
+A separate source-only publication copy has local commits; the original working
+tree and history remain intact. No remote push, tag or public publication has
+been verified. Goal 7 is not complete.
 
 ## Latest local checkpoint
+
+The [publication secret scan](2026-09-28-publication-secret-scan.md) records the
+verified scanner download, reviewed false positives and clean source/history
+results. The [native publication checkpoint](2026-09-28-native-publication-smoke.md)
+records the first real PostgreSQL failure, its regression and repair, nine passing
+focused tests, clean-candidate types/build, worker/database recovery and ten
+completed responsibilities. It also records an externally verified temporary
+authenticated phone preview; physical-phone confirmation is pending. These newer
+results supersede the environment limitations in the historical table below.
+The last full source suite below predates the synthetic seeding repair.
 
 The subsequent [emergency language boundary audit](2026-09-28-emergency-locale-boundary.md)
 corrects the suspected global stop-audit display gap using actual reachable
@@ -111,24 +121,22 @@ output-symlink fixture whose setup returned `EPERM`. None is passing evidence.
   from the export. Offline source installation, actual-server browser access
   and the final full source suite passed. These do not replace full secret
   scanning, history selection or exact-commit clean-checkout proof.
-- Review the exact publishable source, binaries and history; complete a redacted
-  full content/history secret scan. The current path inventory is not an
-  approved staging list.
+- The separate publication copy now stages an explicit reviewed source list;
+  redacted source and reachable-history scanning passed. Re-scan later candidate
+  changes before pushing.
 - Prepare the reviewed exact candidate and verify it in a clean checkout, then
   obtain successful remote CI for that candidate before publication.
 - Keep release wording aligned with actual environment results. The project
-  remains alpha; do not advertise native-device, native-PostgreSQL, container or
-  24-hour proof without the corresponding evidence.
+  remains alpha; the new native PostgreSQL smoke is narrow recovery evidence,
+  not native-device, container, full race-gate or 24-hour proof.
 
 ## Environment and maintainer actions
 
-- Native PostgreSQL, Docker/Compose, physical-phone private HTTPS over mobile
-  data, Safari, native input methods, assistive technology and language-speaker
-  reviews need appropriate environments or people. No installation, credentials
-  or account changes were made to bypass these limits.
-- Gitleaks/TruffleHog are not on the shell path. The request to download and run
-  a hash-verified portable scanner locally is still pending user input; nothing
-  was downloaded. Other goal work can continue independently.
+- Portable PostgreSQL is now available and its short process/recovery smoke
+  passed. Docker/Compose, the distinct native race gates, physical-phone private
+  HTTPS, Safari, assistive technology and native-speaker acceptance remain open.
+- The user authorized the scanner download and GitHub publication. Hash-verified
+  Gitleaks source/history scans now pass; GitHub device authentication is pending.
 - The secret-scan workflow invokes pinned Gitleaks CLI 8.30.1 with a verified
   archive checksum and full redaction. Reports stay in runner temporary storage
   and are not uploaded or posted. A configured workflow is not a successful scan.
