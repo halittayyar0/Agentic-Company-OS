@@ -1,0 +1,58 @@
+name: Platform compatibility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Native ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macOS Apple Silicon
+            runner: macos-15
+          - platform: macOS Intel
+            runner: macos-15-intel
+    env:
+      CI: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Test native runtime and filesystem behavior
+        run: pnpm test
+      - name: Build application and check types
+        run: pnpm run build
+      - name: Verify local database migration
+        run: pnpm --filter @workspace/db run migrate
+      - name: Install browser
+        run: pnpm exec playwright install chromium
+      - name: Exercise first-run and capability library
+        run: pnpm exec playwright test --config playwright.config.ts tests/ui/language-setup.spec.ts tests/ui/skills-library.spec.ts --workers 1
