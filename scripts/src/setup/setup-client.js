@@ -15,6 +15,58 @@
       "安裝|你的工作空間，由你做主。|選擇代理的執行位置和操作權限。|安裝在哪裡？|這台電腦|直接在 Windows、macOS 或 Linux 上執行，需要 PostgreSQL。|容器中|使用 Docker 一起執行應用程式和資料庫。|代理權限|唯讀|要求核准|完整存取|自訂|存取範圍受工作空間和作業系統權限限制。|AI 服務供應商|稍後設定|PostgreSQL 連線位址|API 金鑰|本機連接埠|工具套件|資料|文件|網頁|程式碼|規劃|手機存取|僅這台電腦|私人網路|使用手機瀏覽器。私人網路存取需要設定連線，無需手機應用程式。|確認安裝|憑證儲存在此安裝的私人目錄中，不會顯示在摘要中。|開啟工作空間|返回|繼續|安裝|正在檢查電腦…|可以繼續。|缺少必要條件。請檢查 Node 24，或執行中的 Docker Linux 引擎及 Compose v2。|無法繼續。請檢查輸入和連線後重試。|正在安裝…|安裝已驗證。|安裝已停止。設定已保留；再次啟動前請檢查安裝程式。|請開啟啟動程式提供的安裝連結。",
     ar: "الإعداد|مساحتك. قواعدك.|اختر مكان عمل الوكلاء وما يمكنهم فعله.|أين تريد التشغيل؟|على هذا الكمبيوتر|تشغيل مباشر على Windows أو macOS أو Linux. يتطلب PostgreSQL.|داخل حاوية|شغّل التطبيق وقاعدة البيانات معًا باستخدام Docker.|صلاحيات الوكلاء|قراءة فقط|طلب الموافقة|وصول كامل|مخصص|يقتصر الوصول على مساحة العمل وصلاحيات نظام التشغيل.|مزود الذكاء الاصطناعي|الإعداد لاحقًا|عنوان اتصال PostgreSQL|مفتاح API|المنفذ المحلي|حزم الأدوات|البيانات|المستندات|الويب|البرمجة|التخطيط|الوصول من الهاتف|هذا الكمبيوتر فقط|شبكة خاصة|استخدم متصفح هاتفك. تحتاج الشبكة الخاصة إلى اتصال مُعدّ مسبقًا؛ لا حاجة إلى تطبيق هاتف.|مراجعة التثبيت|تبقى بيانات الدخول في مجلد التثبيت الخاص ولا تظهر في الملخص.|فتح مساحة العمل|رجوع|متابعة|تثبيت|جارٍ فحص الكمبيوتر…|جاهز للمتابعة.|المتطلبات غير مكتملة. تحقق من Node 24 أو محرك Docker يعمل بنظام Linux مع Compose v2.|تعذرت المتابعة. تحقق من البيانات والاتصال ثم حاول مجددًا.|جارٍ التثبيت…|تم التحقق من التثبيت.|توقف التثبيت. تم الاحتفاظ بالإعدادات؛ افحص أداة التثبيت قبل البدء مجددًا.|افتح رابط الإعداد الذي يعرضه برنامج التشغيل.",
   };
+  const permissionKeys = ["files", "terminal", "browser", "delegation", "sudo"];
+  const permissionWords = {
+    tr: [
+      "Dosya değişiklikleri",
+      "Komut çalıştırma",
+      "Tarayıcı işlemleri",
+      "Ekip ve görev oluşturma",
+      "Yükseltilmiş komutlar",
+    ],
+    en: [
+      "File changes",
+      "Run commands",
+      "Browser actions",
+      "Create teams and tasks",
+      "Elevated commands",
+    ],
+    de: [
+      "Dateiänderungen",
+      "Befehle ausführen",
+      "Browseraktionen",
+      "Teams und Aufgaben erstellen",
+      "Erhöhte Befehle",
+    ],
+    ru: [
+      "Изменение файлов",
+      "Выполнение команд",
+      "Действия браузера",
+      "Создание команд и задач",
+      "Команды с повышенными правами",
+    ],
+    "zh-CN": [
+      "修改文件",
+      "执行命令",
+      "浏览器操作",
+      "创建团队和任务",
+      "提权命令",
+    ],
+    "zh-TW": [
+      "修改檔案",
+      "執行命令",
+      "瀏覽器操作",
+      "建立團隊和任務",
+      "提升權限命令",
+    ],
+    ar: [
+      "تعديل الملفات",
+      "تنفيذ الأوامر",
+      "إجراءات المتصفح",
+      "إنشاء الفرق والمهام",
+      "أوامر بصلاحيات مرتفعة",
+    ],
+  };
   const $ = (id) => document.getElementById(id);
   const form = $("setup-form");
   const token = location.hash.slice(1);
@@ -31,6 +83,60 @@
     copy = Object.fromEntries(
       keys.map((key, index) => [key, words[locale].split("|")[index]]),
     );
+    const connectionWords = {
+      tr: [
+        "Erişim anahtarını göster",
+        "Telefon bağlantısını aç",
+        "Bu anahtarı giriş ekranına yapıştır. Güvenli bir yerde sakla.",
+      ],
+      en: [
+        "Show access key",
+        "Open phone connection",
+        "Paste this key into the sign-in screen. Store it in a safe place.",
+      ],
+      de: [
+        "Zugangsschlüssel anzeigen",
+        "Telefonverbindung öffnen",
+        "Diesen Schlüssel im Anmeldebildschirm einfügen und sicher aufbewahren.",
+      ],
+      ru: [
+        "Показать ключ доступа",
+        "Открыть ссылку для телефона",
+        "Вставьте ключ на экране входа и сохраните его в безопасном месте.",
+      ],
+      "zh-CN": [
+        "显示访问密钥",
+        "打开手机连接",
+        "将此密钥粘贴到登录页面，并妥善保存。",
+      ],
+      "zh-TW": [
+        "顯示存取金鑰",
+        "開啟手機連線",
+        "將此金鑰貼到登入頁面，並妥善保存。",
+      ],
+      ar: [
+        "عرض مفتاح الوصول",
+        "فتح رابط الهاتف",
+        "ألصق هذا المفتاح في شاشة تسجيل الدخول واحفظه في مكان آمن.",
+      ],
+    };
+    [copy.connection, copy.phoneLink, copy.connectionHint] =
+      connectionWords[locale];
+    const phoneRequirements = {
+      tr: "Özel ağ için bilgisayar/sunucu ve telefonda aynı Tailscale ağına bağlan. HTTPS açık olmalı. Ek telefon uygulaması geliştirmiyoruz; arayüz tarayıcıda açılır.",
+      en: "For private access, connect this computer/server and your phone to the same Tailscale network and enable HTTPS. The workspace opens in your phone browser.",
+      de: "Computer/Server und Telefon müssen mit demselben Tailscale-Netzwerk verbunden sein; HTTPS muss aktiviert sein. Der Arbeitsbereich öffnet sich im Telefonbrowser.",
+      ru: "Подключите компьютер/сервер и телефон к одной сети Tailscale и включите HTTPS. Пространство открывается в браузере телефона.",
+      "zh-CN":
+        "请将电脑/服务器和手机连接到同一 Tailscale 网络并启用 HTTPS。工作空间在手机浏览器中打开。",
+      "zh-TW":
+        "請將電腦/伺服器和手機連線至同一 Tailscale 網路並啟用 HTTPS。工作空間在手機瀏覽器中開啟。",
+      ar: "اربط الكمبيوتر أو الخادم والهاتف بشبكة Tailscale نفسها وفعّل HTTPS. تفتح مساحة العمل في متصفح الهاتف.",
+    };
+    copy.phoneHelp = phoneRequirements[locale];
+    permissionKeys.forEach((key, index) => {
+      copy[`permission_${key}`] = permissionWords[locale][index];
+    });
     document.documentElement.lang = locale;
     document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
     document.querySelectorAll("[data-copy]").forEach((element) => {
@@ -40,6 +146,10 @@
     draw();
   }
   function draw() {
+    form.elements
+      .namedItem("phoneAccess")
+      .querySelector('[value="private_network"]').disabled =
+      !capabilities?.phone?.ready;
     for (const [index, id] of [
       "destination",
       "preferences",
@@ -60,6 +170,7 @@
         ? copy.ready
         : copy.unavailable;
     $("database-field").hidden = value("mode") !== "native";
+    $("custom-fields").hidden = value("accessMode") !== "custom";
     $("key-field").hidden = !["openai", "openrouter"].includes(
       value("provider"),
     );
@@ -75,7 +186,17 @@
       $("summary").replaceChildren();
       for (const [label, text] of [
         ["destination", copy[plan.settings.mode]],
-        ["access", copy[plan.settings.accessMode]],
+        [
+          "access",
+          copy[plan.settings.accessMode] +
+            (plan.settings.accessMode === "custom"
+              ? ": " +
+                (permissionKeys
+                  .filter((key) => plan.settings.customPermissions[key])
+                  .map((key) => copy[`permission_${key}`])
+                  .join(", ") || "—")
+              : ""),
+        ],
         ["provider", copy[plan.settings.provider] || plan.settings.provider],
         ["port", plan.settings.port],
         [
@@ -114,6 +235,16 @@
       port: Number(value("port")),
       phoneAccess: value("phoneAccess"),
       toolPacks: new FormData(form).getAll("toolPacks"),
+      ...(value("accessMode") === "custom"
+        ? {
+            customPermissions: Object.fromEntries(
+              permissionKeys.map((key) => [
+                key,
+                new FormData(form).getAll("customPermission").includes(key),
+              ]),
+            ),
+          }
+        : {}),
     };
   }
   async function poll() {
@@ -129,6 +260,18 @@
           $("open").href = url.href;
           $("open").hidden = false;
         }
+        $("connection").hidden = !state.connectionAvailable;
+        if (state.phoneUrl) {
+          const phone = new URL(state.phoneUrl);
+          if (
+            phone.protocol === "https:" &&
+            phone.hostname.endsWith(".ts.net") &&
+            phone.port === "8443"
+          ) {
+            $("phone-link").href = phone.href;
+            $("phone-link").hidden = false;
+          }
+        }
       } else if (state.phase === "failed") {
         $("progress").hidden = true;
       } else {
@@ -142,6 +285,19 @@
     plan = null;
     if (stage === 2) stage = 1;
     translate();
+  });
+  $("connection").addEventListener("click", async () => {
+    $("connection").disabled = true;
+    try {
+      const value = await api("connection", {});
+      $("operator-key").value = value.operatorToken;
+      $("connection-field").hidden = false;
+      $("connection").hidden = true;
+      $("operator-key").focus();
+      $("operator-key").select();
+    } catch {
+      $("error").textContent = copy.error;
+    }
   });
   form.addEventListener("change", draw);
   $("back").addEventListener("click", () => {

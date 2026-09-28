@@ -9,6 +9,206 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary List persistent personal skills and utility presets
+ */
+export const listPersonalCapabilitiesResponseManifestOneIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const listPersonalCapabilitiesResponseManifestOneTitleMax = 120;
+
+export const listPersonalCapabilitiesResponseManifestOneDescriptionMax = 2000;
+
+export const listPersonalCapabilitiesResponseManifestOneInstructionsMax = 8000;
+
+export const listPersonalCapabilitiesResponseManifestTwoIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const listPersonalCapabilitiesResponseManifestTwoTitleMax = 120;
+
+export const listPersonalCapabilitiesResponseManifestTwoDescriptionMax = 2000;
+
+
+
+
+export const ListPersonalCapabilitiesResponseItem = zod.object({
+  "id": zod.string(),
+  "manifest": zod.union([zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(listPersonalCapabilitiesResponseManifestOneIdRegExp),
+  "kind": zod.enum(['skill']),
+  "title": zod.string().min(1).max(listPersonalCapabilitiesResponseManifestOneTitleMax),
+  "description": zod.string().min(1).max(listPersonalCapabilitiesResponseManifestOneDescriptionMax),
+  "instructions": zod.string().min(1).max(listPersonalCapabilitiesResponseManifestOneInstructionsMax)
+}),zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(listPersonalCapabilitiesResponseManifestTwoIdRegExp),
+  "kind": zod.enum(['tool']),
+  "title": zod.string().min(1).max(listPersonalCapabilitiesResponseManifestTwoTitleMax),
+  "description": zod.string().min(1).max(listPersonalCapabilitiesResponseManifestTwoDescriptionMax),
+  "tool": zod.string().describe('Exact built-in utility name from the capability catalog'),
+  "defaults": zod.record(zod.string(), zod.unknown())
+})]).describe('Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.'),
+  "enabled": zod.boolean(),
+  "revision": zod.number().int().min(1),
+  "updatedAt": zod.coerce.date()
+})
+export const ListPersonalCapabilitiesResponse = zod.array(ListPersonalCapabilitiesResponseItem)
+
+
+/**
+ * @summary Atomically create or update a personal capability
+ */
+export const savePersonalCapabilityBodyManifestOneIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const savePersonalCapabilityBodyManifestOneTitleMax = 120;
+
+export const savePersonalCapabilityBodyManifestOneDescriptionMax = 2000;
+
+export const savePersonalCapabilityBodyManifestOneInstructionsMax = 8000;
+
+export const savePersonalCapabilityBodyManifestTwoIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const savePersonalCapabilityBodyManifestTwoTitleMax = 120;
+
+export const savePersonalCapabilityBodyManifestTwoDescriptionMax = 2000;
+
+export const savePersonalCapabilityBodyExpectedRevisionMin = 0;
+
+
+
+export const SavePersonalCapabilityBody = zod.object({
+  "manifest": zod.union([zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(savePersonalCapabilityBodyManifestOneIdRegExp),
+  "kind": zod.enum(['skill']),
+  "title": zod.string().min(1).max(savePersonalCapabilityBodyManifestOneTitleMax),
+  "description": zod.string().min(1).max(savePersonalCapabilityBodyManifestOneDescriptionMax),
+  "instructions": zod.string().min(1).max(savePersonalCapabilityBodyManifestOneInstructionsMax)
+}),zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(savePersonalCapabilityBodyManifestTwoIdRegExp),
+  "kind": zod.enum(['tool']),
+  "title": zod.string().min(1).max(savePersonalCapabilityBodyManifestTwoTitleMax),
+  "description": zod.string().min(1).max(savePersonalCapabilityBodyManifestTwoDescriptionMax),
+  "tool": zod.string().describe('Exact built-in utility name from the capability catalog'),
+  "defaults": zod.record(zod.string(), zod.unknown())
+})]).describe('Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.'),
+  "enabled": zod.boolean(),
+  "expectedRevision": zod.number().int().min(savePersonalCapabilityBodyExpectedRevisionMin)
+})
+
+export const savePersonalCapabilityResponseManifestOneIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const savePersonalCapabilityResponseManifestOneTitleMax = 120;
+
+export const savePersonalCapabilityResponseManifestOneDescriptionMax = 2000;
+
+export const savePersonalCapabilityResponseManifestOneInstructionsMax = 8000;
+
+export const savePersonalCapabilityResponseManifestTwoIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const savePersonalCapabilityResponseManifestTwoTitleMax = 120;
+
+export const savePersonalCapabilityResponseManifestTwoDescriptionMax = 2000;
+
+
+
+
+export const SavePersonalCapabilityResponse = zod.object({
+  "id": zod.string(),
+  "manifest": zod.union([zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(savePersonalCapabilityResponseManifestOneIdRegExp),
+  "kind": zod.enum(['skill']),
+  "title": zod.string().min(1).max(savePersonalCapabilityResponseManifestOneTitleMax),
+  "description": zod.string().min(1).max(savePersonalCapabilityResponseManifestOneDescriptionMax),
+  "instructions": zod.string().min(1).max(savePersonalCapabilityResponseManifestOneInstructionsMax)
+}),zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(savePersonalCapabilityResponseManifestTwoIdRegExp),
+  "kind": zod.enum(['tool']),
+  "title": zod.string().min(1).max(savePersonalCapabilityResponseManifestTwoTitleMax),
+  "description": zod.string().min(1).max(savePersonalCapabilityResponseManifestTwoDescriptionMax),
+  "tool": zod.string().describe('Exact built-in utility name from the capability catalog'),
+  "defaults": zod.record(zod.string(), zod.unknown())
+})]).describe('Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.'),
+  "enabled": zod.boolean(),
+  "revision": zod.number().int().min(1),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Export the manifest without installation state
+ */
+export const exportPersonalCapabilityPathIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]*$');
+
+
+export const ExportPersonalCapabilityParams = zod.object({
+  "id": zod.coerce.string().regex(exportPersonalCapabilityPathIdRegExp)
+})
+
+export const exportPersonalCapabilityResponseOneIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const exportPersonalCapabilityResponseOneTitleMax = 120;
+
+export const exportPersonalCapabilityResponseOneDescriptionMax = 2000;
+
+export const exportPersonalCapabilityResponseOneInstructionsMax = 8000;
+
+export const exportPersonalCapabilityResponseTwoIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const exportPersonalCapabilityResponseTwoTitleMax = 120;
+
+export const exportPersonalCapabilityResponseTwoDescriptionMax = 2000;
+
+
+
+export const ExportPersonalCapabilityResponse = zod.union([zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(exportPersonalCapabilityResponseOneIdRegExp),
+  "kind": zod.enum(['skill']),
+  "title": zod.string().min(1).max(exportPersonalCapabilityResponseOneTitleMax),
+  "description": zod.string().min(1).max(exportPersonalCapabilityResponseOneDescriptionMax),
+  "instructions": zod.string().min(1).max(exportPersonalCapabilityResponseOneInstructionsMax)
+}),zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(exportPersonalCapabilityResponseTwoIdRegExp),
+  "kind": zod.enum(['tool']),
+  "title": zod.string().min(1).max(exportPersonalCapabilityResponseTwoTitleMax),
+  "description": zod.string().min(1).max(exportPersonalCapabilityResponseTwoDescriptionMax),
+  "tool": zod.string().describe('Exact built-in utility name from the capability catalog'),
+  "defaults": zod.record(zod.string(), zod.unknown())
+})]).describe('Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.')
+
+
+/**
+ * @summary Read enabled capability packs
+ */
+
+
+
+export const GetCapabilityPacksResponse = zod.object({
+  "id": zod.literal(1),
+  "enabledPacks": zod.array(zod.enum(['data', 'documents', 'web', 'code', 'planning'])),
+  "revision": zod.number().int().min(1)
+})
+
+
+/**
+ * @summary Persist the selected packs with a revision check
+ */
+export const updateCapabilityPacksBodyEnabledPacksMax = 5;
+
+
+
+
+export const UpdateCapabilityPacksBody = zod.object({
+  "enabledPacks": zod.array(zod.enum(['data', 'documents', 'web', 'code', 'planning'])).max(updateCapabilityPacksBodyEnabledPacksMax),
+  "expectedRevision": zod.number().int().min(1)
+})
+
+
+
+
+export const UpdateCapabilityPacksResponse = zod.object({
+  "id": zod.literal(1),
+  "enabledPacks": zod.array(zod.enum(['data', 'documents', 'web', 'code', 'planning'])),
+  "revision": zod.number().int().min(1)
+})
+
+
+/**
  * @summary Read the built-in skills and local utility catalog
  */
 export const getCapabilityCatalogQueryLocaleDefault = `tr`;
@@ -3047,6 +3247,63 @@ export const UpdateLlmSettingsResponse = zod.object({
   "isDefault": zod.boolean()
 }))
 })
+})
+
+
+/**
+ * @summary Read persisted operator execution permissions
+ */
+
+
+
+export const GetExecutionPolicyResponse = zod.object({
+  "id": zod.number().int(),
+  "mode": zod.enum(['read_only', 'approval', 'full_access', 'custom']),
+  "custom": zod.union([zod.object({
+  "files": zod.boolean(),
+  "terminal": zod.boolean(),
+  "browser": zod.boolean(),
+  "delegation": zod.boolean(),
+  "sudo": zod.boolean()
+}),zod.null()]),
+  "revision": zod.number().int().min(1),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Change execution permissions with revision checking
+ */
+
+
+
+export const UpdateExecutionPolicyBody = zod.object({
+  "mode": zod.enum(['read_only', 'approval', 'full_access', 'custom']),
+  "expectedRevision": zod.number().int().min(1),
+  "custom": zod.object({
+  "files": zod.boolean(),
+  "terminal": zod.boolean(),
+  "browser": zod.boolean(),
+  "delegation": zod.boolean(),
+  "sudo": zod.boolean()
+}).optional()
+})
+
+
+
+
+export const UpdateExecutionPolicyResponse = zod.object({
+  "id": zod.number().int(),
+  "mode": zod.enum(['read_only', 'approval', 'full_access', 'custom']),
+  "custom": zod.union([zod.object({
+  "files": zod.boolean(),
+  "terminal": zod.boolean(),
+  "browser": zod.boolean(),
+  "delegation": zod.boolean(),
+  "sudo": zod.boolean()
+}),zod.null()]),
+  "revision": zod.number().int().min(1),
+  "updatedAt": zod.coerce.date()
 })
 
 

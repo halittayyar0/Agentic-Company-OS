@@ -5,6 +5,127 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+export type CapabilityPackId = typeof CapabilityPackId[keyof typeof CapabilityPackId];
+
+
+export const CapabilityPackId = {
+  data: 'data',
+  documents: 'documents',
+  web: 'web',
+  code: 'code',
+  planning: 'planning',
+} as const;
+
+export type CapabilityPackSelectionId = typeof CapabilityPackSelectionId[keyof typeof CapabilityPackSelectionId];
+
+
+export const CapabilityPackSelectionId = {
+  NUMBER_1: 1,
+} as const;
+
+export interface CapabilityPackSelection {
+  id: CapabilityPackSelectionId;
+  enabledPacks: CapabilityPackId[];
+  /** @minimum 1 */
+  revision: number;
+}
+
+/**
+ * Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.
+ */
+export type PersonalCapabilityManifest = {
+  schemaVersion: 1;
+  /** @pattern ^user-[a-z0-9][a-z0-9-]{0,59}$ */
+  id: string;
+  kind: 'skill';
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  description: string;
+  /**
+     * @minLength 1
+     * @maxLength 8000
+     */
+  instructions: string;
+} | {
+  schemaVersion: 1;
+  /** @pattern ^user-[a-z0-9][a-z0-9-]{0,59}$ */
+  id: string;
+  kind: 'tool';
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  description: string;
+  /** Exact built-in utility name from the capability catalog */
+  tool: string;
+  defaults: {[key: string]: unknown};
+};
+
+export interface PersonalCapability {
+  id: string;
+  manifest: PersonalCapabilityManifest;
+  enabled: boolean;
+  /** @minimum 1 */
+  revision: number;
+  updatedAt: string;
+}
+
+export interface CustomExecutionPermissions {
+  files: boolean;
+  terminal: boolean;
+  browser: boolean;
+  delegation: boolean;
+  sudo: boolean;
+}
+
+export type ExecutionPolicyMode = typeof ExecutionPolicyMode[keyof typeof ExecutionPolicyMode];
+
+
+export const ExecutionPolicyMode = {
+  read_only: 'read_only',
+  approval: 'approval',
+  full_access: 'full_access',
+  custom: 'custom',
+} as const;
+
+export interface ExecutionPolicy {
+  id: number;
+  mode: ExecutionPolicyMode;
+  custom: CustomExecutionPermissions | null;
+  /** @minimum 1 */
+  revision: number;
+  updatedAt: string;
+}
+
+export type UpdateExecutionPolicyBodyMode = typeof UpdateExecutionPolicyBodyMode[keyof typeof UpdateExecutionPolicyBodyMode];
+
+
+export const UpdateExecutionPolicyBodyMode = {
+  read_only: 'read_only',
+  approval: 'approval',
+  full_access: 'full_access',
+  custom: 'custom',
+} as const;
+
+export interface UpdateExecutionPolicyBody {
+  mode: UpdateExecutionPolicyBodyMode;
+  /** @minimum 1 */
+  expectedRevision: number;
+  custom?: CustomExecutionPermissions;
+}
+
 export interface CapabilityLibraryCopy {
   title: string;
   intro: string;
@@ -3247,6 +3368,20 @@ export type PageLimitParameter = number;
  * Return rows with an id lower than this cursor.
  */
 export type BeforeIdParameter = number;
+
+export type SavePersonalCapabilityBody = {
+  manifest: PersonalCapabilityManifest;
+  enabled: boolean;
+  /** @minimum 0 */
+  expectedRevision: number;
+};
+
+export type UpdateCapabilityPacksBody = {
+  /** @maxItems 5 */
+  enabledPacks: CapabilityPackId[];
+  /** @minimum 1 */
+  expectedRevision: number;
+};
 
 export type GetCapabilityCatalogParams = {
 locale?: GetCapabilityCatalogLocale;

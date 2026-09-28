@@ -1,4 +1,5 @@
 import { LanguagePackStatus } from "../components/i18n/language-pack-status";
+import { ExecutionPolicySettings } from "../components/settings/execution-policy";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -259,6 +260,7 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
           {c.description}
         </p>
       </header>
+      <ExecutionPolicySettings />
       <section className={panelClass} aria-labelledby="preferences-title">
         <h2 id="preferences-title" className="text-lg font-semibold">
           {c.preferences}

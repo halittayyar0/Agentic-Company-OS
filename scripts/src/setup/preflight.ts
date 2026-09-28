@@ -17,6 +17,7 @@ export interface InstallCapabilities {
   composeVersion: string | null;
   native: { ready: boolean; issues: PreflightIssue[] };
   container: { ready: boolean; issues: PreflightIssue[] };
+  phone?: { ready: boolean };
 }
 
 export async function runSetupProbe(
@@ -53,10 +54,11 @@ export async function detectInstallCapabilities(
   const containerIssues = [...common];
   if (!/^v24\.\d+\.\d+$/u.test(nodeVersion))
     nativeIssues.push("node_24_required");
-  const [postgres, compose, engine] = await Promise.allSettled([
+  const [postgres, compose, engine, phone] = await Promise.allSettled([
     run("psql", ["--version"]),
     run("docker", ["compose", "version", "--short"]),
     run("docker", ["info", "--format", "{{.OSType}}"]),
+    run("tailscale", ["status", "--json"]),
   ]);
   const composeVersion =
     compose.status === "fulfilled" &&
@@ -84,5 +86,20 @@ export async function detectInstallCapabilities(
     composeVersion,
     native: { ready: nativeIssues.length === 0, issues: nativeIssues },
     container: { ready: containerIssues.length === 0, issues: containerIssues },
+    phone: {
+      ready: (() => {
+        if (phone.status !== "fulfilled") return false;
+        try {
+          const status = JSON.parse(phone.value);
+          return (
+            status.BackendState === "Running" &&
+            typeof status.Self?.DNSName === "string" &&
+            status.Self.DNSName.endsWith(".ts.net.")
+          );
+        } catch {
+          return false;
+        }
+      })(),
+    },
   };
 }

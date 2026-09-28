@@ -38,6 +38,7 @@ import type {
   BrowserNavigateInput,
   BrowserView,
   CapabilityCatalog,
+  CapabilityPackSelection,
   CompanyChannel,
   CompanyChannelMember,
   CompanyChannelMemberInput,
@@ -46,6 +47,7 @@ import type {
   CompanyMessageResponse,
   EmergencyStopStatus,
   EmergencyStopTransition,
+  ExecutionPolicy,
   GetAgentAvatarParams,
   GetCapabilityCatalogParams,
   GetOperationsOverviewParams,
@@ -82,6 +84,8 @@ import type {
   OperatorRequestReceipt,
   OperatorTerminalResponse,
   OrgSummary,
+  PersonalCapability,
+  PersonalCapabilityManifest,
   ProjectMeetingActionItemInput,
   ProjectMeetingActionItemUpdate,
   ProjectMeetingCommandReceipt,
@@ -102,6 +106,7 @@ import type {
   ReadinessStatus,
   ReconcileOperationInput,
   ResetAgentAvatarParams,
+  SavePersonalCapabilityBody,
   StreamOperationsParams,
   Task,
   TaskAnswerReceipt,
@@ -110,6 +115,8 @@ import type {
   TaskQuestion,
   TaskResumeInput,
   TestLlmInput,
+  UpdateCapabilityPacksBody,
+  UpdateExecutionPolicyBody,
   UpdateLlmSettingsInput,
   UpdateLlmSettingsResult,
   UpdateOpsControlInput,
@@ -156,6 +163,379 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListPersonalCapabilitiesUrl = () => {
+
+
+
+
+  return `/api/skills/extensions`
+}
+
+/**
+ * @summary List persistent personal skills and utility presets
+ */
+export const listPersonalCapabilities = async ( options?: Parameters<typeof customFetch>[1]): Promise<PersonalCapability[]> => {
+
+  return customFetch<PersonalCapability[]>(getListPersonalCapabilitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPersonalCapabilitiesQueryKey = () => {
+    return [
+    `/api/skills/extensions`
+    ] as const;
+    }
+
+
+export const getListPersonalCapabilitiesQueryOptions = <TData = Awaited<ReturnType<typeof listPersonalCapabilities>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPersonalCapabilities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPersonalCapabilitiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPersonalCapabilities>>> = ({ signal }) => listPersonalCapabilities({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPersonalCapabilities>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPersonalCapabilitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listPersonalCapabilities>>>
+export type ListPersonalCapabilitiesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List persistent personal skills and utility presets
+ */
+
+export function useListPersonalCapabilities<TData = Awaited<ReturnType<typeof listPersonalCapabilities>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPersonalCapabilities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPersonalCapabilitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSavePersonalCapabilityUrl = () => {
+
+
+
+
+  return `/api/skills/extensions`
+}
+
+/**
+ * @summary Atomically create or update a personal capability
+ */
+export const savePersonalCapability = async (savePersonalCapabilityBody: SavePersonalCapabilityBody, options?: Parameters<typeof customFetch>[1]): Promise<PersonalCapability> => {
+
+  return customFetch<PersonalCapability>(getSavePersonalCapabilityUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(savePersonalCapabilityBody)
+  }
+);}
+
+
+
+
+
+export const getSavePersonalCapabilityMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof savePersonalCapability>>, TError,{data: BodyType<SavePersonalCapabilityBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof savePersonalCapability>>, TError,{data: BodyType<SavePersonalCapabilityBody>}, TContext> => {
+
+const mutationKey = ['savePersonalCapability'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof savePersonalCapability>>, {data: BodyType<SavePersonalCapabilityBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  savePersonalCapability(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SavePersonalCapabilityMutationResult = NonNullable<Awaited<ReturnType<typeof savePersonalCapability>>>
+    export type SavePersonalCapabilityMutationBody = BodyType<SavePersonalCapabilityBody>
+    export type SavePersonalCapabilityMutationError = ErrorType<void>
+
+    /**
+ * @summary Atomically create or update a personal capability
+ */
+export const useSavePersonalCapability = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof savePersonalCapability>>, TError,{data: BodyType<SavePersonalCapabilityBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof savePersonalCapability>>,
+        TError,
+        {data: BodyType<SavePersonalCapabilityBody>},
+        TContext
+      > => {
+      return useMutation(getSavePersonalCapabilityMutationOptions(options));
+    }
+
+export const getExportPersonalCapabilityUrl = (id: string,) => {
+
+
+
+
+  return `/api/skills/extensions/${id}/export`
+}
+
+/**
+ * @summary Export the manifest without installation state
+ */
+export const exportPersonalCapability = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<PersonalCapabilityManifest> => {
+
+  return customFetch<PersonalCapabilityManifest>(getExportPersonalCapabilityUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportPersonalCapabilityQueryKey = (id: string,) => {
+    return [
+    `/api/skills/extensions/${id}/export`
+    ] as const;
+    }
+
+
+export const getExportPersonalCapabilityQueryOptions = <TData = Awaited<ReturnType<typeof exportPersonalCapability>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportPersonalCapability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportPersonalCapabilityQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportPersonalCapability>>> = ({ signal }) => exportPersonalCapability(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportPersonalCapability>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportPersonalCapabilityQueryResult = NonNullable<Awaited<ReturnType<typeof exportPersonalCapability>>>
+export type ExportPersonalCapabilityQueryError = ErrorType<void>
+
+
+/**
+ * @summary Export the manifest without installation state
+ */
+
+export function useExportPersonalCapability<TData = Awaited<ReturnType<typeof exportPersonalCapability>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportPersonalCapability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportPersonalCapabilityQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCapabilityPacksUrl = () => {
+
+
+
+
+  return `/api/skills/packs`
+}
+
+/**
+ * @summary Read enabled capability packs
+ */
+export const getCapabilityPacks = async ( options?: Parameters<typeof customFetch>[1]): Promise<CapabilityPackSelection> => {
+
+  return customFetch<CapabilityPackSelection>(getGetCapabilityPacksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCapabilityPacksQueryKey = () => {
+    return [
+    `/api/skills/packs`
+    ] as const;
+    }
+
+
+export const getGetCapabilityPacksQueryOptions = <TData = Awaited<ReturnType<typeof getCapabilityPacks>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCapabilityPacks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCapabilityPacksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCapabilityPacks>>> = ({ signal }) => getCapabilityPacks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCapabilityPacks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCapabilityPacksQueryResult = NonNullable<Awaited<ReturnType<typeof getCapabilityPacks>>>
+export type GetCapabilityPacksQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read enabled capability packs
+ */
+
+export function useGetCapabilityPacks<TData = Awaited<ReturnType<typeof getCapabilityPacks>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCapabilityPacks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCapabilityPacksQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCapabilityPacksUrl = () => {
+
+
+
+
+  return `/api/skills/packs`
+}
+
+/**
+ * @summary Persist the selected packs with a revision check
+ */
+export const updateCapabilityPacks = async (updateCapabilityPacksBody: UpdateCapabilityPacksBody, options?: Parameters<typeof customFetch>[1]): Promise<CapabilityPackSelection> => {
+
+  return customFetch<CapabilityPackSelection>(getUpdateCapabilityPacksUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateCapabilityPacksBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateCapabilityPacksMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCapabilityPacks>>, TError,{data: BodyType<UpdateCapabilityPacksBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCapabilityPacks>>, TError,{data: BodyType<UpdateCapabilityPacksBody>}, TContext> => {
+
+const mutationKey = ['updateCapabilityPacks'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCapabilityPacks>>, {data: BodyType<UpdateCapabilityPacksBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateCapabilityPacks(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCapabilityPacksMutationResult = NonNullable<Awaited<ReturnType<typeof updateCapabilityPacks>>>
+    export type UpdateCapabilityPacksMutationBody = BodyType<UpdateCapabilityPacksBody>
+    export type UpdateCapabilityPacksMutationError = ErrorType<void>
+
+    /**
+ * @summary Persist the selected packs with a revision check
+ */
+export const useUpdateCapabilityPacks = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCapabilityPacks>>, TError,{data: BodyType<UpdateCapabilityPacksBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCapabilityPacks>>,
+        TError,
+        {data: BodyType<UpdateCapabilityPacksBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateCapabilityPacksMutationOptions(options));
+    }
 
 export const getGetCapabilityCatalogUrl = (params?: GetCapabilityCatalogParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4514,6 +4894,154 @@ export const useUpdateLlmSettings = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateLlmSettingsMutationOptions(options));
+    }
+
+export const getGetExecutionPolicyUrl = () => {
+
+
+
+
+  return `/api/settings/execution-policy`
+}
+
+/**
+ * @summary Read persisted operator execution permissions
+ */
+export const getExecutionPolicy = async ( options?: Parameters<typeof customFetch>[1]): Promise<ExecutionPolicy> => {
+
+  return customFetch<ExecutionPolicy>(getGetExecutionPolicyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetExecutionPolicyQueryKey = () => {
+    return [
+    `/api/settings/execution-policy`
+    ] as const;
+    }
+
+
+export const getGetExecutionPolicyQueryOptions = <TData = Awaited<ReturnType<typeof getExecutionPolicy>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExecutionPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetExecutionPolicyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getExecutionPolicy>>> = ({ signal }) => getExecutionPolicy({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getExecutionPolicy>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetExecutionPolicyQueryResult = NonNullable<Awaited<ReturnType<typeof getExecutionPolicy>>>
+export type GetExecutionPolicyQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read persisted operator execution permissions
+ */
+
+export function useGetExecutionPolicy<TData = Awaited<ReturnType<typeof getExecutionPolicy>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExecutionPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetExecutionPolicyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateExecutionPolicyUrl = () => {
+
+
+
+
+  return `/api/settings/execution-policy`
+}
+
+/**
+ * @summary Change execution permissions with revision checking
+ */
+export const updateExecutionPolicy = async (updateExecutionPolicyBody: UpdateExecutionPolicyBody, options?: Parameters<typeof customFetch>[1]): Promise<ExecutionPolicy> => {
+
+  return customFetch<ExecutionPolicy>(getUpdateExecutionPolicyUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateExecutionPolicyBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateExecutionPolicyMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateExecutionPolicy>>, TError,{data: BodyType<UpdateExecutionPolicyBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateExecutionPolicy>>, TError,{data: BodyType<UpdateExecutionPolicyBody>}, TContext> => {
+
+const mutationKey = ['updateExecutionPolicy'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateExecutionPolicy>>, {data: BodyType<UpdateExecutionPolicyBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateExecutionPolicy(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateExecutionPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof updateExecutionPolicy>>>
+    export type UpdateExecutionPolicyMutationBody = BodyType<UpdateExecutionPolicyBody>
+    export type UpdateExecutionPolicyMutationError = ErrorType<void>
+
+    /**
+ * @summary Change execution permissions with revision checking
+ */
+export const useUpdateExecutionPolicy = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateExecutionPolicy>>, TError,{data: BodyType<UpdateExecutionPolicyBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateExecutionPolicy>>,
+        TError,
+        {data: BodyType<UpdateExecutionPolicyBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateExecutionPolicyMutationOptions(options));
     }
 
 export const getGetWorkspaceLocaleUrl = () => {

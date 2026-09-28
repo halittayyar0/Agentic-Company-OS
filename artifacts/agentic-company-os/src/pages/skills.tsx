@@ -8,6 +8,7 @@ import {
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { buildSkillDraft } from "@/lib/skill-draft";
+import { ExtensionLibrary } from "@/components/extension-library";
 
 export default function SkillsPage() {
   const { locale, t } = useLocale();
@@ -48,6 +49,7 @@ export default function SkillsPage() {
           </p>
         )}
       </header>
+      <ExtensionLibrary />
       {catalog.isError ? (
         <div
           role="alert"

@@ -65,6 +65,7 @@ test("container installation finishes only after preferences and both topology c
     },
   });
   const plan = makePlan("container");
+  t.after(() => executor.stopNative());
   const result = await executor.execute(plan, {}, () => {});
   assert.equal(result.url, "http://127.0.0.1:58761");
   assert.deepEqual(operations, ["docker", "verify", "preferences", "verify"]);

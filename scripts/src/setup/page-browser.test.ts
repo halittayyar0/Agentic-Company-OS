@@ -44,11 +44,20 @@ test("container setup blocks a missing engine and submits container settings whe
   await page.locator('[name="mode"][value="container"]').check();
   await page.locator("#next").click();
   assert.equal(await page.locator("#database-field").isVisible(), false);
+  await page.locator('[name="accessMode"]').selectOption("custom");
+  await page.locator('[name="customPermission"][value="files"]').check();
   await page.locator("#next").click();
   await page.locator("#review").waitFor({ state: "visible" });
   await page.locator("#next").click();
   await page.locator("#open").waitFor({ state: "visible" });
   assert.equal(installed?.settings.mode, "container");
+  assert.deepEqual(installed?.settings.customPermissions, {
+    files: true,
+    terminal: false,
+    browser: false,
+    delegation: false,
+    sudo: false,
+  });
 });
 
 test("wizard preserves selections, seven locales and RTL, submits one reviewed plan without showing credentials", async (t) => {

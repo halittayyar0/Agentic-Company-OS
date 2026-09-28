@@ -1,7 +1,8 @@
 import { isWorkspaceLocale, type WorkspaceLocale } from "../workspace-locale";
 import { GROUPS, type BuiltinSkill, type LibraryCopy } from "./catalog-types";
 import { catalogLocales } from "./catalog-locales";
-import { CAPABILITY_TOOL_NAMES } from "./names";
+import { CORE_CAPABILITY_TOOL_NAMES } from "./names";
+import { packCatalog } from "./pack-locales";
 export { CAPABILITY_TOOL_NAMES } from "./names";
 
 const ids = [
@@ -67,7 +68,7 @@ export function getCapabilityCatalog(locale: WorkspaceLocale) {
   const data = catalogLocales[locale];
   if (
     data.skills.length !== ids.length ||
-    data.tools.length !== CAPABILITY_TOOL_NAMES.length
+    data.tools.length !== CORE_CAPABILITY_TOOL_NAMES.length
   )
     throw new Error("Incomplete capability catalog");
   const skills: BuiltinSkill[] = ids.map((id, index) => {
@@ -98,11 +99,14 @@ export function getCapabilityCatalog(locale: WorkspaceLocale) {
     copy: { ...data.copy },
     groups: GROUPS.map((id) => ({ id, title: data.groups[id].title })),
     skills,
-    tools: CAPABILITY_TOOL_NAMES.map((name, index) => ({
-      name,
-      title: data.tools[index][0],
-      description: data.tools[index][1],
-    })),
+    tools: [
+      ...CORE_CAPABILITY_TOOL_NAMES.map((name, index) => ({
+        name,
+        title: data.tools[index][0],
+        description: data.tools[index][1],
+      })),
+      ...packCatalog(locale),
+    ],
   };
 }
 

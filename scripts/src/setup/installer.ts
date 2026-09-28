@@ -20,6 +20,13 @@ import {
   type InstallationResources,
 } from "./resources";
 import type { InstallationExecutor } from "./session";
+import {
+  inspectPhoneAccess,
+  configurePhoneAccess,
+  verifyPhoneAccess,
+  type PhoneConnection,
+} from "./phone-access";
+import { acquireInstallationLock } from "./installation-lock";
 
 const DATABASE_PROBE = `
 import { createRequire } from 'node:module';
@@ -45,6 +52,12 @@ export function createInstallationExecutor(options: {
   capabilities?: typeof detectInstallCapabilities;
   run?: typeof executeBoundedCommand;
   verify?: typeof waitForRuntimeTopology;
+  signal?: AbortSignal;
+  resume?: {
+    resources: InstallationResources;
+    planId: string;
+    complete: boolean;
+  };
 }) {
   const run = options.run ?? executeBoundedCommand;
   const verify = options.verify ?? waitForRuntimeTopology;
@@ -57,6 +70,7 @@ export function createInstallationExecutor(options: {
   let supervisor: ProcessSupervisor | null = null;
   let resources: InstallationResources | null = null;
   let active = false;
+  let releaseLock: (() => Promise<void>) | undefined;
   const command = (
     command: string,
     args: string[],
@@ -71,13 +85,17 @@ export function createInstallationExecutor(options: {
     timeoutMs,
     maxBufferBytes: 4 * 1024 * 1024,
     ignoreInheritedStdio: false,
+    signal: options.signal,
   });
 
   const execute: InstallationExecutor = async (plan, credentials, progress) => {
     if (active) throw new Error("This installer already owns an installation");
+    if (options.resume && options.resume.planId !== plan.id)
+      throw new Error("Resume identity does not match the plan");
     active = true;
     const completed: InstallationStep[] = [];
     let currentStep: InstallationStep | null = null;
+    let phone: PhoneConnection | undefined;
     const record = async (phase: string) => {
       if (!resources) return;
       await writeExactOutputBundle({
@@ -95,6 +113,10 @@ export function createInstallationExecutor(options: {
                 completedSteps: completed,
                 secretFiles: resources.secretFiles,
                 workspaceRoot: options.workspaceRoot,
+                runtimeOptions: {
+                  ollamaUrl: credentials.ollamaUrl,
+                  phoneUrl: phone?.url,
+                },
               },
               null,
               2,
@@ -108,9 +130,11 @@ export function createInstallationExecutor(options: {
       operation: () => Promise<void>,
     ) => {
       currentStep = name;
+      options.signal?.throwIfAborted();
       progress(name, false);
       await record("installing");
       await operation();
+      options.signal?.throwIfAborted();
       completed.push(name);
       await record("installing");
       progress(name, true);
@@ -133,13 +157,28 @@ export function createInstallationExecutor(options: {
             !path.isAbsolute(relative))
         )
           throw new Error("Installation data must be outside the checkout");
-        await assertInstallPortAvailable(plan.settings.port);
+        if (!options.resume || plan.settings.mode === "native")
+          await assertInstallPortAvailable(plan.settings.port);
+        if (plan.settings.phoneAccess === "private_network")
+          phone = await inspectPhoneAccess(plan.settings.port);
       });
       await step("prepare_private_config", async () => {
+        if (options.resume) {
+          releaseLock = await acquireInstallationLock(
+            options.resume.resources.directory,
+            plan.settings.port,
+          );
+          resources = options.resume.resources;
+          return;
+        }
         resources = await createInstallationResources(
           options.installationParent,
           plan,
           credentials,
+        );
+        releaseLock = await acquireInstallationLock(
+          resources.directory,
+          plan.settings.port,
         );
         await writeFile(
           path.join(resources.directory, "runtime.env"),
@@ -194,6 +233,7 @@ export function createInstallationExecutor(options: {
             plan,
             owned,
             credentials,
+            phone?.url,
           ))
             supervisor.start(spec);
         });
@@ -204,19 +244,25 @@ export function createInstallationExecutor(options: {
             plan,
             owned,
             credentials,
+            phone?.url,
           );
-          await writeFile(
-            path.join(owned.directory, "compose.env"),
-            Object.entries(deployment.environment)
-              .map(([key, value]) => `${key}=${value}`)
-              .join("\n") + "\n",
-            { flag: "wx", mode: 0o600 },
-          );
-          await writeFile(
-            path.join(owned.directory, "compose.override.json"),
-            JSON.stringify(deployment.override, null, 2),
-            { flag: "wx", mode: 0o600 },
-          );
+          await writeExactOutputBundle({
+            outputDirectory: owned.directory,
+            overwrite: Boolean(options.resume),
+            files: [
+              {
+                path: path.join(owned.directory, "compose.env"),
+                bytes:
+                  Object.entries(deployment.environment)
+                    .map(([key, value]) => `${key}=${value}`)
+                    .join("\n") + "\n",
+              },
+              {
+                path: path.join(owned.directory, "compose.override.json"),
+                bytes: JSON.stringify(deployment.override, null, 2),
+              },
+            ],
+          });
           await run(command("docker", deployment.args, deployment.environment));
         });
       }
@@ -229,12 +275,18 @@ export function createInstallationExecutor(options: {
           { baseUrl, operatorToken },
           { timeoutMs: 180_000, intervalMs: 1000 },
         );
-        await options.applyPreferences(plan, {
-          baseUrl,
-          operatorToken,
-          directory: owned.directory,
-        });
+        if (!options.resume?.complete)
+          await options.applyPreferences(plan, {
+            baseUrl,
+            operatorToken,
+            directory: owned.directory,
+          });
       });
+      if (phone)
+        await step("configure_phone", async () => {
+          await configurePhoneAccess(phone!);
+          await verifyPhoneAccess(phone!, operatorToken);
+        });
       await step("verify_runtime", async () => {
         await verify(
           { baseUrl, operatorToken },
@@ -242,18 +294,26 @@ export function createInstallationExecutor(options: {
         );
       });
       await record("complete");
-      return { url: baseUrl };
+      return {
+        url: baseUrl,
+        operatorToken,
+        ...(phone ? { phoneUrl: phone.url } : {}),
+      };
     } catch (error) {
       // Keep the database, secrets, build and manifest for recovery. Only child
       // processes owned by this launcher are stopped; no volumes are deleted.
       await supervisor?.stopAll();
       await record("failed");
+      await releaseLock?.();
       throw error;
     }
   };
   return {
     execute,
-    stopNative: async () => supervisor?.stopAll(),
+    stopNative: async () => {
+      await supervisor?.stopAll();
+      await releaseLock?.();
+    },
     installationDirectory: () => resources?.directory ?? null,
   };
 }

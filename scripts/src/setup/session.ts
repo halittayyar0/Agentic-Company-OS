@@ -23,12 +23,14 @@ export interface SetupProgress {
   completedSteps: InstallationStep[];
   error: string | null;
   url: string | null;
+  phoneUrl?: string;
+  connectionAvailable?: boolean;
 }
 export type InstallationExecutor = (
   plan: InstallationPlan,
   credentials: InstallationCredentials,
   progress: (step: InstallationStep, completed: boolean) => void,
-) => Promise<{ url: string }>;
+) => Promise<{ url: string; operatorToken?: string; phoneUrl?: string }>;
 
 class RequestFailure extends Error {
   constructor(
@@ -110,6 +112,7 @@ export async function createSetupSession(options: {
   };
   let plan: InstallationPlan | null = null;
   let execution: Promise<void> | null = null;
+  let connectionToken: string | null = null;
   let origin = "";
 
   function json(response: ServerResponse, status: number, body: unknown) {
@@ -158,6 +161,18 @@ export async function createSetupSession(options: {
       }
       if (request.method === "GET" && path === "/api/capabilities") {
         json(response, 200, await detect());
+        return;
+      }
+      if (request.method === "POST" && path === "/api/connection") {
+        const body = record(await readJson(request));
+        if (Object.keys(body).length)
+          throw new RequestFailure(400, "invalid_request");
+        if (state.phase !== "complete" || !connectionToken)
+          throw new RequestFailure(409, "connection_unavailable");
+        const key = connectionToken;
+        connectionToken = null;
+        state.connectionAvailable = false;
+        json(response, 200, { operatorToken: key });
         return;
       }
       if (request.method === "POST" && path === "/api/plan") {
@@ -209,6 +224,9 @@ export async function createSetupSession(options: {
           )
           .then((result) => {
             state.url = result.url;
+            state.phoneUrl = result.phoneUrl;
+            connectionToken = result.operatorToken ?? null;
+            state.connectionAvailable = Boolean(connectionToken);
             state.phase = "complete";
           })
           .catch(() => {

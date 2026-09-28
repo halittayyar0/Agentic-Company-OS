@@ -33,6 +33,11 @@ import {
   EmergencyStopError,
 } from "../lib/orchestrator/runtime-emergency-stop";
 import { createRateLimiter } from "../lib/rate-limit";
+import {
+  readExecutionPolicy,
+  updateExecutionPolicy,
+  ExecutionPolicyConflict,
+} from "../lib/execution-policy";
 
 type SettingsState = Awaited<
   ReturnType<typeof readProviderRuntimeConfigSnapshot>
@@ -82,6 +87,32 @@ export function createSettingsRouter(
   } = {},
 ): IRouter {
   const router = Router();
+  router.get("/settings/execution-policy", async (_req, res) => {
+    res.json(await readExecutionPolicy());
+  });
+  router.put(
+    "/settings/execution-policy",
+    createRateLimiter({
+      namespace: "execution-policy-save",
+      max: 12,
+      windowMs: 60_000,
+    }),
+    async (req, res) => {
+      try {
+        res.json(await updateExecutionPolicy(req.body));
+      } catch (error) {
+        if (error instanceof ExecutionPolicyConflict) {
+          res.status(409).json({ code: "EXECUTION_POLICY_CONFLICT" });
+          return;
+        }
+        if (error instanceof z.ZodError) {
+          res.status(400).json({ code: "EXECUTION_POLICY_INVALID" });
+          return;
+        }
+        throw error;
+      }
+    },
+  );
   const environment = dependencies.environment ?? process.env;
   const readState =
     dependencies.readState ??

@@ -2,6 +2,7 @@ import type OpenAI from "openai";
 import type { Agent } from "@workspace/db";
 import { isCanonicalRootCeo } from "./agent-authority";
 import { capabilityToolDefinitions } from "../capabilities/capability-tools";
+import { readExecutionPolicy, policyAllowsTool } from "../execution-policy";
 
 type ToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
 
@@ -484,6 +485,8 @@ const browserSaveScreenshotTool: ToolDef = {
   },
 };
 
+import { readCapabilityPacks, toolPack } from "../capabilities/extension-store";
+
 export async function getToolsForAgent(
   agent: Agent,
   hasActiveTask: boolean,
@@ -535,5 +538,13 @@ export async function getToolsForAgent(
     tools.push(updateTaskProgressTool, completeTaskTool, requestUserInputTool);
   }
 
-  return tools;
+  const policy = await readExecutionPolicy();
+  const packs = await readCapabilityPacks();
+  return tools.filter(
+    (tool) =>
+      tool.type === "function" &&
+      policyAllowsTool(policy, tool.function.name) &&
+      (!toolPack(tool.function.name) ||
+        packs.enabledPacks.includes(toolPack(tool.function.name)!)),
+  );
 }

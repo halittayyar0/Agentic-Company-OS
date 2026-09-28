@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { approvePolicyActions } from "./policy-approvals";
 import {
   and,
   asc,
@@ -1341,6 +1342,7 @@ async function runTick(context: SchedulerContext): Promise<void> {
     await recordStaleRuntimeIncidents(context.config);
     await reviveAndReleaseStaleWorkCore(context.config.workerStaleAfterMs);
     if (!context.acceptingClaims) return;
+    await approvePolicyActions();
     await executeApprovedActionBacklog(context.runtime, context.config);
     await enforceTaskBudgets();
     await db

@@ -8,6 +8,7 @@ import {
   type RuntimeControl,
 } from "@workspace/db";
 import { eq, isNotNull, sql } from "drizzle-orm";
+import { assertToolPolicy } from "../execution-policy";
 import { redactAuditText } from "../audit-redaction";
 import { logger, safeErrorForLog } from "../logger";
 import { appendOperationsChanged } from "../operations/operations-events";
@@ -91,6 +92,7 @@ export async function lockAndAssertExecutionAllowed(
 ): Promise<RuntimeControl> {
   const state = await lockRuntimeControlState(tx);
   if (state.emergencyStopEnabled) throw new EmergencyStopError(state);
+  await assertToolPolicy(tx);
   return state;
 }
 
@@ -126,6 +128,7 @@ export async function assertExecutionAllowed(): Promise<void> {
   // A missing/unreadable control row is not interpreted as permission.
   if (!state) throw new Error("Runtime control state is missing");
   if (state.emergencyStopEnabled) throw new EmergencyStopError(state);
+  await assertToolPolicy();
 }
 
 export interface EmergencyStopCleanupHooks {

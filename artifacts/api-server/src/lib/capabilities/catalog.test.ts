@@ -16,13 +16,13 @@ test("stable skill IDs remain case-insensitive in Turkish and surrounding query 
   assert.equal(data[0].id, "code-review");
 });
 
-test("30 versioned skills and ten real tool entries exist in every locale", () => {
+test("30 versioned skills and 24 real tool entries exist in every locale", () => {
   let canonicalIds: string[] | undefined;
   for (const locale of WORKSPACE_LOCALES) {
     const catalog = getCapabilityCatalog(locale);
     assert.equal(catalog.locale, locale);
     assert.equal(catalog.skills.length, 30);
-    assert.equal(catalog.tools.length, 10);
+    assert.equal(catalog.tools.length, 24);
     const ids = catalog.skills.map((skill) => skill.id);
     assert.equal(new Set(ids).size, 30);
     if (canonicalIds) assert.deepEqual(ids, canonicalIds);

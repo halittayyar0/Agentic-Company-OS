@@ -94,6 +94,8 @@ Playwright oturumları ve snapshot-ref registry'leri, onları oluşturan worker 
 
 ## Hızlı başlangıç
 
+**Kurulum sihirbazı:** aşağıdaki gereksinimleri kurduktan sonra `pnpm install --frozen-lockfile` ve `pnpm setup` çalıştırın. Tarayıcıda bilgisayar/container, yedi dil, model sağlayıcısı, yetki modu, araç paketleri ve isteğe bağlı özel telefon erişimi seçilir. [Kurulum ve yeniden başlatma](./docs/self-hosting.md#guided-installation-windows-linux-and-macos) belgesini inceleyin.
+
 ### Gereksinimler
 
 - Node.js 24

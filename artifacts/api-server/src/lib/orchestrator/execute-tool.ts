@@ -1,5 +1,13 @@
 import { hasLocalizedToolOutput, toolReceiptLocale } from "./tool-presentation";
+import { withToolPolicy, ExecutionPolicyDenied } from "../execution-policy";
 import { CAPABILITY_TOOL_NAMES, isCapabilityTool } from "../capabilities/names";
+import {
+  assertPackEnabled,
+  discoverExtensions,
+  executeInstalledTool,
+  personalSkillGuides,
+  readCapabilityPacks,
+} from "../capabilities/extension-store";
 import {
   capabilityResult,
   validCapabilityArgs,
@@ -188,6 +196,7 @@ export interface ToolRuntimeContext {
   transactionalExecutor?: ToolTransaction;
   preapprovedAction?: {
     approvalId: number;
+    automaticPolicyRevision?: number;
     toolName: string;
     argsHash: string;
     capabilityArgs?: Record<string, unknown>;
@@ -2004,6 +2013,34 @@ export async function executeTool(
   name: string,
   rawArgs: string,
 ): Promise<ToolExecutionResult> {
+  return withToolPolicy(
+    name,
+    async () => {
+      try {
+        return await executeToolWithPolicy(ctx, name, rawArgs);
+      } catch (error) {
+        if (!(error instanceof ExecutionPolicyDenied)) throw error;
+        const messages = {
+          tr: "Geçerli erişim modu bu işleme izin vermiyor.",
+          en: "The current access mode does not allow this action.",
+          de: "Der aktuelle Zugriffsmodus erlaubt diese Aktion nicht.",
+          ru: "Текущий режим доступа не разрешает это действие.",
+          "zh-CN": "当前访问模式不允许此操作。",
+          "zh-TW": "目前的存取模式不允許此操作。",
+          ar: "وضع الوصول الحالي لا يسمح بهذا الإجراء.",
+        };
+        return empty(messages[ctx.locale ?? "tr"], "rejected");
+      }
+    },
+    ctx.preapprovedAction?.automaticPolicyRevision,
+  );
+}
+
+async function executeToolWithPolicy(
+  ctx: ToolRuntimeContext,
+  name: string,
+  rawArgs: string,
+): Promise<ToolExecutionResult> {
   // Presentation applies even to malformed or unsupported calls. Receipt
   // metadata still uses the separate, explicit production-tool allowlist.
   getTerminalCopy(ctx.locale ?? "tr");
@@ -2131,6 +2168,13 @@ export async function executeTool(
     }
   }
 
+  // Reject unsupported names before any effect or policy admission. Preserve
+  // the explicit localized unknown-tool diagnostic for fabricated tool calls.
+  if (!hasLocalizedToolOutput(name))
+    return empty(
+      toolMessage(ctx.locale ?? "tr", "toolUnknown", { tool: name }),
+      "rejected",
+    );
   try {
     await assertExecutionAllowed();
   } catch (error) {
@@ -2245,11 +2289,49 @@ async function dispatchToolHandler(
 ): Promise<ToolExecutionResult> {
   if (isCapabilityTool(name)) {
     const available = await getToolsForAgent(ctx.agent, ctx.taskId !== null);
+    try {
+      await assertPackEnabled(name);
+      if (name === "list_extensions" || name === "run_extension") {
+        const data =
+          name === "list_extensions"
+            ? await discoverExtensions(
+                typeof args.offset === "number" ? args.offset : 0,
+              )
+            : await executeInstalledTool(
+                String(args.id),
+                args.args as Record<string, unknown>,
+                ctx.locale ?? "tr",
+              );
+        return {
+          content: JSON.stringify({
+            message: getCapabilityCatalog(ctx.locale ?? "tr").copy.completed,
+            data,
+          }),
+          toolOutcome: "succeeded",
+          createdTasks: [],
+          createdAgents: [],
+        };
+      }
+    } catch {
+      return {
+        content: JSON.stringify({
+          message: getCapabilityCatalog(ctx.locale ?? "tr").copy.invalid,
+          code: "CAPABILITY_UNAVAILABLE",
+        }),
+        toolOutcome: "rejected",
+        createdTasks: [],
+        createdAgents: [],
+      };
+    }
     return capabilityResult(
       name,
       args,
       ctx.locale ?? "tr",
       available.map((tool) => tool.function.name),
+      name === "list_skills" || name === "read_skill"
+        ? await personalSkillGuides(ctx.locale ?? "tr")
+        : [],
+      (await readCapabilityPacks()).enabledPacks,
     );
   }
   switch (name) {
@@ -3624,6 +3706,8 @@ export async function executeApprovedAction(
             },
             preapprovedAction: {
               approvalId,
+              automaticPolicyRevision:
+                approval.automaticPolicyRevision ?? undefined,
               toolName: payload.toolName,
               argsHash,
               capabilityArgs: payload.args,

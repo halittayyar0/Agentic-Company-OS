@@ -42,6 +42,117 @@ tags:
   - name: vm
     description: Per-agent virtual computer (sandbox filesystem + terminal)
 paths:
+  /skills/extensions:
+    get:
+      operationId: listPersonalCapabilities
+      tags: [skills]
+      summary: List persistent personal skills and utility presets
+      responses:
+        "200":
+          description: Operator-owned installations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PersonalCapability"
+    put:
+      operationId: savePersonalCapability
+      tags: [skills]
+      summary: Atomically create or update a personal capability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [manifest, enabled, expectedRevision]
+              properties:
+                manifest:
+                  $ref: "#/components/schemas/PersonalCapabilityManifest"
+                enabled:
+                  type: boolean
+                expectedRevision:
+                  type: integer
+                  minimum: 0
+      responses:
+        "200":
+          description: Saved capability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalCapability"
+        "400":
+          description: Invalid manifest
+        "409":
+          description: Reload the current revision before editing again
+  /skills/extensions/{id}/export:
+    get:
+      operationId: exportPersonalCapability
+      tags: [skills]
+      summary: Export the manifest without installation state
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            pattern: ^user-[a-z0-9][a-z0-9-]*$
+      responses:
+        "200":
+          description: Capability manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalCapabilityManifest"
+        "404":
+          description: Capability not found
+  /skills/packs:
+    get:
+      operationId: getCapabilityPacks
+      tags: [skills]
+      summary: Read enabled capability packs
+      responses:
+        "200":
+          description: Current selection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilityPackSelection"
+    put:
+      operationId: updateCapabilityPacks
+      tags: [skills]
+      summary: Persist the selected packs with a revision check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [enabledPacks, expectedRevision]
+              properties:
+                enabledPacks:
+                  type: array
+                  maxItems: 5
+                  uniqueItems: true
+                  items:
+                    $ref: "#/components/schemas/CapabilityPackId"
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+      responses:
+        "200":
+          description: Saved selection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilityPackSelection"
+        "400":
+          description: Invalid selection
+        "409":
+          description: Revision conflict
   /skills:
     get:
       operationId: getCapabilityCatalog
@@ -1399,6 +1510,40 @@ paths:
         "503":
           description: The save outcome is unknown and may already be committed
 
+  /settings/execution-policy:
+    get:
+      operationId: getExecutionPolicy
+      tags: [settings]
+      summary: Read persisted operator execution permissions
+      responses:
+        "200":
+          description: Current policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionPolicy"
+    put:
+      operationId: updateExecutionPolicy
+      tags: [settings]
+      summary: Change execution permissions with revision checking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateExecutionPolicyBody"
+      responses:
+        "200":
+          description: Policy saved and audited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionPolicy"
+        "400":
+          description: Invalid mode or custom permissions
+        "409":
+          description: Policy changed; reload before saving
+
   /settings/locale:
     get:
       operationId: getWorkspaceLocale
@@ -2089,6 +2234,142 @@ components:
       in: cookie
       name: agentic_os_session
   schemas:
+    CapabilityPackId:
+      type: string
+      enum: [data, documents, web, code, planning]
+    CapabilityPackSelection:
+      type: object
+      required: [id, enabledPacks, revision]
+      properties:
+        id:
+          type: integer
+          enum: [1]
+        enabledPacks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapabilityPackId"
+        revision:
+          type: integer
+          minimum: 1
+    PersonalCapabilityManifest:
+      description: Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [schemaVersion, id, kind, title, description, instructions]
+          properties:
+            schemaVersion:
+              type: integer
+              enum: [1]
+            id:
+              type: string
+              pattern: ^user-[a-z0-9][a-z0-9-]{0,59}$
+            kind:
+              type: string
+              enum: [skill]
+            title:
+              type: string
+              minLength: 1
+              maxLength: 120
+            description:
+              type: string
+              minLength: 1
+              maxLength: 2000
+            instructions:
+              type: string
+              minLength: 1
+              maxLength: 8000
+        - type: object
+          additionalProperties: false
+          required:
+            [schemaVersion, id, kind, title, description, tool, defaults]
+          properties:
+            schemaVersion:
+              type: integer
+              enum: [1]
+            id:
+              type: string
+              pattern: ^user-[a-z0-9][a-z0-9-]{0,59}$
+            kind:
+              type: string
+              enum: [tool]
+            title:
+              type: string
+              minLength: 1
+              maxLength: 120
+            description:
+              type: string
+              minLength: 1
+              maxLength: 2000
+            tool:
+              type: string
+              description: Exact built-in utility name from the capability catalog
+            defaults:
+              type: object
+              additionalProperties: {}
+    PersonalCapability:
+      type: object
+      required: [id, manifest, enabled, revision, updatedAt]
+      properties:
+        id:
+          type: string
+        manifest:
+          $ref: "#/components/schemas/PersonalCapabilityManifest"
+        enabled:
+          type: boolean
+        revision:
+          type: integer
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
+    CustomExecutionPermissions:
+      type: object
+      additionalProperties: false
+      required: [files, terminal, browser, delegation, sudo]
+      properties:
+        files:
+          type: boolean
+        terminal:
+          type: boolean
+        browser:
+          type: boolean
+        delegation:
+          type: boolean
+        sudo:
+          type: boolean
+    ExecutionPolicy:
+      type: object
+      required: [id, mode, custom, revision, updatedAt]
+      properties:
+        id:
+          type: integer
+        mode:
+          type: string
+          enum: [read_only, approval, full_access, custom]
+        custom:
+          oneOf:
+            - $ref: "#/components/schemas/CustomExecutionPermissions"
+            - type: "null"
+        revision:
+          type: integer
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
+    UpdateExecutionPolicyBody:
+      type: object
+      additionalProperties: false
+      required: [mode, expectedRevision]
+      properties:
+        mode:
+          type: string
+          enum: [read_only, approval, full_access, custom]
+        expectedRevision:
+          type: integer
+          minimum: 1
+        custom:
+          $ref: "#/components/schemas/CustomExecutionPermissions"
     CapabilityLibraryCopy:
       type: object
       required:

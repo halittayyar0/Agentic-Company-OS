@@ -71,6 +71,7 @@ export const approvalRequestsTable = pgTable(
     actionPayload: jsonb("action_payload").$type<ApprovalActionPayload>(),
     status: text("status").notNull().default("pending"),
     decisionNote: text("decision_note"),
+    automaticPolicyRevision: integer("automatic_policy_revision"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

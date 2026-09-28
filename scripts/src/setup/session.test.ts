@@ -23,6 +23,42 @@ const settings = {
   toolPacks: [],
 };
 
+test("completed setup reveals its access key once through the protected connection endpoint", async (t) => {
+  const accessKey = "test-operator-key-never-in-state";
+  const session = await createSetupSession({
+    capabilities: async () => capabilities,
+    execute: async () => ({
+      url: "http://127.0.0.1:5000",
+      operatorToken: accessKey,
+    }),
+  });
+  t.after(() => session.close());
+  const base = session.url.split("#")[0],
+    headers = {
+      authorization: `Bearer ${session.token}`,
+      origin: new URL(base).origin,
+      "content-type": "application/json",
+    };
+  const post = (route: string, body: unknown) =>
+    fetch(`${base}api/${route}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+  const plan = (await (await post("plan", settings)).json()) as { id: string };
+  await post("install", { planId: plan.id, credentials: {} });
+  await session.settled();
+  assert.ok(
+    !(await (await fetch(`${base}api/state`, { headers })).text()).includes(
+      accessKey,
+    ),
+  );
+  assert.deepEqual(await (await post("connection", {})).json(), {
+    operatorToken: accessKey,
+  });
+  assert.equal((await post("connection", {})).status, 409);
+});
+
 test("setup rejects missing tokens, cross-site origins and unknown hosts", async (t) => {
   const session = await createSetupSession({
     capabilities: async () => capabilities,

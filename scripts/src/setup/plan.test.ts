@@ -22,6 +22,38 @@ const input = {
   toolPacks: ["data", "documents"],
 };
 
+test("custom permissions remain explicit and immutable in the reviewed plan", () => {
+  const customPermissions = {
+    files: true,
+    terminal: false,
+    browser: true,
+    delegation: false,
+    sudo: false,
+  };
+  const plan = planInstallation(
+    { ...input, accessMode: "custom", customPermissions },
+    capabilities,
+  );
+  assert.deepEqual(plan.settings.customPermissions, customPermissions);
+  assert.equal(Object.isFrozen(plan.settings.customPermissions), true);
+  assert.throws(
+    () => planInstallation({ ...input, customPermissions }, capabilities),
+    /custom/u,
+  );
+  assert.throws(
+    () =>
+      planInstallation(
+        {
+          ...input,
+          accessMode: "custom",
+          customPermissions: { ...customPermissions, root: true },
+        },
+        capabilities,
+      ),
+    /custom/u,
+  );
+});
+
 test("installer supports native and container with distinct reviewable steps", () => {
   const native = planInstallation(input, capabilities);
   const container = planInstallation(

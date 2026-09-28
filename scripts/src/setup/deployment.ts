@@ -36,6 +36,7 @@ function commonEnvironment(
   plan: InstallationPlan,
   resources: InstallationResources,
   credentials: InstallationCredentials,
+  phoneUrl?: string,
 ): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = {
     NODE_ENV: "production",
@@ -75,6 +76,11 @@ function commonEnvironment(
     environment.OPENROUTER_API_KEY_FILE = resources.secretFiles.provider_key;
   if (plan.settings.provider === "ollama")
     environment.OLLAMA_BASE_URL = modelUrl(credentials.ollamaUrl, false);
+  if (phoneUrl) {
+    const url = new URL(phoneUrl);
+    environment.TRUSTED_HOSTS += `,${url.hostname}`;
+    environment.CORS_ALLOWED_ORIGINS += `,${url.origin}`;
+  }
   return environment;
 }
 
@@ -83,11 +89,12 @@ export function buildNativeDeployment(
   plan: InstallationPlan,
   resources: InstallationResources,
   credentials: InstallationCredentials,
+  phoneUrl?: string,
 ): ManagedProcessSpec[] {
   validateRoots(source, resources);
   if (plan.settings.mode !== "native")
     throw new Error("Native deployment requires native mode");
-  const common = commonEnvironment(plan, resources, credentials);
+  const common = commonEnvironment(plan, resources, credentials, phoneUrl);
   return [
     {
       name: "app",
@@ -102,6 +109,7 @@ export function buildNativeDeployment(
         RUNTIME_ROLE: "api",
         SCHEDULER_ENABLED: "false",
         OPERATOR_AUTH_TOKEN_FILE: resources.secretFiles.operator_auth_token,
+        ALLOW_REMOTE_ACCESS: phoneUrl ? "true" : "false",
         SERVE_STATIC_UI: "true",
         STATIC_UI_DIR: path.join(
           source,
@@ -133,6 +141,7 @@ export function buildContainerDeployment(
   plan: InstallationPlan,
   resources: InstallationResources,
   credentials: InstallationCredentials,
+  phoneUrl?: string,
 ) {
   validateRoots(source, resources);
   if (plan.settings.mode !== "container")
@@ -193,8 +202,12 @@ export function buildContainerDeployment(
     environment: {
       APP_PORT: String(plan.settings.port),
       AGENTIC_SECRET_GID: String(process.getgid?.() ?? 1000),
-      TRUSTED_HOSTS: "localhost,127.0.0.1,app",
-      CORS_ALLOWED_ORIGINS: `http://127.0.0.1:${plan.settings.port}`,
+      TRUSTED_HOSTS:
+        "localhost,127.0.0.1,app" +
+        (phoneUrl ? `,${new URL(phoneUrl).hostname}` : ""),
+      CORS_ALLOWED_ORIGINS:
+        `http://127.0.0.1:${plan.settings.port}` +
+        (phoneUrl ? `,${new URL(phoneUrl).origin}` : ""),
     },
     override: { services, secrets },
   };

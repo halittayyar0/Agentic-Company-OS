@@ -30,6 +30,39 @@ Process/browser execution should run inside a disposable container or VM if enab
 
 ## 1. Install reproducibly
 
+### Guided installation (Windows, Linux and macOS)
+
+After installing Node 24 and the pinned pnpm version, clone this repository and run these commands from its directory in PowerShell or a POSIX terminal:
+
+```text
+pnpm install --frozen-lockfile
+pnpm setup
+```
+
+Open the private setup link printed in that terminal. The wizard offers Turkish, English, German, Russian, Simplified Chinese, Traditional Chinese and Arabic (right-to-left). Choose **This computer** or **Container**, a provider (or configure it later), execution permissions and tool packs. Docker is offered only when a running Linux engine and Compose v2 are detected. Native installation requires an existing dedicated PostgreSQL database; container installation creates its own database volume.
+
+The installer builds the application, starts one API and two workers, persists your choices, and checks runtime readiness. Provider credentials and independent operator/control keys are stored outside the checkout under your private installation directory. The native launcher must remain running; Ctrl+C stops its child processes. Container services continue under Compose. A failed container installation retains its services and database for diagnosis and resumption; no volumes are deleted automatically.
+
+The terminal prints the installation directory. Resume or restart from the same checkout with:
+
+```text
+pnpm setup --resume "/absolute/path/to/instance-UUID"
+```
+
+On Windows use the full Windows path instead. Completed installations retain later language, pack and permission changes. An interrupted installation reapplies the original reviewed choices before finishing. Only one launcher may own an installation at a time. Back up the private installation directory **and** PostgreSQL separately; never commit either to Git.
+
+### Phone browser access
+
+The optional private-phone setting uses an existing Tailscale connection and HTTPS Serve on port 8443. Sign the host and phone into the same private network and enable HTTPS certificates for that network before selecting it. The setup checks for a conflicting listener, preserves unrelated listeners, and verifies that the UI loads, anonymous API requests are rejected and the operator key works. It does not create a public Funnel or require a separately developed mobile application. Tailscale eligibility and plan limits are governed by its service; it is optional.
+
+Open the resulting HTTPS link in the phone's browser and enter the workspace operator key. The wizard reveals that key once to its authenticated setup session; it remains recoverable from the private `secrets/operator_auth_token` file. The host must remain online. You can instead operate your own VPN and TLS reverse proxy using the remote-access settings below.
+
+### Execution choices and personal capabilities
+
+Settings offers read-only, approval, full-access and custom modes. Full access automatically authorizes supported exact queued actions; emergency stop, agent permissions, ownership checks and OS/container limits still apply. A downgrade invalidates older automatic grants before subsequent effects. Selecting full access does not give a container access to your host files.
+
+The Skills page supports persistent personal guides and presets for built-in bounded utility tools, JSON import/export, enable/disable and five pack selections. Imported manifests cannot replace built-ins, include executable code or grant authority. Guides are instructions, while tools perform actual operations. Current utility additions cover CSV filter/sort/deduplicate/join/conversion, JSON formatting/diff, escaped HTML reports, templates, Markdown outlines and comparison of supplied page text. Personal utility presets do not execute arbitrary packages or contact MCP servers.
+
 From a reviewed commit:
 
 ```bash

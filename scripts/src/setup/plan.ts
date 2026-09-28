@@ -35,6 +35,13 @@ export interface InstallationInput {
   provider: (typeof PROVIDERS)[number];
   phoneAccess: (typeof PHONE_ACCESS)[number];
   toolPacks: readonly (typeof TOOL_PACKS)[number][];
+  customPermissions?: Readonly<{
+    files: boolean;
+    terminal: boolean;
+    browser: boolean;
+    delegation: boolean;
+    sudo: boolean;
+  }>;
 }
 export type InstallationStep =
   | "check_environment"
@@ -44,6 +51,7 @@ export type InstallationStep =
   | "compose_up"
   | "start_native"
   | "apply_preferences"
+  | "configure_phone"
   | "verify_runtime";
 
 export interface InstallationPlan {
@@ -76,6 +84,7 @@ export function validateInstallationInput(value: unknown): InstallationInput {
     "provider",
     "phoneAccess",
     "toolPacks",
+    "customPermissions",
   ]);
   if (Object.keys(input).some((key) => !keys.has(key)))
     throw new TypeError("Unknown installation setting");
@@ -88,6 +97,31 @@ export function validateInstallationInput(value: unknown): InstallationInput {
     throw new TypeError("Installation port must be between 1024 and 65535");
   if (!Array.isArray(input.toolPacks) || input.toolPacks.length > 10)
     throw new TypeError("Invalid tool packs");
+  let customPermissions: InstallationInput["customPermissions"];
+  if (input.accessMode === "custom") {
+    const custom = input.customPermissions ?? {
+      files: false,
+      terminal: false,
+      browser: false,
+      delegation: false,
+      sudo: false,
+    };
+    const expected = ["files", "terminal", "browser", "delegation", "sudo"];
+    if (
+      !custom ||
+      typeof custom !== "object" ||
+      Array.isArray(custom) ||
+      Object.keys(custom).length !== expected.length ||
+      expected.some(
+        (key) => typeof (custom as Record<string, unknown>)[key] !== "boolean",
+      )
+    )
+      throw new TypeError("Invalid custom permissions");
+    customPermissions = Object.freeze({
+      ...custom,
+    }) as InstallationInput["customPermissions"];
+  } else if (input.customPermissions !== undefined)
+    throw new TypeError("Unexpected custom permissions");
   return {
     mode: option(input.mode, INSTALL_MODES, "mode"),
     locale: option(input.locale, SETUP_LOCALES, "locale"),
@@ -95,6 +129,7 @@ export function validateInstallationInput(value: unknown): InstallationInput {
     provider: option(input.provider, PROVIDERS, "provider"),
     phoneAccess: option(input.phoneAccess, PHONE_ACCESS, "phone access"),
     port: input.port,
+    ...(customPermissions ? { customPermissions } : {}),
     toolPacks: [
       ...new Set(
         input.toolPacks.map((entry) => option(entry, TOOL_PACKS, "tool pack")),
@@ -108,6 +143,10 @@ export function planInstallation(
   capabilities: InstallCapabilities,
 ): InstallationPlan {
   const settings = validateInstallationInput(value);
+  if (settings.phoneAccess === "private_network" && !capabilities.phone?.ready)
+    throw new Error(
+      "Private phone access requires a connected Tailscale installation",
+    );
   const capability = capabilities[settings.mode];
   if (!capability.ready)
     throw new Error(
@@ -120,7 +159,9 @@ export function planInstallation(
   if (settings.mode === "native")
     steps.push("connect_postgres", "build_application", "start_native");
   else steps.push("compose_up");
-  steps.push("apply_preferences", "verify_runtime");
+  steps.push("apply_preferences");
+  if (settings.phoneAccess === "private_network") steps.push("configure_phone");
+  steps.push("verify_runtime");
   return Object.freeze({
     id: randomUUID(),
     schemaVersion: 1,

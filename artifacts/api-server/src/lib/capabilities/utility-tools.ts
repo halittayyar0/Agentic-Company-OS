@@ -335,10 +335,9 @@ export function runUtility(
   }
 }
 
-function profileCsv(
-  source: string,
-  delimiter: string,
-): Record<string, unknown> {
+export function parseBoundedCsv(source: string, delimiter: string): string[][] {
+  if (source.length > 48_000 || ![",", ";", "\t"].includes(delimiter))
+    return fail();
   const rows: string[][] = [];
   let row: string[] = [],
     cell = "",
@@ -389,6 +388,14 @@ function profileCsv(
   }
   if (quoted) return fail();
   if (cell || row.length || closed) pushRow();
+  return rows;
+}
+
+function profileCsv(
+  source: string,
+  delimiter: string,
+): Record<string, unknown> {
+  const rows = parseBoundedCsv(source, delimiter);
   const header = rows.shift() ?? [];
   const columns = header.map((name, index) => {
     const values = rows.map((cells) => cells[index] ?? "");
