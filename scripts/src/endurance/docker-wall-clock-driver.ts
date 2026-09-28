@@ -949,7 +949,15 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       }
       this.attemptsById.set(attempt.id, attempt);
     }
-    for (const receipt of snapshot.receipts) {
+    // The API returns newest-first. Several completed cycles can arrive in one
+    // snapshot after a provider/database fault. Emit their durable chronology
+    // so the primary verifier can still reject a genuinely missing predecessor.
+    for (const receipt of [...snapshot.receipts].sort(
+      (left, right) =>
+        (left.finishedAt ?? left.reservedAt).localeCompare(
+          right.finishedAt ?? right.reservedAt,
+        ) || left.id.localeCompare(right.id),
+    )) {
       assertIrreversibleReceiptInvocationEvidence(receipt);
       const receiptAttempt = receipt.originAttemptId
         ? this.attemptsById.get(receipt.originAttemptId)
@@ -1195,7 +1203,15 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
             add(attempt.finishedAt, "durable_event", attempt.id);
           }
         }
-        for (const receipt of snapshot.receipts) {
+        // The API returns newest-first. Several completed cycles can arrive in one
+        // snapshot after a provider/database fault. Emit their durable chronology
+        // so the primary verifier can still reject a genuinely missing predecessor.
+        for (const receipt of [...snapshot.receipts].sort(
+          (left, right) =>
+            (left.finishedAt ?? left.reservedAt).localeCompare(
+              right.finishedAt ?? right.reservedAt,
+            ) || left.id.localeCompare(right.id),
+        )) {
           if (receipt.state === "succeeded") {
             add(receipt.finishedAt, "durable_event", receipt.id);
           }
@@ -1243,7 +1259,15 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
             add(attempt.finishedAt, "durable_event", attempt.id);
           }
         }
-        for (const receipt of snapshot.receipts) {
+        // The API returns newest-first. Several completed cycles can arrive in one
+        // snapshot after a provider/database fault. Emit their durable chronology
+        // so the primary verifier can still reject a genuinely missing predecessor.
+        for (const receipt of [...snapshot.receipts].sort(
+          (left, right) =>
+            (left.finishedAt ?? left.reservedAt).localeCompare(
+              right.finishedAt ?? right.reservedAt,
+            ) || left.id.localeCompare(right.id),
+        )) {
           if (receipt.state === "succeeded") {
             add(receipt.finishedAt, "durable_event", receipt.id);
           }

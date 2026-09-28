@@ -360,6 +360,8 @@ test("Docker driver starts the exact topology and derives minute evidence from d
         },
       ],
     });
+    // Match the production API's newest-first batch after delayed observation.
+    snapshot.receipts.reverse();
     const observer = new RecordingSoakEvidenceObserver({
       expectedResponsibilities: 10,
     });
@@ -367,6 +369,12 @@ test("Docker driver starts the exact topology and derives minute evidence from d
     await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
     const evidence = observer.finalize();
     assert.equal(evidence.metrics.completedResponsibilities, 1);
+    assert.equal(
+      evidence.primaryEvidence.find(
+        (row) => row.kind === "responsibility_completed",
+      )?.data.receiptId,
+      "receipt-1",
+    );
     assert.equal(evidence.metrics.maxResponsibilityCycleLag, 2);
     assert.equal(evidence.metrics.healthSampleBuckets, 2);
     assert.deepEqual(evidence.metrics.healthTruthMismatches, []);

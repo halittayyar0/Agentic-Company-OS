@@ -244,13 +244,19 @@ async function materializeNativeRuntimeDependencies(
       ...dependency.sourcePath.split("/"),
     );
     const sourceMetadata = await lstat(sourceRequested).catch(() => null);
-    if (!sourceMetadata?.isDirectory()) {
+    if (
+      !sourceMetadata ||
+      (!sourceMetadata.isDirectory() && !sourceMetadata.isSymbolicLink())
+    ) {
       throw new Error(
         `Native runtime dependency ${dependency.name} is missing from the isolated frozen install`,
       );
     }
     const source = await realpath(sourceRequested);
-    if (!pathBelow(isolatedWorkspaceRoot, source)) {
+    if (
+      !pathBelow(isolatedWorkspaceRoot, source) ||
+      !(await lstat(source)).isDirectory()
+    ) {
       throw new Error(
         `Native runtime dependency ${dependency.name} escaped the isolated frozen install`,
       );

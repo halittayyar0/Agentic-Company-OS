@@ -1453,7 +1453,8 @@ for (const scenario of [
         },
       });
     },
-    expected: /health.*coverage|extra.*health|health.*out.of.order/iu,
+    expected:
+      /health.*coverage|extra.*health|health.*out.of.order|health.*cadence/iu,
   },
   {
     name: "extra lag primary evidence",
@@ -2241,3 +2242,31 @@ test("verifier rejects duplicated observation identity even with unchanged row c
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+for (const delayMs of [120000, 121000]) {
+  test(`completed-minute health evidence validates the sampler age ${delayMs}`, async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "agentic-health-age-"));
+    try {
+      const reportPath = await writeFixture(directory, validWallClockReport());
+      const records = (
+        await readFile(`${reportPath}.primary-evidence.jsonl`, "utf8")
+      )
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      for (const row of records.filter((row) => row.kind === "health_observed"))
+        row.data.bucketAt = new Date(
+          new Date(row.data.sampledAt).getTime() - delayMs,
+        ).toISOString();
+      await writeBoundPrimaryEvidence(reportPath, records);
+      const verification = verifyEnduranceReport({
+        reportPath,
+        expectedMode: "wall_clock",
+      });
+      if (delayMs === 120000) await verification;
+      else await assert.rejects(verification, /health sample time/);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}

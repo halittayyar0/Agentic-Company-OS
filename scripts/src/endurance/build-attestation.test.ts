@@ -6,6 +6,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  rename,
   rm,
   symlink,
   writeFile,
@@ -300,6 +301,26 @@ test("native attestation builds first and binds exact runtime artifact bytes", a
         await writeNativeBuildOutputs(
           isolatedWorkspaceRoot,
           "export const api = 'fresh-build';\n",
+        );
+        // pnpm installs package-directory links, including junctions on Windows.
+        const requested = path.join(
+          isolatedWorkspaceRoot,
+          "artifacts/api-server/node_modules/@electric-sql/pglite",
+        );
+        const packageStore = path.join(
+          isolatedWorkspaceRoot,
+          "node_modules/.pnpm/pglite-fixture",
+        );
+        for (const candidate of [requested, packageStore])
+          assert.ok(
+            !path.relative(isolatedWorkspaceRoot, candidate).startsWith(".."),
+          );
+        await mkdir(path.dirname(packageStore), { recursive: true });
+        await rename(requested, packageStore);
+        await symlink(
+          packageStore,
+          requested,
+          process.platform === "win32" ? "junction" : "dir",
         );
       },
     });

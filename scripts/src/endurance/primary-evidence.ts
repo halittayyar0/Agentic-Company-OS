@@ -101,6 +101,8 @@ interface ResponsibilityLagProof {
 }
 
 interface HealthProof {
+  bucketAt: string;
+  conservativeGap: boolean;
   minute: number;
   sampledAt: string;
   reportedState: string;
@@ -492,9 +494,32 @@ export function validateAndRecomputePrimaryEvidence(input: {
         }
         const sampledAtMs = new Date(sampledAt).getTime();
         const bucketAtMs = new Date(bucketAt).getTime();
+        // Production rows describe the last completed minute. A sampler that
+        // runs partway through the following minute legitimately records an
+        // age of 60–120 seconds. Database gaps are explicit offline markers,
+        // never reconstructed healthy samples, and must bind to the observed
+        // database incident and its independently verified recovery window.
+        const conservativeGap =
+          data.runtimeTruthState === "offline" &&
+          data.healthyWorkerCount === 0 &&
+          data.staleWorkerCount === 0 &&
+          data.schedulerTickAgeMs === null &&
+          input.report.injections.some(
+            (injection) =>
+              injection.kind === "database_unavailable" &&
+              injection.observedAt === sampledAt &&
+              injection.recoveredAt !== null &&
+              bucketAtMs + 120_000 >=
+                new Date(injection.scheduledAt).getTime() &&
+              bucketAtMs + 60_000 <=
+                new Date(injection.recoveredAt).getTime() &&
+              sampledAtMs <=
+                new Date(injection.recoveredAt).getTime() +
+                  FAULT_EVIDENCE_POLL_TOLERANCE_MS,
+          );
         if (
           bucketAtMs > sampledAtMs ||
-          sampledAtMs - bucketAtMs > 60_000 ||
+          (sampledAtMs - bucketAtMs > 120_000 && !conservativeGap) ||
           (minute === 1 && sampledAtMs - startedAtMs > 120_000)
         ) {
           throw new Error("Primary evidence health sample time is invalid");
@@ -502,8 +527,12 @@ export function validateAndRecomputePrimaryEvidence(input: {
         const priorHealth = health.get(minute - 1);
         if (
           priorHealth &&
-          (sampledAtMs <= new Date(priorHealth.sampledAt).getTime() ||
-            sampledAtMs - new Date(priorHealth.sampledAt).getTime() > 90_000)
+          (bucketAtMs - new Date(priorHealth.bucketAt).getTime() !== 60_000 ||
+            sampledAtMs < new Date(priorHealth.sampledAt).getTime() ||
+            (sampledAtMs === new Date(priorHealth.sampledAt).getTime() &&
+              !priorHealth.conservativeGap) ||
+            (sampledAtMs - new Date(priorHealth.sampledAt).getTime() > 90_000 &&
+              !conservativeGap))
         ) {
           throw new Error("Primary evidence health sample cadence is invalid");
         }
@@ -545,6 +574,8 @@ export function validateAndRecomputePrimaryEvidence(input: {
           );
         }
         health.set(minute, {
+          bucketAt,
+          conservativeGap,
           minute,
           sampledAt,
           reportedState,
