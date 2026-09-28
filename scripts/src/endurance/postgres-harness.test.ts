@@ -65,7 +65,7 @@ test("compose harness owns one exact run-scoped project and worker target", asyn
     "worker-2",
   ]);
   assert.equal(up.args.includes("up"), true);
-  assert.equal(up.args.includes("--wait"), true);
+  assert.equal(up.args.includes("--wait"), false);
   assert.deepEqual(
     kill.args.slice(-3),
     ["kill", "--signal", "SIGKILL", "worker-1"].slice(-3),

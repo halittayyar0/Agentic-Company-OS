@@ -503,14 +503,9 @@ export class PostgresEnduranceHarness {
       if (!this.prebuiltRuntimeImage) {
         await this.run(["build", "app", "worker-1", "worker-2"]);
       }
-      await this.run([
-        "up",
-        "--detach",
-        "--no-build",
-        "--wait",
-        "--wait-timeout",
-        "180",
-      ]);
+      // Workers report readiness through durable heartbeats, without HTTP healthchecks.
+      // The driver waits for the complete API/worker topology after startup.
+      await this.run(["up", "--detach", "--no-build"]);
       this.running = true;
     } catch (error) {
       let startupError = error;
