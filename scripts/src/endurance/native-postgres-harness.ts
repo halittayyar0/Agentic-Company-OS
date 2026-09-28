@@ -10,8 +10,8 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
 import path from "node:path";
+import { canonicalTempRoot } from "../temp-directory";
 
 import {
   probeRuntimeTopology,
@@ -172,7 +172,7 @@ export function validateNativeStateDirectoryTarget(
   const resolved = path.resolve(stateDirectory);
   if (
     normalizedForTargetComparison(path.dirname(resolved)) !==
-    normalizedForTargetComparison(tmpdir())
+    normalizedForTargetComparison(canonicalTempRoot())
   ) {
     throw new Error(
       "Native state directory must be a direct child of the process temp root",
@@ -556,7 +556,10 @@ export class NativePostgresEnduranceHarness {
     this.execute = options.execute ?? executeNativeCommand;
     this.createStateDirectory =
       options.createStateDirectory ??
-      (() => mkdtemp(path.join(tmpdir(), `agentic-native-${this.runId}-`)));
+      (() =>
+        mkdtemp(
+          path.join(canonicalTempRoot(), `agentic-native-${this.runId}-`),
+        ));
     this.waitForApiReady = options.waitForApiReady ?? defaultWaitForApiReady;
     this.waitForTopology = options.waitForTopology ?? defaultWaitForTopology;
     this.probeTopology =

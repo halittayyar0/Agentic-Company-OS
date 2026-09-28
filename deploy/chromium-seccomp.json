@@ -615,10 +615,8 @@
       "names": ["chroot"],
       "action": "SCMP_ACT_ALLOW",
       "args": [],
-      "comment": "",
-      "includes": {
-        "caps": ["CAP_SYS_CHROOT"]
-      },
+      "comment": "Allow Chromium to chroot inside its new user namespace; host capabilities remain dropped.",
+      "includes": {},
       "excludes": {}
     },
     {

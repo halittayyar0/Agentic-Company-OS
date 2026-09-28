@@ -231,6 +231,8 @@ export function createDockerWallClockEnvironment(input: {
   };
   return {
     ...input.environment,
+    // Generated bind files belong to this process, not necessarily image UID 1000.
+    AGENTIC_SECRET_GID: String(process.getgid?.() ?? 1000),
     ENDURANCE_RUN_ID: input.runId,
     ENDURANCE_SEED: String(input.seed),
     ENDURANCE_EXPECTED_AGENTS: "10",
@@ -714,6 +716,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       seed: options.seed,
       runDirectory: controlDirectory,
       controlFile: path.join(controlDirectory, "fault-control.json"),
+      fileMode: 0o640,
     });
     this.harness =
       options.harness ??

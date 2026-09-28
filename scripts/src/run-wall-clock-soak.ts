@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
   access,
+  chmod,
   lstat,
   mkdir,
   mkdtemp,
@@ -630,7 +631,7 @@ export async function createWallClockRunResourceDirectory(
 }> {
   const validated = validatedRunId(runId);
   const runResourceDirectory = await mkdtemp(
-    path.join(tmpdir(), `agentic-os-soak-run-${validated}-`),
+    path.join(await realpath(tmpdir()), `agentic-os-soak-run-${validated}-`),
   );
   const controlDirectory = path.join(runResourceDirectory, "control");
   const secretDirectory = path.join(runResourceDirectory, "secrets");
@@ -971,6 +972,17 @@ export async function writeWallClockSoakReport(
         operatorToken,
         environment,
       });
+      // The 0700 run parent remains host-private. Docker bind mounts bypass that
+      // parent, so the runtime's supplementary group can read these exact files.
+      await chmod(controlDirectory, 0o750);
+      await Promise.all(
+        [
+          "operator_auth_token",
+          "database_url",
+          "runtime_control_key",
+          "postgres_password",
+        ].map((name) => chmod(path.join(secretDirectory, name), 0o640)),
+      );
       const soakEnvironment = createDockerWallClockEnvironment({
         runId,
         seed: options.seed,

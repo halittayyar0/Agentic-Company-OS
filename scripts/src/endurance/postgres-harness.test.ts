@@ -65,7 +65,7 @@ test("compose harness owns one exact run-scoped project and worker target", asyn
     "worker-2",
   ]);
   assert.equal(up.args.includes("up"), true);
-  assert.equal(up.args.includes("--wait"), true);
+  assert.equal(up.args.includes("--wait"), false);
   assert.deepEqual(
     kill.args.slice(-3),
     ["kill", "--signal", "SIGKILL", "worker-1"].slice(-3),
@@ -233,10 +233,11 @@ test("partial compose startup tears down the same project", async () => {
     execute: fake.execute,
   });
   await assert.rejects(harness.start(), /startup failure/);
-  assert.equal(fake.calls.length, 3);
+  assert.equal(fake.calls.length, 4);
   assert.equal(fake.calls[0].args.includes("build"), true);
   assert.equal(fake.calls[1].args.includes("up"), true);
-  assert.equal(fake.calls[2].args.includes("down"), true);
+  assert.equal(fake.calls[2].args.includes("logs"), true);
+  assert.equal(fake.calls[3].args.includes("down"), true);
   assert.equal(harness.state().running, false);
 });
 
