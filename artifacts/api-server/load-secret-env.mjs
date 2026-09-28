@@ -16,17 +16,45 @@ export function loadSecretEnvironment(names, environment = process.env) {
     if (!path.isAbsolute(filePath)) {
       throw new Error(`${fileName} must be an absolute path.`);
     }
-    const metadata = fs.statSync(filePath);
-    if (
-      !metadata.isFile() ||
-      metadata.size <= 0 ||
-      metadata.size > MAX_SECRET_BYTES
-    ) {
-      throw new Error(
-        `${fileName} must reference a non-empty file up to 64 KiB.`,
-      );
+    const descriptor = fs.openSync(
+      filePath,
+      fs.constants.O_RDONLY |
+        (process.platform === "win32" ? 0 : fs.constants.O_NONBLOCK),
+    );
+    let value;
+    try {
+      const metadata = fs.fstatSync(descriptor);
+      if (
+        !metadata.isFile() ||
+        metadata.size <= 0 ||
+        metadata.size > MAX_SECRET_BYTES
+      ) {
+        throw new Error(
+          `${fileName} must reference a non-empty file up to 64 KiB.`,
+        );
+      }
+      const bytes = Buffer.alloc(MAX_SECRET_BYTES + 1);
+      let length = 0;
+      while (length < bytes.length) {
+        const count = fs.readSync(
+          descriptor,
+          bytes,
+          length,
+          bytes.length - length,
+          length,
+        );
+        if (!count) break;
+        length += count;
+      }
+      if (length > MAX_SECRET_BYTES)
+        throw new Error(`${fileName} exceeds 64 KiB.`);
+      value = bytes
+        .subarray(0, length)
+        .toString("utf8")
+        .replace(/\r?\n$/, "");
+    } finally {
+      fs.closeSync(descriptor);
     }
-    const value = fs.readFileSync(filePath, "utf8").replace(/\r?\n$/, "");
     if (!value || /[\r\n]/.test(value)) {
       throw new Error(`${fileName} must contain exactly one non-empty line.`);
     }

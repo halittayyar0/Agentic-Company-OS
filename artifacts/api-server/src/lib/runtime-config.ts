@@ -1,3 +1,4 @@
+import { readBoundedRegularFile } from "./read-bounded-file";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -55,11 +56,7 @@ export async function readRuntimeConfig(): Promise<RuntimeConfig> {
 export async function readRuntimeConfigSnapshot(): Promise<RuntimeConfigSnapshot> {
   try {
     const filePath = configPath();
-    const metadata = await fsp.stat(filePath);
-    if (metadata.size > MAX_CONFIG_BYTES) {
-      throw new Error("Runtime configuration exceeds 64 KiB.");
-    }
-    const raw = await fsp.readFile(filePath, "utf8");
+    const raw = await readBoundedRegularFile(filePath, MAX_CONFIG_BYTES);
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new Error("Runtime configuration must be a JSON object.");

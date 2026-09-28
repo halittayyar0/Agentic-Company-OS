@@ -1,3 +1,4 @@
+import { readBoundedRegularFile } from "../read-bounded-file";
 import { createHash, randomUUID } from "node:crypto";
 import {
   lstat,
@@ -349,13 +350,9 @@ async function readFaultControlDocument(
   await assertRealRunDirectory(options.runDirectory);
   let raw: string;
   try {
-    const metadata = await lstat(options.controlFile);
-    if (!metadata.isFile() || metadata.isSymbolicLink()) {
-      throw new Error(
-        "Synthetic fault control must be a regular non-symlink file.",
-      );
-    }
-    raw = await readFile(options.controlFile, "utf8");
+    raw = await readBoundedRegularFile(options.controlFile, 256 * 1024, {
+      rejectSymlinks: true,
+    });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;

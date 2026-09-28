@@ -1,3 +1,4 @@
+import { readBoundedRegularFile } from "./read-bounded-file";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -54,9 +55,9 @@ export async function readWorkspaceLocale(
   filePath = defaultPath(),
 ): Promise<WorkspaceLocale> {
   try {
-    const stat = await fs.stat(filePath);
-    if (stat.size > 1024) throw new Error("Workspace locale file is too large");
-    const parsed: unknown = JSON.parse(await fs.readFile(filePath, "utf8"));
+    const parsed: unknown = JSON.parse(
+      await readBoundedRegularFile(filePath, 1024),
+    );
     const value = (parsed as { locale?: unknown } | null)?.locale;
     if (!isWorkspaceLocale(value))
       throw new Error("Workspace locale is invalid");
