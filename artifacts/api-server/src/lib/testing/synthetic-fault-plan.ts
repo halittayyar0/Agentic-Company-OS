@@ -486,7 +486,9 @@ function deterministicDigest(input: {
         String(input.seed),
         input.runId,
         String(input.identity.taskId),
-        String(input.identity.attemptNumber),
+        // A physical retry is still the same responsibility. Fault selection
+        // remains attempt-specific, but effect arguments must stay stable so
+        // the durable replay key can reuse a completed effect after lease loss.
         String(input.identity.step),
       ].join("\u0000"),
       "utf8",
