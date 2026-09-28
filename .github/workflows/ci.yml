@@ -505,6 +505,7 @@ jobs:
             --overwrite
           runner_status=$?
           set -e
+          echo "::notice::Endurance runner exit code: $runner_status"
           # A valid short run is intentionally nonzero because it cannot claim verified24h.
           test "$runner_status" -eq 1
           pnpm endurance:verify-report -- \
@@ -513,3 +514,15 @@ jobs:
             --expect-commit "$GITHUB_SHA" \
             --expect-runtime docker-compose \
             --allow-unverified-duration
+
+      - name: Preserve endurance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: container-endurance-evidence
+          path: |
+            artifacts/endurance-reports/*.json
+            artifacts/endurance-reports/*.jsonl
+            artifacts/endurance-reports/*.sha256
+          if-no-files-found: warn
+          retention-days: 7
