@@ -9,6 +9,54 @@ import {
   type RouteAuditVariant,
 } from "./helpers/route-audit";
 
+test("Russian project heading wraps with a wide platform font at 200 percent", async ({
+  page,
+}) => {
+  await prepareRouteAudit(page, {
+    locale: "ru",
+    theme: "light",
+    screen: "phone",
+  });
+  await installStudioFixtures(page);
+  const session = await page.context().newCDPSession(page);
+  await session.send("Page.setFontSizes", {
+    fontSizes: { standard: 32, fixed: 26 },
+  });
+  try {
+    await page.goto("/projects");
+    await page.waitForLoadState("networkidle");
+    const heading = page.getByRole("heading", { name: "Проекты", exact: true });
+    await expect(heading).toBeVisible();
+    // A wider system family makes the fallback-font regression independent of OS.
+    await heading.evaluate((element) => {
+      element.style.fontFamily = "Verdana, sans-serif";
+    });
+    await expect
+      .poll(() =>
+        heading.evaluate((element) => getComputedStyle(element).fontSize),
+      )
+      .toBe("72px");
+    await expect
+      .poll(() =>
+        page
+          .locator("main > div.overflow-auto")
+          .evaluate((element) => element.scrollWidth - element.clientWidth),
+      )
+      .toBe(0);
+    const paintedTextFits = await heading.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      return Array.from(range.getClientRects()).every(
+        (rect) => rect.left >= bounds.left && rect.right <= bounds.right,
+      );
+    });
+    expect(paintedTextFits).toBe(true);
+  } finally {
+    await session.detach();
+  }
+});
+
 const variants: RouteAuditVariant[] = [
   ...LOCALES.map((locale): RouteAuditVariant => ({
     locale,

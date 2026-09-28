@@ -141,7 +141,7 @@ export default function TasksList() {
           <p className="text-[12px] font-semibold uppercase tracking-[0.17em] text-muted-foreground">
             {copy.eyebrow}
           </p>
-          <h1 className="mt-2 font-serif text-4xl font-medium tracking-[-0.045em] text-foreground sm:text-5xl">
+          <h1 className="mt-2 font-serif text-4xl font-medium tracking-[-0.045em] text-foreground [overflow-wrap:anywhere] sm:text-5xl">
             {copy.title}
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">

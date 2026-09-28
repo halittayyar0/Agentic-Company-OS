@@ -107,6 +107,8 @@ interface SchedulerContext {
   runtime: RuntimeInstanceHandle;
   config: RuntimeOperationsConfig;
   acceptingClaims: boolean;
+  activeOwnedSteps: number;
+  livenessWrite: Promise<void> | null;
   runClaimedTask?: ClaimAndStepDueTasksDependencies["runClaimedTask"];
 }
 
@@ -1356,7 +1358,28 @@ async function runTick(context: SchedulerContext): Promise<void> {
       );
     if (!context.acceptingClaims) return;
     await claimAndStepDueTasks(context.runtime, context.config, {
-      runClaimedTask: context.runClaimedTask,
+      runClaimedTask: async (task, lifecycle) => {
+        let owned = false;
+        const afterInitialLeaseHeartbeat = () => {
+          if (!owned) {
+            owned = true;
+            context.activeOwnedSteps += 1;
+          }
+          lifecycle.afterInitialLeaseHeartbeat();
+        };
+        try {
+          if (context.runClaimedTask) {
+            await context.runClaimedTask(task, { afterInitialLeaseHeartbeat });
+          } else {
+            await stepTask(task, {
+              runtimeOperationsConfig: context.config,
+              afterInitialLeaseHeartbeat,
+            });
+          }
+        } finally {
+          if (owned) context.activeOwnedSteps -= 1;
+        }
+      },
     });
   } catch (error) {
     if (error instanceof EmergencyStopError) return;
@@ -1365,7 +1388,38 @@ async function runTick(context: SchedulerContext): Promise<void> {
 }
 
 function triggerTick(context: SchedulerContext): void {
-  if (activeTick) return;
+  if (activeTick) {
+    // The timer still polls admission while owned tasks await external results.
+    // Record that liveness without starting another batch. Do not mask blocked
+    // preflight/claim work, revive a stopped incarnation, or queue DB writes.
+    if (
+      context.acceptingClaims &&
+      context.activeOwnedSteps > 0 &&
+      !context.livenessWrite
+    ) {
+      context.livenessWrite = (async () => {
+        assertRuntimeClaimHandle(context.runtime);
+        await db
+          .update(runtimeInstancesTable)
+          .set({ lastSchedulerTickAt: new Date() })
+          .where(
+            and(
+              eq(runtimeInstancesTable.id, context.runtime.id),
+              eq(runtimeInstancesTable.startedAt, context.runtime.startedAt),
+              inArray(runtimeInstancesTable.state, ["starting", "healthy"]),
+              eq(runtimeInstancesTable.schedulerEnabled, true),
+            ),
+          );
+      })()
+        .catch((error) => {
+          logger.warn({ error }, "Busy scheduler liveness update failed");
+        })
+        .finally(() => {
+          context.livenessWrite = null;
+        });
+    }
+    return;
+  }
   activeTick = runTick(context).finally(() => {
     activeTick = null;
   });
@@ -1384,6 +1438,8 @@ export function startScheduler(
     runtime,
     config,
     acceptingClaims: true,
+    activeOwnedSteps: 0,
+    livenessWrite: null,
     runClaimedTask: dependencies.runClaimedTask,
   };
   schedulerContext = context;
@@ -1404,6 +1460,7 @@ export function startScheduler(
 }
 
 export async function stopScheduler(): Promise<void> {
+  const context = schedulerContext;
   if (schedulerContext) schedulerContext.acceptingClaims = false;
   if (timer) {
     clearInterval(timer);
@@ -1411,4 +1468,5 @@ export async function stopScheduler(): Promise<void> {
   }
   schedulerContext = null;
   await activeTick;
+  await context?.livenessWrite;
 }

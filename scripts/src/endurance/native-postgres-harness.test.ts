@@ -322,6 +322,10 @@ test("native runtime environments enforce one API, two workers, and no provider 
   const environments = createNativeRuntimeEnvironments({
     baseEnvironment: {
       OPENROUTER_API_KEY: "must-not-cross",
+      OPENROUTER_API_KEY_FILE: "must-not-cross",
+      OPENAI_API_KEY_FILE: "must-not-cross",
+      AI_INTEGRATIONS_OPENAI_API_KEY_FILE: "must-not-cross",
+      WORKSPACE_ENV_FILE: "must-not-cross",
       DATABASE_URL_FILE: "must-not-cross",
       OPERATOR_AUTH_TOKEN_FILE: "must-not-cross",
     },
@@ -359,6 +363,13 @@ test("native runtime environments enforce one API, two workers, and no provider 
       path.join(runDirectory, "fault-control.json"),
     );
     assert.equal(environment.OPENROUTER_API_KEY, undefined);
+    assert.equal(environment.OPENROUTER_API_KEY_FILE, undefined);
+    assert.equal(environment.OPENAI_API_KEY_FILE, undefined);
+    assert.equal(environment.AI_INTEGRATIONS_OPENAI_API_KEY_FILE, undefined);
+    assert.equal(
+      environment.WORKSPACE_ENV_FILE,
+      path.join(runDirectory, "runtime-test.env"),
+    );
     assert.equal(environment.DATABASE_URL_FILE, undefined);
     assert.equal(environment.OPERATOR_AUTH_TOKEN_FILE, undefined);
   }
@@ -531,6 +542,16 @@ test("native harness starts API before workers and recovers exact worker and dat
 
   try {
     await harness.start();
+    for (const spec of supervisor.specs.values()) {
+      assert.equal(
+        spec.cwd,
+        persistentDirectory,
+        "test runtimes must not share the operator checkout's data directory",
+      );
+      const entrypoint = spec.args?.[0];
+      assert.ok(entrypoint);
+      assert.equal(path.isAbsolute(entrypoint), true);
+    }
     assert.deepEqual(
       events.filter((event) => event.startsWith("process:start")),
       ["process:start:app", "process:start:worker-1", "process:start:worker-2"],

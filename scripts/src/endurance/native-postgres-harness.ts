@@ -304,8 +304,11 @@ function withoutInheritedSecrets(
     OPERATOR_AUTH_TOKEN_FILE: undefined,
     RUNTIME_CONTROL_KEY_FILE: undefined,
     OPENROUTER_API_KEY: undefined,
+    OPENROUTER_API_KEY_FILE: undefined,
     OPENAI_API_KEY: undefined,
+    OPENAI_API_KEY_FILE: undefined,
     AI_INTEGRATIONS_OPENAI_API_KEY: undefined,
+    AI_INTEGRATIONS_OPENAI_API_KEY_FILE: undefined,
   };
 }
 
@@ -323,6 +326,7 @@ export function createNativeRuntimeEnvironments(
   const runDirectory = path.resolve(input.runDirectory);
   const common: NodeJS.ProcessEnv = {
     ...withoutInheritedSecrets(input.baseEnvironment ?? process.env),
+    WORKSPACE_ENV_FILE: path.join(runDirectory, "runtime-test.env"),
     NODE_ENV: "development",
     DATABASE_URL: input.databaseUrl,
     HOST: "127.0.0.1",
@@ -786,8 +790,14 @@ export class NativePostgresEnduranceHarness {
     return {
       name,
       command: this.nodeExecutable,
-      args: [name === "app" ? "start.mjs" : "start-worker.mjs"],
-      cwd: apiDirectory,
+      args: [
+        path.join(
+          apiDirectory,
+          name === "app" ? "start.mjs" : "start-worker.mjs",
+        ),
+      ],
+      // Resolve code explicitly while all relative state remains run-owned.
+      cwd: this.runDirectory,
       env: environment,
     };
   }
