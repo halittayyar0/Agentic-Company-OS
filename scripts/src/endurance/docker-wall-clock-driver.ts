@@ -1106,6 +1106,23 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   private async assertHealthyTopology(
     snapshot: ProjectOperationsEvidence,
   ): Promise<void> {
+    // A worker's first heartbeat can precede its first scheduler tick. A
+    // durable recovery event does not make an older degraded snapshot healthy.
+    // Poll fresh evidence within the existing recovery budget before accepting.
+    const healthPolls = Math.ceil(this.faultEvidenceTimeoutMs / 1_000);
+    for (
+      let poll = 0;
+      snapshot.runtime.state !== "live" && poll < healthPolls;
+      poll += 1
+    ) {
+      if (
+        snapshot.runtime.databaseBackend !== "postgresql" ||
+        !snapshot.runtime.durable
+      )
+        break;
+      await this.sleepImpl(1_000);
+      snapshot = await this.readProjectOperations();
+    }
     if (
       snapshot.runtime.state !== "live" ||
       snapshot.runtime.databaseBackend !== "postgresql" ||

@@ -1467,6 +1467,7 @@ test("worker replacement healthy runtime event is durable recovery for a stale r
     cursor: "2",
     generatedAt: "2026-09-01T00:01:10.000Z",
   });
+  let healthSleeps = 0;
   const evidenceHarness = harness([]);
   evidenceHarness.readDurableEnduranceEvents = async () => [
     {
@@ -1540,11 +1541,15 @@ test("worker replacement healthy runtime event is durable recovery for a stale r
     fetchImpl,
     topologyTimeoutMs: 100,
     faultEvidenceTimeoutMs: 1_000,
-    sleep: async () => undefined,
+    sleep: async () => {
+      healthSleeps += 1;
+      snapshot.runtime.state = "live";
+    },
     now: () => new Date("2026-09-01T00:00:00.000Z"),
   });
   try {
     await driver.start();
+    snapshot.runtime.state = "degraded";
     const observer = new SoakEvidenceObserver({ expectedResponsibilities: 10 });
     observer.scheduleFault({
       id: "worker-loss-1",
@@ -1566,6 +1571,11 @@ test("worker replacement healthy runtime event is durable recovery for a stale r
     assert.equal(injection?.pass, true);
     assert.equal(injection?.incidentId?.includes("postgres:201"), true);
     assert.equal(injection?.recoveredAt, "2026-09-01T00:01:08.000Z");
+    assert.equal(
+      healthSleeps,
+      1,
+      "a fresh healthy fleet snapshot is required before recording recovery",
+    );
   } finally {
     await driver.stop({ keepData: false });
     await rm(directory, { recursive: true, force: true });
