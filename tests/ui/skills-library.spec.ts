@@ -236,3 +236,55 @@ test("light desktop library shows loading and filters by area", async ({
   });
   expect(harness.requests).toHaveLength(0);
 });
+
+test("an operator can author and reload an executable tool without losing its declared permission", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installStudioFixtures(page);
+  let saved: any = null;
+  await page.route("**/api/skills/extensions", async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ json: saved ? [saved] : [] });
+    const input = route.request().postDataJSON();
+    saved = {
+      id: input.manifest.id,
+      manifest: input.manifest,
+      enabled: input.enabled,
+      revision: input.expectedRevision + 1,
+    };
+    return route.fulfill({ json: saved });
+  });
+  await page.goto("/skills");
+  const panel = page.getByRole("region", { name: "Personal skills and tools" });
+  await panel.getByRole("button", { name: "Create new", exact: true }).click();
+  await page
+    .getByLabel("ID (starts with user-)", { exact: true })
+    .fill("user-invoice");
+  await page.getByLabel("Title", { exact: true }).fill("Invoice tool");
+  await page
+    .getByLabel("Description", { exact: true })
+    .fill("Calculate invoice totals from supplied units and price");
+  await page.getByLabel("Type", { exact: true }).selectOption("program");
+  await expect(page.getByText(/This code runs in Node/)).toBeVisible();
+  await page
+    .getByLabel("JavaScript body", { exact: true })
+    .fill("return {total: input.units * input.price};");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Invoice tool", exact: true }),
+  ).toBeVisible();
+  expect(saved.manifest.permissions).toEqual(["terminal"]);
+  expect(saved.manifest.kind).toBe("program");
+  await page.reload();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByLabel("JavaScript body", { exact: true })).toHaveValue(
+    "return {total: input.units * input.price};",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+});

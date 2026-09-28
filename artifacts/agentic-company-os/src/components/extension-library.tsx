@@ -1,21 +1,21 @@
+import { useCustomizationCopy } from "@/lib/customization-copy";
+import { LanguagePackStatus } from "@/components/i18n/language-pack-status";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 
-const words = {
-  tr: "Kişisel skill ve araçlar|Yeni oluştur|Kimlik (user- ile başlar)|Başlık|Açıklama|Tür|Skill|Araç|Talimatlar|Temel araç|Sabit girdiler (JSON)|Kaydet|İptal|Düzenle|Etkin|Devre dışı|Dışa aktar|JSON içe aktar|Kaydedilemedi. Bilgileri kontrol et; güncel sürüm yeniden yüklendi.|Kaydedildi.|Araç paketleri|Değişiklikleri kaydet|Veri|Belgeler|Web|Kod|Planlama|Kişisel araçlar, seçtiğin yerleşik işlemi sabit girdilerle çalıştırır. Skill talimatları ek yetki vermez.|Henüz kişisel araç yok.",
-  en: "Personal skills and tools|Create new|ID (starts with user-)|Title|Description|Type|Skill|Tool|Instructions|Underlying tool|Fixed inputs (JSON)|Save|Cancel|Edit|Enabled|Disabled|Export|Import JSON|Could not save. Check the input; the latest version was reloaded.|Saved.|Tool packs|Save changes|Data|Documents|Web|Code|Planning|Personal tools run a selected built-in operation with fixed inputs. Skill instructions grant no extra permissions.|No personal capabilities yet.",
-  de: "Persönliche Skills und Werkzeuge|Neu erstellen|ID (beginnt mit user-)|Titel|Beschreibung|Typ|Skill|Werkzeug|Anweisungen|Basiswerkzeug|Feste Eingaben (JSON)|Speichern|Abbrechen|Bearbeiten|Aktiviert|Deaktiviert|Exportieren|JSON importieren|Speichern fehlgeschlagen. Eingaben prüfen; aktuelle Version wurde geladen.|Gespeichert.|Werkzeugpakete|Änderungen speichern|Daten|Dokumente|Web|Code|Planung|Persönliche Werkzeuge führen eine integrierte Operation mit festen Eingaben aus. Skill-Anweisungen gewähren keine zusätzlichen Rechte.|Noch keine persönlichen Erweiterungen.",
-  ru: "Личные навыки и инструменты|Создать|ID (начинается с user-)|Название|Описание|Тип|Навык|Инструмент|Инструкции|Базовый инструмент|Фиксированные параметры (JSON)|Сохранить|Отмена|Изменить|Включено|Отключено|Экспорт|Импорт JSON|Не удалось сохранить. Проверьте данные; загружена актуальная версия.|Сохранено.|Наборы инструментов|Сохранить изменения|Данные|Документы|Веб|Код|Планирование|Личные инструменты выполняют встроенную операцию с фиксированными параметрами. Инструкции навыка не дают дополнительных прав.|Личных расширений пока нет.",
-  "zh-CN":
-    "个人技能和工具|新建|标识（以 user- 开头）|标题|描述|类型|技能|工具|说明|基础工具|固定输入（JSON）|保存|取消|编辑|已启用|已禁用|导出|导入 JSON|无法保存。请检查输入；已重新加载最新版本。|已保存。|工具包|保存更改|数据|文档|网页|代码|规划|个人工具使用固定输入运行所选内置操作。技能说明不会授予额外权限。|暂无个人扩展。",
-  "zh-TW":
-    "個人技能和工具|新增|識別碼（以 user- 開頭）|標題|描述|類型|技能|工具|說明|基礎工具|固定輸入（JSON）|儲存|取消|編輯|已啟用|已停用|匯出|匯入 JSON|無法儲存。請檢查輸入；已重新載入最新版本。|已儲存。|工具套件|儲存變更|資料|文件|網頁|程式碼|規劃|個人工具使用固定輸入執行所選內建操作。技能說明不會授予額外權限。|尚無個人擴充功能。",
-  ar: "المهارات والأدوات الشخصية|إنشاء جديد|المعرّف (يبدأ بـ user-)|العنوان|الوصف|النوع|مهارة|أداة|التعليمات|الأداة الأساسية|مدخلات ثابتة (JSON)|حفظ|إلغاء|تعديل|مفعّل|معطّل|تصدير|استيراد JSON|تعذر الحفظ. تحقق من البيانات؛ أُعيد تحميل أحدث إصدار.|تم الحفظ.|حزم الأدوات|حفظ التغييرات|البيانات|المستندات|الويب|البرمجة|التخطيط|تشغّل الأدوات الشخصية عملية مدمجة بمدخلات ثابتة. لا تمنح تعليمات المهارة صلاحيات إضافية.|لا توجد إضافات شخصية بعد.",
-};
 type Manifest =
+  | {
+      schemaVersion: 1;
+      id: string;
+      title: string;
+      description: string;
+      kind: "program";
+      code: string;
+      permissions: ["terminal"];
+    }
   | {
       schemaVersion: 1;
       id: string;
@@ -77,8 +77,21 @@ const call = <T,>(path: string, data?: unknown) =>
         },
   );
 export function ExtensionLibrary() {
-  const { locale, t } = useLocale(),
-    c = words[locale].split("|"),
+  const { locale } = useLocale();
+  const pack = useCustomizationCopy(locale);
+  if (!pack.data) return <LanguagePackStatus error={pack.isError} />;
+  return (
+    <ExtensionLibraryBody c={pack.data.extensions} pc={pack.data.program} />
+  );
+}
+function ExtensionLibraryBody({
+  c,
+  pc,
+}: {
+  c: readonly string[];
+  pc: readonly string[];
+}) {
+  const { t } = useLocale(),
     cache = useQueryClient();
   const list = useQuery({
     queryKey: ["personal-capabilities"],
@@ -176,7 +189,7 @@ export function ExtensionLibrary() {
                 if (
                   value.schemaVersion !== 1 ||
                   !/^user-[a-z0-9][a-z0-9-]{0,59}$/u.test(value.id) ||
-                  !["skill", "tool"].includes(value.kind)
+                  !["skill", "tool", "program"].includes(value.kind)
                 )
                   throw Error();
                 setDraft(value);
@@ -255,6 +268,7 @@ export function ExtensionLibrary() {
             <span>{c[5]}</span>
             <select
               className={fieldClass}
+              aria-label={c[5]}
               value={draft.kind}
               disabled={busy}
               onChange={(event) => {
@@ -267,17 +281,25 @@ export function ExtensionLibrary() {
                 setDraft(
                   event.target.value === "skill"
                     ? { ...base, kind: "skill", instructions: "" }
-                    : {
-                        ...base,
-                        kind: "tool",
-                        tool: "calculate",
-                        defaults: {},
-                      },
+                    : event.target.value === "program"
+                      ? {
+                          ...base,
+                          kind: "program",
+                          code: "return { total: input.units * input.price };",
+                          permissions: ["terminal"],
+                        }
+                      : {
+                          ...base,
+                          kind: "tool",
+                          tool: "calculate",
+                          defaults: {},
+                        },
                 );
               }}
             >
               <option value="skill">{c[6]}</option>
               <option value="tool">{c[7]}</option>
+              <option value="program">{pc[0]}</option>
             </select>
           </label>
           {draft.kind === "skill" ? (
@@ -295,6 +317,26 @@ export function ExtensionLibrary() {
                 }
               />
             </label>
+          ) : draft.kind === "program" ? (
+            <div className="space-y-3 sm:col-span-2">
+              <p className="text-sm text-muted-foreground">{pc[2]}</p>
+              <label className="block space-y-2 text-sm">
+                <span>{pc[1]}</span>
+                <textarea
+                  className={fieldClass + " font-mono"}
+                  rows={10}
+                  dir="ltr"
+                  required
+                  maxLength={8000}
+                  disabled={busy}
+                  aria-label={pc[1]}
+                  value={draft.code}
+                  onChange={(event) =>
+                    setDraft({ ...draft, code: event.target.value })
+                  }
+                />
+              </label>
+            </div>
           ) : (
             <>
               <label className="space-y-2 text-sm">
@@ -302,6 +344,7 @@ export function ExtensionLibrary() {
                 <select
                   className={fieldClass}
                   disabled={busy}
+                  aria-label={c[9]}
                   value={draft.tool}
                   onChange={(event) =>
                     setDraft({ ...draft, tool: event.target.value })

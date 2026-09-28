@@ -300,3 +300,7 @@ Bundled IBM Plex font files remain under the SIL Open Font License 1.1; the dist
 ### Let an agent improve a repository
 
 Settings includes a [reviewed source-change workflow](docs/source-workspaces.md): isolated Git copies, real agent projects, recorded checks, exact-version application and rollback commits. Applying source and deploying a running service are separate steps.
+
+### Add your own executable tools
+
+The Skills editor accepts [user-authored Node tool packages](docs/personal-programs.md), alongside guides and built-in utility presets. Execution follows terminal permission, exact approval, emergency-stop and durable-receipt rules.

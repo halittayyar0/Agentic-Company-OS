@@ -7,7 +7,7 @@
  */
 
 /**
- * Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.
+ * Versioned personal skill, bounded utility preset or operator-installed Node program. Maximum serialized size is 16000 characters. Programs declare terminal authority and execute through the exact approval-bound terminal path. No credential or arbitrary executable fields are accepted.
  */
 export type PersonalCapabilityManifest = {
   schemaVersion: 1;
@@ -47,4 +47,29 @@ export type PersonalCapabilityManifest = {
   /** Exact built-in utility name from the capability catalog */
   tool: string;
   defaults: {[key: string]: unknown};
+} | {
+  schemaVersion: 1;
+  /** @pattern ^user-[a-z0-9][a-z0-9-]{0,59}$ */
+  id: string;
+  kind: 'program';
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  description: string;
+  /**
+     * @minLength 1
+     * @maxLength 8000
+     */
+  code: string;
+  /**
+     * @minItems 1
+     * @maxItems 1
+     */
+  permissions: 'terminal'[];
 };

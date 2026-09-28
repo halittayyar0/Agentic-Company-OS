@@ -1,3 +1,4 @@
+import { resolveLocalProgram } from "../capabilities/local-program";
 import { hasLocalizedToolOutput, toolReceiptLocale } from "./tool-presentation";
 import { withToolPolicy, ExecutionPolicyDenied } from "../execution-policy";
 import { CAPABILITY_TOOL_NAMES, isCapabilityTool } from "../capabilities/names";
@@ -72,6 +73,7 @@ import {
   deleteEntry,
   execAgentSudo,
   execInSandbox,
+  execArgvInSandbox,
   getAgentSudoTarget,
   getSandboxWorkingDirectory,
   getVmStatus,
@@ -637,6 +639,11 @@ function requiredApprovalCategoryForAction(
   ) {
     return "delete";
   }
+  if (
+    toolName === "vm_run_command" &&
+    /^extension(?:\s|$)/i.test(String(args.command ?? ""))
+  )
+    return "other";
   if (toolName === "vm_run_sudo_command") return "other";
   return null;
 }
@@ -4272,14 +4279,20 @@ async function vmRunCommand(
     );
 
   const commandName = auditCommandName(command).toLowerCase();
-  if (["rm", "del"].includes(commandName)) {
+  let program: Awaited<ReturnType<typeof resolveLocalProgram>>;
+  try {
+    program = await resolveLocalProgram(command);
+  } catch {
+    return empty(copy.terminalFailureFallback, "rejected");
+  }
+  if (["rm", "del"].includes(commandName) || program) {
     const approved = await consumeScopedApproval(ctx, "vm_run_command", args);
     if (!approved) {
       return empty(
         terminalMessage(locale, "approvalRequired", {
           toolName: "vm_run_command",
           args: canonicalJson(args),
-          category: "delete",
+          category: program ? "other" : "delete",
         }),
         "rejected",
       );
@@ -4308,17 +4321,29 @@ async function vmRunCommand(
         await assertDurableTaskBoundary(ctx, copy.terminalDispatch);
         let effectBoundaryCrossed = false;
         const crossEffectBoundary: FileEffectHook = async (): Promise<void> => {
+          await program?.revalidate();
           await startEffect();
           effectBoundaryCrossed = true;
         };
-        crossEffectBoundary.revalidate = startEffect.revalidate;
-        const result = await execInSandbox(
-          ctx.agent.id,
-          command,
-          undefined,
-          crossEffectBoundary,
-          locale,
-        );
+        crossEffectBoundary.revalidate = async () => {
+          await startEffect.revalidate?.();
+          await program?.revalidate();
+        };
+        const result = program
+          ? await execArgvInSandbox(
+              ctx.agent.id,
+              program.argv,
+              30000,
+              crossEffectBoundary,
+              locale,
+            )
+          : await execInSandbox(
+              ctx.agent.id,
+              command,
+              undefined,
+              crossEffectBoundary,
+              locale,
+            );
         // Sandbox mutators and spawned processes cross the boundary immediately
         // before their effect. Successful read-only builtins intentionally do
         // not call that hook; complete their approval-bound observation only

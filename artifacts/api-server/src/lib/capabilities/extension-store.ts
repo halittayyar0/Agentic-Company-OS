@@ -73,6 +73,17 @@ export async function discoverExtensions(offset = 0) {
       enabled: row.enabled,
       ...manifest,
       ...(parameters ? { parameters } : {}),
+      ...(manifest.kind === "program"
+        ? {
+            invocation: {
+              tool: "vm_run_command",
+              commandTemplate: `extension ${row.id}@${row.revision} {"input":"replace with the documented JSON object"}`,
+              permission: "terminal",
+              approval:
+                "Exact one-use approval; full-access policy can authorize eligible queued actions.",
+            },
+          }
+        : {}),
     };
   });
   return {

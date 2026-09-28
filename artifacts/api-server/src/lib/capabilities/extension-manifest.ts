@@ -13,6 +13,14 @@ const schema = z.discriminatedUnion("kind", [
   z
     .object({
       ...base,
+      kind: z.literal("program"),
+      code: z.string().min(1).max(8000),
+      permissions: z.tuple([z.literal("terminal")]),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
       kind: z.literal("skill"),
       instructions: z.string().min(1).max(8000),
     })

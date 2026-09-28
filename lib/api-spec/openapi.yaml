@@ -2467,7 +2467,7 @@ components:
           type: integer
           minimum: 1
     PersonalCapabilityManifest:
-      description: Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.
+      description: Versioned personal skill, bounded utility preset or operator-installed Node program. Maximum serialized size is 16000 characters. Programs declare terminal authority and execute through the exact approval-bound terminal path. No credential or arbitrary executable fields are accepted.
       oneOf:
         - type: object
           additionalProperties: false
@@ -2522,6 +2522,22 @@ components:
             defaults:
               type: object
               additionalProperties: {}
+        - type: object
+          additionalProperties: false
+          required:
+            [schemaVersion, id, kind, title, description, code, permissions]
+          properties:
+            schemaVersion: { type: integer, enum: [1] }
+            id: { type: string, pattern: "^user-[a-z0-9][a-z0-9-]{0,59}$" }
+            kind: { type: string, enum: [program] }
+            title: { type: string, minLength: 1, maxLength: 120 }
+            description: { type: string, minLength: 1, maxLength: 2000 }
+            code: { type: string, minLength: 1, maxLength: 8000 }
+            permissions:
+              type: array
+              minItems: 1
+              maxItems: 1
+              items: { type: string, enum: [terminal] }
     PersonalCapability:
       type: object
       required: [id, manifest, enabled, revision, updatedAt]

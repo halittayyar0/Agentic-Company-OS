@@ -250,6 +250,15 @@ export const listPersonalCapabilitiesResponseManifestTwoTitleMax = 120;
 
 export const listPersonalCapabilitiesResponseManifestTwoDescriptionMax = 2000;
 
+export const listPersonalCapabilitiesResponseManifestThreeIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const listPersonalCapabilitiesResponseManifestThreeTitleMax = 120;
+
+export const listPersonalCapabilitiesResponseManifestThreeDescriptionMax = 2000;
+
+export const listPersonalCapabilitiesResponseManifestThreeCodeMax = 8000;
+
+export const listPersonalCapabilitiesResponseManifestThreePermissionsMax = 1;
+
 
 
 
@@ -270,7 +279,15 @@ export const ListPersonalCapabilitiesResponseItem = zod.object({
   "description": zod.string().min(1).max(listPersonalCapabilitiesResponseManifestTwoDescriptionMax),
   "tool": zod.string().describe('Exact built-in utility name from the capability catalog'),
   "defaults": zod.record(zod.string(), zod.unknown())
-})]).describe('Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.'),
+}),zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(listPersonalCapabilitiesResponseManifestThreeIdRegExp),
+  "kind": zod.enum(['program']),
+  "title": zod.string().min(1).max(listPersonalCapabilitiesResponseManifestThreeTitleMax),
+  "description": zod.string().min(1).max(listPersonalCapabilitiesResponseManifestThreeDescriptionMax),
+  "code": zod.string().min(1).max(listPersonalCapabilitiesResponseManifestThreeCodeMax),
+  "permissions": zod.array(zod.enum(['terminal'])).min(1).max(listPersonalCapabilitiesResponseManifestThreePermissionsMax)
+})]).describe('Versioned personal skill, bounded utility preset or operator-installed Node program. Maximum serialized size is 16000 characters. Programs declare terminal authority and execute through the exact approval-bound terminal path. No credential or arbitrary executable fields are accepted.'),
   "enabled": zod.boolean(),
   "revision": zod.number().int().min(1),
   "updatedAt": zod.coerce.date()
@@ -293,6 +310,15 @@ export const savePersonalCapabilityBodyManifestTwoTitleMax = 120;
 
 export const savePersonalCapabilityBodyManifestTwoDescriptionMax = 2000;
 
+export const savePersonalCapabilityBodyManifestThreeIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const savePersonalCapabilityBodyManifestThreeTitleMax = 120;
+
+export const savePersonalCapabilityBodyManifestThreeDescriptionMax = 2000;
+
+export const savePersonalCapabilityBodyManifestThreeCodeMax = 8000;
+
+export const savePersonalCapabilityBodyManifestThreePermissionsMax = 1;
+
 export const savePersonalCapabilityBodyExpectedRevisionMin = 0;
 
 
@@ -313,7 +339,15 @@ export const SavePersonalCapabilityBody = zod.object({
   "description": zod.string().min(1).max(savePersonalCapabilityBodyManifestTwoDescriptionMax),
   "tool": zod.string().describe('Exact built-in utility name from the capability catalog'),
   "defaults": zod.record(zod.string(), zod.unknown())
-})]).describe('Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.'),
+}),zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(savePersonalCapabilityBodyManifestThreeIdRegExp),
+  "kind": zod.enum(['program']),
+  "title": zod.string().min(1).max(savePersonalCapabilityBodyManifestThreeTitleMax),
+  "description": zod.string().min(1).max(savePersonalCapabilityBodyManifestThreeDescriptionMax),
+  "code": zod.string().min(1).max(savePersonalCapabilityBodyManifestThreeCodeMax),
+  "permissions": zod.array(zod.enum(['terminal'])).min(1).max(savePersonalCapabilityBodyManifestThreePermissionsMax)
+})]).describe('Versioned personal skill, bounded utility preset or operator-installed Node program. Maximum serialized size is 16000 characters. Programs declare terminal authority and execute through the exact approval-bound terminal path. No credential or arbitrary executable fields are accepted.'),
   "enabled": zod.boolean(),
   "expectedRevision": zod.number().int().min(savePersonalCapabilityBodyExpectedRevisionMin)
 })
@@ -329,6 +363,15 @@ export const savePersonalCapabilityResponseManifestTwoIdRegExp = new RegExp('^us
 export const savePersonalCapabilityResponseManifestTwoTitleMax = 120;
 
 export const savePersonalCapabilityResponseManifestTwoDescriptionMax = 2000;
+
+export const savePersonalCapabilityResponseManifestThreeIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const savePersonalCapabilityResponseManifestThreeTitleMax = 120;
+
+export const savePersonalCapabilityResponseManifestThreeDescriptionMax = 2000;
+
+export const savePersonalCapabilityResponseManifestThreeCodeMax = 8000;
+
+export const savePersonalCapabilityResponseManifestThreePermissionsMax = 1;
 
 
 
@@ -350,7 +393,15 @@ export const SavePersonalCapabilityResponse = zod.object({
   "description": zod.string().min(1).max(savePersonalCapabilityResponseManifestTwoDescriptionMax),
   "tool": zod.string().describe('Exact built-in utility name from the capability catalog'),
   "defaults": zod.record(zod.string(), zod.unknown())
-})]).describe('Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.'),
+}),zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(savePersonalCapabilityResponseManifestThreeIdRegExp),
+  "kind": zod.enum(['program']),
+  "title": zod.string().min(1).max(savePersonalCapabilityResponseManifestThreeTitleMax),
+  "description": zod.string().min(1).max(savePersonalCapabilityResponseManifestThreeDescriptionMax),
+  "code": zod.string().min(1).max(savePersonalCapabilityResponseManifestThreeCodeMax),
+  "permissions": zod.array(zod.enum(['terminal'])).min(1).max(savePersonalCapabilityResponseManifestThreePermissionsMax)
+})]).describe('Versioned personal skill, bounded utility preset or operator-installed Node program. Maximum serialized size is 16000 characters. Programs declare terminal authority and execute through the exact approval-bound terminal path. No credential or arbitrary executable fields are accepted.'),
   "enabled": zod.boolean(),
   "revision": zod.number().int().min(1),
   "updatedAt": zod.coerce.date()
@@ -379,6 +430,15 @@ export const exportPersonalCapabilityResponseTwoTitleMax = 120;
 
 export const exportPersonalCapabilityResponseTwoDescriptionMax = 2000;
 
+export const exportPersonalCapabilityResponseThreeIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
+export const exportPersonalCapabilityResponseThreeTitleMax = 120;
+
+export const exportPersonalCapabilityResponseThreeDescriptionMax = 2000;
+
+export const exportPersonalCapabilityResponseThreeCodeMax = 8000;
+
+export const exportPersonalCapabilityResponseThreePermissionsMax = 1;
+
 
 
 export const ExportPersonalCapabilityResponse = zod.union([zod.object({
@@ -396,7 +456,15 @@ export const ExportPersonalCapabilityResponse = zod.union([zod.object({
   "description": zod.string().min(1).max(exportPersonalCapabilityResponseTwoDescriptionMax),
   "tool": zod.string().describe('Exact built-in utility name from the capability catalog'),
   "defaults": zod.record(zod.string(), zod.unknown())
-})]).describe('Versioned personal skill or bounded utility preset. Maximum serialized size is 16000 characters. Tool names must be available built-in utilities; executable code and credentials are rejected.')
+}),zod.object({
+  "schemaVersion": zod.literal(1),
+  "id": zod.string().regex(exportPersonalCapabilityResponseThreeIdRegExp),
+  "kind": zod.enum(['program']),
+  "title": zod.string().min(1).max(exportPersonalCapabilityResponseThreeTitleMax),
+  "description": zod.string().min(1).max(exportPersonalCapabilityResponseThreeDescriptionMax),
+  "code": zod.string().min(1).max(exportPersonalCapabilityResponseThreeCodeMax),
+  "permissions": zod.array(zod.enum(['terminal'])).min(1).max(exportPersonalCapabilityResponseThreePermissionsMax)
+})]).describe('Versioned personal skill, bounded utility preset or operator-installed Node program. Maximum serialized size is 16000 characters. Programs declare terminal authority and execute through the exact approval-bound terminal path. No credential or arbitrary executable fields are accepted.')
 
 
 /**
