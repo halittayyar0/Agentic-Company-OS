@@ -3,10 +3,11 @@ import { hostname as readHostname } from "node:os";
 import {
   db,
   dbReady,
+  activityEventsTable,
   runtimeInstancesTable,
   type RuntimeInstanceRole,
 } from "@workspace/db";
-import { and, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { logger } from "../logger";
 import type { RuntimeOperationsConfig } from "../runtime-operations-config";
 import { appendOperationsChanged } from "../operations/operations-events";
@@ -460,6 +461,67 @@ export async function markRuntimeStopped(
     }
     return updated.length === 1;
   });
+}
+
+/** Observe missed heartbeats without revoking an incarnation. A shared
+ * database outage can delay every heartbeat; recovered workers must still be
+ * able to refresh their existing identity. Explicit fencing remains separate.
+ */
+export async function recordStaleRuntimeIncidents(
+  config: RuntimeOperationsConfig,
+  runtime: Pick<RuntimeInstanceRegistryRuntime, "now"> = systemRuntime,
+): Promise<number> {
+  await dbReady;
+  const observedAt = timestampFrom(runtime);
+  const cutoff = new Date(observedAt.getTime() - config.workerStaleAfterMs);
+  const candidates = await db
+    .select({ id: runtimeInstancesTable.id })
+    .from(runtimeInstancesTable)
+    .where(
+      and(
+        inArray(runtimeInstancesTable.state, [...CLAIMABLE_STATES]),
+        lte(runtimeInstancesTable.lastHeartbeatAt, cutoff),
+      ),
+    );
+  let count = 0;
+  for (const candidate of candidates) {
+    count += await db.transaction(async (transaction) => {
+      const [instance] = await transaction
+        .select()
+        .from(runtimeInstancesTable)
+        .where(
+          and(
+            eq(runtimeInstancesTable.id, candidate.id),
+            inArray(runtimeInstancesTable.state, [...CLAIMABLE_STATES]),
+            lte(runtimeInstancesTable.lastHeartbeatAt, cutoff),
+          ),
+        )
+        .for("update");
+      if (!instance) return 0;
+      const [recorded] = await transaction
+        .select({ id: activityEventsTable.id })
+        .from(activityEventsTable)
+        .where(
+          and(
+            eq(activityEventsTable.type, "operations_changed"),
+            gte(activityEventsTable.createdAt, instance.lastHeartbeatAt),
+            sql`${activityEventsTable.detail}->>'runtimeInstanceId' = ${instance.id}`,
+            sql`${activityEventsTable.detail}->>'kind' = 'runtime_state_changed'`,
+            sql`${activityEventsTable.detail}->>'state' = 'stale'`,
+          ),
+        )
+        .limit(1);
+      if (recorded) return 0;
+      await appendOperationsChanged(transaction, {
+        kind: "runtime_state_changed",
+        runtimeInstanceId: instance.id,
+        state: "stale",
+        createdAt: observedAt,
+      });
+      return 1;
+    });
+  }
+  return count;
 }
 
 export async function markStaleRuntimeInstances(
