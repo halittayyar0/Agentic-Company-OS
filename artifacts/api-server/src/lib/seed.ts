@@ -132,8 +132,33 @@ async function ensureCanonicalRootCeo(): Promise<number> {
  */
 export async function seedDefaultOrg(
   locale: WorkspaceLocale = "tr",
+  options?: { syntheticAgentCount: number },
 ): Promise<void> {
   const templates = getLocalizedAgentTemplates(locale);
+  const availableDirectors = templates.filter(
+    (template) => template.key !== "ceo" && template.key !== "specialist",
+  );
+  // Endurance evidence needs a fixed cohort independent of catalog additions.
+  // Only the validated synthetic runtime supplies this option. Ordinary
+  // installations keep the complete stock roster and all specialist templates.
+  const syntheticCount = options?.syntheticAgentCount;
+  if (syntheticCount !== undefined) {
+    if (
+      !Number.isSafeInteger(syntheticCount) ||
+      syntheticCount < 2 ||
+      syntheticCount > availableDirectors.length + 1
+    ) {
+      throw new Error(
+        "Synthetic agent count must fit the available stock roster.",
+      );
+    }
+    const existing = await db.select({ id: agentsTable.id }).from(agentsTable);
+    if (existing.length !== 0 && existing.length !== syntheticCount) {
+      throw new Error(
+        "Existing synthetic roster does not match the requested agent count.",
+      );
+    }
+  }
   const rootCeoIdentityCount = await ensureCanonicalRootCeo();
   const backfilledSudoPermissionCount = await backfillSudoPermissions();
   const refreshedPromptCount = await syncDefaultTemplatePrompts(templates);
@@ -187,9 +212,10 @@ export async function seedDefaultOrg(
     })
     .returning();
 
-  const directorTemplates = templates.filter(
-    (t) => t.key !== "ceo" && t.key !== "specialist",
-  );
+  const directorTemplates =
+    syntheticCount === undefined
+      ? availableDirectors
+      : availableDirectors.slice(0, syntheticCount - 1);
 
   for (const template of directorTemplates) {
     await db.insert(agentsTable).values({

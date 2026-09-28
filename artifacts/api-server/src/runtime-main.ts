@@ -236,7 +236,10 @@ export async function startHttpRuntime(
     // Only API/combined runtimes seed operator-facing defaults. The worker
     // entry has no seed import and can never race this compatibility boundary.
     await dbReady;
-    await seedDefaultOrg(await readWorkspaceLocale());
+    await seedDefaultOrg(
+      await readWorkspaceLocale(),
+      synthetic ? { syntheticAgentCount: synthetic.expectedAgents } : undefined,
+    );
     await scrubExpiredSudoApprovals();
 
     // This scan is process-global and unscoped. Until it has durable ownership
