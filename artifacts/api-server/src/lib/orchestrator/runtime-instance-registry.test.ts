@@ -16,6 +16,7 @@ import {
   markRuntimeDraining,
   markRuntimeStopped,
   markStaleRuntimeInstances,
+  recordStaleRuntimeIncidents,
   registerRuntimeInstance,
   type RuntimeInstanceHandle,
 } from "./runtime-instance-registry";
@@ -502,6 +503,45 @@ test("heartbeat ownership loss clears local scheduling permanently", async (t) =
   await firedTimer.callback();
   assert.equal(clock.timers.length, timerCountAfterOwnershipLoss);
   await Promise.all([handle.stopHeartbeat(), handle.stopHeartbeat()]);
+});
+
+test("stale incidents are durable and deduplicated without fencing a worker recovering from a database outage", async (t) => {
+  await dbReady;
+  const clock = createManualRuntime(new Date("2026-09-01T14:00:00.000Z"));
+  const handle = await registerRuntimeInstance(
+    { role: "worker", schedulerEnabled: true },
+    workerConfig,
+    clock.runtime,
+  );
+  t.after(async () => {
+    await handle.stopHeartbeat();
+    await deleteInstances([handle.id]);
+  });
+  await heartbeatRuntimeInstance(handle);
+  await db
+    .update(runtimeInstancesTable)
+    .set({ lastHeartbeatAt: new Date("2026-09-01T13:59:00.000Z") })
+    .where(eq(runtimeInstancesTable.id, handle.id));
+  await recordStaleRuntimeIncidents(workerConfig, clock.runtime);
+  await recordStaleRuntimeIncidents(workerConfig, clock.runtime);
+  const events = await db
+    .select()
+    .from(activityEventsTable)
+    .where(eq(activityEventsTable.type, "operations_changed"));
+  assert.equal(
+    events.filter(
+      (event) =>
+        event.detail?.runtimeInstanceId === handle.id &&
+        event.detail?.state === "stale",
+    ).length,
+    1,
+  );
+  assert.equal((await readInstance(handle.id)).state, "healthy");
+  assert.equal(
+    await heartbeatRuntimeInstance(handle),
+    true,
+    "recording an outage must not revoke a live runtime incarnation",
+  );
 });
 
 test("stale marking respects the threshold, excludes terminal rows, and compare-and-sets the selected owner", async (t) => {
