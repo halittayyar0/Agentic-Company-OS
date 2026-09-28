@@ -693,6 +693,7 @@ export class PostgresEnduranceHarness {
       "db",
       "psql",
       "--no-psqlrc",
+      "--quiet",
       "--set",
       "ON_ERROR_STOP=1",
       "--username",
