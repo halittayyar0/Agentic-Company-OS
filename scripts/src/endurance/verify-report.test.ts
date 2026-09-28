@@ -268,7 +268,7 @@ function validWallClockReport() {
     provenance: {
       runner: {
         os: "test-os",
-        node: "v24.19.0",
+        node: process.version,
         postgres: "PostgreSQL 17.6",
         browser: "chromium-test",
       },
@@ -289,7 +289,7 @@ function validWallClockReport() {
       buildAttestation: {
         schemaVersion: 1,
         cleanTree: true,
-        nodeVersion: "v24.19.0",
+        nodeVersion: process.version,
         sourceCommitSha: TEST_COMMIT,
         sourceTreeSha256: TEST_SOURCE_TREE_SHA,
         runtime: "native-postgres",
@@ -315,7 +315,7 @@ function validWallClockReport() {
       },
       runtimeAttestation: {
         kind: "native-postgres",
-        nodeVersion: "v24.19.0",
+        nodeVersion: process.version,
         postgresVersion: "PostgreSQL 17.6",
         postgresToolchainSha256: postgresToolchainDigest(),
         postgresBinaries: nativePostgresBinaries,
