@@ -152,6 +152,20 @@ test("compressed-all profile refuses a horizon too short for isolated all-fault 
   );
 });
 
+test("live compressed database outage spans a sample interval and leaves recovery before the next fault", () => {
+  const schedule = createSeededFaultSchedule({
+    seed: 240_901,
+    durationMs: 600_000,
+    profile: "compressed-all",
+  });
+  const database = schedule.find(
+    (fault) => fault.kind === "database_unavailable",
+  )!;
+  const next = schedule.find((fault) => fault.atMs > database.atMs)!;
+  assert.equal(database.durationMs, 75_000);
+  assert.ok(database.atMs + database.durationMs + 5000 < next.atMs);
+});
+
 test("long-run seeded jitter never overlaps fault or recovery windows", () => {
   const durationMs = 24 * 60 * 60 * 1_000;
   for (let seed = 0; seed < 4_096; seed += 1) {

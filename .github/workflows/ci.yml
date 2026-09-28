@@ -223,7 +223,7 @@ jobs:
         run: |
           pnpm endurance:wall-clock:native -- `
             --postgres-root "$env:ENDURANCE_POSTGRES_ROOT" `
-            --duration-hours 0.03333333333333333 `
+            --duration-hours 0.16666666666666666 `
             --fault-profile compressed-all `
             --seed 240901 `
             --output artifacts/endurance-reports/windows-native-wall-clock.json `
@@ -524,5 +524,6 @@ jobs:
             artifacts/endurance-reports/*.json
             artifacts/endurance-reports/*.jsonl
             artifacts/endurance-reports/*.sha256
+            artifacts/endurance-reports/**/*.png
           if-no-files-found: warn
           retention-days: 7

@@ -142,7 +142,10 @@ export function createSeededFaultSchedule(input: {
           id: "database-unavailable-1",
           kind: "database_unavailable",
           fraction: 0.65,
-          durationMs: 6_000,
+          // The real runtime can buffer a six-second pause without losing a
+          // heartbeat or sample. Live ten-minute proofs must span a complete
+          // sampling interval so unavailable-state evidence can be observed.
+          durationMs: input.durationMs >= 600_000 ? 75_000 : 6_000,
         },
         {
           id: "sse-disconnect-1",
