@@ -1,0 +1,6307 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0-alpha.1
+  description: Agentic Company OS API
+servers:
+  - url: /api
+    description: Base API path
+security:
+  - operatorBearer: []
+  - operatorSession: []
+tags:
+  - name: skills
+    description: Built-in work guides and bounded local utilities
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Single-operator authentication
+  - name: agents
+    description: Agent org chart, templates, and direct chat
+  - name: workforces
+    description: Reusable multi-agent workforce blueprints and atomic installation
+  - name: company-chat
+    description: Persistent founder and active-agent company channel
+  - name: tasks
+    description: Tasks and delegation
+  - name: project-meetings
+    description: Root-project-scoped meetings, transcripts, decisions, and action items
+  - name: activity
+    description: Global activity / audit feed
+  - name: approvals
+    description: Human-in-the-loop approvals
+  - name: org
+    description: Org-wide summary
+  - name: models
+    description: LLM providers and model catalog
+  - name: settings
+    description: Operator-owned provider configuration and connectivity checks
+  - name: operations
+    description: Persisted runtime safety controls
+  - name: vm
+    description: Per-agent virtual computer (sandbox filesystem + terminal)
+paths:
+  /skills:
+    get:
+      operationId: getCapabilityCatalog
+      tags: [skills]
+      summary: Read the built-in skills and local utility catalog
+      parameters:
+        - name: locale
+          in: query
+          schema:
+            type: string
+            enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+            default: tr
+      responses:
+        "200":
+          description: Versioned localized catalog; reading it does not start work or grant access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilityCatalog"
+        "400":
+          description: Invalid or repeated locale parameter
+        "401":
+          description: Operator authentication required
+  /healthz:
+    get:
+      security: []
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /readyz:
+    get:
+      security: []
+      operationId: readinessCheck
+      tags: [health]
+      summary: Readiness check
+      description: Returns 200 only after startup and database migrations complete, and 503 while draining.
+      responses:
+        "200":
+          description: Ready to serve traffic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+        "503":
+          description: Starting, database unavailable, or shutting down
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+
+  /auth/status:
+    get:
+      security: []
+      operationId: operatorAuthStatus
+      tags: [auth]
+      summary: Inspect operator authentication state
+      responses:
+        "200":
+          description: Authentication state for this request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorAuthStatus"
+
+  /auth/login:
+    post:
+      security: []
+      operationId: operatorLogin
+      tags: [auth]
+      summary: Exchange the configured operator token for a signed session cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperatorLoginInput"
+      responses:
+        "200":
+          description: Authenticated; sets an HttpOnly SameSite=Strict session cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorAuthStatus"
+        "401":
+          description: Invalid operator token
+        "429":
+          description: Login rate limit exceeded
+
+  /auth/session:
+    delete:
+      security: []
+      operationId: operatorLogout
+      tags: [auth]
+      summary: Clear the browser operator session
+      responses:
+        "204":
+          description: Session cookie cleared
+
+  /agent-templates:
+    get:
+      operationId: listAgentTemplates
+      tags: [agents]
+      summary: List preset agent/department templates
+      parameters:
+        - name: locale
+          in: query
+          schema:
+            type: string
+            enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+            default: tr
+      responses:
+        "200":
+          description: Available templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgentTemplate"
+
+  /workforce-blueprints:
+    get:
+      operationId: listWorkforceBlueprints
+      tags: [workforces]
+      summary: List authored, versioned multi-agent workforce blueprints
+      parameters:
+        - name: locale
+          in: query
+          schema:
+            type: string
+            enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+            default: tr
+      responses:
+        "200":
+          description: Available workforce blueprints
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkforceBlueprint"
+
+  /workforce-blueprints/{blueprintKey}/install:
+    parameters:
+      - name: blueprintKey
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    post:
+      operationId: installWorkforceBlueprint
+      tags: [workforces]
+      summary: Atomically install a workforce under an active manager and optionally start its first outcome
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkforceBlueprintInstallInput"
+      responses:
+        "201":
+          description: Installed workforce and optional kickoff task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkforceInstallation"
+        "400":
+          description: Invalid blueprint key or install input
+        "403":
+          description: Selected manager cannot create sub-agents
+        "409":
+          description: Selected manager is inactive, preview version changed, or request ID conflicts with a different payload
+        "404":
+          description: Blueprint or selected manager was not found
+        "423":
+          description: Emergency stop is active
+        "429":
+          description: Runtime agent or task capacity reached
+
+  /agents:
+    get:
+      operationId: listAgents
+      tags: [agents]
+      summary: List agents in the org chart
+      parameters:
+        - name: parentAgentId
+          in: query
+          schema:
+            type: number
+        - name: department
+          in: query
+          schema:
+            type: string
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Agents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Agent"
+    post:
+      operationId: createAgent
+      tags: [agents]
+      summary: Create a new agent (by a user or by a delegating agent)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentInput"
+      responses:
+        "201":
+          description: Created agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+
+  /agents/{agentId}:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    get:
+      operationId: getAgent
+      tags: [agents]
+      summary: Get an agent
+      responses:
+        "200":
+          description: Agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateAgent
+      tags: [agents]
+      summary: Update an agent's persona, model, or permissions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentUpdate"
+      responses:
+        "409":
+          description: Reviewed configuration changed, or a conflicting operation is in flight.
+        "200":
+          description: Updated agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+
+  /agents/{agentId}/avatar:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    get:
+      operationId: getAgentAvatar
+      tags: [agents]
+      summary: Read an agent's custom avatar image
+      parameters:
+        - name: v
+          in: query
+          description: Cache-busting avatar version from the Agent resource
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Avatar image
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "304":
+          description: Cached image is current
+        "404":
+          description: Agent or custom avatar not found
+    put:
+      operationId: updateAgentAvatar
+      tags: [agents]
+      summary: Replace an agent's custom avatar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentAvatarInput"
+      responses:
+        "409":
+          description: Reviewed configuration changed, or a conflicting operation is in flight.
+        "200":
+          description: Agent with a new avatar version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+    delete:
+      operationId: resetAgentAvatar
+      tags: [agents]
+      summary: Restore an agent's built-in avatar
+      parameters:
+        - name: expectedConfig
+          in: query
+          schema:
+            type: string
+            pattern: "^[a-f0-9]{64}$"
+          description: Exact configVersion reviewed by the caller; conflicts return 409.
+      responses:
+        "409":
+          description: Reviewed configuration changed, or a conflicting operation is in flight.
+        "200":
+          description: Agent using the built-in avatar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+
+  /agents/{agentId}/messages:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    get:
+      operationId: listAgentMessages
+      tags: [agents]
+      summary: List a scoped chat thread with an agent
+      description: >
+        Omitting taskId returns only the direct agent conversation
+        (messages whose taskId is null). Supplying taskId returns only the
+        conversation bound to that project task.
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/BeforeId"
+        - name: taskId
+          in: query
+          required: false
+          description: Positive project task id used to isolate the conversation.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendAgentMessage
+      tags: [agents]
+      summary: Send a chat message directly to any agent in the org
+      description: >
+        Any agent -- not only the CEO -- can be messaged directly. The agent
+        replies immediately and may, as part of handling the message, create
+        tasks or sub-agents (returned in the response for immediate UI update).
+        When taskId is supplied, the task must exist and be owned by the
+        addressed active agent; the complete turn is isolated to that project
+        conversation and executes with that task context.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "200":
+          description: Agent reply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentMessageResponse"
+
+  /agents/{agentId}/requests:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    post:
+      operationId: sendAgentRequest
+      tags: [agents]
+      summary: Send one durable chat or project creation intent
+      description: >
+        A required requestId is bound permanently to the exact intent. Replaying
+        it returns its receipt without starting work again, including during an
+        emergency stop. Project creation and its receipt commit together. An
+        unconfirmed chat receipt may still be running or may have been interrupted;
+        it is never automatically restarted. Complete describes the request,
+        not successful completion of all tools or of the queued project.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentRequestInput"
+      responses:
+        "200":
+          description: Durable receipt, including explicit rejection or unconfirmed execution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRequestReceipt"
+
+  /agents/{agentId}/requests/{requestId}:
+    get:
+      operationId: getAgentRequest
+      tags: [agents]
+      summary: Read a send receipt without dispatching work
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Stored receipt; available even when the agent is archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRequestReceipt"
+
+  /company-chat:
+    get:
+      operationId: getCompanyChannel
+      tags: [company-chat]
+      summary: Get the persistent all-company channel
+      description: The founder and explicitly enrolled active agents share this canonical internal room.
+      responses:
+        "200":
+          description: Company channel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyChannel"
+
+  /company-chat/members:
+    get:
+      operationId: listCompanyChannelMembers
+      tags: [company-chat]
+      summary: List the durable Company Room roster
+      responses:
+        "200":
+          description: Company Room members, including inactive retained memberships
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyChannelMember"
+    post:
+      operationId: addCompanyChannelMember
+      tags: [company-chat]
+      summary: Add one active agent to the Company Room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyChannelMemberInput"
+      responses:
+        "200":
+          description: Existing membership (idempotent)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyChannelMember"
+        "201":
+          description: Created membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyChannelMember"
+
+  /company-chat/members/{agentId}:
+    delete:
+      operationId: removeCompanyChannelMember
+      tags: [company-chat]
+      summary: Remove an agent from the Company Room
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: Membership is absent
+
+  /company-chat/messages:
+    get:
+      operationId: listCompanyMessages
+      tags: [company-chat]
+      summary: List real persisted company-channel messages
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/BeforeId"
+      responses:
+        "200":
+          description: Company messages in chronological rendering order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyMessage"
+    post:
+      operationId: sendCompanyMessage
+      tags: [company-chat]
+      summary: Post as founder and run a bounded natural group-response round
+      description: >
+        Persists the founder message first. Explicit @mentions route only to
+        those active room members. Without mentions, every active member gets
+        a deterministic relevance decision and only likely contributors enter
+        a final model-level need-to-reply gate. Membership is unbounded, while
+        response attempts, concurrency, and aggregate completion tokens are
+        server-bounded; responses never fan out recursively.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyMessageInput"
+      responses:
+        "200":
+          description: Original message receipt; replay never dispatches another model round
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyMessageResponse"
+        "201":
+          description: Persisted founder message and any real agent responses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyMessageResponse"
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List tasks
+      parameters:
+        - name: ownerAgentId
+          in: query
+          schema:
+            type: number
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/TaskStatus"
+        - name: rootOnly
+          in: query
+          description: Only return tasks with no parent task
+          schema:
+            type: boolean
+            default: false
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/BeforeId"
+      responses:
+        "200":
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Start a top-level project with the complete active workforce
+      description: >
+        Every currently active agent is enrolled as a durable project member.
+        ownerAgentId is a backwards-compatible coordinator override; when it is
+        omitted the server deterministically selects the active root CEO, an
+        active structural root, or finally the lowest-id active agent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{taskId}:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: number
+    get:
+      operationId: getTask
+      tags: [tasks]
+      summary: Get a task
+      responses:
+        "200":
+          description: Task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Not found
+
+  /tasks/{taskId}/subtasks:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: number
+    get:
+      operationId: listSubtasks
+      tags: [tasks]
+      summary: List a task's direct subtasks
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/BeforeId"
+      responses:
+        "200":
+          description: Subtasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+
+  /tasks/{taskId}/members:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: number
+    get:
+      operationId: listProjectMembers
+      tags: [tasks]
+      summary: List the durable team for a root project
+      responses:
+        "200":
+          description: Project members, ordered with the coordinator first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectMember"
+        "404":
+          description: Project not found
+        "409":
+          description: The task exists but is not a root project
+
+  /tasks/{taskId}/activity:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: number
+    get:
+      operationId: listTaskActivity
+      tags: [tasks]
+      summary: List the activity trace for a single task
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/BeforeId"
+      responses:
+        "200":
+          description: Activity events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+
+  /tasks/{taskId}/cancel:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: number
+    post:
+      operationId: cancelTask
+      tags: [tasks]
+      summary: Cancel a task
+      responses:
+        "200":
+          description: Cancelled task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{taskId}/autonomy:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: number
+    put:
+      operationId: updateTaskAutonomy
+      tags: [tasks]
+      summary: Configure a task as finite work or a recurring owned responsibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskAutonomyInput"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Not found
+        "409":
+          description: Cancelled or failed tasks cannot be converted in place
+
+  /tasks/{taskId}/resume:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: number
+    post:
+      operationId: resumeTask
+      tags: [tasks]
+      summary: Resume a blocked task with operator input
+      description: Binds an answer to the exact question and request identity. The answer, queued task and receipt commit together. Replays return the stored receipt, including after later questions or cancellation, without resuming again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskResumeInput"
+      responses:
+        "200":
+          description: Durable accepted or rejected answer receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskAnswerReceipt"
+        "404":
+          description: Not found
+        "409":
+          description: Request identity was used for different content
+
+  /tasks/{taskId}/question:
+    get:
+      operationId: getTaskQuestion
+      tags: [tasks]
+      summary: Read the exact pending question and its current answerability
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Current question snapshot; source text is not translated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskQuestion"
+        "404":
+          description: Task not found
+
+  /tasks/{taskId}/resume/{requestId}:
+    get:
+      operationId: getTaskAnswerReceipt
+      tags: [tasks]
+      summary: Read an answer receipt without dispatching work
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Stored receipt, even when the task has since changed or been deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskAnswerReceipt"
+        "404":
+          description: No committed receipt yet; not proof that an in-flight request cannot commit
+
+  /projects/{projectId}/meeting-commands/{requestId}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getProjectMeetingCommandReceipt
+      tags: [project-meetings]
+      summary: Read a retained manual meeting command outcome without executing it
+      responses:
+        "200":
+          description: Committed command receipt, including a recorded business rejection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingCommandReceipt"
+        "400":
+          description: Invalid scope or request identity
+        "404":
+          description: No committed receipt yet; an in-flight transaction may still commit
+
+  /projects/{projectId}/meetings:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      operationId: listProjectMeetings
+      tags: [project-meetings]
+      summary: List meetings owned by one root project
+      description: A meeting from any other project is never included.
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/BeforeId"
+      responses:
+        "200":
+          description: Project meeting summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectMeetingListItem"
+        "404":
+          description: Project not found
+        "409":
+          description: The id belongs to a child task rather than a root project
+    post:
+      operationId: createProjectMeeting
+      tags: [project-meetings]
+      summary: Create a durable meeting inside one root project
+      description: Participant storage is normalized and has no product-level roster ceiling. Requires a saved UUID requestId. Identical retries return the original compact result; changed input under an accepted identity returns 409. Inspect the project-scoped command receipt after an uncertain response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMeetingInput"
+      responses:
+        "201":
+          description: Compact immutable command result; read current records with GET
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingCommandResult"
+        "400":
+          description: Invalid input or inactive/duplicate participant
+        "404":
+          description: Project not found
+        "409":
+          description: Identity conflict, root-project requirement, or incompatible meeting state
+
+  /projects/{projectId}/meetings/{meetingId}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - $ref: "#/components/parameters/MeetingId"
+    get:
+      operationId: getProjectMeeting
+      tags: [project-meetings]
+      summary: Get one meeting only within its owning project
+      responses:
+        "200":
+          description: Full durable meeting record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingDetail"
+        "404":
+          description: Meeting does not exist in this project
+        "409":
+          description: The project id belongs to a child task
+    patch:
+      operationId: updateProjectMeeting
+      tags: [project-meetings]
+      summary: Edit meeting metadata, roster, scheduling, or cancel it
+      description: Starting and completing use command endpoints so transcript and synthesis invariants cannot be bypassed. Requires a saved UUID requestId. Identical retries return the original compact result; changed input under an accepted identity returns 409. Inspect the project-scoped command receipt after an uncertain response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMeetingUpdate"
+      responses:
+        "200":
+          description: Compact immutable command result; read current records with GET
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingCommandResult"
+        "400":
+          description: Invalid edit or status transition
+        "404":
+          description: Meeting does not exist in this project
+        "409":
+          description: Identity conflict, root-project requirement, or incompatible meeting state
+
+  /projects/{projectId}/meetings/{meetingId}/turn-requests/{requestId}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - $ref: "#/components/parameters/MeetingId"
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getProjectMeetingTurnReceipt
+      tags: [project-meetings]
+      summary: Observe an accepted meeting turn without dispatching work
+      responses:
+        "200":
+          description: Durable receipt; expired unfinished work is unconfirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingTurnReceipt"
+        "400":
+          description: Invalid identity
+        "404":
+          description: No request with this identity and scope is recorded
+
+  /projects/{projectId}/meetings/{meetingId}/start:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - $ref: "#/components/parameters/MeetingId"
+    post:
+      operationId: startProjectMeeting
+      tags: [project-meetings]
+      summary: Run one bounded, tool-free project meeting round
+      description: >
+        Persists the founder turn before provider work, then runs a bounded
+        subset of the selected unlimited roster sequentially. Every agent sees
+        the project title and brief, meeting agenda, and preceding project-only
+        transcript. Agent leases, response tokens, database-wide concurrency, and
+        per-start responder attempts are bounded. A provider outage leaves the
+        draft, agenda, and founder transcript intact. A requestId is mandatory.
+        Replaying an accepted identity only observes its stored outcome, including
+        after restart or deletion; it never invokes the model again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMeetingStartInput"
+      responses:
+        "200":
+          description: Meeting detail plus bounded execution outcome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingStartResponse"
+        "202":
+          description: The same accepted request is still running; query its receipt.
+        "400":
+          description: Invalid participant selection or token limit
+        "404":
+          description: Meeting does not exist in this project
+        "409":
+          description: Meeting is closed, already running, or no participant acquired a turn
+        "423":
+          description: Emergency stop is active
+        "429":
+          description: Shared meeting execution capacity is full
+        "503":
+          description: No configured model provider could run the round; persisted input is returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingStartFailure"
+
+  /projects/{projectId}/meetings/{meetingId}/complete:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - $ref: "#/components/parameters/MeetingId"
+    post:
+      operationId: completeProjectMeeting
+      tags: [project-meetings]
+      summary: Atomically complete a meeting with its synthesis
+      description: Decisions become durable meeting records; action items are created open and never presented as completed external work. Requires a saved UUID requestId. Identical retries return the original compact result; changed input under an accepted identity returns 409. Inspect the project-scoped command receipt after an uncertain response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMeetingCompleteInput"
+      responses:
+        "200":
+          description: Compact immutable command result; read current records with GET
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingCommandResult"
+        "400":
+          description: Invalid synthesis or non-participant owner
+        "404":
+          description: Meeting does not exist in this project
+        "409":
+          description: Identity conflict, root-project requirement, or incompatible meeting state
+
+  /projects/{projectId}/meetings/{meetingId}/transcript:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - $ref: "#/components/parameters/MeetingId"
+    post:
+      operationId: appendProjectMeetingTranscript
+      tags: [project-meetings]
+      summary: Append a founder note to the durable meeting transcript
+      description: Agent speech cannot be authored through this endpoint; only the leased start executor writes agent transcript rows. Requires a saved UUID requestId. Identical retries return the original compact result; changed input under an accepted identity returns 409. Inspect the project-scoped command receipt after an uncertain response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMeetingTranscriptInput"
+      responses:
+        "201":
+          description: Compact immutable command result; read current records with GET
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingCommandResult"
+        "400":
+          description: Invalid note or reply target
+        "404":
+          description: Meeting does not exist in this project
+
+        "409":
+          description: Identity conflict or the project id belongs to a child task
+
+  /projects/{projectId}/meetings/{meetingId}/decisions:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - $ref: "#/components/parameters/MeetingId"
+    post:
+      operationId: createProjectMeetingDecision
+      tags: [project-meetings]
+      summary: Persist one project meeting decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMeetingDecisionInput"
+      responses:
+        "201":
+          description: Compact immutable command result; read current records with GET Requires a saved UUID requestId. Identical retries return the original compact result; changed input under an accepted identity returns 409. Inspect the project-scoped command receipt after an uncertain response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingCommandResult"
+        "400":
+          description: Invalid decision or non-participant owner
+        "404":
+          description: Meeting does not exist in this project
+
+        "409":
+          description: Identity conflict or the project id belongs to a child task
+
+  /projects/{projectId}/meetings/{meetingId}/action-items:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - $ref: "#/components/parameters/MeetingId"
+    post:
+      operationId: createProjectMeetingActionItem
+      tags: [project-meetings]
+      summary: Persist one open project meeting action item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMeetingActionItemInput"
+      responses:
+        "201":
+          description: Compact immutable command result; read current records with GET Requires a saved UUID requestId. Identical retries return the original compact result; changed input under an accepted identity returns 409. Inspect the project-scoped command receipt after an uncertain response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingCommandResult"
+        "400":
+          description: Invalid action item or non-participant owner
+        "404":
+          description: Meeting does not exist in this project
+
+        "409":
+          description: Identity conflict or the project id belongs to a child task
+
+  /projects/{projectId}/meetings/{meetingId}/action-items/{actionItemId}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+      - $ref: "#/components/parameters/MeetingId"
+      - name: actionItemId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    patch:
+      operationId: updateProjectMeetingActionItem
+      tags: [project-meetings]
+      summary: Edit or resolve one meeting action item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMeetingActionItemUpdate"
+      responses:
+        "200":
+          description: Compact immutable command result; read current records with GET Requires a saved UUID requestId. Identical retries return the original compact result; changed input under an accepted identity returns 409. Inspect the project-scoped command receipt after an uncertain response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMeetingCommandResult"
+        "400":
+          description: Invalid update or non-participant owner
+        "404":
+          description: Meeting or action item does not exist in this project
+
+        "409":
+          description: Identity conflict or the project id belongs to a child task
+
+  /activity:
+    get:
+      operationId: listActivity
+      tags: [activity]
+      summary: Global activity / audit feed across the whole org
+      parameters:
+        - name: agentId
+          in: query
+          schema:
+            type: number
+        - name: taskId
+          in: query
+          schema:
+            type: number
+        - name: severity
+          in: query
+          schema:
+            $ref: "#/components/schemas/ActivityEventSeverity"
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/BeforeId"
+      responses:
+        "200":
+          description: Activity events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+
+  /approvals:
+    get:
+      operationId: listApprovals
+      tags: [approvals]
+      summary: List approval requests
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ApprovalStatus"
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/BeforeId"
+      responses:
+        "200":
+          description: Approval requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApprovalRequest"
+
+  /approvals/{approvalId}/decision:
+    parameters:
+      - name: approvalId
+        in: path
+        required: true
+        schema:
+          type: number
+    post:
+      operationId: resolveApproval
+      tags: [approvals]
+      summary: Approve or reject a pending approval request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalDecisionInput"
+      responses:
+        "200":
+          description: Resolved approval request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRequest"
+
+  /org/summary:
+    get:
+      operationId: getOrgSummary
+      tags: [org]
+      summary: Org-wide dashboard summary
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgSummary"
+
+  /model-catalog:
+    get:
+      operationId: getModelCatalog
+      tags: [models]
+      summary: All selectable models grouped by configured server-side provider
+      responses:
+        "200":
+          description: Model catalog with provider availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelCatalog"
+
+  /settings/llm:
+    get:
+      operationId: getLlmSettings
+      tags: [settings]
+      summary: Read redacted LLM provider settings and the live model catalog
+      responses:
+        "200":
+          description: Redacted provider configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmSettings"
+    put:
+      operationId: updateLlmSettings
+      tags: [settings]
+      summary: Replace or clear locally persisted OpenRouter and direct OpenAI credentials
+      description: >
+        Use expectedRevision to reject stale writes. Clearing a saved key falls back
+        to any server environment key. Saving does not verify provider access or
+        prove that every worker has applied the revision. An uncertain response
+        requires a fresh read and operator review before another save.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLlmSettingsInput"
+      responses:
+        "200":
+          description: Provider configuration updated and catalog refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateLlmSettingsResult"
+        "400":
+          description: Invalid provider settings
+        "409":
+          description: The reviewed provider settings revision changed
+        "429":
+          description: Too many configuration writes
+        "503":
+          description: The save outcome is unknown and may already be committed
+
+  /settings/locale:
+    get:
+      operationId: getWorkspaceLocale
+      tags: [settings]
+      summary: Read the persisted workspace language used for agent replies
+      responses:
+        "200":
+          description: Current workspace language
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceLocaleSetting"
+    put:
+      operationId: updateWorkspaceLocale
+      tags: [settings]
+      summary: Save the language for the interface and future agent turns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceLocaleSetting"
+      responses:
+        "200":
+          description: Workspace language saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceLocaleSetting"
+        "400":
+          description: Unsupported workspace language
+
+  /settings/llm/test:
+    post:
+      operationId: testLlmConnection
+      tags: [settings]
+      summary: Run a bounded, ten-token provider connectivity test
+      description: >
+        Explicitly selected model only. May incur provider charges. The test
+        uses a twenty-second deadline with SDK retries disabled, checks emergency
+        stop before dispatch and reports changed configuration as stale.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestLlmInput"
+      responses:
+        "200":
+          description: Provider connection succeeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmTestSuccess"
+        "400":
+          description: Invalid request or the selected provider is not configured
+        "409":
+          description: The reviewed settings changed before or during the test
+        "423":
+          description: Emergency stop is active
+        "429":
+          description: Too many provider tests
+        "502":
+          description: Provider connection failed without exposing upstream details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmTestFailure"
+
+  /ops/stream:
+    get:
+      operationId: streamOperations
+      tags: [operations]
+      summary: Stream durable Operations snapshot invalidations
+      description: >
+        Authenticated same-origin EventSource stream. Snapshot and
+        operations_changed events carry durable decimal ids; heartbeat events
+        are deliberately id-less. Connections are periodically recycled so
+        authentication is re-evaluated.
+      parameters:
+        - $ref: "#/components/parameters/OperationsWindowHours"
+        - name: taskId
+          in: query
+          description: Optional positive root-project id; omit for fleet overview.
+          schema:
+            type: integer
+            minimum: 1
+        - name: cursor
+          in: query
+          description: Optional initial durable cursor. Last-Event-ID takes precedence on reconnect.
+          schema:
+            type: string
+            pattern: "^(0|[1-9][0-9]*)$"
+            maxLength: 10
+      responses:
+        "200":
+          description: Server-sent snapshot, operations_changed, and heartbeat frames
+          headers:
+            X-Accel-Buffering:
+              schema:
+                type: string
+                enum: ["no"]
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "400":
+          description: Invalid project, cursor, or operations window
+        "404":
+          description: Project task was not found
+        "409":
+          description: The requested task is not a root project, or Last-Event-ID is ahead of durable state
+        "503":
+          description: Process-local stream connection capacity was reached
+
+  /ops/overview:
+    get:
+      operationId: getOperationsOverview
+      tags: [operations]
+      summary: Read the bounded fleet-wide Operations snapshot
+      parameters:
+        - $ref: "#/components/parameters/OperationsWindowHours"
+      responses:
+        "200":
+          description: Current runtime, queue, usage, and fleet health history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationsOverview"
+        "400":
+          description: Invalid operations window
+
+  /ops/instances:
+    get:
+      operationId: listRuntimeInstances
+      tags: [operations]
+      summary: List public runtime instance health without host or lease identifiers
+      parameters:
+        - $ref: "#/components/parameters/OperationsWindowHours"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 200
+      responses:
+        "200":
+          description: Bounded runtime instance health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationsRuntimeInstanceList"
+        "400":
+          description: Invalid operations window or limit
+
+  /tasks/{taskId}/operations:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        description: Positive id of a root project task.
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      operationId: getProjectOperations
+      tags: [operations]
+      summary: Read a bounded root-project Operations snapshot
+      description: Fleet health samples are global and are not attributed to this project.
+      parameters:
+        - $ref: "#/components/parameters/OperationsWindowHours"
+      responses:
+        "200":
+          description: Project members, attempts, safe receipts, typed timeline, and fleet health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectOperationsSnapshot"
+        "400":
+          description: Invalid project id or operations window
+        "404":
+          description: Project task was not found
+        "409":
+          description: The requested task is not a root project
+
+  /tasks/{taskId}/operations/receipts/{receiptId}:
+    get:
+      operationId: getProjectOperationReceipt
+      tags: [operations]
+      summary: Read one safe receipt and its immutable reconciliation audit within a root project
+      description: Independent of history windows and list caps. Read-only; never executes an operation or records a decision. A missing record does not prove that an external effect did not occur. The response must not be cached.
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2147483647
+        - name: receiptId
+          in: path
+          required: true
+          description: Receipt identifier, at most 256 UTF-8 bytes.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+      responses:
+        "200":
+          description: Safe receipt projection and original immutable audit, if recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationsReceiptReview"
+        "400":
+          description: Invalid identity or unsupported query
+        "404":
+          description: Project or receipt is missing from this project scope
+        "409":
+          description: The requested task is not a root project
+
+  /ops/control:
+    get:
+      operationId: getOpsControl
+      tags: [operations]
+      summary: Read the persisted fleet-wide emergency-stop state
+      responses:
+        "200":
+          description: Current runtime control state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmergencyStopStatus"
+    put:
+      operationId: updateOpsControl
+      tags: [operations]
+      summary: Enable or disable the persisted fleet-wide emergency stop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOpsControlInput"
+      responses:
+        "200":
+          description: Persisted transition and local cleanup result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmergencyStopTransition"
+        "400":
+          description: Invalid transition or missing activation reason
+
+  /ops/receipts/{receiptId}/reconcile:
+    parameters:
+      - name: receiptId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+    post:
+      operationId: reconcileOperationReceipt
+      tags: [operations]
+      summary: Record an immutable operator decision for an unknown operation outcome
+      description: The durable audit actor is supplied only by server-side OPERATOR_AUDIT_ID configuration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReconcileOperationInput"
+      responses:
+        "200":
+          description: Reconciliation was recorded, or the same immutable decision was already recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationReconciliation"
+        "400":
+          description: Invalid receipt identifier, decision, or audit note
+        "404":
+          description: Operation receipt was not found
+        "409":
+          description: Receipt is not unknown, evidence is inconsistent, or a different decision already won
+
+  /agents/{agentId}/vm/status:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    get:
+      operationId: getVmStatus
+      tags: [vm]
+      summary: Sandbox usage stats for an agent's virtual computer
+      responses:
+        "200":
+          description: VM status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VmStatus"
+
+  /agents/{agentId}/vm/files-list:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    post:
+      operationId: listVmFiles
+      tags: [vm]
+      summary: List a directory inside the agent's sandbox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VmPathInput"
+      responses:
+        "200":
+          description: Directory listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VmListing"
+
+  /agents/{agentId}/vm/file-read:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    post:
+      operationId: readVmFile
+      tags: [vm]
+      summary: Read a text file from the sandbox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VmPathInput"
+      responses:
+        "200":
+          description: File content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VmFileContent"
+
+  /agents/{agentId}/vm/file-write:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    put:
+      operationId: writeVmFile
+      tags: [vm]
+      summary: Create a missing file or replace a reviewed UTF-8 file without losing a newer revision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VmWriteInput"
+      responses:
+        "200":
+          description: Written file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VmWriteResult"
+
+  /agents/{agentId}/vm/file-delete-preview:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    post:
+      operationId: previewVmDeletion
+      tags: [vm]
+      summary: Inspect the complete bounded deletion scope without deleting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VmDeletePreviewInput"
+      responses:
+        "200":
+          description: Complete scope including the target; rejects symlinks and scopes over 1000 entries, 64 MiB, depth 32, or 5 seconds of inspection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VmDeletionPreview"
+
+  /agents/{agentId}/vm/file-delete:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    delete:
+      operationId: deleteVmFile
+      tags: [vm]
+      summary: Delete a file or directory only if its complete reviewed scope is unchanged
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VmDeleteInput"
+      responses:
+        "200":
+          description: Deletion result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VmDeleteResult"
+
+  /agents/{agentId}/operator-requests/{requestId}:
+    get:
+      operationId: getOperatorRequest
+      tags: [vm]
+      summary: Inspect one accepted operator request without replaying it, even after agent deletion
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2147483647
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/OperatorRequestId"
+      responses:
+        "200":
+          description: Exact receipt; encrypted Terminal output is included only when recoverable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorRequestReceipt"
+        "400":
+          description: Noncanonical scope or unsupported query parameters
+        "404":
+          description: No accepted request in this exact scope
+
+  /agents/{agentId}/vm/exec:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    post:
+      operationId: execVmCommand
+      tags: [vm]
+      summary: Run a command inside the agent's sandboxed shell (or host shell with founder authority)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VmExecInput"
+      responses:
+        "200":
+          description: Durable receipt and optional recorded command result; replay never dispatches again
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorTerminalResponse"
+
+  /agents/{agentId}/browser/view:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    get:
+      operationId: getBrowserView
+      tags: [vm]
+      summary: Live PNG screenshot of the agent's real browser session
+      responses:
+        "200":
+          description: Current page screenshot and metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrowserView"
+        "503":
+          description: The owning browser worker is unavailable or the command outcome is unknown
+
+  /agents/{agentId}/browser/control:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    get:
+      operationId: getBrowserControl
+      tags: [vm]
+      summary: Read the exact agent/operator ownership state for the browser
+      responses:
+        "200":
+          description: Current browser control owner and lease
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrowserControlState"
+        "503":
+          description: The owning browser worker is unavailable or the command outcome is unknown
+    post:
+      operationId: updateBrowserControl
+      tags: [vm]
+      summary: Take over, heartbeat, or release operator browser control
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrowserControlInput"
+      responses:
+        "200":
+          description: Receipt and live control state; heartbeat has a null receipt, replay has a null result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorBrowserControlResponse"
+        "409":
+          description: Control transition conflicts with the current owner or an in-flight action
+        "503":
+          description: The owning browser worker is unavailable or the command outcome is unknown
+
+  /agents/{agentId}/browser/navigate:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    post:
+      operationId: navigateBrowser
+      tags: [vm]
+      summary: Open a URL in the agent's browser (launches the session on demand)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrowserNavigateInput"
+      responses:
+        "200":
+          description: Receipt and optional live view; replay returns no screenshot or browser authority
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorBrowserViewResponse"
+        "409":
+          description: Browser control or session identity no longer matches
+        "503":
+          description: The owning browser worker is unavailable or the command outcome is unknown
+
+  /agents/{agentId}/browser/input:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    post:
+      operationId: sendBrowserInput
+      tags: [vm]
+      summary: Send raw mouse/keyboard input to the agent's browser (operator control)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrowserInputEvent"
+      responses:
+        "200":
+          description: Receipt and optional live input acknowledgement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorBrowserActionResponse"
+        "409":
+          description: Browser control or session identity no longer matches
+        "503":
+          description: The owning browser worker is unavailable or the command outcome is unknown
+
+  /agents/{agentId}/browser/close:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: number
+    delete:
+      operationId: closeBrowserSession
+      tags: [vm]
+      summary: Close the agent's browser session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrowserCloseInput"
+      responses:
+        "200":
+          description: Receipt and optional live close acknowledgement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorBrowserActionResponse"
+        "409":
+          description: Browser control or session identity no longer matches
+        "503":
+          description: The owning browser worker is unavailable or the command outcome is unknown
+
+components:
+  parameters:
+    OperationsWindowHours:
+      name: windowHours
+      in: query
+      description: Inclusive UTC observation window in hours.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 168
+        default: 24
+    PageLimit:
+      name: limit
+      in: query
+      description: Maximum rows to return.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 100
+    BeforeId:
+      name: beforeId
+      in: query
+      description: Return rows with an id lower than this cursor.
+      schema:
+        type: integer
+        minimum: 1
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      description: Positive id of a root project task.
+      schema:
+        type: integer
+        minimum: 1
+    MeetingId:
+      name: meetingId
+      in: path
+      required: true
+      description: Positive meeting id, always resolved together with projectId.
+      schema:
+        type: integer
+        minimum: 1
+  securitySchemes:
+    operatorBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque operator token
+    operatorSession:
+      type: apiKey
+      in: cookie
+      name: agentic_os_session
+  schemas:
+    CapabilityLibraryCopy:
+      type: object
+      required:
+        [
+          title,
+          intro,
+          search,
+          all,
+          empty,
+          skills,
+          tools,
+          inputs,
+          steps,
+          checks,
+          deliverable,
+          use,
+          requirements,
+          browser,
+          files,
+          boundary,
+          toolBoundary,
+          error,
+          retry,
+          loading,
+          invalid,
+          completed,
+          skillMissing,
+        ]
+      properties:
+        title:
+          type: string
+        intro:
+          type: string
+        search:
+          type: string
+        all:
+          type: string
+        empty:
+          type: string
+        skills:
+          type: string
+        tools:
+          type: string
+        inputs:
+          type: string
+        steps:
+          type: string
+        checks:
+          type: string
+        deliverable:
+          type: string
+        use:
+          type: string
+        requirements:
+          type: string
+        browser:
+          type: string
+        files:
+          type: string
+        boundary:
+          type: string
+        toolBoundary:
+          type: string
+        error:
+          type: string
+        retry:
+          type: string
+        loading:
+          type: string
+        invalid:
+          type: string
+        completed:
+          type: string
+        skillMissing:
+          type: string
+    BuiltinSkill:
+      type: object
+      required:
+        [
+          id,
+          version,
+          group,
+          groupTitle,
+          title,
+          deliverable,
+          inputs,
+          steps,
+          checks,
+          tools,
+          permissions,
+        ]
+      properties:
+        id:
+          type: string
+        version:
+          type: integer
+        group:
+          type: string
+          enum: [research, engineering, data, content, operations]
+        groupTitle:
+          type: string
+        title:
+          type: string
+        deliverable:
+          type: string
+        inputs:
+          type: array
+          items:
+            type: string
+        steps:
+          type: array
+          items:
+            type: string
+        checks:
+          type: array
+          items:
+            type: string
+        tools:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [canBrowse, canUseTerminal]
+    CapabilityCatalog:
+      type: object
+      required: [locale, version, copy, groups, skills, tools]
+      properties:
+        locale:
+          type: string
+          enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+        version:
+          type: integer
+        copy:
+          $ref: "#/components/schemas/CapabilityLibraryCopy"
+        groups:
+          type: array
+          items:
+            type: object
+            required: [id, title]
+            properties:
+              id:
+                type: string
+              title:
+                type: string
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuiltinSkill"
+        tools:
+          type: array
+          items:
+            type: object
+            required: [name, title, description]
+            properties:
+              name:
+                type: string
+              title:
+                type: string
+              description:
+                type: string
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ReadinessStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        checks:
+          type: object
+          properties:
+            startup:
+              type: boolean
+            database:
+              type: boolean
+            shuttingDown:
+              type: boolean
+          required: [startup, database, shuttingDown]
+      required: [status, checks]
+
+    OperatorAuthStatus:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        authenticated:
+          type: boolean
+        sessionExpiresAt:
+          type: [string, "null"]
+          format: date-time
+      required: [enabled, authenticated, sessionExpiresAt]
+
+    OperatorLoginInput:
+      type: object
+      additionalProperties: false
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      required: [token]
+
+    WorkspaceLocaleSetting:
+      type: object
+      additionalProperties: false
+      properties:
+        locale:
+          type: string
+          enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+      required: [locale]
+
+    LlmSettings:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+          description: Version of stored provider credentials; server environment changes are managed separately.
+        storage:
+          type: string
+          enum: [database, local-file]
+        openrouter:
+          $ref: "#/components/schemas/OpenRouterSettings"
+        openai:
+          $ref: "#/components/schemas/DirectOpenAISettings"
+        ollama:
+          $ref: "#/components/schemas/OllamaSettings"
+        replitFleet:
+          $ref: "#/components/schemas/ReplitFleetSettings"
+        catalog:
+          $ref: "#/components/schemas/ModelCatalog"
+      required:
+        [revision, storage, openrouter, openai, ollama, replitFleet, catalog]
+
+    OpenRouterSettings:
+      type: object
+      additionalProperties: false
+      properties:
+        keySource:
+          type: string
+          enum: [runtime, environment, none]
+        configured:
+          type: boolean
+        hasKeyInEnv:
+          type: boolean
+        keyPreview:
+          type: [string, "null"]
+          maxLength: 64
+        baseUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+      required: [configured, hasKeyInEnv, keyPreview, baseUrl, keySource]
+
+    ReplitFleetSettings:
+      type: object
+      additionalProperties: false
+      properties:
+        configured:
+          type: boolean
+        baseUrl:
+          type: [string, "null"]
+          format: uri
+          maxLength: 2048
+      required: [configured, baseUrl]
+
+    DirectOpenAISettings:
+      type: object
+      additionalProperties: false
+      properties:
+        keySource:
+          type: string
+          enum: [runtime, environment, none]
+        configured:
+          type: boolean
+        hasKeyInEnv:
+          type: boolean
+        keyPreview:
+          type: [string, "null"]
+          maxLength: 64
+        baseUrl:
+          type: string
+          format: uri
+          enum: [https://api.openai.com/v1]
+      required: [configured, hasKeyInEnv, keyPreview, baseUrl, keySource]
+
+    OllamaSettings:
+      type: object
+      additionalProperties: false
+      properties:
+        configured:
+          type: boolean
+        reachable:
+          type: boolean
+        baseUrl:
+          type: [string, "null"]
+          format: uri
+          maxLength: 2048
+        modelCount:
+          type: integer
+          minimum: 0
+        toolModelCount:
+          type: integer
+          minimum: 0
+        catalogSyncedAt:
+          type: [integer, "null"]
+          minimum: 0
+        error:
+          type: [string, "null"]
+          enum: [unreachable, invalid_private_endpoint, null]
+      required:
+        [
+          configured,
+          reachable,
+          baseUrl,
+          modelCount,
+          toolModelCount,
+          catalogSyncedAt,
+          error,
+        ]
+
+    UpdateLlmSettingsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+          description: The exact stored-credential revision reviewed by the operator. Legacy callers may omit it.
+        openrouterApiKey:
+          type: [string, "null"]
+          maxLength: 512
+        openaiApiKey:
+          type: [string, "null"]
+          maxLength: 512
+
+    UpdateLlmSettingsResult:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        ok:
+          type: boolean
+          enum: [true]
+        configured:
+          type: boolean
+        configuredProviders:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ModelProviderId"
+        catalog:
+          $ref: "#/components/schemas/ModelCatalog"
+      required: [ok, revision, configured, configuredProviders, catalog]
+
+    TestLlmInput:
+      type: object
+      additionalProperties: false
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        model:
+          type: string
+          minLength: 1
+          maxLength: 256
+      required: [model]
+
+    LlmTestSuccess:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        ok:
+          type: boolean
+          enum: [true]
+        provider:
+          $ref: "#/components/schemas/ModelProviderId"
+        model:
+          type: string
+          minLength: 1
+          maxLength: 256
+        sample:
+          type: string
+          maxLength: 40
+          description: Retained for compatibility; returned empty to avoid echoing upstream content.
+        latencyMs:
+          type: integer
+          minimum: 0
+      required: [ok, provider, model, sample, revision, latencyMs]
+
+    LlmTestFailure:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          enum:
+            [
+              LLM_TEST_FAILED,
+              LLM_TEST_EMPTY_RESPONSE,
+              LLM_TEST_INVALID,
+              LLM_MODEL_UNAVAILABLE,
+              LLM_CONFIG_CHANGED,
+              LLM_TEST_STALE,
+              EMERGENCY_STOP_ACTIVE,
+            ]
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          minLength: 1
+          maxLength: 500
+        latencyMs:
+          type: integer
+          minimum: 0
+      required: [ok, error, latencyMs]
+
+    OperationsRuntimeTruthState:
+      type: string
+      enum: [live, degraded, stale, offline, emergency_stopped, local_demo]
+
+    OperationsProviderMetricsCoverage:
+      type: string
+      enum: [partial, complete]
+
+    OperationsRuntimeInstanceRole:
+      type: string
+      enum: [api, worker, combined]
+
+    OperationsRuntimeInstanceState:
+      type: string
+      enum: [starting, healthy, draining, stale, stopped]
+
+    OperationsTaskAttemptState:
+      type: string
+      enum: [claimed, running, succeeded, retrying, blocked, lost]
+
+    OperationsExecutionKind:
+      type: string
+      enum: [task_step, approved_action, chat_turn]
+
+    OperationsSideEffectClass:
+      type: string
+      enum:
+        [
+          read_only,
+          transactional,
+          idempotent,
+          at_most_once,
+          approval_at_most_once,
+        ]
+
+    OperationsReceiptState:
+      type: string
+      enum: [reserved, running, succeeded, failed, unknown]
+
+    OperationsInvocationState:
+      type: string
+      enum: [claimed, running, succeeded, failed, unknown]
+
+    OperationsWindow:
+      type: object
+      additionalProperties: false
+      properties:
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+        timezone:
+          type: string
+          enum: [UTC]
+      required: [startAt, endAt, hours, timezone]
+
+    OperationsRuntimeTruth:
+      type: object
+      additionalProperties: false
+      properties:
+        state:
+          $ref: "#/components/schemas/OperationsRuntimeTruthState"
+        reasons:
+          type: array
+          items:
+            type: string
+        databaseBackend:
+          type: string
+          enum: [postgresql, pglite]
+        durable:
+          type: boolean
+        multiProcessCapable:
+          type: boolean
+        emergencyStopEnabled:
+          type: boolean
+        healthyWorkerCount:
+          type: integer
+          minimum: 0
+        staleWorkerCount:
+          type: integer
+          minimum: 0
+        schedulerTickAgeMs:
+          type: [integer, "null"]
+          minimum: 0
+        lastSampleAt:
+          type: [string, "null"]
+          format: date-time
+      required:
+        - state
+        - reasons
+        - databaseBackend
+        - durable
+        - multiProcessCapable
+        - emergencyStopEnabled
+        - healthyWorkerCount
+        - staleWorkerCount
+        - schedulerTickAgeMs
+        - lastSampleAt
+
+    OperationsHealthSample:
+      type: object
+      additionalProperties: false
+      properties:
+        bucketAt:
+          type: string
+          format: date-time
+        sampledAt:
+          type: [string, "null"]
+          format: date-time
+        runtimeTruthState:
+          oneOf:
+            - $ref: "#/components/schemas/OperationsRuntimeTruthState"
+            - type: "null"
+        providerMetricsCoverage:
+          $ref: "#/components/schemas/OperationsProviderMetricsCoverage"
+        healthyWorkerCount:
+          type: integer
+          minimum: 0
+        staleWorkerCount:
+          type: integer
+          minimum: 0
+        schedulerTickAgeMs:
+          type: [integer, "null"]
+          minimum: 0
+        dueQueueDepth:
+          type: integer
+          minimum: 0
+        oldestDueAgeMs:
+          type: [integer, "null"]
+          minimum: 0
+        activeTaskCount:
+          type: integer
+          minimum: 0
+        sleepingTaskCount:
+          type: integer
+          minimum: 0
+        recoveringTaskCount:
+          type: integer
+          minimum: 0
+        blockedTaskCount:
+          type: integer
+          minimum: 0
+        approvalWaitingTaskCount:
+          type: integer
+          minimum: 0
+        providerSuccessCount:
+          type: integer
+          minimum: 0
+        providerErrorCount:
+          type: integer
+          minimum: 0
+        providerP50LatencyMs:
+          type: [integer, "null"]
+          minimum: 0
+        providerP95LatencyMs:
+          type: [integer, "null"]
+          minimum: 0
+        recoveryCount:
+          type: integer
+          minimum: 0
+        lostLeaseCount:
+          type: integer
+          minimum: 0
+        taskTokens:
+          type: integer
+          minimum: 0
+        reportedCostUsd:
+          type: number
+          minimum: 0
+      required:
+        - bucketAt
+        - sampledAt
+        - runtimeTruthState
+        - providerMetricsCoverage
+        - healthyWorkerCount
+        - staleWorkerCount
+        - schedulerTickAgeMs
+        - dueQueueDepth
+        - oldestDueAgeMs
+        - activeTaskCount
+        - sleepingTaskCount
+        - recoveringTaskCount
+        - blockedTaskCount
+        - approvalWaitingTaskCount
+        - providerSuccessCount
+        - providerErrorCount
+        - providerP50LatencyMs
+        - providerP95LatencyMs
+        - recoveryCount
+        - lostLeaseCount
+        - taskTokens
+        - reportedCostUsd
+
+    OperationsQueueSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        dueDepth:
+          type: integer
+          minimum: 0
+        oldestDueAgeMs:
+          type: [integer, "null"]
+          minimum: 0
+        nextWakeAt:
+          type: [string, "null"]
+          format: date-time
+      required: [dueDepth, oldestDueAgeMs, nextWakeAt]
+
+    OperationsTaskCounts:
+      type: object
+      additionalProperties: false
+      properties:
+        active:
+          type: integer
+          minimum: 0
+        sleeping:
+          type: integer
+          minimum: 0
+        recovering:
+          type: integer
+          minimum: 0
+        blocked:
+          type: integer
+          minimum: 0
+        awaitingApproval:
+          type: integer
+          minimum: 0
+      required: [active, sleeping, recovering, blocked, awaitingApproval]
+
+    OperationsReceiptCounts:
+      type: object
+      additionalProperties: false
+      properties:
+        reserved:
+          type: integer
+          minimum: 0
+        running:
+          type: integer
+          minimum: 0
+        unresolvedUnknown:
+          type: integer
+          minimum: 0
+      required: [reserved, running, unresolvedUnknown]
+
+    OperationsUsageSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        taskTokens:
+          type: integer
+          minimum: 0
+        reportedCostUsd:
+          type: number
+          minimum: 0
+        usageEvents:
+          type: integer
+          minimum: 0
+        costReportedEvents:
+          type: integer
+          minimum: 0
+        providerMetricsCoverage:
+          $ref: "#/components/schemas/OperationsProviderMetricsCoverage"
+      required:
+        - taskTokens
+        - reportedCostUsd
+        - usageEvents
+        - costReportedEvents
+        - providerMetricsCoverage
+
+    OperationsOverview:
+      type: object
+      additionalProperties: false
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        cursor:
+          type: string
+          pattern: "^(0|[1-9][0-9]*)$"
+        window:
+          $ref: "#/components/schemas/OperationsWindow"
+        runtime:
+          $ref: "#/components/schemas/OperationsRuntimeTruth"
+        queue:
+          $ref: "#/components/schemas/OperationsQueueSummary"
+        tasks:
+          $ref: "#/components/schemas/OperationsTaskCounts"
+        operations:
+          $ref: "#/components/schemas/OperationsReceiptCounts"
+        usage:
+          $ref: "#/components/schemas/OperationsUsageSummary"
+        fleetHealthSamples:
+          type: array
+          maxItems: 1440
+          items:
+            $ref: "#/components/schemas/OperationsHealthSample"
+        truncation:
+          type: object
+          additionalProperties: false
+          properties:
+            fleetHealthSamples:
+              type: boolean
+          required: [fleetHealthSamples]
+      required:
+        - generatedAt
+        - cursor
+        - window
+        - runtime
+        - queue
+        - tasks
+        - operations
+        - usage
+        - fleetHealthSamples
+        - truncation
+
+    OperationsMemberPresence:
+      type: string
+      enum: [working, sleeping, recovering, blocked, awaiting_approval, idle]
+
+    OperationsMember:
+      type: object
+      additionalProperties: false
+      properties:
+        agentId:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+        role:
+          type: string
+        avatar:
+          type: object
+          additionalProperties: false
+          properties:
+            color:
+              type: string
+            version:
+              type: [string, "null"]
+          required: [color, version]
+        status:
+          $ref: "#/components/schemas/AgentStatus"
+        presence:
+          $ref: "#/components/schemas/OperationsMemberPresence"
+        currentAction:
+          type: [string, "null"]
+        lastActiveAt:
+          type: [string, "null"]
+          format: date-time
+        activeAttemptId:
+          type: [string, "null"]
+        nextWakeAt:
+          type: [string, "null"]
+          format: date-time
+      required:
+        - agentId
+        - name
+        - role
+        - avatar
+        - status
+        - presence
+        - currentAction
+        - lastActiveAt
+        - activeAttemptId
+        - nextWakeAt
+
+    OperationsAttempt:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        operationKey:
+          type: string
+          pattern: "^op:v1:[0-9a-f]{64}$"
+          description: Server-owned canonical operation identity used to audit duplicate irreversible effects.
+        taskId:
+          type: integer
+          minimum: 1
+        agentId:
+          type: integer
+          minimum: 1
+        workerInstanceId:
+          type: string
+        logicalExecutionId:
+          type: string
+        attemptNumber:
+          type: integer
+          minimum: 1
+        cycleNumber:
+          type: integer
+          minimum: 0
+        state:
+          $ref: "#/components/schemas/OperationsTaskAttemptState"
+        startedAt:
+          type: string
+          format: date-time
+        lastHeartbeatAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+        provider:
+          type: [string, "null"]
+        modelId:
+          type: [string, "null"]
+        failureKind:
+          type: [string, "null"]
+        recoveryOfAttemptId:
+          type: [string, "null"]
+        promptTokens:
+          type: integer
+          minimum: 0
+        completionTokens:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        reportedCostUsd:
+          type: [number, "null"]
+          minimum: 0
+      required:
+        - id
+        - operationKey
+        - taskId
+        - agentId
+        - workerInstanceId
+        - logicalExecutionId
+        - attemptNumber
+        - cycleNumber
+        - state
+        - startedAt
+        - lastHeartbeatAt
+        - finishedAt
+        - provider
+        - modelId
+        - failureKind
+        - recoveryOfAttemptId
+        - promptTokens
+        - completionTokens
+        - totalTokens
+        - reportedCostUsd
+
+    OperationsInvocation:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        state:
+          $ref: "#/components/schemas/OperationsInvocationState"
+        attemptId:
+          type: [string, "null"]
+        workerInstanceId:
+          type: [string, "null"]
+        claimedAt:
+          type: string
+          format: date-time
+        lastHeartbeatAt:
+          type: string
+          format: date-time
+        effectStartedAt:
+          type: [string, "null"]
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+        failureKind:
+          type: [string, "null"]
+      required:
+        - id
+        - state
+        - attemptId
+        - workerInstanceId
+        - claimedAt
+        - lastHeartbeatAt
+        - effectStartedAt
+        - finishedAt
+        - failureKind
+
+    OperationsReceiptReconciliation:
+      type: object
+      additionalProperties: false
+      properties:
+        eligible:
+          type: boolean
+        decision:
+          oneOf:
+            - $ref: "#/components/schemas/OperationReconciliationDecision"
+            - type: "null"
+        reconciledAt:
+          type: [string, "null"]
+          format: date-time
+      required: [eligible, decision, reconciledAt]
+
+    OperationsReceipt:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        taskId:
+          type: [integer, "null"]
+          minimum: 1
+        agentId:
+          type: integer
+          minimum: 1
+        originAttemptId:
+          type: [string, "null"]
+        executionKind:
+          $ref: "#/components/schemas/OperationsExecutionKind"
+        sideEffectClass:
+          $ref: "#/components/schemas/OperationsSideEffectClass"
+        state:
+          $ref: "#/components/schemas/OperationsReceiptState"
+        toolName:
+          type: string
+        reservedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: [string, "null"]
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+        failureKind:
+          type: [string, "null"]
+        reconciliation:
+          $ref: "#/components/schemas/OperationsReceiptReconciliation"
+        invocations:
+          type: array
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/OperationsInvocation"
+      required:
+        - id
+        - taskId
+        - agentId
+        - originAttemptId
+        - executionKind
+        - sideEffectClass
+        - state
+        - toolName
+        - reservedAt
+        - startedAt
+        - finishedAt
+        - failureKind
+        - reconciliation
+        - invocations
+
+    OperationsTimelineItem:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          pattern: "^(0|[1-9][0-9]*)$"
+        kind:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        occurredAt:
+          type: string
+          format: date-time
+        taskId:
+          type: [integer, "null"]
+          minimum: 1
+        agentId:
+          type: [integer, "null"]
+          minimum: 1
+        attemptId:
+          type: [string, "null"]
+        receiptId:
+          type: [string, "null"]
+      required:
+        - id
+        - kind
+        - severity
+        - occurredAt
+        - taskId
+        - agentId
+        - attemptId
+        - receiptId
+
+    ProjectOperationsLimits:
+      type: object
+      additionalProperties: false
+      properties:
+        attempts:
+          type: integer
+          enum: [200]
+        receipts:
+          type: integer
+          enum: [200]
+        invocationsPerReceipt:
+          type: integer
+          enum: [5]
+        incidents:
+          type: integer
+          enum: [100]
+        milestones:
+          type: integer
+          enum: [100]
+        samples:
+          type: integer
+          enum: [1440]
+      required:
+        [
+          attempts,
+          receipts,
+          invocationsPerReceipt,
+          incidents,
+          milestones,
+          samples,
+        ]
+
+    ProjectOperationsTruncation:
+      type: object
+      additionalProperties: false
+      properties:
+        attempts:
+          type: boolean
+        receipts:
+          type: boolean
+        incidents:
+          type: boolean
+        milestones:
+          type: boolean
+        fleetHealthSamples:
+          type: boolean
+      required: [attempts, receipts, incidents, milestones, fleetHealthSamples]
+
+    ProjectOperationsSnapshot:
+      type: object
+      additionalProperties: false
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        cursor:
+          type: string
+          pattern: "^(0|[1-9][0-9]*)$"
+        window:
+          $ref: "#/components/schemas/OperationsWindow"
+        rootTask:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+              minimum: 1
+            title:
+              type: string
+            status:
+              $ref: "#/components/schemas/TaskStatus"
+          required: [id, title, status]
+        runtime:
+          $ref: "#/components/schemas/OperationsRuntimeTruth"
+        queue:
+          $ref: "#/components/schemas/OperationsQueueSummary"
+        taskCounts:
+          $ref: "#/components/schemas/OperationsTaskCounts"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationsMember"
+        attempts:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/OperationsAttempt"
+        receipts:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/OperationsReceipt"
+        incidents:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OperationsTimelineItem"
+        milestones:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OperationsTimelineItem"
+        usage:
+          $ref: "#/components/schemas/OperationsUsageSummary"
+        fleetHealthSamples:
+          type: array
+          maxItems: 1440
+          description: Fleet-wide samples; they are not project-attributed.
+          items:
+            $ref: "#/components/schemas/OperationsHealthSample"
+        limits:
+          $ref: "#/components/schemas/ProjectOperationsLimits"
+        truncation:
+          $ref: "#/components/schemas/ProjectOperationsTruncation"
+      required:
+        - generatedAt
+        - cursor
+        - window
+        - rootTask
+        - runtime
+        - queue
+        - taskCounts
+        - members
+        - attempts
+        - receipts
+        - incidents
+        - milestones
+        - usage
+        - fleetHealthSamples
+        - limits
+        - truncation
+
+    OperationsRuntimeInstance:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        role:
+          $ref: "#/components/schemas/OperationsRuntimeInstanceRole"
+        persistedState:
+          $ref: "#/components/schemas/OperationsRuntimeInstanceState"
+        effectiveState:
+          $ref: "#/components/schemas/OperationsRuntimeInstanceState"
+        buildVersion:
+          type: string
+        capabilities:
+          type: object
+          additionalProperties:
+            type: boolean
+        schedulerEnabled:
+          type: boolean
+        startedAt:
+          type: string
+          format: date-time
+        lastHeartbeatAt:
+          type: string
+          format: date-time
+        heartbeatAgeMs:
+          type: integer
+          minimum: 0
+        lastSchedulerTickAt:
+          type: [string, "null"]
+          format: date-time
+        schedulerTickAgeMs:
+          type: [integer, "null"]
+          minimum: 0
+        drainingAt:
+          type: [string, "null"]
+          format: date-time
+        stoppedAt:
+          type: [string, "null"]
+          format: date-time
+      required:
+        - id
+        - role
+        - persistedState
+        - effectiveState
+        - buildVersion
+        - capabilities
+        - schedulerEnabled
+        - startedAt
+        - lastHeartbeatAt
+        - heartbeatAgeMs
+        - lastSchedulerTickAt
+        - schedulerTickAgeMs
+        - drainingAt
+        - stoppedAt
+
+    OperationsRuntimeInstanceList:
+      type: object
+      additionalProperties: false
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        instances:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/OperationsRuntimeInstance"
+        truncated:
+          type: boolean
+      required: [generatedAt, instances, truncated]
+
+    EmergencyStopBlockedScope:
+      type: string
+      enum: [agent_chat, task_scheduler, agent_tools, approved_actions]
+
+    EmergencyStopStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        emergencyStopEnabled:
+          type: boolean
+        reason:
+          type: [string, "null"]
+          maxLength: 500
+        version:
+          type: integer
+          minimum: 1
+        updatedBy:
+          type: string
+          minLength: 1
+          maxLength: 100
+        updatedAt:
+          type: string
+          format: date-time
+        blockedScopes:
+          type: array
+          minItems: 4
+          maxItems: 4
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/EmergencyStopBlockedScope"
+      required:
+        - emergencyStopEnabled
+        - reason
+        - version
+        - updatedBy
+        - updatedAt
+        - blockedScopes
+
+    EnableEmergencyStopInput:
+      type: object
+      additionalProperties: false
+      properties:
+        emergencyStopEnabled:
+          type: boolean
+          enum: [true]
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+      required: [emergencyStopEnabled, reason]
+
+    DisableEmergencyStopInput:
+      type: object
+      additionalProperties: false
+      properties:
+        emergencyStopEnabled:
+          type: boolean
+          enum: [false]
+        reason:
+          type: [string, "null"]
+          maxLength: 500
+      required: [emergencyStopEnabled]
+
+    UpdateOpsControlInput:
+      oneOf:
+        - $ref: "#/components/schemas/EnableEmergencyStopInput"
+        - $ref: "#/components/schemas/DisableEmergencyStopInput"
+
+    OperationReconciliationDecision:
+      type: string
+      enum: [confirmed_applied, confirmed_not_applied]
+
+    ReconcileOperationInput:
+      type: object
+      additionalProperties: false
+      properties:
+        decision:
+          $ref: "#/components/schemas/OperationReconciliationDecision"
+        note:
+          type: string
+          description: Trimmed audit note with a maximum of 2000 UTF-8 bytes, also bounded to 2000 characters.
+          minLength: 1
+          maxLength: 2000
+      required: [decision, note]
+
+    OperationsReceiptReview:
+      type: object
+      additionalProperties: false
+      properties:
+        projectId:
+          type: integer
+          minimum: 1
+        receipt:
+          $ref: "#/components/schemas/OperationsReceipt"
+        audit:
+          anyOf:
+            - $ref: "#/components/schemas/OperationReconciliation"
+            - type: "null"
+      required: [projectId, receipt, audit]
+
+    OperationReconciliation:
+      type: object
+      additionalProperties: false
+      properties:
+        receiptId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        state:
+          type: string
+          enum: [unknown]
+        decision:
+          $ref: "#/components/schemas/OperationReconciliationDecision"
+        note:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        actorId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        reconciledAt:
+          type: string
+          format: date-time
+      required: [receiptId, state, decision, note, actorId, reconciledAt]
+
+    EmergencyStopTransition:
+      type: object
+      additionalProperties: false
+      properties:
+        emergencyStopEnabled:
+          type: boolean
+        reason:
+          type: [string, "null"]
+          maxLength: 500
+        version:
+          type: integer
+          minimum: 1
+        updatedBy:
+          type: string
+          minLength: 1
+          maxLength: 100
+        updatedAt:
+          type: string
+          format: date-time
+        blockedScopes:
+          type: array
+          minItems: 4
+          maxItems: 4
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/EmergencyStopBlockedScope"
+        changed:
+          type: boolean
+        releasedTaskLeases:
+          type: integer
+          minimum: 0
+        releasedAgentLeases:
+          type: integer
+          minimum: 0
+        terminatedAgentProcesses:
+          type: integer
+          minimum: 0
+        closedBrowserSessions:
+          type: boolean
+      required:
+        - emergencyStopEnabled
+        - reason
+        - version
+        - updatedBy
+        - updatedAt
+        - blockedScopes
+        - changed
+        - releasedTaskLeases
+        - releasedAgentLeases
+        - terminatedAgentProcesses
+        - closedBrowserSessions
+
+    AgentStatus:
+      type: string
+      enum: [idle, working, blocked, archived]
+
+    AgentModelMode:
+      type: string
+      enum: [auto, manual]
+
+    AgentPermissions:
+      type: object
+      properties:
+        canCreateSubAgents:
+          type: boolean
+        canDelegate:
+          type: boolean
+        canSpend:
+          type: boolean
+        canDelete:
+          type: boolean
+        canPublish:
+          type: boolean
+        canContactExternal:
+          type: boolean
+        canBrowse:
+          type: boolean
+        canUseTerminal:
+          type: boolean
+        canUseSudo:
+          type: boolean
+          description: >
+            Allows the root CEO to request exact-approved host-shell commands
+            under the existing API service OS account. This does not perform
+            Windows UAC or Unix privilege elevation.
+      required:
+        - canCreateSubAgents
+        - canDelegate
+        - canSpend
+        - canDelete
+        - canPublish
+        - canContactExternal
+        - canBrowse
+        - canUseTerminal
+        - canUseSudo
+
+    Agent:
+      type: object
+      properties:
+        configVersion:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+          readOnly: true
+          description: Opaque editable-configuration snapshot returned by detail and mutation endpoints. Heartbeats do not change it.
+        isRootCeo:
+          type: boolean
+          readOnly: true
+          description: Server-managed root authority marker; API callers cannot assign it.
+        id:
+          type: number
+        name:
+          type: string
+        role:
+          type: string
+        department:
+          type: [string, "null"]
+        parentAgentId:
+          type: [number, "null"]
+        depth:
+          type: number
+        status:
+          $ref: "#/components/schemas/AgentStatus"
+        currentTaskId:
+          type: [number, "null"]
+        currentAction:
+          type: [string, "null"]
+        lastActiveAt:
+          type: [string, "null"]
+          format: date-time
+        systemPrompt:
+          type: string
+        isCustomPrompt:
+          type: boolean
+        templateKey:
+          type: [string, "null"]
+        modelMode:
+          $ref: "#/components/schemas/AgentModelMode"
+        modelId:
+          type: [string, "null"]
+        avatarColor:
+          type: string
+        avatarVersion:
+          type: [string, "null"]
+          maxLength: 64
+        permissions:
+          $ref: "#/components/schemas/AgentPermissions"
+        createdByAgentId:
+          type: [number, "null"]
+        createdByUser:
+          type: boolean
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - role
+        - department
+        - parentAgentId
+        - depth
+        - status
+        - currentTaskId
+        - currentAction
+        - lastActiveAt
+        - systemPrompt
+        - isCustomPrompt
+        - templateKey
+        - modelMode
+        - modelId
+        - avatarColor
+        - avatarVersion
+        - permissions
+        - createdByAgentId
+        - createdByUser
+        - isActive
+        - createdAt
+        - updatedAt
+
+    AgentInput:
+      type: object
+      additionalProperties: false
+      properties:
+        locale:
+          type: string
+          enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+          default: tr
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        role:
+          type: string
+          minLength: 1
+          maxLength: 200
+        department:
+          type: string
+          minLength: 1
+          maxLength: 120
+        parentAgentId:
+          type: number
+        templateKey:
+          type: string
+          minLength: 1
+          maxLength: 100
+        systemPrompt:
+          type: string
+          minLength: 1
+          maxLength: 65536
+        modelMode:
+          $ref: "#/components/schemas/AgentModelMode"
+        modelId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        permissions:
+          $ref: "#/components/schemas/AgentPermissions"
+      required:
+        - name
+        - role
+
+    AgentUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        expectedConfig:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+          description: Exact configVersion reviewed by the caller. Legacy callers may omit it.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        role:
+          type: string
+          minLength: 1
+          maxLength: 200
+        department:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 120
+        parentAgentId:
+          type: [number, "null"]
+        systemPrompt:
+          type: string
+          minLength: 1
+          maxLength: 65536
+        modelMode:
+          $ref: "#/components/schemas/AgentModelMode"
+        modelId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        permissions:
+          $ref: "#/components/schemas/AgentPermissions"
+        isActive:
+          type: boolean
+
+    AgentAvatarInput:
+      type: object
+      additionalProperties: false
+      properties:
+        expectedConfig:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+          description: Exact configVersion reviewed by the caller. Legacy callers may omit it.
+        dataUrl:
+          type: string
+          maxLength: 90000
+          pattern: "^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$"
+      required:
+        - dataUrl
+
+    AgentTemplate:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        department:
+          type: string
+        defaultRole:
+          type: string
+        description:
+          type: string
+        defaultSystemPrompt:
+          type: string
+        defaultPermissions:
+          $ref: "#/components/schemas/AgentPermissions"
+      required:
+        - key
+        - name
+        - department
+        - defaultRole
+        - description
+        - defaultSystemPrompt
+        - defaultPermissions
+
+    WorkforceOrchestration:
+      type: string
+      enum: [crew, flow]
+
+    WorkforceMemberLevel:
+      type: string
+      enum: [lead, specialist]
+
+    WorkforceHandoffMode:
+      type: string
+      enum: [ai, next, review]
+
+    WorkforceBlueprintMember:
+      type: object
+      additionalProperties: false
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 100
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        role:
+          type: string
+          minLength: 1
+          maxLength: 200
+        department:
+          type: string
+          minLength: 1
+          maxLength: 120
+        templateKey:
+          type: string
+          minLength: 1
+          maxLength: 100
+        mission:
+          type: string
+          minLength: 1
+          maxLength: 1200
+        level:
+          $ref: "#/components/schemas/WorkforceMemberLevel"
+        reportsToKey:
+          type: [string, "null"]
+          maxLength: 100
+        capabilities:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+      required:
+        - key
+        - name
+        - role
+        - department
+        - templateKey
+        - mission
+        - level
+        - reportsToKey
+        - capabilities
+
+    WorkforceBlueprintHandoff:
+      type: object
+      additionalProperties: false
+      properties:
+        fromKey:
+          type: string
+          minLength: 1
+          maxLength: 100
+        toKey:
+          type: string
+          minLength: 1
+          maxLength: 100
+        mode:
+          $ref: "#/components/schemas/WorkforceHandoffMode"
+        instruction:
+          type: string
+          minLength: 1
+          maxLength: 600
+      required: [fromKey, toKey, mode, instruction]
+
+    WorkforceBlueprint:
+      type: object
+      additionalProperties: false
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 100
+        version:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        tagline:
+          type: string
+          minLength: 1
+          maxLength: 240
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1200
+        orchestration:
+          $ref: "#/components/schemas/WorkforceOrchestration"
+        recommendedFor:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+        triggerLabels:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+        members:
+          type: array
+          minItems: 2
+          maxItems: 12
+          items:
+            $ref: "#/components/schemas/WorkforceBlueprintMember"
+        handoffs:
+          type: array
+          maxItems: 24
+          items:
+            $ref: "#/components/schemas/WorkforceBlueprintHandoff"
+      required:
+        - key
+        - version
+        - name
+        - tagline
+        - description
+        - orchestration
+        - recommendedFor
+        - triggerLabels
+        - members
+        - handoffs
+
+    WorkforceBlueprintInstallInput:
+      type: object
+      additionalProperties: false
+      properties:
+        locale:
+          type: string
+          enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+          default: tr
+          description: Language used for installed names, roles and mission instructions.
+        requestId:
+          type: string
+          format: uuid
+          description: Reuse this ID for retries of the same installation intent. A committed response is replayed without creating another team; a changed payload with the same ID is rejected.
+        blueprintVersion:
+          type: integer
+          minimum: 1
+          description: Version shown in the preview. A different current version is rejected before installation.
+        managerAgentId:
+          type: integer
+          minimum: 1
+        outcome:
+          type: string
+          minLength: 3
+          maxLength: 8000
+          description: Optional first business outcome assigned to the installed workforce lead.
+        autonomyMode:
+          $ref: "#/components/schemas/TaskAutonomyMode"
+        cadenceSeconds:
+          type: integer
+          minimum: 60
+          maximum: 604800
+          description: Valid only with an outcome and continuous autonomy mode.
+      required: [managerAgentId]
+
+    WorkforceInstallation:
+      type: object
+      additionalProperties: false
+      properties:
+        blueprintKey:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        agents:
+          type: array
+          minItems: 2
+          maxItems: 12
+          items:
+            $ref: "#/components/schemas/Agent"
+        task:
+          oneOf:
+            - $ref: "#/components/schemas/Task"
+            - type: "null"
+      required: [blueprintKey, version, agents, task]
+
+    MessageRole:
+      type: string
+      enum: [user, agent, system]
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: number
+        agentId:
+          type: number
+        role:
+          $ref: "#/components/schemas/MessageRole"
+        content:
+          type: string
+        taskId:
+          type: [number, "null"]
+        modelId:
+          type: [string, "null"]
+          description: Model that produced this message (agent messages only).
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - agentId
+        - role
+        - content
+        - taskId
+        - modelId
+        - createdAt
+
+    MessageInput:
+      type: object
+      additionalProperties: false
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 32768
+        taskId:
+          type: integer
+          minimum: 1
+          description: >
+            Optional project task that scopes message history and tool
+            execution for this turn. The task must be owned by the addressed
+            active agent.
+        modelMode:
+          $ref: "#/components/schemas/AgentModelMode"
+        modelId:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: >
+            Optional per-message model override; wins over the agent's saved
+            setting for this turn only. The UI offers the live catalog; safe
+            vendor/model OpenRouter ids remain forward-compatible, while
+            malformed or Unicode-spoofed ids are rejected.
+      required:
+        - content
+
+    AgentMessageResponse:
+      type: object
+      properties:
+        userMessage:
+          $ref: "#/components/schemas/Message"
+        agentMessage:
+          $ref: "#/components/schemas/Message"
+        createdTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        createdAgents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Agent"
+        usedModel:
+          type: [string, "null"]
+          description: Model id that actually served this turn.
+        usedProvider:
+          type: [string, "null"]
+          description: Provider that served this turn (replit, openrouter, openai, or ollama).
+      required:
+        - userMessage
+        - agentMessage
+        - createdTasks
+        - createdAgents
+
+    AgentRequestInput:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [ask, delegate, continuous]
+        taskId:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          description: Optional existing project scope for ask only. Bound to the send identity; ownership is checked at admission. Omit for direct conversation.
+        locale:
+          type: string
+          enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+        content:
+          type: string
+          minLength: 1
+          maxLength: 32768
+          description: Nonblank text; delegate and continuous intents have an 8000 character maximum.
+        modelMode:
+          $ref: "#/components/schemas/AgentModelMode"
+        modelId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        expectedConfig:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+          description: Configuration reviewed before sending; checked inside the claim or project transaction.
+      required: [requestId, kind, locale, content]
+
+    AgentRequestReceipt:
+      type: object
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        agentId:
+          type: integer
+          minimum: 1
+        taskId:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          description: Original project conversation scope, retained even after the project is removed. Absent for direct conversation and project creation.
+        kind:
+          type: string
+          enum: [ask, delegate, continuous]
+        deliveryState:
+          type: string
+          enum: [complete, unconfirmed, rejected]
+        outcome:
+          type: string
+          enum:
+            [
+              unconfirmed,
+              rejected,
+              queued,
+              reply,
+              provider_error,
+              empty_response,
+              tool_limit,
+              tool_outcome_unknown,
+              tool_deferred,
+              approval_review,
+              round_limit,
+            ]
+        failureCode:
+          type: string
+        replayed:
+          type: boolean
+        userMessage:
+          $ref: "#/components/schemas/Message"
+        agentMessage:
+          $ref: "#/components/schemas/Message"
+        task:
+          $ref: "#/components/schemas/Task"
+        createdTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        createdAgents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Agent"
+        usedModel:
+          type: [string, "null"]
+        usedProvider:
+          type: [string, "null"]
+      required:
+        [
+          requestId,
+          agentId,
+          kind,
+          deliveryState,
+          outcome,
+          replayed,
+          createdTasks,
+          createdAgents,
+        ]
+
+    CompanyChannel:
+      type: object
+      properties:
+        id:
+          type: number
+        key:
+          type: string
+        name:
+          type: string
+        activeAgentCount:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, key, name, activeAgentCount, createdAt]
+
+    CompanyChannelMember:
+      type: object
+      properties:
+        channelId:
+          type: integer
+          minimum: 1
+        agentId:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+        role:
+          type: string
+        department:
+          type: [string, "null"]
+        status:
+          $ref: "#/components/schemas/AgentStatus"
+        avatarColor:
+          type: string
+        isActive:
+          type: boolean
+        joinedAt:
+          type: string
+          format: date-time
+      required:
+        [
+          channelId,
+          agentId,
+          name,
+          role,
+          department,
+          status,
+          avatarColor,
+          isActive,
+          joinedAt,
+        ]
+
+    CompanyChannelMemberInput:
+      type: object
+      additionalProperties: false
+      properties:
+        agentId:
+          type: integer
+          minimum: 1
+      required: [agentId]
+
+    CompanyMessageSenderType:
+      type: string
+      enum: [founder, agent]
+
+    CompanyMessageSource:
+      type: string
+      description: meeting is a legacy source retained for existing rows; new natural room replies use room_reply.
+      enum: [operator, meeting, room_reply, agent_tool]
+
+    CompanyMessage:
+      type: object
+      properties:
+        id:
+          type: number
+        channelId:
+          type: number
+        senderType:
+          $ref: "#/components/schemas/CompanyMessageSenderType"
+        senderAgentId:
+          type: [number, "null"]
+        senderName:
+          type: [string, "null"]
+        senderRole:
+          type: [string, "null"]
+        senderAvatarColor:
+          type: [string, "null"]
+        content:
+          type: string
+        source:
+          $ref: "#/components/schemas/CompanyMessageSource"
+        taskId:
+          type: [number, "null"]
+        replyToMessageId:
+          type: [number, "null"]
+        modelId:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - channelId
+        - senderType
+        - senderAgentId
+        - senderName
+        - senderRole
+        - senderAvatarColor
+        - content
+        - source
+        - taskId
+        - replyToMessageId
+        - modelId
+        - createdAt
+
+    CompanyMessageInput:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+          description: Stable identity for one send intent. Replays recover the stored receipt without invoking agents again.
+        locale:
+          type: string
+          enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+          description: Explicit response language for this send intent. Omission uses the workspace language.
+        content:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        participantAgentIds:
+          type: array
+          deprecated: true
+          description: Backward-compatible alias for mentionedAgentIds.
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+        mentionedAgentIds:
+          type: array
+          description: Explicitly @mentioned active room members, in display order. Omit for ambient relevance routing.
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+      required: [content]
+
+    CompanyMeetingSkipReason:
+      type: string
+      enum:
+        [
+          busy,
+          unavailable,
+          empty_response,
+          model_error,
+          not_relevant,
+          not_mentioned,
+          budget_guard,
+        ]
+
+    CompanyMeetingSkip:
+      type: object
+      properties:
+        agentId:
+          type: integer
+          minimum: 1
+        reason:
+          $ref: "#/components/schemas/CompanyMeetingSkipReason"
+      required: [agentId, reason]
+
+    CompanyMessageResponse:
+      type: object
+      properties:
+        deliveryState:
+          type: string
+          enum: [complete, unconfirmed]
+          description: Complete means this bounded reply round finished, including skips. Unconfirmed proves the founder message was saved but does not prove that every reply finished. Refresh room history; replay does not restart incomplete work.
+        replayed:
+          type: boolean
+          description: True when returning an existing send receipt without new dispatch.
+        founderMessage:
+          $ref: "#/components/schemas/CompanyMessage"
+        agentMessages:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyMessage"
+        skippedParticipants:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyMeetingSkip"
+        routing:
+          $ref: "#/components/schemas/CompanyChatRoutingSummary"
+      required:
+        [
+          founderMessage,
+          agentMessages,
+          skippedParticipants,
+          routing,
+          deliveryState,
+          replayed,
+        ]
+
+    CompanyChatRoutingMode:
+      type: string
+      enum: [mentions, relevance]
+
+    CompanyChatRoutingReason:
+      type: string
+      enum:
+        [
+          mentioned,
+          role_match,
+          general_question,
+          not_mentioned,
+          not_relevant,
+          budget_guard,
+        ]
+
+    CompanyChatRoutingDecision:
+      type: object
+      properties:
+        agentId:
+          type: integer
+          minimum: 1
+        shouldAttempt:
+          type: boolean
+        reason:
+          $ref: "#/components/schemas/CompanyChatRoutingReason"
+        score:
+          type: integer
+          minimum: 0
+      required: [agentId, shouldAttempt, reason, score]
+
+    CompanyChatRoutingSummary:
+      type: object
+      properties:
+        mode:
+          $ref: "#/components/schemas/CompanyChatRoutingMode"
+        mentionedAgentIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+        evaluatedMemberCount:
+          type: integer
+          minimum: 0
+        attemptedAgentCount:
+          type: integer
+          minimum: 0
+        responseCount:
+          type: integer
+          minimum: 0
+        maxResponseAttempts:
+          type: integer
+          minimum: 1
+        concurrency:
+          type: integer
+          minimum: 1
+        maxTokensPerResponse:
+          type: integer
+          minimum: 1
+        tokenBudget:
+          type: integer
+          minimum: 1
+        decisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyChatRoutingDecision"
+      required:
+        [
+          mode,
+          mentionedAgentIds,
+          evaluatedMemberCount,
+          attemptedAgentCount,
+          responseCount,
+          maxResponseAttempts,
+          concurrency,
+          maxTokensPerResponse,
+          tokenBudget,
+          decisions,
+        ]
+
+    ProjectMeetingStatus:
+      type: string
+      enum: [draft, scheduled, in_progress, completed, cancelled]
+
+    ProjectMeetingEditableStatus:
+      type: string
+      description: Generic edits cannot bypass the start or complete command invariants.
+      enum: [draft, scheduled, cancelled]
+
+    ProjectMeetingActionStatus:
+      type: string
+      enum: [open, in_progress, done, cancelled]
+
+    ProjectMeeting:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        taskId:
+          type: integer
+          minimum: 1
+          description: Owning root project task id.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        agenda:
+          type: [string, "null"]
+          maxLength: 12000
+        status:
+          $ref: "#/components/schemas/ProjectMeetingStatus"
+        scheduledFor:
+          type: [string, "null"]
+          format: date-time
+        startedAt:
+          type: [string, "null"]
+          format: date-time
+        endedAt:
+          type: [string, "null"]
+          format: date-time
+        summary:
+          type: [string, "null"]
+          maxLength: 30000
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        [
+          id,
+          taskId,
+          title,
+          agenda,
+          status,
+          scheduledFor,
+          startedAt,
+          endedAt,
+          summary,
+          createdAt,
+          updatedAt,
+        ]
+
+    ProjectMeetingParticipant:
+      type: object
+      additionalProperties: false
+      properties:
+        meetingId:
+          type: integer
+          minimum: 1
+        agentId:
+          type: integer
+          minimum: 1
+        addedAt:
+          type: string
+          format: date-time
+        name:
+          type: string
+        role:
+          type: string
+        avatarColor:
+          type: string
+        isActive:
+          type: boolean
+      required: [meetingId, agentId, addedAt, name, role, avatarColor, isActive]
+
+    ProjectMeetingTranscript:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        meetingId:
+          type: integer
+          minimum: 1
+        speakerType:
+          type: string
+          enum: [founder, agent]
+        speakerAgentId:
+          type: [integer, "null"]
+          minimum: 1
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        replyToTranscriptId:
+          type: [integer, "null"]
+          minimum: 1
+        occurredAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        speakerName:
+          type: [string, "null"]
+        speakerRole:
+          type: [string, "null"]
+        speakerAvatarColor:
+          type: [string, "null"]
+      required:
+        [
+          id,
+          meetingId,
+          speakerType,
+          speakerAgentId,
+          content,
+          replyToTranscriptId,
+          occurredAt,
+          createdAt,
+          speakerName,
+          speakerRole,
+          speakerAvatarColor,
+        ]
+
+    ProjectMeetingDecision:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        meetingId:
+          type: integer
+          minimum: 1
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        rationale:
+          type: [string, "null"]
+          maxLength: 12000
+        ownerAgentId:
+          type: [integer, "null"]
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        ownerName:
+          type: [string, "null"]
+        ownerRole:
+          type: [string, "null"]
+      required:
+        [
+          id,
+          meetingId,
+          content,
+          rationale,
+          ownerAgentId,
+          createdAt,
+          ownerName,
+          ownerRole,
+        ]
+
+    ProjectMeetingActionItem:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        meetingId:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        details:
+          type: [string, "null"]
+          maxLength: 12000
+        ownerAgentId:
+          type: [integer, "null"]
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/ProjectMeetingActionStatus"
+        dueAt:
+          type: [string, "null"]
+          format: date-time
+        completedAt:
+          type: [string, "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        ownerName:
+          type: [string, "null"]
+        ownerRole:
+          type: [string, "null"]
+      required:
+        [
+          id,
+          meetingId,
+          title,
+          details,
+          ownerAgentId,
+          status,
+          dueAt,
+          completedAt,
+          createdAt,
+          updatedAt,
+          ownerName,
+          ownerRole,
+        ]
+
+    ProjectMeetingCommandKind:
+      type: string
+      enum:
+        [create, update, transcript, decision, action, action-update, complete]
+
+    ProjectMeetingCommandResult:
+      type: object
+      additionalProperties: false
+      required: [requestId, projectId, meetingId, kind, entityId, ok]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        projectId:
+          type: integer
+          minimum: 1
+        meetingId:
+          type: [integer, "null"]
+          minimum: 1
+        kind:
+          $ref: "#/components/schemas/ProjectMeetingCommandKind"
+        entityId:
+          type: [integer, "null"]
+          minimum: 1
+        ok:
+          type: boolean
+        code:
+          type: string
+        error:
+          type: string
+
+    ProjectMeetingCommandReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [requestId, projectId, meetingId, kind, httpStatus, response, createdAt]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        projectId:
+          type: integer
+          minimum: 1
+        meetingId:
+          type: [integer, "null"]
+          minimum: 1
+        kind:
+          $ref: "#/components/schemas/ProjectMeetingCommandKind"
+        httpStatus:
+          type: integer
+          enum: [200, 201, 400, 404, 409]
+        response:
+          $ref: "#/components/schemas/ProjectMeetingCommandResult"
+        createdAt:
+          type: string
+          format: date-time
+
+    ProjectMeetingDetail:
+      type: object
+      additionalProperties: false
+      properties:
+        meeting:
+          $ref: "#/components/schemas/ProjectMeeting"
+        participants:
+          type: array
+          description: Normalized roster with no application-level item ceiling.
+          items:
+            $ref: "#/components/schemas/ProjectMeetingParticipant"
+        transcript:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingTranscript"
+        decisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingDecision"
+        actionItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingActionItem"
+      required: [meeting, participants, transcript, decisions, actionItems]
+
+    ProjectMeetingListItem:
+      type: object
+      additionalProperties: false
+      properties:
+        meeting:
+          $ref: "#/components/schemas/ProjectMeeting"
+        participantCount:
+          type: integer
+          minimum: 0
+      required: [meeting, participantCount]
+
+    ProjectMeetingInput:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        agenda:
+          type: [string, "null"]
+          maxLength: 12000
+        participantAgentIds:
+          type: array
+          uniqueItems: true
+          description: Unlimited stored roster, bounded only by the HTTP body size.
+          items:
+            type: integer
+            minimum: 1
+        scheduledFor:
+          type: [string, "null"]
+          format: date-time
+      required: [requestId, title]
+
+    ProjectMeetingUpdate:
+      type: object
+      minProperties: 2
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        agenda:
+          type: [string, "null"]
+          maxLength: 12000
+        status:
+          $ref: "#/components/schemas/ProjectMeetingEditableStatus"
+        summary:
+          type: [string, "null"]
+          maxLength: 30000
+        participantAgentIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+        scheduledFor:
+          type: [string, "null"]
+          format: date-time
+
+      required: [requestId]
+
+    ProjectMeetingTranscriptInput:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        speakerType:
+          type: string
+          enum: [founder]
+          default: founder
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        replyToTranscriptId:
+          type: [integer, "null"]
+          minimum: 1
+        occurredAt:
+          type: [string, "null"]
+          format: date-time
+      required: [requestId, content]
+
+    ProjectMeetingDecisionInput:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        rationale:
+          type: [string, "null"]
+          maxLength: 12000
+        ownerAgentId:
+          type: [integer, "null"]
+          minimum: 1
+      required: [requestId, content]
+
+    ProjectMeetingActionItemInput:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        details:
+          type: [string, "null"]
+          maxLength: 12000
+        ownerAgentId:
+          type: [integer, "null"]
+          minimum: 1
+        dueAt:
+          type: [string, "null"]
+          format: date-time
+      required: [requestId, title]
+
+    ProjectMeetingActionItemUpdate:
+      type: object
+      minProperties: 2
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        details:
+          type: [string, "null"]
+          maxLength: 12000
+        ownerAgentId:
+          type: [integer, "null"]
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/ProjectMeetingActionStatus"
+        dueAt:
+          type: [string, "null"]
+          format: date-time
+
+      required: [requestId]
+
+    ProjectMeetingTurnReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          requestId,
+          projectId,
+          meetingId,
+          state,
+          httpStatus,
+          response,
+          createdAt,
+          updatedAt,
+          expiresAt,
+        ]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        projectId:
+          type: integer
+        meetingId:
+          type: integer
+        state:
+          type: string
+          enum: [running, complete, unconfirmed]
+        httpStatus:
+          type: integer
+          nullable: true
+        response:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Immutable recorded HTTP response; complete means the round finished, not that every participant succeeded.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    ProjectMeetingStartInput:
+      type: object
+      additionalProperties: false
+      required: [requestId]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        participantAgentIds:
+          type: array
+          uniqueItems: true
+          description: Optional ordered subset of the durable meeting roster.
+          items:
+            type: integer
+            minimum: 1
+        maxTokensPerResponse:
+          type: integer
+          minimum: 100
+          maximum: 600
+
+    ProjectMeetingExecution:
+      type: object
+      additionalProperties: false
+      properties:
+        requestedParticipantCount:
+          type: integer
+          minimum: 0
+        attemptedParticipantCount:
+          type: integer
+          minimum: 0
+        maxRespondersPerStart:
+          type: integer
+          minimum: 1
+          maximum: 32
+        maxConcurrentMeetingStarts:
+          type: integer
+          minimum: 1
+          maximum: 16
+        maxTokensPerResponse:
+          type: integer
+          minimum: 100
+          maximum: 600
+      required:
+        [
+          requestedParticipantCount,
+          attemptedParticipantCount,
+          maxRespondersPerStart,
+          maxConcurrentMeetingStarts,
+          maxTokensPerResponse,
+        ]
+
+    ProjectMeetingSkipReason:
+      type: string
+      enum:
+        [
+          busy,
+          unavailable,
+          empty_response,
+          model_error,
+          provider_unavailable,
+          budget_guard,
+        ]
+
+    ProjectMeetingSkip:
+      type: object
+      additionalProperties: false
+      properties:
+        agentId:
+          type: integer
+          minimum: 1
+        reason:
+          $ref: "#/components/schemas/ProjectMeetingSkipReason"
+      required: [agentId, reason]
+
+    ProjectMeetingStartResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        meeting:
+          $ref: "#/components/schemas/ProjectMeeting"
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingParticipant"
+        transcript:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingTranscript"
+        decisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingDecision"
+        actionItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingActionItem"
+        execution:
+          $ref: "#/components/schemas/ProjectMeetingExecution"
+        agentTranscriptIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        skippedParticipants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingSkip"
+      required:
+        [
+          requestId,
+          meeting,
+          participants,
+          transcript,
+          decisions,
+          actionItems,
+          execution,
+          agentTranscriptIds,
+          skippedParticipants,
+        ]
+
+    ProjectMeetingStartFailure:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        error:
+          type: string
+        meeting:
+          $ref: "#/components/schemas/ProjectMeeting"
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingParticipant"
+        transcript:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingTranscript"
+        decisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingDecision"
+        actionItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingActionItem"
+        execution:
+          $ref: "#/components/schemas/ProjectMeetingExecution"
+        agentTranscriptIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        skippedParticipants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMeetingSkip"
+      required:
+        [
+          error,
+          meeting,
+          participants,
+          transcript,
+          decisions,
+          actionItems,
+          execution,
+          agentTranscriptIds,
+          skippedParticipants,
+        ]
+
+    ProjectMeetingCompleteInput:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 30000
+        decisions:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/ProjectMeetingDecisionFields"
+        actionItems:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/ProjectMeetingActionItemFields"
+      required: [requestId, summary]
+
+    ProjectMeetingDecisionFields:
+      type: object
+      additionalProperties: false
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        rationale:
+          type: [string, "null"]
+          maxLength: 12000
+        ownerAgentId:
+          type: [integer, "null"]
+          minimum: 1
+      required: [content]
+
+    ProjectMeetingActionItemFields:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        details:
+          type: [string, "null"]
+          maxLength: 12000
+        ownerAgentId:
+          type: [integer, "null"]
+          minimum: 1
+        dueAt:
+          type: [string, "null"]
+          format: date-time
+      required: [title]
+
+    TaskStatus:
+      type: string
+      enum:
+        [
+          pending,
+          planning,
+          in_progress,
+          awaiting_approval,
+          blocked,
+          completed,
+          failed,
+          cancelled,
+        ]
+
+    TaskPriority:
+      type: string
+      enum: [low, normal, high, urgent]
+
+    TaskAutonomyMode:
+      type: string
+      enum: [finite, continuous]
+
+    TaskBlockedReason:
+      type: string
+      enum:
+        [
+          user_input,
+          budget,
+          runtime_failure,
+          approval_rejected,
+          approval_expired,
+          approval_outcome_unknown,
+          approval_action_failed,
+          owner_inactive,
+        ]
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: number
+        title:
+          type: string
+        brief:
+          type: string
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        ownerAgentId:
+          type: number
+        assignedByAgentId:
+          type: [number, "null"]
+        createdByUser:
+          type: boolean
+        parentTaskId:
+          type: [number, "null"]
+        progressPercent:
+          type: number
+        tokensUsed:
+          type: number
+        estimatedCostUsd:
+          type: [string, "null"]
+        resultSummary:
+          type: [string, "null"]
+        executionModelId:
+          type: [string, "null"]
+          description: User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.
+        lastModelId:
+          type: [string, "null"]
+          description: Most recently attempted or successful runtime model route.
+        lastModelProvider:
+          type: [string, "null"]
+          description: Provider for the most recently attempted or successful model route.
+        modelFallbackCount:
+          type: integer
+          minimum: 0
+          description: Durable count of fallback routes activated while executing this task.
+        autonomyMode:
+          $ref: "#/components/schemas/TaskAutonomyMode"
+        cadenceSeconds:
+          type: [integer, "null"]
+          minimum: 60
+          maximum: 604800
+          description: Delay between completed continuous work cycles.
+        lastHeartbeatAt:
+          type: [string, "null"]
+          format: date-time
+        recoveryCount:
+          type: integer
+          minimum: 0
+        cycleCount:
+          type: integer
+          minimum: 0
+        lastCycleCompletedAt:
+          type: [string, "null"]
+          format: date-time
+        lastSteppedAt:
+          type: [string, "null"]
+          format: date-time
+        stepAttempts:
+          type: number
+        consecutiveFailures:
+          type: number
+        nextAttemptAt:
+          type: [string, "null"]
+          format: date-time
+        lastError:
+          type: [string, "null"]
+        blockedReason:
+          oneOf:
+            - $ref: "#/components/schemas/TaskBlockedReason"
+            - type: "null"
+          description: Typed fail-closed reason; only user_input tasks may be resumed with an answer.
+        dueAt:
+          type: [string, "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: [string, "null"]
+          format: date-time
+      required:
+        - id
+        - title
+        - brief
+        - status
+        - priority
+        - ownerAgentId
+        - assignedByAgentId
+        - createdByUser
+        - parentTaskId
+        - progressPercent
+        - tokensUsed
+        - estimatedCostUsd
+        - resultSummary
+        - executionModelId
+        - lastModelId
+        - lastModelProvider
+        - modelFallbackCount
+        - autonomyMode
+        - cadenceSeconds
+        - lastHeartbeatAt
+        - recoveryCount
+        - cycleCount
+        - lastCycleCompletedAt
+        - lastSteppedAt
+        - stepAttempts
+        - consecutiveFailures
+        - nextAttemptAt
+        - lastError
+        - blockedReason
+        - dueAt
+        - createdAt
+        - updatedAt
+        - completedAt
+
+    TaskInput:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        brief:
+          type: string
+          minLength: 1
+          maxLength: 8000
+        ownerAgentId:
+          type: number
+          description: Optional backwards-compatible coordinator override; every active agent still joins the project.
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        dueAt:
+          type: string
+          format: date-time
+        autonomyMode:
+          $ref: "#/components/schemas/TaskAutonomyMode"
+        cadenceSeconds:
+          type: integer
+          minimum: 60
+          maximum: 604800
+      required:
+        - title
+        - brief
+
+    ProjectMemberRole:
+      type: string
+      enum: [coordinator, member]
+
+    ProjectMember:
+      type: object
+      additionalProperties: false
+      properties:
+        taskId:
+          type: number
+        agentId:
+          type: number
+        membershipRole:
+          $ref: "#/components/schemas/ProjectMemberRole"
+        addedAt:
+          type: string
+          format: date-time
+        agent:
+          $ref: "#/components/schemas/Agent"
+      required:
+        - taskId
+        - agentId
+        - membershipRole
+        - addedAt
+        - agent
+
+    TaskAutonomyInput:
+      type: object
+      additionalProperties: false
+      properties:
+        autonomyMode:
+          $ref: "#/components/schemas/TaskAutonomyMode"
+        cadenceSeconds:
+          type: integer
+          minimum: 60
+          maximum: 604800
+      required:
+        - autonomyMode
+
+    TaskResumeInput:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        questionId:
+          type: string
+          format: uuid
+        answer:
+          type: string
+          minLength: 1
+          maxLength: 1200
+      required:
+        - requestId
+        - questionId
+        - answer
+
+    TaskQuestion:
+      type: object
+      properties:
+        taskId: { type: integer }
+        questionId: { type: string, format: uuid, nullable: true }
+        question: { type: string, nullable: true }
+        ownerAgentId: { type: integer, nullable: true }
+        answerable: { type: boolean }
+      required: [taskId, questionId, question, ownerAgentId, answerable]
+
+    TaskAnswerReceipt:
+      type: object
+      properties:
+        requestId: { type: string, format: uuid }
+        taskId: { type: integer }
+        questionId: { type: string, format: uuid }
+        outcome: { type: string, enum: [accepted, rejected] }
+        reason:
+          type: string
+          nullable: true
+          enum: [task_changed, question_changed, owner_inactive, emergency_stop]
+        recordedAt: { type: string, format: date-time }
+      required: [requestId, taskId, questionId, outcome, reason, recordedAt]
+
+    ActivityEventType:
+      type: string
+      enum:
+        [
+          task_created,
+          task_delegated,
+          task_status_changed,
+          subagent_created,
+          progress_update,
+          judge_review,
+          approval_requested,
+          approval_resolved,
+          vm_command,
+          vm_file,
+          note,
+          error,
+          operations_changed,
+        ]
+
+    ActivityEventSeverity:
+      type: string
+      enum: [info, warning, critical]
+
+    ActivityEvent:
+      type: object
+      properties:
+        id:
+          type: number
+        agentId:
+          type: [number, "null"]
+        taskId:
+          type: [number, "null"]
+        type:
+          $ref: "#/components/schemas/ActivityEventType"
+        summary:
+          type: string
+        detail:
+          type: [object, "null"]
+          additionalProperties: true
+        severity:
+          $ref: "#/components/schemas/ActivityEventSeverity"
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - agentId
+        - taskId
+        - type
+        - summary
+        - detail
+        - severity
+        - createdAt
+
+    ApprovalCategory:
+      type: string
+      enum: [spend, delete, publish, external_contact, other]
+
+    ApprovalStatus:
+      type: string
+      enum: [pending, approved, rejected]
+
+    ApprovalScope:
+      type: object
+      properties:
+        toolName:
+          type: string
+        argsHash:
+          type: string
+        target:
+          type: [string, "null"]
+        preview:
+          type: [string, "null"]
+      required: [toolName, argsHash]
+
+    ApprovalRequest:
+      type: object
+      properties:
+        id:
+          type: number
+        taskId:
+          type: number
+        agentId:
+          type: number
+        category:
+          $ref: "#/components/schemas/ApprovalCategory"
+        title:
+          type: string
+        description:
+          type: string
+        amountUsd:
+          type: [string, "null"]
+        scope:
+          oneOf:
+            - $ref: "#/components/schemas/ApprovalScope"
+            - type: "null"
+        status:
+          $ref: "#/components/schemas/ApprovalStatus"
+        decisionNote:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: [string, "null"]
+          format: date-time
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+        consumedAt:
+          type: [string, "null"]
+          format: date-time
+      required:
+        - id
+        - taskId
+        - agentId
+        - category
+        - title
+        - description
+        - amountUsd
+        - scope
+        - status
+        - decisionNote
+        - createdAt
+        - resolvedAt
+        - expiresAt
+        - consumedAt
+
+    ApprovalDecisionInput:
+      type: object
+      properties:
+        expectedArgsHash:
+          type: [string, "null"]
+          minLength: 64
+          maxLength: 64
+          pattern: "^[a-fA-F0-9]{64}$"
+          description: Optional reviewed scope digest. Null asserts an unscoped request. A changed scope is rejected while the decision locks are held.
+        locale:
+          type: string
+          enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+          default: tr
+        decision:
+          type: string
+          enum: [approved, rejected]
+        note:
+          type: string
+          maxLength: 2000
+        confirmation:
+          type: string
+          minLength: 8
+          maxLength: 8
+          pattern: "^[a-fA-F0-9]{8}$"
+          description: >
+            First eight hexadecimal characters of the scoped argsHash. Required
+            by the server when approving vm_run_sudo_command; omitted for other
+            approvals and rejections.
+      required:
+        - decision
+
+    OrgSummary:
+      type: object
+      properties:
+        totalAgents:
+          type: number
+        activeAgents:
+          type: number
+        workingAgents:
+          type: number
+        tasksInProgress:
+          type: number
+        tasksAwaitingApproval:
+          type: number
+        tasksCompletedToday:
+          type: number
+        pendingApprovals:
+          type: number
+        tokensUsedToday:
+          type: number
+        estimatedCostTodayUsd:
+          type: number
+        usageEventsToday:
+          type: number
+        costReportedEventsToday:
+          type: number
+      required:
+        - totalAgents
+        - activeAgents
+        - workingAgents
+        - tasksInProgress
+        - tasksAwaitingApproval
+        - tasksCompletedToday
+        - pendingApprovals
+        - tokensUsedToday
+        - estimatedCostTodayUsd
+        - usageEventsToday
+        - costReportedEventsToday
+
+    ModelProviderId:
+      type: string
+      enum: [replit, openrouter, openai, ollama]
+
+    ModelCatalogProvider:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ModelProviderId"
+        label:
+          type: string
+        available:
+          type: boolean
+      required:
+        - id
+        - label
+        - available
+
+    ModelTier:
+      type: string
+      enum: [economy, standard, premium, reasoning]
+
+    ModelCatalogModel:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        tier:
+          $ref: "#/components/schemas/ModelTier"
+        provider:
+          $ref: "#/components/schemas/ModelProviderId"
+        description:
+          type: string
+        supportsTools:
+          type: boolean
+          description: Whether the model can execute the function tools required by an agent run.
+        isDefault:
+          type: boolean
+      required:
+        - id
+        - label
+        - tier
+        - provider
+        - description
+        - supportsTools
+        - isDefault
+
+    ModelCatalog:
+      type: object
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelCatalogProvider"
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelCatalogModel"
+      required:
+        - providers
+        - models
+
+    VmEntryType:
+      type: string
+      enum: [file, directory]
+
+    VmEntry:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        type:
+          $ref: "#/components/schemas/VmEntryType"
+        sizeBytes:
+          type: number
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - name
+        - path
+        - type
+        - sizeBytes
+        - updatedAt
+
+    VmListing:
+      type: object
+      properties:
+        path:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/VmEntry"
+        total:
+          type: number
+          description: Number of returned entries, not the complete directory population.
+        truncated:
+          type: boolean
+          description: True when the 2000-entry enumeration limit excluded further entries. Missing on older servers; absence must not be treated as a complete listing.
+        skipped:
+          type: integer
+          minimum: 0
+          description: Examined entries omitted because they were links, special files, raced or could not be read. Missing on older servers.
+      required:
+        - path
+        - entries
+        - total
+
+    VmFileContent:
+      type: object
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+        sizeBytes:
+          type: number
+        truncated:
+          type: boolean
+        version:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+          description: SHA-256 of the complete raw file bytes, including any BOM or original line endings.
+        editable:
+          type: boolean
+          description: True only for a complete lossless UTF-8 snapshot within the 128 KiB editor limit and without NUL bytes.
+      required:
+        - path
+        - content
+        - sizeBytes
+        - truncated
+        - version
+        - editable
+
+    VmWriteInput:
+      type: object
+      additionalProperties: false
+      properties:
+        path:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        content:
+          type: string
+          maxLength: 131072
+        expectedVersion:
+          type: string
+          pattern: "^(missing|[a-f0-9]{64})$"
+          description: Use missing to create without overwriting. Updates require the exact reviewed file version; conflicts require a fresh read and deliberate review.
+      required:
+        - path
+        - content
+        - expectedVersion
+
+    VmPathInput:
+      type: object
+      properties:
+        path:
+          type: string
+          description: Relative sandbox path; empty or "." means the workspace root.
+      required:
+        - path
+
+    VmWriteResult:
+      type: object
+      properties:
+        path:
+          type: string
+        sizeBytes:
+          type: number
+        version:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+      required:
+        - path
+        - sizeBytes
+        - version
+
+    VmDeleteResult:
+      type: object
+      properties:
+        path:
+          type: string
+        deleted:
+          type: boolean
+      required:
+        - path
+        - deleted
+
+    VmDeletePreviewInput:
+      type: object
+      additionalProperties: false
+      properties:
+        path:
+          type: string
+          minLength: 1
+          maxLength: 2048
+      required: [path]
+
+    VmDeleteInput:
+      type: object
+      additionalProperties: false
+      properties:
+        path:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        expectedVersion:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+          description: Exact version from a fresh deletion preview. Any changed, missing, or unreviewable target requires another inspection. Never automatically retry an uncertain deletion.
+      required: [path, expectedVersion]
+
+    VmDeletionPreview:
+      type: object
+      additionalProperties: false
+      properties:
+        path:
+          type: string
+        version:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+        entryCount:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        totalBytes:
+          type: integer
+          minimum: 0
+          maximum: 67108864
+        entries:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              path:
+                type: string
+                minLength: 1
+                maxLength: 2048
+              type:
+                type: string
+                enum: [file, directory]
+              sizeBytes:
+                type: integer
+                minimum: 0
+            required: [path, type, sizeBytes]
+      required: [path, version, entryCount, totalBytes, entries]
+
+    VmStatus:
+      type: object
+      properties:
+        agentId:
+          type: number
+        workspaceId:
+          type: string
+          description: Stable per-agent workspace identity.
+        lifecycle:
+          type: string
+          enum: [not_created, ready]
+        isolation:
+          type: string
+          enum: [filesystem_sandbox]
+          description: Honest isolation boundary; this is not a hardened VM.
+        persistent:
+          type: boolean
+        processExecutionEnabled:
+          type: boolean
+          description: Whether host process execution was explicitly enabled by the operator.
+        exists:
+          type: boolean
+        cwd:
+          type: string
+          description: Current persistent virtual working directory.
+        totalBytes:
+          type: number
+        fileCount:
+          type: number
+        dirCount:
+          type: number
+      required:
+        - agentId
+        - workspaceId
+        - lifecycle
+        - isolation
+        - persistent
+        - processExecutionEnabled
+        - exists
+        - cwd
+        - totalBytes
+        - fileCount
+        - dirCount
+
+    OperatorRequestId:
+      type: string
+      pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+      maxLength: 36
+
+    OperatorRequestReceipt:
+      type: object
+      properties:
+        requestId:
+          $ref: "#/components/schemas/OperatorRequestId"
+        agentId:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        kind:
+          type: string
+          enum:
+            [
+              terminal_sandbox,
+              terminal_host,
+              browser_take_over,
+              browser_navigate,
+              browser_input,
+              browser_release,
+              browser_close,
+            ]
+        state:
+          type: string
+          enum: [reserved, dispatched, complete, not_dispatched, unknown]
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        dispatchedAt:
+          type: [string, "null"]
+          format: date-time
+        completedAt:
+          type: [string, "null"]
+          format: date-time
+        failureCode:
+          type: [string, "null"]
+          enum:
+            [
+              execution_blocked,
+              authority_unavailable,
+              invalid_session,
+              transport_unavailable,
+              execution_error,
+              deadline_expired,
+              server_interrupted,
+              null,
+            ]
+        terminal:
+          type: [object, "null"]
+          properties:
+            ok:
+              type: boolean
+            exitCode:
+              type: [integer, "null"]
+            durationMs:
+              type: integer
+              minimum: 0
+          required: [ok, exitCode, durationMs]
+        resultAvailability:
+          type: string
+          enum: [available, unavailable, not_recorded, not_applicable]
+        result:
+          anyOf:
+            - $ref: "#/components/schemas/VmExecResult"
+            - type: "null"
+      required:
+        [
+          requestId,
+          agentId,
+          kind,
+          state,
+          createdAt,
+          expiresAt,
+          dispatchedAt,
+          completedAt,
+          failureCode,
+          terminal,
+          resultAvailability,
+          result,
+        ]
+
+    OperatorTerminalResponse:
+      type: object
+      properties:
+        receipt:
+          $ref: "#/components/schemas/OperatorRequestReceipt"
+        result:
+          anyOf:
+            - $ref: "#/components/schemas/VmExecResult"
+            - type: "null"
+      required: [receipt, result]
+
+    OperatorBrowserControlResponse:
+      type: object
+      properties:
+        receipt:
+          anyOf:
+            - $ref: "#/components/schemas/OperatorRequestReceipt"
+            - type: "null"
+        result:
+          anyOf:
+            - $ref: "#/components/schemas/BrowserControlState"
+            - type: "null"
+      required: [receipt, result]
+
+    OperatorBrowserViewResponse:
+      type: object
+      properties:
+        receipt:
+          $ref: "#/components/schemas/OperatorRequestReceipt"
+        result:
+          anyOf:
+            - $ref: "#/components/schemas/BrowserView"
+            - type: "null"
+      required: [receipt, result]
+
+    OperatorBrowserActionResponse:
+      type: object
+      properties:
+        receipt:
+          $ref: "#/components/schemas/OperatorRequestReceipt"
+        result:
+          anyOf:
+            - $ref: "#/components/schemas/VmDeleteResult"
+            - type: "null"
+      required: [receipt, result]
+
+    VmExecInput:
+      type: object
+      properties:
+        locale:
+          type: string
+          enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
+          description: >
+            Language for new application-authored output, captured at submission.
+            An explicitly supplied locale is part of the durable request identity.
+            Omitted legacy requests preserve their original identity and use Turkish.
+            Recorded output and external process output are never translated.
+        requestId:
+          $ref: "#/components/schemas/OperatorRequestId"
+        command:
+          type: string
+          minLength: 1
+          maxLength: 32768
+        as:
+          type: string
+          description: >
+            Execution authority. Default "sandbox" runs restricted inside the
+            agent workspace; "founder" (operator only) runs through the host
+            shell with full authority.
+          enum: [sandbox, founder]
+      required:
+        - requestId
+        - command
+
+    VmExecResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        exitCode:
+          type: [number, "null"]
+        stdout:
+          type: string
+        stderr:
+          type: string
+        durationMs:
+          type: number
+        note:
+          type: [string, "null"]
+        cwd:
+          type: [string, "null"]
+          description: Effective working directory after the command.
+      required:
+        - ok
+        - exitCode
+        - stdout
+        - stderr
+        - durationMs
+        - note
+        - cwd
+
+    BrowserNavigateInput:
+      type: object
+      properties:
+        requestId:
+          $ref: "#/components/schemas/OperatorRequestId"
+        url:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        leaseId:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+          maxLength: 36
+          description: Exact active operator control lease returned by take_over.
+      required:
+        - requestId
+        - url
+        - leaseId
+
+    BrowserInputAction:
+      type: string
+      enum: [click, dblclick, move, wheel, keydown, type_text, drag]
+
+    BrowserInputEvent:
+      type: object
+      properties:
+        requestId:
+          $ref: "#/components/schemas/OperatorRequestId"
+        action:
+          $ref: "#/components/schemas/BrowserInputAction"
+        x:
+          type: number
+          minimum: 0
+          maximum: 1280
+        y:
+          type: number
+          minimum: 0
+          maximum: 800
+        deltaX:
+          type: number
+          minimum: -10000
+          maximum: 10000
+        deltaY:
+          type: number
+          minimum: -10000
+          maximum: 10000
+        key:
+          type: string
+          minLength: 1
+          maxLength: 64
+        text:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        toX:
+          type: number
+          minimum: 0
+          maximum: 1280
+        toY:
+          type: number
+          minimum: 0
+          maximum: 800
+        leaseId:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+          maxLength: 36
+          description: Exact active operator control lease returned by take_over.
+      required:
+        - action
+        - leaseId
+        - requestId
+
+    BrowserControlOwner:
+      type: string
+      enum: [agent, operator]
+
+    BrowserControlAction:
+      type: string
+      enum: [take_over, heartbeat, release]
+
+    BrowserControlInput:
+      type: object
+      properties:
+        requestId:
+          $ref: "#/components/schemas/OperatorRequestId"
+          description: Required for take_over and release; forbidden for heartbeat.
+        action:
+          $ref: "#/components/schemas/BrowserControlAction"
+        leaseId:
+          type: [string, "null"]
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+          maxLength: 36
+          description: Required for heartbeat and release; omitted for take_over.
+      required:
+        - action
+
+    BrowserControlState:
+      type: object
+      properties:
+        owner:
+          $ref: "#/components/schemas/BrowserControlOwner"
+        leaseId:
+          type: [string, "null"]
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+          maxLength: 36
+        leaseExpiresAt:
+          type: [string, "null"]
+          format: date-time
+        agentActionInFlight:
+          type: boolean
+      required:
+        - owner
+        - leaseId
+        - leaseExpiresAt
+        - agentActionInFlight
+
+    BrowserCloseInput:
+      type: object
+      properties:
+        requestId:
+          $ref: "#/components/schemas/OperatorRequestId"
+        leaseId:
+          type: [string, "null"]
+          description: Exact active operator lease when operator-owned; null when agent-owned.
+      required:
+        - requestId
+        - leaseId
+
+    BrowserView:
+      type: object
+      properties:
+        available:
+          type: boolean
+        pngBase64:
+          type: [string, "null"]
+        url:
+          type: [string, "null"]
+        title:
+          type: [string, "null"]
+        visible:
+          type: boolean
+          description: Whether the dedicated browser process has a visible OS window.
+        control:
+          $ref: "#/components/schemas/BrowserControlState"
+        width:
+          type: number
+        height:
+          type: number
+        note:
+          type: [string, "null"]
+      required:
+        - available
+        - pngBase64
+        - url
+        - title
+        - visible
+        - control
+        - width
+        - height
+        - note

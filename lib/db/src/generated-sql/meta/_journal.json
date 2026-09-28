@@ -1,0 +1,188 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1787793107186,
+      "tag": "0000_low_fenris",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787855083774,
+      "tag": "0001_outstanding_glorian",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787855982843,
+      "tag": "0002_chilly_sinister_six",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787856583012,
+      "tag": "0003_mute_alex_wilder",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787857613749,
+      "tag": "0004_icy_zodiak",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787858476028,
+      "tag": "0005_fuzzy_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787872186632,
+      "tag": "0006_brave_karma",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787879166739,
+      "tag": "0007_ancient_zemo",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787879679180,
+      "tag": "0008_reflective_silver_samurai",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787913574579,
+      "tag": "0009_lethal_wrecker",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787918753863,
+      "tag": "0010_small_starbolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1787965281530,
+      "tag": "0011_autonomy_models_and_agent_avatars",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788044457406,
+      "tag": "0012_project_meetings",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788044586781,
+      "tag": "0013_concerned_tyrannus",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788093535397,
+      "tag": "0014_project_members",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1788221066977,
+      "tag": "0015_flowery_warlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788275909614,
+      "tag": "0016_smart_epoch",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788289380782,
+      "tag": "0017_operations_observability",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788290471117,
+      "tag": "0018_runtime_control_plane",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790456925699,
+      "tag": "0019_workforce_installations",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790462507077,
+      "tag": "0020_company_message_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790471745073,
+      "tag": "0021_agent_interaction_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790499805647,
+      "tag": "0022_task_answer_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790504084035,
+      "tag": "0023_project_meeting_turn_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790509925599,
+      "tag": "0024_project_meeting_commands",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790524192383,
+      "tag": "0025_operator_requests",
+      "breakpoints": true
+    }
+  ]
+}

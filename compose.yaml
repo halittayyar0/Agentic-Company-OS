@@ -1,0 +1,139 @@
+name: agentic-company-os
+
+x-runtime-environment: &runtime-environment
+  NODE_ENV: production
+  PORT: 5000
+  DATABASE_URL_FILE: /run/secrets/database_url
+  RUNTIME_CONTROL_KEY_FILE: /run/secrets/runtime_control_key
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_MODEL_IDS: ${OPENAI_MODEL_IDS:-}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+  APP_PUBLIC_URL: ${APP_PUBLIC_URL:-}
+  AI_INTEGRATIONS_OPENAI_API_KEY: ${AI_INTEGRATIONS_OPENAI_API_KEY:-}
+  AI_INTEGRATIONS_OPENAI_BASE_URL: ${AI_INTEGRATIONS_OPENAI_BASE_URL:-}
+  AGENT_SANDBOX_ROOT: /app/agent-sandboxes
+  AGENT_BROWSER_CHANNEL: chromium
+  AGENT_BROWSER_EXECUTABLE_PATH: /usr/bin/chromium
+  AGENT_BROWSER_HEADLESS: "true"
+  ALLOW_AGENT_PROCESS_EXEC: "false"
+  ALLOW_AGENT_SUDO: "false"
+  ALLOW_FOUNDER_SHELL: "false"
+
+x-runtime-service: &runtime-service
+  image: agentic-company-os:local
+  build:
+    context: .
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+  secrets:
+    - database_url
+    - runtime_control_key
+  volumes:
+    - agent-data:/app/data
+    - agent-sandboxes:/app/agent-sandboxes
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  read_only: true
+  tmpfs:
+    - /tmp:size=512m,mode=1777
+    - /home/node/.cache:size=256m,uid=1000,gid=1000,mode=0700
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  pids_limit: 512
+  shm_size: 1gb
+  stop_grace_period: 30s
+
+services:
+  db:
+    image: ${AGENTIC_POSTGRES_IMAGE:-postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agentic_os
+      POSTGRES_USER: agentic
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentic -d agentic_os"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
+  app:
+    <<: *runtime-service
+    environment:
+      <<: *runtime-environment
+      HOST: 0.0.0.0
+      RUNTIME_ROLE: api
+      SCHEDULER_ENABLED: "false"
+      OPERATOR_AUTH_TOKEN_FILE: /run/secrets/operator_auth_token
+      ALLOW_REMOTE_ACCESS: "true"
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-localhost,127.0.0.1,app}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5000}
+      SERVE_STATIC_UI: "true"
+      STATIC_UI_DIR: /app/ui
+    secrets:
+      - database_url
+      - runtime_control_key
+      - operator_auth_token
+    ports:
+      - "127.0.0.1:${APP_PORT:-5000}:5000"
+
+  worker-1:
+    <<: *runtime-service
+    command:
+      ["node", "--enable-source-maps", "artifacts/api-server/start-worker.mjs"]
+    environment:
+      <<: *runtime-environment
+      HOST: 127.0.0.1
+      RUNTIME_ROLE: worker
+      SCHEDULER_ENABLED: "true"
+      RUNTIME_CONTROL_API_URL: http://app:5000/api/internal/runtime-control
+      ALLOW_REMOTE_ACCESS: "false"
+      SERVE_STATIC_UI: "false"
+    # Workers deliberately expose no HTTP listener. Docker already restarts an
+    # exited process, while durable runtime heartbeats report app-level health.
+    healthcheck:
+      disable: true
+
+  worker-2:
+    <<: *runtime-service
+    command:
+      ["node", "--enable-source-maps", "artifacts/api-server/start-worker.mjs"]
+    environment:
+      <<: *runtime-environment
+      HOST: 127.0.0.1
+      RUNTIME_ROLE: worker
+      SCHEDULER_ENABLED: "true"
+      RUNTIME_CONTROL_API_URL: http://app:5000/api/internal/runtime-control
+      ALLOW_REMOTE_ACCESS: "false"
+      SERVE_STATIC_UI: "false"
+    # See worker-1: process supervision plus the runtime registry replaces an
+    # unsafe HTTP health probe on a role that must never open a socket.
+    healthcheck:
+      disable: true
+
+secrets:
+  database_url:
+    file: ./.secrets/database_url
+  operator_auth_token:
+    file: ./.secrets/operator_auth_token
+  runtime_control_key:
+    file: ./.secrets/runtime_control_key
+  postgres_password:
+    file: ./.secrets/postgres_password
+
+volumes:
+  postgres-data:
+  agent-data:
+  agent-sandboxes:

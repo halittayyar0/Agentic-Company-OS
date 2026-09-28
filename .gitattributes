@@ -1,0 +1,24 @@
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.wasm binary
+*.pdf binary
+
+# Markdown uses two trailing spaces for explicit line breaks.
+*.md whitespace=-blank-at-eol
+
+# Preserve the checked-in generators' canonical final newline output.
+lib/api-client-react/src/generated/api.schemas.ts whitespace=-blank-at-eof
+lib/api-client-react/src/generated/api.ts whitespace=-blank-at-eof
+lib/api-zod/src/generated/api.ts whitespace=-blank-at-eof
+lib/db/src/generated-sql/0019_workforce_installations.sql whitespace=-blank-at-eof

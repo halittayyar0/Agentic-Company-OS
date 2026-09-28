@@ -1,0 +1,75 @@
+name: Bug report
+description: Report a reproducible problem in the current project.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Do not include credentials, private prompts, customer data, browser sessions, or vulnerability details. Report security issues privately through SECURITY.md.
+
+  - type: input
+    id: version
+    attributes:
+      label: Commit or version
+      description: Provide the commit SHA or release tag where the problem occurs.
+      placeholder: abc1234
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior and its impact.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: List the smallest sequence of steps that reproduces the issue.
+      placeholder: |
+        1. Start the API with ...
+        2. Open ...
+        3. Click ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, architecture, Node, pnpm, database mode, browser channel, and model provider. Redact secrets.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Paste only what is necessary. Remove tokens, URLs containing credentials, personal data, and confidential prompt content.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and pull requests.
+          required: true
+        - label: I reproduced this on the stated commit.
+          required: true
+        - label: I removed all secrets and sensitive data.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

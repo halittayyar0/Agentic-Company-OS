@@ -1,0 +1,76 @@
+# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# compiled output
+dist
+tmp
+out-tsc
+*.tsbuildinfo
+.expo
+.expo-shared
+
+# dependencies
+node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+*.log
+testem.log
+/typings
+.env
+.env.*
+!.env.example
+
+# System Files
+.DS_Store
+Thumbs.db
+
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
+
+# Replit
+.cache/
+.local/
+
+# Agent virtual computer sandboxes (per-agent isolated workspaces)
+agent-sandboxes/
+
+# Operator runtime config (provider keys via Settings UI)
+data/
+
+# Local container secret files
+.secrets/
+.tmp/
+
+# Local Codex/Replit conversation state may contain private context
+.conversation/
+
+# Local Node/pnpm launcher shim used by the Codex desktop runtime
+.codex-pnpm-shim/
+
+# Playwright UI release-smoke artifacts
+playwright-report/
+test-results/
+
+# Local endurance evidence (CI uploads these separately)
+artifacts/endurance-reports/

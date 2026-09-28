@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+tmp/
+.tmp/
+out-tsc/
+.cache/
+.local/
+data/
+agent-sandboxes/
+
+pnpm-lock.yaml
+lib/api-client-react/src/generated/
+lib/api-zod/src/generated/
+lib/db/src/generated-sql/

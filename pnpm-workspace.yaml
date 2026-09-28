@@ -1,0 +1,63 @@
+# ============================================================================
+# SECURITY: Minimum release age for npm packages (supply-chain attack defense)
+# ============================================================================
+#
+# This setting requires that a newly resolved npm package version has been
+# published for at least 1 day (1440 minutes) before pnpm will install it. It
+# reduces exposure to freshly compromised releases; the frozen lockfile,
+# review, audit, and CI remain independent controls.
+#
+# Add a narrowly reviewed, temporary exception only for an urgent release;
+# remove it after the quarantine window. Publisher reputation is not a reason
+# for a permanent namespace-wide bypass.
+#
+# ============================================================================
+minimumReleaseAge: 1440
+
+packages:
+  - artifacts/*
+  - lib/*
+  - lib/integrations/*
+  - scripts
+
+catalog:
+  "@replit/vite-plugin-cartographer": ^0.5.21
+  "@replit/vite-plugin-dev-banner": ^0.1.1
+  "@replit/vite-plugin-runtime-error-modal": ^0.0.6
+  "@tailwindcss/vite": ^4.1.14
+  "@tanstack/react-query": ^5.90.21
+  "@types/node": ^24.0.0
+  "@types/react": ^19.2.0
+  "@types/react-dom": ^19.2.0
+  "@vitejs/plugin-react": ^5.0.4
+  class-variance-authority: ^0.7.1
+  clsx: ^2.1.1
+  drizzle-orm: ^0.45.2
+  framer-motion: ^12.23.24
+  lucide-react: ^0.545.0
+  # Keep React and React DOM exactly aligned across every workspace package.
+  react: 19.1.0
+  react-dom: 19.1.0
+  tailwind-merge: ^3.3.1
+  tailwindcss: ^4.1.14
+  tsx: ^4.21.0
+  vite: ^7.3.2
+  wouter: ^3.3.5
+  zod: ^3.25.76
+
+autoInstallPeers: false
+
+onlyBuiltDependencies:
+  - "@swc/core"
+  - esbuild
+  - msw
+  - unrs-resolver
+
+overrides:
+  # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
+  "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
+  brace-expansion: "5.0.9"
+  fast-uri: "3.1.5"
+  js-yaml: "4.3.1"
+  nanoid: "3.3.18"
+  esbuild: "0.28.1"

@@ -1,0 +1,41 @@
+title = "Agentic Company OS secret scanning"
+
+[extend]
+useDefault = true
+
+# These are reviewed, public fixture values, never deployment credentials.
+# Both the exact value and its exact source path must match. All default
+# detectors remain enabled, including in tests, documentation and CI files.
+[[rules]]
+id = "curl-auth-header"
+
+[[rules.allowlists]]
+description = "Disposable CI operator token on loopback-only test containers"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''(^|/)\.github/workflows/ci\.yml$''']
+regexes = ['''^agentic_ci_operator_token_32_chars_minimum$''']
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Deterministic encryption fixture in operator receipt tests"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''(^|/)artifacts/api-server/src/lib/operator-requests\.test\.ts$''']
+regexes = ['''^operator-receipt-test-key-32-characters$''']
+
+[[rules.allowlists]]
+description = "Explicit replace-before-use self-hosting placeholder"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''(^|/)docs/self-hosting\.md$''']
+regexes = ['''^independently-generated-32-plus-character-secret$''']
+
+[[rules.allowlists]]
+description = "Acceptance-criteria prose mistaken for a credential"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''(^|/)docs/superpowers/specs/2026-09-27-operator-request-recovery\.md$''']
+regexes = ['''^encryption/correlation/tamper/key$''']

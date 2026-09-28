@@ -1,0 +1,98 @@
+# Changelog
+
+All notable changes to Agentic Company OS are documented here. The project uses
+[Semantic Versioning](https://semver.org/) while the public API is in alpha.
+
+## Unreleased
+
+### Added
+
+- Durable UUID admission and exact authenticated receipt queries for Terminal and Browser actions (migration 0025), encrypted Terminal output recovery, worker effect fencing, and seven-language local review. Older local-only records are not replayed or upgraded. Deploy API and UI together and retain the matching runtime key with protected database backups; see [operator recovery](docs/operator-recovery.md).
+
+- Required UUIDs and compact, atomic receipts for all manual meeting writes (migration 0024), with project-scoped receipt checks, original-identity retries and seven-language recovery review. Meeting creation saves a draft before an explicit model start. Deploy the matching API and clients together; see [meeting upgrades](docs/meeting-turns.md).
+
+- First-run selection for Turkish, English, German, Russian, both Chinese scripts, and Arabic, with persistent workspace language for subsequent agent turns and RTL direction for Arabic.
+- Private phone-browser access guidance using the existing responsive web UI, HTTPS and an operator-protected private network route.
+- Root-project-scoped meetings with durable participants, transcripts,
+  decisions, action items, bounded tool-free agent turns, and cross-project
+  access isolation.
+- Persistent Company Room membership, explicit `@mention` routing, ambient
+  role-relevance routing, and a model-level no-reply gate.
+
+### Changed
+
+- Expose saved model turns in a project-level recovery inbox even when the meeting is absent. Add paged storage discovery, explicit damaged-record review, original-input acknowledgement and seven-language recorded-reply/skipped-expert inspection. Allow reviewed local clearing after a missing receipt without automatically retrying or cancelling server work.
+- Budget the model-turn inbox at 1,330,000 raw / 392,000 gzip aggregate code bytes and its seven language packs at 29,000 / 12,000 bytes. Other per-asset, media and locale-family limits remain unchanged.
+- Localized global and project Operations in all seven languages, including evidence inspection, stale states and operator reconciliation. Keep original evidence text, show bounded history and explicit timezone, and distinguish sample coverage from endurance. Phone summaries use two columns and Arabic sheets follow reading direction.
+- Preserve the exact reconciliation decision and note after an uncertain response; check server evidence before identical retries, and keep open reviews when a bounded snapshot omits their receipt. Drafts and unresolved decisions now survive same-tab navigation/reload, with an independent recovery panel, scoped exact receipt reads, original server audit review and explicit local clearing. Validate the 2,000-byte UTF-8 note bound before sending.
+- Account for selected Operations translations and guarded review with explicit aggregate bundle ceilings of 1,320,000 bytes raw and 389,000 bytes gzip. Keep existing per-asset/media limits and aggregate Operations-pack limits of 100,000/36,000 bytes.
+
+- Localized Company Room membership, mentions, message history, reply status and uncertain-send recovery in all seven languages. Preserve source text; support Arabic phone layouts, composition keyboards and loading older history without forcing the reader to the latest message.
+- Persist Company Room send identities and receipts with migration `0020`. A replay returns the recorded message without repeating the model round, including after emergency stop or membership changes. An interrupted round remains explicitly unconfirmed.
+- Limit product CSS scanning to the app sources and co-locate shared vendor groups. Increase the aggregate selected-language gzip ceiling from 362,000 to 364,000 bytes for room recovery, history and translations; retain raw and individual-asset ceilings.
+
+- Localized Team Studio catalogs, configuration, recovery and receipts in all seven languages. Installation intents use durable request receipts to recover the original result after uncertain responses.
+- Localized the approval inbox in all seven languages, including phone layouts, RTL, decision history and host-command confirmation. Preserve exact source commands and operator notes; distinguish recorded approval and permission consumption from successful execution.
+- Reworked the shared visual system around readable controls, cool neutral surfaces, system color-mode preference and semantic status colors. Project cards now identify the actual owner instead of implying that every active agent belongs to every project.
+- Localized the Home journey and quick project composer in all seven selectable languages, including examples, validation, status badges, and saved work-approach labels. Home language packs load on demand and the bundle gate measures one selected language plus the shared app.
+- Localized the Projects list in all seven selectable languages, including search, filters, owner and progress labels, plus empty/loading/error states and Arabic right-to-left layout. Only the selected Projects language pack loads.
+- Localized full project creation in all seven languages, including validation, team and safety states, priorities, cadence, and failure feedback. Form controls have visible labels and phone-sized targets; Arabic radio keys follow visual direction.
+- Localized the shared emergency stop and resume controls in all seven languages, including confirmation, safety warnings, and error recovery. A missing safety language file falls back to English while the control stays operable.
+- Localized command search and shared dialog, sheet, toast, and search-clear controls. Command search restores keyboard focus, dialogs fit short phone screens, and Arabic controls use logical alignment.
+- Localized theme, working-expert status, and sign-out feedback. The Arabic phone menu opens from the right with a keyboard focus trap, and phone controls use larger touch targets.
+- Localized the Expert directory in all seven languages, including role explanations, department names, search, filters, pagination, and empty/error/stale states. Stored names and custom roles are preserved. Search handles accented letters and Arabic marks; phone selects have larger targets and logical alignment.
+- Load sign-in language files on demand, keeping the workspace closed on language-asset failure and retaining safe UI copy after an unauthorized response. Exclude unused legacy component styles from the production stylesheet, with an import guard, while keeping the existing transfer budgets.
+- Localized New expert forms, validation, permissions, template names, and model selection in all seven languages. Preserve edited identity, custom instructions, and canonical department keys; explain unavailable models and verify manual selection before submitting. Arabic selects and switches follow the page direction.
+- Load shell translations on demand with localized startup and recovery states available before any workspace request. The language chooser remains available without downloading every shell pack; total bundle limits are unchanged.
+- Routed legacy `/activity` bookmarks to `/operations` without losing query state, removed the duplicate navigation entry, and focused the canonical heading after redirect.
+- Replaced the fixed four-agent Company Room round with an uncapped roster and
+  independently bounded per-message response budget.
+- Moved meetings out of the global company conversation and into each
+  project's own working memory.
+- Rebased the aggregate raw-code bundle ceiling from 1.26 MB to 1.30 MB for the
+  route-split meeting and room surfaces while retaining the existing gzip and
+  single-chunk limits.
+
+### Security
+
+- Serialize approval decisions with emergency stop, check the live scope and expiry after acquiring decision locks, and reject changes to the optional reviewed digest. The inbox blocks incomplete previews and stale confirmation dialogs; uncertain results require a successful refresh before retry.
+
+## [0.1.0-alpha.1] - 2026-08-29
+
+### Added
+
+- Durable finite and continuous task ownership with scheduled wake-ups,
+  lease-safe recovery, bounded provider retries, and observable model fallback.
+- Per-task model pin and runtime route telemetry.
+- User-changeable, locally processed agent avatars with a separate bounded image
+  endpoint, versioned caching, and reset-to-default support.
+- A blocked-task handoff card that preserves the operator's answer on failure
+  and returns the responsibility to the autonomous queue after a successful
+  response.
+- Responsive company navigation, compact agent workspaces, light and dark themes,
+  and a run-centered status receipt on the company workspace.
+- A versioned Workforce Studio with three installable team blueprints, explicit
+  handoff contracts, parent-bounded authority, and atomic optional root-task
+  creation.
+- A sanitized six-stage Run Inspector plus an Agentforce-inspired capability
+  contract that separates agent role intent from enforced data, action,
+  guardrail, and channel permissions.
+- GitHub CI, CodeQL, secret scanning, Dependabot, container smoke tests, and
+  production dependency license checks.
+
+### Changed
+
+- Reworked the operator UI from a decorative mission-control treatment toward a
+  legible, task-first company workspace.
+- Moved bundled portraits into a Vite-hashed, compressed asset and expanded the
+  bundle budget to cover media files.
+- Paused hidden computer/browser surfaces and stretched idle polling while
+  keeping active work on a faster live cadence.
+- Counted every task-attributed usage-ledger entry, including judge reviews,
+  toward finite-task token and provider-reported-cost circuit breakers.
+
+### Security
+
+- Powerful browser, terminal, sudo, publishing, deletion, spending, and external
+  communication paths remain fail-closed behind runtime permissions and scoped
+  human approval.

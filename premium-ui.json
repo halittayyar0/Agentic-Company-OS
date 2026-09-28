@@ -1,0 +1,164 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["artifacts/agentic-company-os/src", "tests/ui"],
+  "locale": "tr-TR",
+  "supportedLocales": ["tr", "en", "de", "ru", "zh-CN", "zh-TW", "ar"],
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": [
+    "Form",
+    "Select/Listbox",
+    "Scrollbar",
+    "Toast",
+    "CRUD"
+  ],
+  "ownership": {
+    "Button": "authored",
+    "IconButton": "authored",
+    "Tabs": "authored",
+    "Dialog": "authored",
+    "Confirmation": "authored",
+    "Inspector": "authored",
+    "Toast": "authored",
+    "Form": "authored",
+    "Textarea": "authored",
+    "Select/Listbox": "authored",
+    "Scrollbar": "authored",
+    "Date": "native"
+  },
+  "requiredCommands": ["format", "typecheck", "unit", "build", "e2e"],
+  "commands": {
+    "format": "pnpm run format:check",
+    "typecheck": "pnpm run typecheck",
+    "unit": "pnpm test",
+    "build": "pnpm run build",
+    "e2e": "pnpm run test:ui"
+  },
+  "evidence": {
+    "crudFullFlow": "tests/ui/project-studio.spec.ts",
+    "failurePaths": "tests/ui/task-resume.spec.ts",
+    "operationsStream": "artifacts/agentic-company-os/src/lib/operations-event-stream.test.ts",
+    "operationsReconciliation": "tests/ui/operations-reconciliation.spec.ts",
+    "operationsResponsiveAccessibility": "tests/ui/operations-accessibility.spec.ts"
+  },
+  "knownAuditLimitations": {
+    "auditVersion": 1,
+    "snapshotDate": "2026-09-04",
+    "policy": "Only the exact rule/file/line fingerprints below may be triaged as known JSX case-folding false positives. Any moved, changed, or new finding fails until source semantics are re-reviewed.",
+    "fingerprints": [
+      {
+        "ruleId": "affordance.actionless-button",
+        "file": "artifacts/agentic-company-os/src/components/layout/app-shell.tsx",
+        "line": 537,
+        "reason": "Reviewed 2026-09-04: Radix trigger, Link child, or forwarded action props supplies the real action."
+      },
+      {
+        "ruleId": "affordance.actionless-button",
+        "file": "artifacts/agentic-company-os/src/components/ops/emergency-control.tsx",
+        "line": 93,
+        "reason": "Reviewed 2026-09-04: Radix trigger, Link child, or forwarded action props supplies the real action."
+      },
+      {
+        "ruleId": "affordance.actionless-button",
+        "file": "artifacts/agentic-company-os/src/components/ui/calendar.tsx",
+        "line": 186,
+        "reason": "Reviewed 2026-09-04: Radix trigger, Link child, or forwarded action props supplies the real action."
+      },
+      {
+        "ruleId": "affordance.actionless-button",
+        "file": "artifacts/agentic-company-os/src/components/ui/input-group.tsx",
+        "line": 106,
+        "reason": "Reviewed 2026-09-04: Radix trigger, Link child, or forwarded action props supplies the real action."
+      },
+      {
+        "ruleId": "affordance.actionless-button",
+        "file": "artifacts/agentic-company-os/src/pages/agents/list.tsx",
+        "line": 141,
+        "reason": "Reviewed 2026-09-04: Radix trigger, Link child, or forwarded action props supplies the real action."
+      },
+      {
+        "ruleId": "affordance.actionless-button",
+        "file": "artifacts/agentic-company-os/src/pages/agents/list.tsx",
+        "line": 299,
+        "reason": "Reviewed 2026-09-04: Radix trigger, Link child, or forwarded action props supplies the real action."
+      },
+      {
+        "ruleId": "affordance.actionless-button",
+        "file": "artifacts/agentic-company-os/src/pages/company-chat.tsx",
+        "line": 509,
+        "reason": "Reviewed 2026-09-04: Radix trigger, Link child, or forwarded action props supplies the real action."
+      },
+      {
+        "ruleId": "affordance.actionless-button",
+        "file": "artifacts/agentic-company-os/src/pages/dashboard.tsx",
+        "line": 375,
+        "reason": "Reviewed 2026-09-04: Radix trigger, Link child, or forwarded action props supplies the real action."
+      },
+      {
+        "ruleId": "affordance.actionless-button",
+        "file": "artifacts/agentic-company-os/src/pages/tasks/list.tsx",
+        "line": 126,
+        "reason": "Reviewed 2026-09-04: Radix trigger, Link child, or forwarded action props supplies the real action."
+      },
+      {
+        "ruleId": "affordance.actionless-button",
+        "file": "artifacts/agentic-company-os/src/pages/tasks/list.tsx",
+        "line": 286,
+        "reason": "Reviewed 2026-09-04: Radix trigger, Link child, or forwarded action props supplies the real action."
+      },
+      {
+        "ruleId": "form.textarea-resize-missing",
+        "file": "artifacts/agentic-company-os/src/components/ops/emergency-control.tsx",
+        "line": 127,
+        "reason": "Reviewed 2026-09-04: shared Textarea supplies resize-none with no caller override."
+      },
+      {
+        "ruleId": "form.textarea-resize-missing",
+        "file": "artifacts/agentic-company-os/src/components/studio/home-project-composer.tsx",
+        "line": 157,
+        "reason": "Reviewed 2026-09-04: shared Textarea supplies resize-none with no caller override."
+      },
+      {
+        "ruleId": "form.textarea-resize-missing",
+        "file": "artifacts/agentic-company-os/src/pages/agents/detail.tsx",
+        "line": 629,
+        "reason": "Reviewed 2026-09-04: shared Textarea supplies resize-none with no caller override."
+      },
+      {
+        "ruleId": "ownership.native-select-conflict",
+        "file": "artifacts/agentic-company-os/src/components/company/company-floor.tsx",
+        "line": 246,
+        "reason": "Reviewed 2026-09-04: capitalized shared Radix Select is not a native select."
+      },
+      {
+        "ruleId": "ownership.native-select-conflict",
+        "file": "artifacts/agentic-company-os/src/components/company/founder-command-deck.tsx",
+        "line": 128,
+        "reason": "Reviewed 2026-09-04: capitalized shared Radix Select is not a native select."
+      },
+      {
+        "ruleId": "ownership.native-select-conflict",
+        "file": "artifacts/agentic-company-os/src/components/company/founder-dispatch-bar.tsx",
+        "line": 166,
+        "reason": "Reviewed 2026-09-04: capitalized shared Radix Select is not a native select."
+      },
+      {
+        "ruleId": "ownership.native-select-conflict",
+        "file": "artifacts/agentic-company-os/src/pages/activity.tsx",
+        "line": 106,
+        "reason": "Reviewed 2026-09-04: capitalized shared Radix Select is not a native select."
+      },
+      {
+        "ruleId": "ownership.native-select-conflict",
+        "file": "artifacts/agentic-company-os/src/pages/agents/list.tsx",
+        "line": 183,
+        "reason": "Reviewed 2026-09-04: capitalized shared Radix Select is not a native select."
+      },
+      {
+        "ruleId": "ownership.native-select-conflict",
+        "file": "artifacts/agentic-company-os/src/pages/workforces.tsx",
+        "line": 665,
+        "reason": "Reviewed 2026-09-04: capitalized shared Radix Select is not a native select."
+      }
+    ]
+  }
+}

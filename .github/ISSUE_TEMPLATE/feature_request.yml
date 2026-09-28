@@ -1,0 +1,62 @@
+name: Feature request
+description: Propose a focused product, developer-experience, or security improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What operator or contributor problem should be solved? Avoid leading with an implementation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable success and the smallest useful scope.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: Optional implementation or interaction ideas, including alternatives considered.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Agent behavior and prompts
+        - Orchestration and tasks
+        - Command-center UI
+        - Models and providers
+        - Browser and workspaces
+        - Security and privacy
+        - Developer experience
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk
+    attributes:
+      label: Security, privacy, and cost impact
+      description: Note new authority, external calls, credentials, data retention, model spend, or public exposure.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and the roadmap.
+          required: true
+        - label: This request preserves local-first secure defaults or explains why they must change.
+          required: true

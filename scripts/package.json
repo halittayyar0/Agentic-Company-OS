@@ -1,0 +1,21 @@
+{
+  "name": "@workspace/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:bundle": "tsx ./src/check-bundle-budget.ts",
+    "check:licenses": "tsx ./src/check-production-licenses.ts",
+    "endurance:accelerated": "tsx ./src/run-accelerated-endurance.ts",
+    "endurance:wall-clock": "tsx ./src/run-wall-clock-soak.ts",
+    "endurance:native-postgres-smoke": "tsx ./src/run-native-postgres-smoke.ts",
+    "endurance:wall-clock:native": "tsx ./src/run-native-wall-clock-soak.ts",
+    "endurance:compare": "tsx ./src/endurance/compare-reports.ts",
+    "endurance:verify-report": "tsx ./src/endurance/verify-report.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "catalog:"
+  }
+}

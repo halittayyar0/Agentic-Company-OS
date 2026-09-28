@@ -1,0 +1,104 @@
+services:
+  db:
+    labels:
+      com.agentic-company-os.endurance-run: ${ENDURANCE_RUN_ID:?ENDURANCE_RUN_ID is required}
+    restart: "no"
+
+  app:
+    image: ${ENDURANCE_RUNTIME_IMAGE:?ENDURANCE_RUNTIME_IMAGE is required}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: endurance-runtime
+      args:
+        ENDURANCE_SOURCE_COMMIT_SHA: ${ENDURANCE_SOURCE_COMMIT_SHA:?ENDURANCE_SOURCE_COMMIT_SHA is required}
+        ENDURANCE_SOURCE_TREE_SHA256: ${ENDURANCE_SOURCE_TREE_SHA256:?ENDURANCE_SOURCE_TREE_SHA256 is required}
+    labels:
+      com.agentic-company-os.endurance-run: ${ENDURANCE_RUN_ID:?ENDURANCE_RUN_ID is required}
+    restart: "no"
+    volumes:
+      - ${ENDURANCE_CONTROL_DIR_HOST:?ENDURANCE_CONTROL_DIR_HOST is required}:/app/endurance-control:ro
+    environment:
+      ENDURANCE_MODE: soak
+      ENDURANCE_RUN_ID: ${ENDURANCE_RUN_ID:?ENDURANCE_RUN_ID is required}
+      ENDURANCE_RUN_DIR: /app/endurance-control
+      ENDURANCE_EXPECTED_AGENTS: "10"
+      SYNTHETIC_RUNTIME_ENABLED: "true"
+      SYNTHETIC_RUNTIME_SEED: ${ENDURANCE_SEED:-240901}
+      SYNTHETIC_RUNTIME_CONTROL_FILE: /app/endurance-control/fault-control.json
+      OPS_SAMPLE_MS: ${ENDURANCE_OPS_SAMPLE_MS:-60000}
+      RUNTIME_HEARTBEAT_MS: "1000"
+      WORKER_STALE_AFTER_MS: "5000"
+
+  worker-1:
+    image: ${ENDURANCE_RUNTIME_IMAGE:?ENDURANCE_RUNTIME_IMAGE is required}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: endurance-runtime
+      args:
+        ENDURANCE_SOURCE_COMMIT_SHA: ${ENDURANCE_SOURCE_COMMIT_SHA:?ENDURANCE_SOURCE_COMMIT_SHA is required}
+        ENDURANCE_SOURCE_TREE_SHA256: ${ENDURANCE_SOURCE_TREE_SHA256:?ENDURANCE_SOURCE_TREE_SHA256 is required}
+    labels:
+      com.agentic-company-os.endurance-run: ${ENDURANCE_RUN_ID:?ENDURANCE_RUN_ID is required}
+    restart: "no"
+    volumes:
+      - ${ENDURANCE_CONTROL_DIR_HOST:?ENDURANCE_CONTROL_DIR_HOST is required}:/app/endurance-control:ro
+    environment:
+      ENDURANCE_MODE: soak
+      ENDURANCE_RUN_ID: ${ENDURANCE_RUN_ID:?ENDURANCE_RUN_ID is required}
+      ENDURANCE_RUN_DIR: /app/endurance-control
+      ENDURANCE_EXPECTED_AGENTS: "10"
+      SYNTHETIC_RUNTIME_ENABLED: "true"
+      SYNTHETIC_RUNTIME_SEED: ${ENDURANCE_SEED:-240901}
+      SYNTHETIC_RUNTIME_CONTROL_FILE: /app/endurance-control/fault-control.json
+      OPS_SAMPLE_MS: ${ENDURANCE_OPS_SAMPLE_MS:-60000}
+      RUNTIME_HEARTBEAT_MS: "1000"
+      WORKER_STALE_AFTER_MS: "5000"
+
+  worker-2:
+    image: ${ENDURANCE_RUNTIME_IMAGE:?ENDURANCE_RUNTIME_IMAGE is required}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: endurance-runtime
+      args:
+        ENDURANCE_SOURCE_COMMIT_SHA: ${ENDURANCE_SOURCE_COMMIT_SHA:?ENDURANCE_SOURCE_COMMIT_SHA is required}
+        ENDURANCE_SOURCE_TREE_SHA256: ${ENDURANCE_SOURCE_TREE_SHA256:?ENDURANCE_SOURCE_TREE_SHA256 is required}
+    labels:
+      com.agentic-company-os.endurance-run: ${ENDURANCE_RUN_ID:?ENDURANCE_RUN_ID is required}
+    restart: "no"
+    volumes:
+      - ${ENDURANCE_CONTROL_DIR_HOST:?ENDURANCE_CONTROL_DIR_HOST is required}:/app/endurance-control:ro
+    environment:
+      ENDURANCE_MODE: soak
+      ENDURANCE_RUN_ID: ${ENDURANCE_RUN_ID:?ENDURANCE_RUN_ID is required}
+      ENDURANCE_RUN_DIR: /app/endurance-control
+      ENDURANCE_EXPECTED_AGENTS: "10"
+      SYNTHETIC_RUNTIME_ENABLED: "true"
+      SYNTHETIC_RUNTIME_SEED: ${ENDURANCE_SEED:-240901}
+      SYNTHETIC_RUNTIME_CONTROL_FILE: /app/endurance-control/fault-control.json
+      OPS_SAMPLE_MS: ${ENDURANCE_OPS_SAMPLE_MS:-60000}
+      RUNTIME_HEARTBEAT_MS: "1000"
+      WORKER_STALE_AFTER_MS: "5000"
+
+secrets:
+  database_url:
+    file: ${ENDURANCE_DATABASE_URL_SECRET_FILE:?ENDURANCE_DATABASE_URL_SECRET_FILE is required}
+  operator_auth_token:
+    file: ${ENDURANCE_OPERATOR_TOKEN_SECRET_FILE:?ENDURANCE_OPERATOR_TOKEN_SECRET_FILE is required}
+  runtime_control_key:
+    file: ${ENDURANCE_RUNTIME_CONTROL_KEY_SECRET_FILE:?ENDURANCE_RUNTIME_CONTROL_KEY_SECRET_FILE is required}
+  postgres_password:
+    file: ${ENDURANCE_POSTGRES_PASSWORD_SECRET_FILE:?ENDURANCE_POSTGRES_PASSWORD_SECRET_FILE is required}
+
+volumes:
+  postgres-data:
+    labels:
+      com.agentic-company-os.endurance-run: ${ENDURANCE_RUN_ID:?ENDURANCE_RUN_ID is required}
+  agent-data:
+    labels:
+      com.agentic-company-os.endurance-run: ${ENDURANCE_RUN_ID:?ENDURANCE_RUN_ID is required}
+  agent-sandboxes:
+    labels:
+      com.agentic-company-os.endurance-run: ${ENDURANCE_RUN_ID:?ENDURANCE_RUN_ID is required}

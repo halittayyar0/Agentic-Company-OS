@@ -1,0 +1,82 @@
+import type { SettingsCopy } from "../settings-copy";
+const copy: SettingsCopy = {
+  title: "連線與設定",
+  description: "管理模型存取、語言和工作區外觀。",
+  preferences: "個人偏好",
+  appearance: "外觀",
+  light: "淺色",
+  dark: "深色",
+  system: "跟隨裝置",
+  appearanceHelp: "外觀偏好儲存在此瀏覽器中。",
+  providers: "模型供應商",
+  credentialHelp:
+    "已設定金鑰不代表連線可用。請先儲存，再明確選擇模型進行測試。",
+  key: "新 API 金鑰",
+  sourceRuntime: "已儲存的金鑰",
+  sourceEnvironment: "伺服器環境金鑰",
+  sourceNone: "未設定金鑰",
+  save: "儲存金鑰",
+  remove: "移除已儲存的金鑰",
+  removeHelp:
+    "要移除本應用程式儲存的金鑰嗎？若伺服器環境中有金鑰，它將生效。進行中的請求可能仍使用舊金鑰完成。",
+  storedLocal:
+    "金鑰儲存在伺服器本機檔案中，應用程式層級不會加密。請保護伺服器帳戶和備份。",
+  storedDatabase:
+    "金鑰在共用資料庫中加密儲存。工作程序非同步接收變更；此頁面無法確認每個工作程序都已套用變更。",
+  serverManaged: "由伺服器管理",
+  serverHelp: "請在伺服器上設定此供應商。本頁面不會更改其伺服器設定。",
+  unavailable: "目前目錄中無法使用",
+  test: "測試模型",
+  testHelp:
+    "將向所選供應商傳送簡短提示詞，可能產生費用。輸出上限為 10 個 token；伺服器等待 20 秒後停止等待，不會自動重試。逾時不代表供應商已停止處理。",
+  confirmTest: "傳送測試請求",
+  cancel: "取消",
+  saved:
+    "伺服器已確認儲存設定。這不代表已驗證模型存取或所有工作程序的套用狀態。",
+  changed: "設定已在其他地方變更。請重新整理並檢查後再試。",
+  unconfirmed:
+    "無法確認儲存結果，變更可能已生效。再次提交前請重新整理並檢查伺服器狀態。草稿僅保留在本頁面中。",
+  refresh: "重新整理設定",
+  busy: "正在處理…",
+  draftHelp: "金鑰草稿不會寫入瀏覽器儲存空間。離開或重新載入頁面會清除草稿。",
+  loading: "正在載入供應商設定…",
+  loadError: "無法載入供應商設定。金鑰和連線狀態未知。",
+  stale: "目前顯示上次載入的設定。變更設定或傳送測試前，請先成功重新整理。",
+  rateLimited: "請求過多。請等待一分鐘，再重新整理後重試。",
+  testFailed:
+    "無法確認測試結果。供應商可能已處理請求或收取費用。未傳送自動重試請求。",
+  testPassed: "此模型已回應測試請求。",
+  testHistorical:
+    "此結果僅對應顯示的設定版本，不表示持續監控，也不保證其他模型可用。",
+  testBlocked: "緊急停止已啟用或其狀態未知時，無法測試。",
+  revision: "設定版本",
+  selectedModel: "待測試模型",
+  catalog: "模型目錄",
+  catalogHelp:
+    "模型和說明來自伺服器目錄。可用性、價格和限制可能變更；使用前請向供應商確認。",
+  search: "搜尋模型",
+  tools: "支援工具",
+  chatOnly: "僅聊天",
+  economy: "經濟",
+  standard: "標準",
+  premium: "進階",
+  reasoning: "推理",
+  freeIdentifier: "免費方案識別碼；請檢查供應商限制",
+  defaultModel: "預設模型",
+  more: "顯示更多模型",
+  empty: "沒有符合的模型。",
+  source: "目錄原始說明",
+  runtime: "伺服器運作",
+  browserHelp:
+    "瀏覽器是否可見由伺服器啟動設定決定。此頁面不讀取或變更目前模式。",
+  hostHelp:
+    "主機命令使用服務帳戶的作業系統權限執行，沒有隔離或權限提升。除非主機已隔離且你了解授予的存取權限，否則請保持這些功能關閉。",
+  hostSettings: "預設禁止主機執行。伺服器設定：",
+  clear: "清除搜尋",
+  removeTitle: "移除此已儲存的金鑰？",
+  notTested: "本次造訪尚無測試結果",
+  elapsed: "回應時間（毫秒）",
+  currentChanged: "此結果屬於較早的設定版本。",
+  noDescription: "未提供說明。",
+};
+export default copy;

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Agentic Company OS"
+description = "A command center for autonomous AI company operations: message the CEO or any agent directly, delegate long-running work through a hierarchical organization, inspect live progress, and approve high-risk actions."
+version = "1.0.0"
+id = "artifacts/agentic-company-os"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18464
+
+[services.development]
+run = "pnpm --filter @workspace/agentic-company-os run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/agentic-company-os", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/agentic-company-os/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18464"
+BASE_PATH = "/"
