@@ -1500,31 +1500,6 @@ for (const scenario of [
     expected: /fault.*source|source.*fault|durable source/iu,
   },
   {
-    name: "reordered deterministic primary fault evidence",
-    mutate: (records: any[]) => {
-      const observed = records.filter((item) => item.kind === "fault_observed");
-      const recovered = records.filter(
-        (item) => item.kind === "fault_recovered",
-      );
-      const firstObservedIndex = records.indexOf(observed[0]);
-      const secondObservedIndex = records.indexOf(observed[1]);
-      const firstRecoveredIndex = records.indexOf(recovered[0]);
-      const secondRecoveredIndex = records.indexOf(recovered[1]);
-      [records[firstObservedIndex], records[secondObservedIndex]] = [
-        records[secondObservedIndex],
-        records[firstObservedIndex],
-      ];
-      [records[firstRecoveredIndex], records[secondRecoveredIndex]] = [
-        records[secondRecoveredIndex],
-        records[firstRecoveredIndex],
-      ];
-      records.forEach((item, index) => {
-        item.sequence = index;
-      });
-    },
-    expected: /fault.*order|deterministic.*fault|fault.*schedule/iu,
-  },
-  {
     name: "extra duplicate primary fault evidence pair",
     mutate: (records: any[]) => {
       const observed = structuredClone(
@@ -2196,6 +2171,71 @@ test("verifier permits degraded health only through the five-second recovery pol
     await assert.rejects(
       verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
       /primary evidence.*health|health truth.*primary/iu,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("verifier accepts independently completed fault pairs while retaining schedule order", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-os-verify-"));
+  try {
+    const records = journal();
+    const positions = records.flatMap((event, index) =>
+      event.kind === "fault_observed" ? [index] : [],
+    );
+    [records[positions[0]], records[positions[1]]] = [
+      records[positions[1]],
+      records[positions[0]],
+    ];
+    records.forEach((event, index) => {
+      event.sequence = index;
+    });
+    const reportPath = await writeFixture(
+      directory,
+      validWallClockReport(),
+      records,
+    );
+    const primaryPath = `${reportPath}.primary-evidence.jsonl`;
+    const primaryRecords = (await readFile(primaryPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    for (const kind of ["fault_observed", "fault_recovered"]) {
+      const indices = primaryRecords.flatMap((event, index) =>
+        event.kind === kind ? [index] : [],
+      );
+      [primaryRecords[indices[0]], primaryRecords[indices[1]]] = [
+        primaryRecords[indices[1]],
+        primaryRecords[indices[0]],
+      ];
+    }
+    primaryRecords.forEach((event, index) => {
+      event.sequence = index;
+    });
+    await writeBoundPrimaryEvidence(reportPath, primaryRecords);
+    await verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("verifier rejects duplicated observation identity even with unchanged row count", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-os-verify-"));
+  try {
+    const records = journal();
+    const observations = records.filter(
+      (event) => event.kind === "fault_observed",
+    );
+    observations[1].data = structuredClone(observations[0].data);
+    const reportPath = await writeFixture(
+      directory,
+      validWallClockReport(),
+      records,
+    );
+    await assert.rejects(
+      verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+      /fault_observed.*duplicated/iu,
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

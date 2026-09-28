@@ -558,8 +558,11 @@ export function validateAndRecomputePrimaryEvidence(input: {
             `Primary fault recovery is missing before ${String(data.faultId)}`,
           );
         }
-        const expected = input.expectedFaults[observedFaults.size];
         const faultId = text(data.faultId, `fault observation ${index} id`);
+        const faultIndex = input.expectedFaults.findIndex(
+          (fault) => fault.id === faultId,
+        );
+        const expected = input.expectedFaults[faultIndex];
         const faultKind = text(
           data.faultKind,
           `fault observation ${index} kind`,
@@ -590,7 +593,7 @@ export function validateAndRecomputePrimaryEvidence(input: {
           throw new Error(`Primary fault ${faultId} reused a source identity`);
         }
         faultSourceIdentities.add(sourceIdentity);
-        const injection = input.report.injections[observedFaults.size];
+        const injection = input.report.injections[faultIndex];
         if (
           !expected ||
           !injection ||
@@ -632,8 +635,11 @@ export function validateAndRecomputePrimaryEvidence(input: {
         break;
       }
       case "fault_recovered": {
-        const expected = input.expectedFaults[recoveredFaults.size];
         const faultId = text(data.faultId, `fault recovery ${index} id`);
+        const faultIndex = input.expectedFaults.findIndex(
+          (fault) => fault.id === faultId,
+        );
+        const expected = input.expectedFaults[faultIndex];
         const faultKind = text(data.faultKind, `fault recovery ${index} kind`);
         const scheduledAt = iso(
           data.scheduledAt,
@@ -662,7 +668,7 @@ export function validateAndRecomputePrimaryEvidence(input: {
         }
         faultSourceIdentities.add(sourceIdentity);
         const observed = observedFaults.get(faultId);
-        const injection = input.report.injections[recoveredFaults.size];
+        const injection = input.report.injections[faultIndex];
         if (
           !expected ||
           !observed ||
