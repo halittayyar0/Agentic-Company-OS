@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 60
     env:
       CI: true
+      AGENT_BROWSER_CHANNEL: chromium
     services:
       postgres:
         image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
@@ -65,6 +66,22 @@ jobs:
 
       - name: Check production dependency licenses
         run: pnpm --filter @workspace/scripts run check:licenses
+
+      - name: Install browser for source and UI tests
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Allow browser user namespaces in the ephemeral Linux runner
+        run: |
+          if command -v apparmor_parser >/dev/null && test -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns; then
+            cat <<EOF | sudo tee /etc/apparmor.d/agentic-playwright >/dev/null
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile agentic-playwright "${HOME}/.cache/ms-playwright/**" flags=(unconfined) {
+            userns,
+          }
+          EOF
+            sudo apparmor_parser -r /etc/apparmor.d/agentic-playwright
+          fi
 
       - name: Test
         run: pnpm test
@@ -124,9 +141,6 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      - name: Install UI smoke browser
-        run: pnpm exec playwright install --with-deps chromium
-
       - name: Run UI release smoke
         run: pnpm exec playwright test --config playwright.config.ts
 
@@ -137,6 +151,8 @@ jobs:
     name: Windows runtime and process-tree regression
     runs-on: windows-latest
     timeout-minutes: 60
+    env:
+      AGENT_BROWSER_CHANNEL: chromium
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -183,6 +199,9 @@ jobs:
           }
           "ENDURANCE_POSTGRES_ROOT=$postgresRoot" >> $env:GITHUB_ENV
 
+      - name: Install browser for source and native runtime tests
+        run: pnpm exec playwright install chromium
+
       - name: Test Windows runtime paths
         run: pnpm test
 
@@ -191,9 +210,6 @@ jobs:
 
       - name: Build native runtime artifacts from the frozen lockfile
         run: pnpm run build
-
-      - name: Install native endurance observer browser
-        run: pnpm exec playwright install chromium
 
       - name: Exercise native PostgreSQL process topology
         run: >-
