@@ -10,6 +10,7 @@ import {
   type InstallationStep,
 } from "./plan";
 import { detectInstallCapabilities } from "./preflight";
+import { renderSetupPage } from "./page";
 
 export interface InstallationCredentials {
   databaseUrl?: string;
@@ -84,7 +85,7 @@ function credentialsFrom(value: unknown): InstallationCredentials {
 export async function createSetupSession(options: {
   capabilities?: typeof detectInstallCapabilities;
   execute: InstallationExecutor;
-  renderPage?: () => string;
+  renderPage?: (nonce: string) => string;
   now?: () => number;
   lifetimeMs?: number;
 }) {
@@ -122,13 +123,18 @@ export async function createSetupSession(options: {
     response.setHeader("referrer-policy", "no-referrer");
     response.setHeader("x-content-type-options", "nosniff");
     response.setHeader("x-frame-options", "DENY");
+    const nonce = randomBytes(24).toString("base64url");
+    response.setHeader(
+      "content-security-policy",
+      `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'`,
+    );
     const handle = async () => {
       if (request.headers.host !== new URL(origin).host)
         throw new RequestFailure(403, "host_rejected");
       const path = request.url;
-      if (request.method === "GET" && path === "/" && options.renderPage) {
+      if (request.method === "GET" && path === "/") {
         response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-        response.end(options.renderPage());
+        response.end((options.renderPage ?? renderSetupPage)(nonce));
         return;
       }
       const suppliedToken = Buffer.from(request.headers.authorization ?? "");
