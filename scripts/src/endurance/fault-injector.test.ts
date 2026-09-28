@@ -119,6 +119,10 @@ test("compressed-all profile live-exercises every fault kind inside a short non-
     ]),
   );
   assert.equal(schedule.length, 7);
+  assert.ok(
+    schedule.find((fault) => fault.kind === "worker_loss")!.durationMs > 10_000,
+    "worker loss must span the five-second stale threshold plus a scheduler tick",
+  );
   for (const [index, fault] of schedule.entries()) {
     assert.ok(fault.atMs + fault.durationMs < durationMs);
     const next = schedule[index + 1];

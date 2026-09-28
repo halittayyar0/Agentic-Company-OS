@@ -102,7 +102,7 @@ export function createSeededFaultSchedule(input: {
       // Short validation runs must isolate each recovery before the next fault.
       // Preserve the wider, seeded outage distribution for the 24-hour run.
       durationMs: compressedAll
-        ? 4_000
+        ? 12_000
         : longRun
           ? 30_000 + Math.floor(random() * 75_000)
           : SHORT_RUN_WORKER_LOSS_MS,
