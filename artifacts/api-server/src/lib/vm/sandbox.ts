@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { resolveProcessLaunch } from "./process-launch";
 import type { WorkspaceLocale } from "../workspace-locale";
 import type { TerminalMessage } from "./terminal-copy";
 import { getTerminalCopy, terminalMessage } from "./terminal-localization";
@@ -1432,10 +1433,20 @@ async function execInSandboxUnlocked(
   }
 
   const args = argv.slice(1);
-  const binName =
-    process.platform === "win32"
-      ? (spec.win32Alias ?? spec.binary)
-      : spec.binary;
+  let launch: { command: string; args: string[] };
+  try {
+    launch = await resolveProcessLaunch(spec.binary, args);
+  } catch {
+    return {
+      ok: false,
+      exitCode: null,
+      stdout: "",
+      stderr: copy.commandNotStarted,
+      durationMs: Date.now() - startedAt,
+      note: "PACKAGE_MANAGER_UNAVAILABLE",
+      cwd: cwdDisplay,
+    };
+  }
 
   // The durable effect hook runs only after command policy and path preflight.
   // Re-check the emergency epoch after awaiting it, then spawn and register the
@@ -1448,7 +1459,7 @@ async function execInSandboxUnlocked(
   assertLocalExecutionEpoch(executionEpoch);
 
   return new Promise<VmExecOutcome>((resolve) => {
-    const child = spawn(binName, args, {
+    const child = spawn(launch.command, launch.args, {
       cwd,
       shell: false,
       windowsHide: true,
