@@ -631,7 +631,7 @@ export async function createWallClockRunResourceDirectory(
 }> {
   const validated = validatedRunId(runId);
   const runResourceDirectory = await mkdtemp(
-    path.join(tmpdir(), `agentic-os-soak-run-${validated}-`),
+    path.join(await realpath(tmpdir()), `agentic-os-soak-run-${validated}-`),
   );
   const controlDirectory = path.join(runResourceDirectory, "control");
   const secretDirectory = path.join(runResourceDirectory, "secrets");
