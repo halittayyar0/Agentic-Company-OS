@@ -489,7 +489,11 @@ test("native harness starts API before workers and recovers exact worker and dat
             exitCode: 0,
           };
         }
-        return { stdout: "7\n", stderr: "", exitCode: 0 };
+        return {
+          stdout: execution.args.includes("--quiet") ? "7\n" : "7\nUPDATE 1\n",
+          stderr: "",
+          exitCode: 0,
+        };
       }
       return { stdout: "", stderr: "", exitCode: 0 };
     },

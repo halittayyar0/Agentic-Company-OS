@@ -711,6 +711,7 @@ export class NativePostgresEnduranceHarness {
       command: this.requireBinaries().psql,
       args: [
         "--no-psqlrc",
+        "--quiet",
         "--no-password",
         "--set",
         "ON_ERROR_STOP=1",
