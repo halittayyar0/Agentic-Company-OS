@@ -186,6 +186,23 @@ test("only scheduled disruptive faults allow bounded degraded health", () => {
     isScheduledDisruptiveHealthWindow(schedule, providerFault.atMs),
     false,
   );
+  const databaseFault = schedule.find(
+    (fault) => fault.kind === "database_unavailable",
+  )!;
+  assert.equal(
+    isScheduledDisruptiveHealthWindow(
+      schedule,
+      databaseFault.atMs + databaseFault.durationMs + 120_000,
+    ),
+    true,
+  );
+  assert.equal(
+    isScheduledDisruptiveHealthWindow(
+      schedule,
+      databaseFault.atMs + databaseFault.durationMs + 120_001,
+    ),
+    false,
+  );
 });
 
 test("Docker driver starts the exact topology and derives minute evidence from durable operations", async () => {

@@ -177,7 +177,16 @@ export function isScheduledDisruptiveHealthWindow(
     (fault) =>
       HEALTH_DISRUPTIVE_FAULTS.has(fault.kind) &&
       elapsedMs >= fault.atMs &&
-      elapsedMs <= fault.atMs + fault.durationMs + HEALTH_RECOVERY_GRACE_MS,
+      elapsedMs <=
+        fault.atMs +
+          fault.durationMs +
+          // After a database outage the minute sampler persists conservative
+          // missing buckets on its next tick. Admit that bounded recovery here;
+          // the independent verifier still requires actual durable recovery and
+          // rejects degraded samples after that recovery's five-second window.
+          (fault.kind === "database_unavailable"
+            ? 120_000
+            : HEALTH_RECOVERY_GRACE_MS),
   );
 }
 
