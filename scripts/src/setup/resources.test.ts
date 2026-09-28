@@ -15,8 +15,24 @@ import test from "node:test";
 import {
   assertInstallPortAvailable,
   createInstallationResources,
+  windowsOwnerSid,
 } from "./resources";
 import { planInstallation } from "./plan";
+
+test("private installation ACL supports local, domain and Microsoft Entra owners", () => {
+  for (const sid of [
+    "S-1-5-21-123-456-789-1001",
+    "S-1-12-1-123-456-789-1001",
+    "S-1-5-18",
+  ])
+    assert.equal(windowsOwnerSid(`"computer\\owner","${sid}"\r\n`), sid);
+  for (const value of [
+    "",
+    '"owner","S-1-5-abc"',
+    '"owner","S-1-5-18","S-1-5-19"',
+  ])
+    assert.throws(() => windowsOwnerSid(value), /owner/u);
+});
 
 function plan(mode = "native") {
   return planInstallation(

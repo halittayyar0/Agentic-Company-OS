@@ -18,6 +18,17 @@ export interface InstallationResources {
   };
 }
 
+export function windowsOwnerSid(identity: string): string {
+  // Entra accounts use authority 12, unlike local/domain accounts (authority 5).
+  // Require one complete whoami CSV row rather than matching an arbitrary SID
+  // embedded elsewhere in command output.
+  const sid = identity
+    .trim()
+    .match(/^"(?:[^"\r\n]|"")*","(S-1-\d+(?:-\d+){1,15})"$/u)?.[1];
+  if (!sid) throw new Error("Cannot establish installation owner");
+  return sid;
+}
+
 function nativeDatabaseUrl(value: string | undefined): string {
   if (!value || value.length > 4096 || /[\r\n\0]/u.test(value))
     throw new Error("database_url_required");
@@ -98,8 +109,7 @@ export async function createInstallationResources(
       "csv",
       "/nh",
     ]);
-    const sid = identity.match(/\bS-1-5-(?:\d+-)*\d+\b/u)?.[0];
-    if (!sid) throw new Error("Cannot establish installation owner");
+    const sid = windowsOwnerSid(identity);
     await runSetupProbe("icacls.exe", [
       directory,
       "/inheritance:r",
