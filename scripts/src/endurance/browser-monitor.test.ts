@@ -555,6 +555,8 @@ test("Playwright setup bounds a hung browser-server force kill", async () => {
 
 test("Playwright session gracefully closes context, browser, then server", async () => {
   const log: string[] = [];
+  let databaseOutage = false;
+  const events = new Map<string, (value: never) => void>();
   let browserClosed = false;
   let cursor = "9007199254740993";
   let transport = "disconnected";
@@ -573,7 +575,10 @@ test("Playwright session gracefully closes context, browser, then server", async
     waitFor: async () => undefined,
   };
   const page = {
-    on: () => page,
+    on: (event: string, listener: (value: never) => void) => {
+      events.set(event, listener);
+      return page;
+    },
     getByText: (text: string | RegExp) => {
       assert.equal(text, "Operasyon odası");
       return locator;
@@ -635,6 +640,7 @@ test("Playwright session gracefully closes context, browser, then server", async
       baseUrl: "http://127.0.0.1:5000",
       projectId: 1,
       operatorToken: "token",
+      isExpectedDatabaseOutage: () => databaseOutage,
     },
     {
       loadChromium: async () => ({
@@ -648,6 +654,28 @@ test("Playwright session gracefully closes context, browser, then server", async
   assert.equal((await session.sample()).reconnectCursorAdvanced, false);
   cursor = "9007199254740994";
   assert.equal((await session.sample()).reconnectCursorAdvanced, true);
+  const emitConsole = (url: string, text: string) =>
+    events.get("console")!({
+      type: () => "error",
+      text: () => text,
+      location: () => ({ url }),
+    } as never);
+  const unavailable =
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)";
+  const operationsUrl = "http://127.0.0.1:5000/api/tasks/1/operations";
+  emitConsole(operationsUrl, unavailable);
+  assert.deepEqual((await session.sample()).pageErrors, [unavailable]);
+  databaseOutage = true;
+  emitConsole(operationsUrl, unavailable);
+  assert.deepEqual((await session.sample()).pageErrors, []);
+  emitConsole("https://unrelated.example/api/tasks/1/operations", unavailable);
+  emitConsole("http://127.0.0.1:5000/api/unrelated", unavailable);
+  emitConsole(operationsUrl, "application invariant failed");
+  events.get("pageerror")!(new Error("uncaught application error") as never);
+  assert.equal((await session.sample()).pageErrors.length, 4);
+  databaseOutage = false;
+  emitConsole(operationsUrl, unavailable);
+  assert.deepEqual((await session.sample()).pageErrors, [unavailable]);
   await session.close();
   assert.deepEqual(log, ["context:close", "browser:close", "server:close"]);
 });

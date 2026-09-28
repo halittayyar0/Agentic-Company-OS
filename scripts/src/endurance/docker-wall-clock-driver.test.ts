@@ -470,6 +470,8 @@ test("Docker driver starts the exact topology and derives minute evidence from d
 test("Docker driver controls only run-scoped faults and proves SSE recovery by cursor advance", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "agentic-driver-test-"));
   const log: string[] = [];
+  let now = new Date("2026-09-01T00:03:00.000Z");
+  let expectedDatabaseOutage = () => false;
   let emergencyEnabled = false;
   let emergencyVersion = 1;
   let emergencyUpdatedAt = "2026-09-01T00:00:00.000Z";
@@ -589,11 +591,17 @@ test("Docker driver controls only run-scoped faults and proves SSE recovery by c
       harness: harness(log),
       fetchImpl,
       topologyTimeoutMs: 100,
-      browserSessionFactory: async () => session,
+      browserSessionFactory: async (input) => {
+        expectedDatabaseOutage =
+          input.isExpectedDatabaseOutage ?? (() => false);
+        return session;
+      },
       sleep: async () => undefined,
-      now: () => new Date("2026-09-01T00:03:00.000Z"),
+      now: () => now,
     });
     await driver.start();
+    const activeSession = await driver.createBrowserSession();
+    assert.equal(expectedDatabaseOutage(), false);
     assert.deepEqual(await driver.listActiveWorkers(), [
       "worker-1",
       "worker-2",
@@ -601,7 +609,11 @@ test("Docker driver controls only run-scoped faults and proves SSE recovery by c
     await driver.killWorker("worker-1");
     await driver.restartWorker("worker-1");
     await driver.pauseDatabase();
+    assert.equal(expectedDatabaseOutage(), true);
     await driver.resumeDatabase();
+    assert.equal(expectedDatabaseOutage(), true);
+    now = new Date(now.getTime() + 30_001);
+    assert.equal(expectedDatabaseOutage(), false);
 
     await driver.setProviderFault("provider_rate_limit", "provider-fault-1");
     assert.equal(log.includes("harness:due:7:7"), true);
@@ -626,7 +638,6 @@ test("Docker driver controls only run-scoped faults and proves SSE recovery by c
       [],
     );
 
-    const activeSession = await driver.createBrowserSession();
     await driver.disconnectObserverStream();
     await driver.reconnectObserverStream();
     const observer = new SoakEvidenceObserver({ expectedResponsibilities: 10 });

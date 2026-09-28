@@ -70,6 +70,7 @@ export interface DockerWallClockDriverOptions {
     operatorToken: string;
     signal?: AbortSignal;
     cleanupTimeoutMs?: number;
+    isExpectedDatabaseOutage?: () => boolean;
   }) => Promise<BrowserMonitorSession>;
   sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
   now?: () => Date;
@@ -632,6 +633,8 @@ import { DatabaseReadGate } from "./database-read-gate";
 
 export class DockerWallClockDriver implements WallClockRuntimeDriver {
   private readonly databaseReadGate = new DatabaseReadGate();
+  private databasePaused = false;
+  private databaseFailureDrainUntil = 0;
   private readonly runId: string;
   private readonly seed: number;
   private readonly durationHours: number;
@@ -1634,6 +1637,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       operatorToken: this.operatorToken,
       signal,
       cleanupTimeoutMs,
+      isExpectedDatabaseOutage: () =>
+        this.databasePaused ||
+        this.nowImpl().getTime() < this.databaseFailureDrainUntil,
     });
     this.activeBrowserSession = session;
     if (session.browserVersion) this.browserVersion = session.browserVersion;
@@ -1839,11 +1845,23 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   }
 
   pauseDatabase(): Promise<void> {
-    return this.databaseReadGate.pause(() => this.harness.pauseDatabase());
+    return this.databaseReadGate.pause(async () => {
+      this.databasePaused = true;
+      try {
+        await this.harness.pauseDatabase();
+      } catch (error) {
+        this.databasePaused = false;
+        throw error;
+      }
+    });
   }
 
-  resumeDatabase(): Promise<void> {
-    return this.databaseReadGate.resume(() => this.harness.resumeDatabase());
+  async resumeDatabase(): Promise<void> {
+    await this.databaseReadGate.resume(() => this.harness.resumeDatabase());
+    this.databasePaused = false;
+    // Responses already in flight may arrive just after the database resumes.
+    this.databaseFailureDrainUntil =
+      this.nowImpl().getTime() + Math.min(this.requestTimeoutMs, 30_000);
   }
 
   async disconnectObserverStream(): Promise<void> {

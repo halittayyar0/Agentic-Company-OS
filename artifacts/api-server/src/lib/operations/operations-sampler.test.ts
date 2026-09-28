@@ -307,6 +307,71 @@ test("a failed sample stays offline when the database recovers within the same m
   }
 });
 
+test("a stalled database query cannot turn missed minutes healthy after resuming", async () => {
+  await dbReady;
+  const sampler = await import("./operations-sampler");
+  const runtimeId = `sampler-stall-${randomUUID()}`;
+  const base = new Date("2093-01-01T12:00:00.000Z");
+  let now = new Date(base.getTime() + 60_001);
+  const config = readRuntimeOperationsConfig({
+    RUNTIME_ROLE: "worker",
+    OPS_SAMPLE_RETENTION_DAYS: "3650",
+  });
+  await db.insert(runtimeInstancesTable).values({
+    id: runtimeId,
+    role: "worker",
+    state: "healthy",
+    hostname: "sampler-stall-test",
+    processId: 324,
+    buildVersion: "test",
+    schedulerEnabled: true,
+    startedAt: base,
+    lastHeartbeatAt: now,
+    lastSchedulerTickAt: now,
+  });
+  let calls = 0;
+  const controller = sampler.startOperationsHealthSampler(
+    { id: runtimeId, startedAt: base, stopHeartbeat: async () => undefined },
+    config,
+    {
+      autoTrigger: false,
+      now: () => now,
+      recordSample: async (input) => {
+        if (++calls !== 1) return sampler.recordOperationsHealthSample(input);
+        let clockReads = 0;
+        try {
+          return await sampler.recordOperationsHealthSample({
+            ...input,
+            monotonicNow: () =>
+              clockReads++ === 0 ? 0 : config.workerStaleAfterMs + 1,
+          });
+        } finally {
+          now = new Date(base.getTime() + 130_001);
+        }
+      },
+    },
+  );
+  try {
+    await controller.trigger();
+    await controller.trigger();
+    for (const offset of [0, 60_000]) {
+      const [sample] = await db
+        .select()
+        .from(runtimeHealthSamplesTable)
+        .where(
+          eq(
+            runtimeHealthSamplesTable.bucketAt,
+            new Date(base.getTime() + offset),
+          ),
+        );
+      assert.equal(sample?.runtimeTruthState, "offline");
+      assert.equal(sample?.healthyWorkerCount, 0);
+    }
+  } finally {
+    await controller.stop();
+  }
+});
+
 test("API roles never schedule samples and worker triggers are serialized", async () => {
   const sampler = await import("./operations-sampler");
   const runtime: RuntimeInstanceHandle = {

@@ -512,7 +512,11 @@ interface PlaywrightLocatorAdapter {
 interface PlaywrightPageAdapter {
   on(
     event: "console",
-    listener: (message: { type(): string; text(): string }) => void,
+    listener: (message: {
+      type(): string;
+      text(): string;
+      location?(): { url: string };
+    }) => void,
   ): unknown;
   on(event: "pageerror", listener: (error: Error) => void): unknown;
   getByText(
@@ -582,6 +586,7 @@ export async function createPlaywrightOperationsSession(
     operatorToken: string;
     signal?: AbortSignal;
     cleanupTimeoutMs?: number;
+    isExpectedDatabaseOutage?: () => boolean;
   },
   dependencies: PlaywrightOperationsSessionDependencies = {},
 ): Promise<BrowserMonitorSession> {
@@ -690,6 +695,30 @@ export async function createPlaywrightOperationsSession(
   try {
     page.on("console", (message) => {
       if (message.type() === "error" && !intentionalOffline) {
+        // An injected database outage intentionally makes these read requests
+        // fail. Keep JavaScript errors, other endpoints/origins, and errors
+        // outside the driver's bounded outage window as failures.
+        if (
+          input.isExpectedDatabaseOutage?.() &&
+          /^Failed to load resource: the server responded with a status of (500 \(Internal Server Error\)|503 \(Service Unavailable\))$/u.test(
+            message.text(),
+          )
+        ) {
+          try {
+            const location = new URL(message.location?.().url ?? "");
+            if (
+              location.origin === baseUrl.origin &&
+              [
+                `/api/tasks/${input.projectId}/operations`,
+                "/api/ops/control",
+                "/api/org/summary",
+              ].includes(location.pathname)
+            )
+              return;
+          } catch {
+            /* Missing resource identity is never an expected error. */
+          }
+        }
         pageErrors.push(message.text());
       }
     });

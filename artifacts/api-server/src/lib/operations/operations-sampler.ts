@@ -180,11 +180,21 @@ export async function recordOperationsHealthSample(input: {
   now?: Date;
   config: RuntimeOperationsConfig;
   unavailableSamples?: readonly { bucketAt: Date; sampledAt: Date }[];
+  monotonicNow?: () => number;
 }): Promise<boolean> {
   if (input.config.role === "api") return false;
   const now = input.now ?? new Date();
   const bucketAt = completedOperationsMinute(now);
   const bucketNumber = Math.floor(bucketAt.getTime() / MINUTE_MS);
+  const monotonicNow = input.monotonicNow ?? (() => performance.now());
+  const observationStarted = monotonicNow();
+  const requireFreshObservation = () => {
+    if (monotonicNow() - observationStarted > input.config.workerStaleAfterMs) {
+      throw new Error(
+        "Operations health observation exceeded its freshness deadline",
+      );
+    }
+  };
   return db.transaction(async (transaction) => {
     if (databaseBackend === "postgresql") {
       // Transaction-scoped ownership serializes replicas for one bucket. The
@@ -193,6 +203,7 @@ export async function recordOperationsHealthSample(input: {
         sql`select pg_advisory_xact_lock(${SAMPLER_ADVISORY_LOCK_CLASS}, ${bucketNumber})`,
       );
     }
+    requireFreshObservation();
     // Failed observations can recover inside the same completed-minute bucket.
     // Preserve those observations before considering a current healthy sample;
     // the ordinary missing-bucket backfill cannot detect this shorter outage.
@@ -223,6 +234,7 @@ export async function recordOperationsHealthSample(input: {
       .from(runtimeHealthSamplesTable)
       .where(eq(runtimeHealthSamplesTable.bucketAt, bucketAt))
       .limit(1);
+    requireFreshObservation();
     if (existing) return false;
 
     const [latest] = await transaction
@@ -276,6 +288,7 @@ export async function recordOperationsHealthSample(input: {
       bucketAt,
       config: input.config,
     });
+    requireFreshObservation();
     const inserted = await transaction
       .insert(runtimeHealthSamplesTable)
       .values({
@@ -348,12 +361,25 @@ export function startOperationsHealthSampler(
         });
         unavailableSamples.clear();
       } catch (error) {
-        const bucketAt = completedOperationsMinute(now);
-        if (!unavailableSamples.has(bucketAt.getTime())) {
-          unavailableSamples.set(bucketAt.getTime(), {
-            bucketAt,
-            sampledAt: now,
-          });
+        const failedAt = nowImpl();
+        const lastBucket = completedOperationsMinute(failedAt).getTime();
+        const firstBucket = Math.max(
+          completedOperationsMinute(now).getTime(),
+          lastBucket - (MAX_CONSERVATIVE_BACKFILL_BUCKETS - 1) * MINUTE_MS,
+        );
+        // Paused PostgreSQL can resume a queued query without disconnecting.
+        // A stale observation must retain every minute missed while awaiting it.
+        for (
+          let bucket = firstBucket;
+          bucket <= lastBucket;
+          bucket += MINUTE_MS
+        ) {
+          if (!unavailableSamples.has(bucket)) {
+            unavailableSamples.set(bucket, {
+              bucketAt: new Date(bucket),
+              sampledAt: failedAt,
+            });
+          }
         }
         while (unavailableSamples.size > MAX_CONSERVATIVE_BACKFILL_BUCKETS) {
           unavailableSamples.delete(unavailableSamples.keys().next().value!);
