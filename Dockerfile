@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS build
+FROM node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS build
 
 WORKDIR /app
 ENV CI=true
@@ -9,7 +9,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm run build
 RUN pnpm --filter @workspace/api-server deploy --prod --legacy /prod/api
 
-FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS runtime
+FROM node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS runtime
 
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
