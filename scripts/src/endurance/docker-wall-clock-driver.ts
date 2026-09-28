@@ -25,6 +25,7 @@ import { waitForRuntimeTopology } from "./runtime-probe";
 import type {
   EnduranceFaultEvidenceSourceKind,
   EnduranceRuntimeAttestation,
+  EnduranceRuntimeRecoveryEvidence,
 } from "./report-schema";
 import type { SoakEvidenceObserver } from "./soak-observer";
 import type {
@@ -128,6 +129,9 @@ interface ProjectOperationsEvidence {
     state: string;
     databaseBackend: string;
     durable: boolean;
+    healthyWorkerCount: number;
+    staleWorkerCount: number;
+    schedulerTickAgeMs: number | null;
   };
   members: Array<{ agentId: number }>;
   attempts: OperationsAttemptEvidence[];
@@ -154,6 +158,7 @@ interface FaultRecoveryEvidence {
   recoveredAt: string;
   sourceKind: EnduranceFaultEvidenceSourceKind;
   sourceId: string;
+  runtimeEvidence?: EnduranceRuntimeRecoveryEvidence;
 }
 
 const EXPECTED_SERVICES = new Set(["app", "db", "worker-1", "worker-2"]);
@@ -517,6 +522,18 @@ function parseProjectOperations(value: unknown): ProjectOperationsEvidence {
         "project operations database backend",
       ),
       durable: runtime.durable === true,
+      healthyWorkerCount: integer(
+        runtime.healthyWorkerCount,
+        "runtime healthy worker count",
+      ),
+      staleWorkerCount: integer(
+        runtime.staleWorkerCount,
+        "runtime stale worker count",
+      ),
+      schedulerTickAgeMs:
+        runtime.schedulerTickAgeMs === null
+          ? null
+          : integer(runtime.schedulerTickAgeMs, "runtime scheduler tick age"),
     },
     members: (body.members as unknown[]).map((member, index) => ({
       agentId: integer(
@@ -1252,6 +1269,29 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
         }
         break;
       case "database_unavailable":
+        // Minute buckets preserve the outage even after the fleet recovers.
+        // Persist the fresh SQL-backed read model as primary recovery evidence;
+        // never overwrite an offline bucket or wait for its next aggregation.
+        if (
+          new Date(snapshot.generatedAt).getTime() > afterMs &&
+          snapshot.runtime.state === "live" &&
+          snapshot.runtime.databaseBackend === "postgresql" &&
+          snapshot.runtime.durable &&
+          snapshot.runtime.healthyWorkerCount === 2 &&
+          snapshot.runtime.schedulerTickAgeMs !== null &&
+          snapshot.runtime.schedulerTickAgeMs <= 5_000
+        ) {
+          evidence.push({
+            recoveredAt: snapshot.generatedAt,
+            sourceKind: "runtime_snapshot",
+            sourceId: `operations-runtime:${snapshot.cursor}:${snapshot.generatedAt}`,
+            runtimeEvidence: {
+              generatedAt: snapshot.generatedAt,
+              cursor: snapshot.cursor,
+              ...snapshot.runtime,
+            },
+          });
+        }
         for (const sample of snapshot.fleetHealthSamples) {
           if (hasHealthyRuntimeTruth(sample)) {
             add(
@@ -1594,6 +1634,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
               recoveredAt: recovery.recoveredAt,
               sourceKind: recovery.sourceKind,
               sourceId: recovery.sourceId,
+              runtimeEvidence: recovery.runtimeEvidence,
             });
             return;
           }

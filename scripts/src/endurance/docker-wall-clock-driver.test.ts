@@ -1549,6 +1549,118 @@ test("provider faults reject unrelated incidents and timestamp-only recovery", a
   }
 });
 
+test("database recovery uses a fresh healthy observation before the next minute bucket", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-db-recovery-"));
+  const snapshot = operationsSnapshot({ cursor: "2" });
+  let sleeps = 0;
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/api/readyz")
+      return Response.json({ status: "ready" });
+    if (url.pathname === "/api/ops/instances")
+      return Response.json({
+        instances: [
+          {
+            id: "api-1",
+            role: "api",
+            effectiveState: "healthy",
+            schedulerEnabled: false,
+          },
+          {
+            id: "worker-1",
+            role: "worker",
+            effectiveState: "healthy",
+            schedulerEnabled: true,
+          },
+          {
+            id: "worker-2",
+            role: "worker",
+            effectiveState: "healthy",
+            schedulerEnabled: true,
+          },
+        ],
+      });
+    if (url.pathname === "/api/tasks" && init?.method === "POST")
+      return Response.json({ id: 7 });
+    if (url.pathname === "/api/tasks/7/operations")
+      return Response.json(snapshot);
+    return Response.json({ emergencyStopEnabled: false });
+  };
+  const driver = new DockerWallClockDriver({
+    runId: "soak-database-recovery",
+    seed: 1,
+    durationHours: 1 / 60,
+    workspaceRoot: process.cwd(),
+    controlDirectory: directory,
+    baseUrl: "http://127.0.0.1:5000",
+    operatorToken: "token",
+    harness: harness([]),
+    fetchImpl,
+    topologyTimeoutMs: 100,
+    faultEvidenceTimeoutMs: 1_000,
+    sleep: async () => {
+      sleeps += 1;
+      snapshot.generatedAt = "2026-09-01T00:02:21.000Z";
+      snapshot.runtime.schedulerTickAgeMs = 1_000;
+    },
+    now: () => new Date("2026-09-01T00:00:00.000Z"),
+  });
+  try {
+    await driver.start();
+    snapshot.generatedAt = "2026-09-01T00:02:20.000Z";
+    snapshot.runtime.schedulerTickAgeMs = 6_000;
+    snapshot.fleetHealthSamples.push({
+      bucketAt: "2026-09-01T00:00:00.000Z",
+      sampledAt: "2026-09-01T00:01:03.000Z",
+      runtimeTruthState: "offline",
+      healthyWorkerCount: 0,
+      staleWorkerCount: 0,
+      schedulerTickAgeMs: null,
+    });
+    const observer = new SoakEvidenceObserver({ expectedResponsibilities: 10 });
+    observer.scheduleFault({
+      id: "database-unavailable-1",
+      kind: "database_unavailable",
+      scheduledAt: "2026-09-01T00:01:00.000Z",
+    });
+    await driver.captureEvidence(observer, {
+      kind: "post_fault",
+      fault: {
+        id: "database-unavailable-1",
+        kind: "database_unavailable",
+        atMs: 1,
+        durationMs: 75_000,
+        targetIndex: 0,
+      },
+      scheduledAt: "2026-09-01T00:01:00.000Z",
+    });
+    const result = observer.finalize();
+    assert.equal(result.injections[0]?.pass, true);
+    assert.equal(result.injections[0]?.recoveredAt, "2026-09-01T00:02:21.000Z");
+    assert.equal(
+      sleeps,
+      1,
+      "stale scheduler truth must not establish recovery",
+    );
+    assert.equal(
+      snapshot.fleetHealthSamples.length,
+      1,
+      "the historical offline bucket remains intact",
+    );
+    const recovery = result.primaryEvidence.find(
+      (event) => event.kind === "fault_recovered",
+    );
+    assert.equal(recovery?.data.sourceKind, "runtime_snapshot");
+    assert.equal(
+      (recovery?.data.runtimeEvidence as any)?.healthyWorkerCount,
+      2,
+    );
+  } finally {
+    await driver.stop({ keepData: false });
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("worker replacement healthy runtime event is durable recovery for a stale runtime incident", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "agentic-driver-test-"));
   const snapshot = operationsSnapshot({

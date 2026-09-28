@@ -3,6 +3,7 @@ import type {
   EnduranceFaultEvidenceSourceKind,
   EndurancePrimaryEvidenceKind,
   EndurancePrimaryEvidenceRecord,
+  EnduranceRuntimeRecoveryEvidence,
   FaultObservation,
 } from "./report-schema";
 
@@ -124,6 +125,7 @@ export class SoakEvidenceObserver {
     recoveredAt: string;
     sourceKind: EnduranceFaultEvidenceSourceKind;
     sourceId: string;
+    runtimeEvidence?: EnduranceRuntimeRecoveryEvidence;
   }): void {
     const fault = this.faults.get(input.faultId);
     if (!fault) throw new Error(`Unknown scheduled fault: ${input.faultId}`);
@@ -141,6 +143,9 @@ export class SoakEvidenceObserver {
       incidentId: fault.incidentId,
       sourceKind: input.sourceKind,
       sourceId: input.sourceId,
+      ...(input.runtimeEvidence
+        ? { runtimeEvidence: input.runtimeEvidence }
+        : {}),
     });
   }
 

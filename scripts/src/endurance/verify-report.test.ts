@@ -1596,6 +1596,87 @@ for (const scenario of [
   });
 }
 
+for (const scenario of [
+  { name: "fresh healthy runtime", patch: {}, accepted: true },
+  { name: "degraded runtime", patch: { state: "degraded" }, accepted: false },
+  {
+    name: "one healthy worker",
+    patch: { healthyWorkerCount: 1 },
+    accepted: false,
+  },
+  {
+    name: "stale scheduler",
+    patch: { schedulerTickAgeMs: 5_001 },
+    accepted: false,
+  },
+  {
+    name: "missing scheduler tick",
+    patch: { schedulerTickAgeMs: null },
+    accepted: false,
+  },
+  {
+    name: "ephemeral database",
+    patch: { databaseBackend: "pglite" },
+    accepted: false,
+  },
+  { name: "non-durable runtime", patch: { durable: false }, accepted: false },
+  {
+    name: "mismatched observation time",
+    patch: { generatedAt: "2026-09-01T00:00:00.000Z" },
+    accepted: false,
+  },
+  {
+    name: "mismatched source cursor",
+    patch: { cursor: "999" },
+    accepted: false,
+  },
+]) {
+  test(`database recovery verification: ${scenario.name}`, async () => {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "agentic-db-recovery-verify-"),
+    );
+    try {
+      const reportPath = await writeFixture(directory, validWallClockReport());
+      const records = (
+        await readFile(`${reportPath}.primary-evidence.jsonl`, "utf8")
+      )
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      const recovery = records.find(
+        (event) =>
+          event.kind === "fault_recovered" &&
+          event.data.faultKind === "database_unavailable",
+      );
+      assert.ok(recovery);
+      recovery.data.sourceKind = "runtime_snapshot";
+      recovery.data.sourceId = `operations-runtime:123:${recovery.occurredAt}`;
+      recovery.data.runtimeEvidence = {
+        generatedAt: recovery.occurredAt,
+        cursor: "123",
+        state: "live",
+        databaseBackend: "postgresql",
+        durable: true,
+        healthyWorkerCount: 2,
+        staleWorkerCount: 0,
+        schedulerTickAgeMs: 1_000,
+        ...scenario.patch,
+      };
+      await writeBoundPrimaryEvidence(reportPath, records);
+      if (scenario.accepted) {
+        await verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" });
+      } else {
+        await assert.rejects(
+          verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+          /runtime recovery/iu,
+        );
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}
+
 test("verifier requires the browser manifest and rejects modified checkpoint bytes", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "agentic-os-verify-"));
   try {

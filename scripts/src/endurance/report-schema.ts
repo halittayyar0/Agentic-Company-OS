@@ -120,8 +120,20 @@ export type EnduranceFaultEvidenceSourceKind =
   | "durable_event"
   | "operations_timeline"
   | "health_sample"
+  | "runtime_snapshot"
   | "runtime_control"
   | "sse_cursor";
+
+export interface EnduranceRuntimeRecoveryEvidence {
+  generatedAt: string;
+  cursor: string;
+  state: string;
+  databaseBackend: string;
+  durable: boolean;
+  healthyWorkerCount: number;
+  staleWorkerCount: number;
+  schedulerTickAgeMs: number | null;
+}
 
 export interface EndurancePrimaryEvidenceRecord {
   schemaVersion: 1;

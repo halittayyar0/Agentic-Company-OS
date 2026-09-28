@@ -11,6 +11,7 @@ const FAULT_SOURCE_KINDS = new Set([
   "durable_event",
   "operations_timeline",
   "health_sample",
+  "runtime_snapshot",
   "runtime_control",
   "sse_cursor",
 ]);
@@ -614,7 +615,10 @@ export function validateAndRecomputePrimaryEvidence(input: {
           data.sourceId,
           `fault observation ${index} source id`,
         );
-        if (!FAULT_SOURCE_KINDS.has(sourceKind)) {
+        if (
+          !FAULT_SOURCE_KINDS.has(sourceKind) ||
+          sourceKind === "runtime_snapshot"
+        ) {
           throw new Error(
             `Primary fault ${faultId} durable source kind is invalid`,
           );
@@ -691,6 +695,47 @@ export function validateAndRecomputePrimaryEvidence(input: {
         if (!FAULT_SOURCE_KINDS.has(sourceKind)) {
           throw new Error(
             `Primary fault ${faultId} recovery source is invalid`,
+          );
+        }
+        if (sourceKind === "runtime_snapshot") {
+          const runtime = object(
+            data.runtimeEvidence,
+            "runtime recovery evidence",
+          );
+          const generatedAt = iso(
+            runtime.generatedAt,
+            "runtime recovery generatedAt",
+          );
+          const cursor = decimalCursor(
+            runtime.cursor,
+            "runtime recovery cursor",
+          ).toString();
+          const healthyWorkers = integer(
+            runtime.healthyWorkerCount,
+            "runtime recovery healthy workers",
+          );
+          integer(runtime.staleWorkerCount, "runtime recovery stale workers");
+          const tickAge = integer(
+            runtime.schedulerTickAgeMs,
+            "runtime recovery scheduler tick age",
+          );
+          if (
+            faultKind !== "database_unavailable" ||
+            generatedAt !== occurredAt ||
+            sourceId !== `operations-runtime:${cursor}:${generatedAt}` ||
+            runtime.state !== "live" ||
+            runtime.databaseBackend !== "postgresql" ||
+            runtime.durable !== true ||
+            healthyWorkers !== 2 ||
+            tickAge > 5_000
+          ) {
+            throw new Error(
+              "Primary runtime recovery evidence is not fresh durable healthy truth",
+            );
+          }
+        } else if (data.runtimeEvidence !== undefined) {
+          throw new Error(
+            "Primary runtime recovery evidence has the wrong source kind",
           );
         }
         const sourceIdentity = `${sourceKind}:${sourceId}`;
