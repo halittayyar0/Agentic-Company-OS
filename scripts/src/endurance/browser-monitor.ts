@@ -538,6 +538,14 @@ interface PlaywrightBrowserAdapter {
   close(): Promise<void>;
   newContext(options: {
     extraHTTPHeaders: Record<string, string>;
+    locale: string;
+    storageState: {
+      cookies: never[];
+      origins: {
+        origin: string;
+        localStorage: { name: string; value: string }[];
+      }[];
+    };
   }): Promise<PlaywrightContextAdapter>;
   version(): string;
 }
@@ -626,6 +634,19 @@ export async function createPlaywrightOperationsSession(
     input.signal?.throwIfAborted();
     context = await browser.newContext({
       extraHTTPHeaders: { authorization: `Bearer ${input.operatorToken}` },
+      // This observer verifies the Operations screen after first-run language
+      // selection. Keep its semantic selectors stable without changing the
+      // operator's saved language or bypassing the separate onboarding tests.
+      locale: "tr-TR",
+      storageState: {
+        cookies: [],
+        origins: [
+          {
+            origin: new URL(baseUrl).origin,
+            localStorage: [{ name: "acos.locale.v1", value: "tr" }],
+          },
+        ],
+      },
     });
     input.signal?.throwIfAborted();
   } catch (error) {
