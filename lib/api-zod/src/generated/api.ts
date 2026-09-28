@@ -8,6 +8,233 @@
 import * as zod from 'zod';
 
 
+export const ListSourceChangesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "agentId": zod.number().int(),
+  "sourcePath": zod.string(),
+  "request": zod.string(),
+  "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
+  "revision": zod.number().int(),
+  "baseCommit": zod.string(),
+  "candidateCommit": zod.string().nullish(),
+  "candidatePath": zod.string().nullish(),
+  "appliedCommit": zod.string().nullish(),
+  "taskId": zod.number().int().nullish(),
+  "error": zod.string().nullish(),
+  "diff": zod.string().optional(),
+  "status": zod.string().optional(),
+  "workspace": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "check": zod.object({
+  "command": zod.array(zod.string()),
+  "commands": zod.array(zod.array(zod.string())).optional(),
+  "exitCode": zod.number().int().nullable(),
+  "output": zod.string(),
+  "passed": zod.boolean()
+}).nullish()
+})
+export const ListSourceChangesResponse = zod.array(ListSourceChangesResponseItem)
+
+
+
+export const prepareSourceChangeBodySourcePathMax = 2048;
+
+export const prepareSourceChangeBodyRequestMax = 4000;
+
+
+
+export const PrepareSourceChangeBody = zod.object({
+  "id": zod.string().uuid(),
+  "agentId": zod.number().int().min(1),
+  "sourcePath": zod.string().min(1).max(prepareSourceChangeBodySourcePathMax),
+  "request": zod.string().min(1).max(prepareSourceChangeBodyRequestMax)
+})
+
+export const PrepareSourceChangeResponse = zod.object({
+  "id": zod.string().uuid(),
+  "agentId": zod.number().int(),
+  "sourcePath": zod.string(),
+  "request": zod.string(),
+  "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
+  "revision": zod.number().int(),
+  "baseCommit": zod.string(),
+  "candidateCommit": zod.string().nullish(),
+  "candidatePath": zod.string().nullish(),
+  "appliedCommit": zod.string().nullish(),
+  "taskId": zod.number().int().nullish(),
+  "error": zod.string().nullish(),
+  "diff": zod.string().optional(),
+  "status": zod.string().optional(),
+  "workspace": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "check": zod.object({
+  "command": zod.array(zod.string()),
+  "commands": zod.array(zod.array(zod.string())).optional(),
+  "exitCode": zod.number().int().nullable(),
+  "output": zod.string(),
+  "passed": zod.boolean()
+}).nullish()
+})
+
+
+export const InspectSourceChangeParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const InspectSourceChangeResponse = zod.object({
+  "id": zod.string().uuid(),
+  "agentId": zod.number().int(),
+  "sourcePath": zod.string(),
+  "request": zod.string(),
+  "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
+  "revision": zod.number().int(),
+  "baseCommit": zod.string(),
+  "candidateCommit": zod.string().nullish(),
+  "candidatePath": zod.string().nullish(),
+  "appliedCommit": zod.string().nullish(),
+  "taskId": zod.number().int().nullish(),
+  "error": zod.string().nullish(),
+  "diff": zod.string().optional(),
+  "status": zod.string().optional(),
+  "workspace": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "check": zod.object({
+  "command": zod.array(zod.string()),
+  "commands": zod.array(zod.array(zod.string())).optional(),
+  "exitCode": zod.number().int().nullable(),
+  "output": zod.string(),
+  "passed": zod.boolean()
+}).nullish()
+})
+
+
+export const CheckSourceChangeParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+export const checkSourceChangeBodyCommandOneMax = 64;
+
+export const checkSourceChangeBodyCommandTwoItemMax = 64;
+
+export const checkSourceChangeBodyCommandTwoMax = 4;
+
+
+
+export const CheckSourceChangeBody = zod.object({
+  "expectedRevision": zod.number().int().min(1),
+  "command": zod.union([zod.array(zod.string()).min(1).max(checkSourceChangeBodyCommandOneMax),zod.array(zod.array(zod.string()).min(1).max(checkSourceChangeBodyCommandTwoItemMax)).min(1).max(checkSourceChangeBodyCommandTwoMax)])
+})
+
+export const CheckSourceChangeResponse = zod.object({
+  "id": zod.string().uuid(),
+  "agentId": zod.number().int(),
+  "sourcePath": zod.string(),
+  "request": zod.string(),
+  "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
+  "revision": zod.number().int(),
+  "baseCommit": zod.string(),
+  "candidateCommit": zod.string().nullish(),
+  "candidatePath": zod.string().nullish(),
+  "appliedCommit": zod.string().nullish(),
+  "taskId": zod.number().int().nullish(),
+  "error": zod.string().nullish(),
+  "diff": zod.string().optional(),
+  "status": zod.string().optional(),
+  "workspace": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "check": zod.object({
+  "command": zod.array(zod.string()),
+  "commands": zod.array(zod.array(zod.string())).optional(),
+  "exitCode": zod.number().int().nullable(),
+  "output": zod.string(),
+  "passed": zod.boolean()
+}).nullish()
+})
+
+
+export const ApplySourceChangeParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+
+
+export const ApplySourceChangeBody = zod.object({
+  "expectedRevision": zod.number().int().min(1)
+})
+
+export const ApplySourceChangeResponse = zod.object({
+  "id": zod.string().uuid(),
+  "agentId": zod.number().int(),
+  "sourcePath": zod.string(),
+  "request": zod.string(),
+  "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
+  "revision": zod.number().int(),
+  "baseCommit": zod.string(),
+  "candidateCommit": zod.string().nullish(),
+  "candidatePath": zod.string().nullish(),
+  "appliedCommit": zod.string().nullish(),
+  "taskId": zod.number().int().nullish(),
+  "error": zod.string().nullish(),
+  "diff": zod.string().optional(),
+  "status": zod.string().optional(),
+  "workspace": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "check": zod.object({
+  "command": zod.array(zod.string()),
+  "commands": zod.array(zod.array(zod.string())).optional(),
+  "exitCode": zod.number().int().nullable(),
+  "output": zod.string(),
+  "passed": zod.boolean()
+}).nullish()
+})
+
+
+export const RollbackSourceChangeParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+
+
+export const RollbackSourceChangeBody = zod.object({
+  "expectedRevision": zod.number().int().min(1)
+})
+
+export const RollbackSourceChangeResponse = zod.object({
+  "id": zod.string().uuid(),
+  "agentId": zod.number().int(),
+  "sourcePath": zod.string(),
+  "request": zod.string(),
+  "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
+  "revision": zod.number().int(),
+  "baseCommit": zod.string(),
+  "candidateCommit": zod.string().nullish(),
+  "candidatePath": zod.string().nullish(),
+  "appliedCommit": zod.string().nullish(),
+  "taskId": zod.number().int().nullish(),
+  "error": zod.string().nullish(),
+  "diff": zod.string().optional(),
+  "status": zod.string().optional(),
+  "workspace": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "check": zod.object({
+  "command": zod.array(zod.string()),
+  "commands": zod.array(zod.array(zod.string())).optional(),
+  "exitCode": zod.number().int().nullable(),
+  "output": zod.string(),
+  "passed": zod.boolean()
+}).nullish()
+})
+
+
 /**
  * @summary List persistent personal skills and utility presets
  */

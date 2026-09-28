@@ -20,3 +20,4 @@ export * from "./task-answer-requests";
 export * from "./operator-requests";
 export * from "./execution-policy";
 export * from "./capability-installations";
+export * from "./source-changes";

@@ -5,6 +5,61 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+export type SourceChangeState = typeof SourceChangeState[keyof typeof SourceChangeState];
+
+
+export const SourceChangeState = {
+  preparing: 'preparing',
+  draft: 'draft',
+  checking: 'checking',
+  verified: 'verified',
+  applying: 'applying',
+  applied: 'applied',
+  rolling_back: 'rolling_back',
+  rolled_back: 'rolled_back',
+  failed: 'failed',
+  unknown: 'unknown',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SourceChangeCheck = {
+  command: string[];
+  commands?: string[][];
+  /** @nullable */
+  exitCode: number | null;
+  output: string;
+  passed: boolean;
+} | null;
+
+export interface SourceChange {
+  id: string;
+  agentId: number;
+  sourcePath: string;
+  request: string;
+  state: SourceChangeState;
+  revision: number;
+  baseCommit: string;
+  /** @nullable */
+  candidateCommit?: string | null;
+  /** @nullable */
+  candidatePath?: string | null;
+  /** @nullable */
+  appliedCommit?: string | null;
+  /** @nullable */
+  taskId?: number | null;
+  /** @nullable */
+  error?: string | null;
+  diff?: string;
+  status?: string;
+  workspace?: string;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  check?: SourceChangeCheck;
+}
+
 export type CapabilityPackId = typeof CapabilityPackId[keyof typeof CapabilityPackId];
 
 
@@ -3368,6 +3423,38 @@ export type PageLimitParameter = number;
  * Return rows with an id lower than this cursor.
  */
 export type BeforeIdParameter = number;
+
+export type PrepareSourceChangeBody = {
+  id: string;
+  /** @minimum 1 */
+  agentId: number;
+  /**
+     * @minLength 1
+     * @maxLength 2048
+     */
+  sourcePath: string;
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  request: string;
+};
+
+export type CheckSourceChangeBody = {
+  /** @minimum 1 */
+  expectedRevision: number;
+  command: string[] | string[][];
+};
+
+export type ApplySourceChangeBody = {
+  /** @minimum 1 */
+  expectedRevision: number;
+};
+
+export type RollbackSourceChangeBody = {
+  /** @minimum 1 */
+  expectedRevision: number;
+};
 
 export type SavePersonalCapabilityBody = {
   manifest: PersonalCapabilityManifest;

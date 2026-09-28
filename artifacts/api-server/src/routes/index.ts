@@ -14,6 +14,7 @@ import workforceBlueprintRouter from "./workforce-blueprints";
 import projectMeetingsRouter from "./project-meetings";
 import operationsRouter from "./operations";
 import skillsRouter from "./skills";
+import sourceChangesRouter from "./source-changes";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(workforceBlueprintRouter);
 router.use(projectMeetingsRouter);
 router.use(operationsRouter);
 router.use(skillsRouter);
+router.use(sourceChangesRouter);
 
 export default router;

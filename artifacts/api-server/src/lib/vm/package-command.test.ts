@@ -23,7 +23,7 @@ test(
       const { closeDatabase } = await import("@workspace/db");
       await closeDatabase();
     });
-    const { execInSandbox } = await import("./sandbox");
+    const { execInSandbox, execArgvInSandbox } = await import("./sandbox");
     const result = await execInSandbox(
       1001,
       "npm --version",
@@ -33,5 +33,27 @@ test(
     );
     assert.equal(result.ok, true, `${result.note}: ${result.stderr}`);
     assert.match(result.stdout.trim(), /^\d+\.\d+\.\d+$/);
+    const structured = await execArgvInSandbox(
+      1001,
+      [
+        "node",
+        "--eval",
+        "process.stdout.write(JSON.stringify(process.argv.slice(1)))",
+        "path with spaces",
+        "literal&argument",
+      ],
+      10000,
+      undefined,
+      "en",
+    );
+    assert.equal(structured.ok, true, structured.stderr);
+    assert.deepEqual(JSON.parse(structured.stdout), [
+      "path with spaces",
+      "literal&argument",
+    ]);
+    assert.throws(
+      () => execArgvInSandbox(1001, ["node", "bad\0argument"]),
+      /Invalid structured/,
+    );
   },
 );

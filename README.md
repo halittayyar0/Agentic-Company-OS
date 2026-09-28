@@ -296,3 +296,7 @@ Contributions are welcome. Start with [CONTRIBUTING.md](./CONTRIBUTING.md), foll
 Licensed under the [MIT License](./LICENSE).
 
 Bundled IBM Plex font files remain under the SIL Open Font License 1.1; the distributable notice is in [THIRD_PARTY_NOTICES.txt](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt).
+
+### Let an agent improve a repository
+
+Settings includes a [reviewed source-change workflow](docs/source-workspaces.md): isolated Git copies, real agent projects, recorded checks, exact-version application and rollback commits. Applying source and deploying a running service are separate steps.

@@ -29,6 +29,7 @@ import type {
   AgentRequestReceipt,
   AgentTemplate,
   AgentUpdate,
+  ApplySourceChangeBody,
   ApprovalDecisionInput,
   ApprovalRequest,
   BrowserCloseInput,
@@ -39,6 +40,7 @@ import type {
   BrowserView,
   CapabilityCatalog,
   CapabilityPackSelection,
+  CheckSourceChangeBody,
   CompanyChannel,
   CompanyChannelMember,
   CompanyChannelMemberInput,
@@ -86,6 +88,7 @@ import type {
   OrgSummary,
   PersonalCapability,
   PersonalCapabilityManifest,
+  PrepareSourceChangeBody,
   ProjectMeetingActionItemInput,
   ProjectMeetingActionItemUpdate,
   ProjectMeetingCommandReceipt,
@@ -106,7 +109,9 @@ import type {
   ReadinessStatus,
   ReconcileOperationInput,
   ResetAgentAvatarParams,
+  RollbackSourceChangeBody,
   SavePersonalCapabilityBody,
+  SourceChange,
   StreamOperationsParams,
   Task,
   TaskAnswerReceipt,
@@ -163,6 +168,411 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListSourceChangesUrl = () => {
+
+
+
+
+  return `/api/source-changes`
+}
+
+export const listSourceChanges = async ( options?: Parameters<typeof customFetch>[1]): Promise<SourceChange[]> => {
+
+  return customFetch<SourceChange[]>(getListSourceChangesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSourceChangesQueryKey = () => {
+    return [
+    `/api/source-changes`
+    ] as const;
+    }
+
+
+export const getListSourceChangesQueryOptions = <TData = Awaited<ReturnType<typeof listSourceChanges>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSourceChanges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSourceChangesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSourceChanges>>> = ({ signal }) => listSourceChanges({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSourceChanges>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSourceChangesQueryResult = NonNullable<Awaited<ReturnType<typeof listSourceChanges>>>
+export type ListSourceChangesQueryError = ErrorType<unknown>
+
+
+
+export function useListSourceChanges<TData = Awaited<ReturnType<typeof listSourceChanges>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSourceChanges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSourceChangesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPrepareSourceChangeUrl = () => {
+
+
+
+
+  return `/api/source-changes`
+}
+
+export const prepareSourceChange = async (prepareSourceChangeBody: PrepareSourceChangeBody, options?: Parameters<typeof customFetch>[1]): Promise<SourceChange> => {
+
+  return customFetch<SourceChange>(getPrepareSourceChangeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(prepareSourceChangeBody)
+  }
+);}
+
+
+
+
+
+export const getPrepareSourceChangeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof prepareSourceChange>>, TError,{data: BodyType<PrepareSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof prepareSourceChange>>, TError,{data: BodyType<PrepareSourceChangeBody>}, TContext> => {
+
+const mutationKey = ['prepareSourceChange'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof prepareSourceChange>>, {data: BodyType<PrepareSourceChangeBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  prepareSourceChange(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PrepareSourceChangeMutationResult = NonNullable<Awaited<ReturnType<typeof prepareSourceChange>>>
+    export type PrepareSourceChangeMutationBody = BodyType<PrepareSourceChangeBody>
+    export type PrepareSourceChangeMutationError = ErrorType<unknown>
+
+    export const usePrepareSourceChange = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof prepareSourceChange>>, TError,{data: BodyType<PrepareSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof prepareSourceChange>>,
+        TError,
+        {data: BodyType<PrepareSourceChangeBody>},
+        TContext
+      > => {
+      return useMutation(getPrepareSourceChangeMutationOptions(options));
+    }
+
+export const getInspectSourceChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/source-changes/${id}`
+}
+
+export const inspectSourceChange = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<SourceChange> => {
+
+  return customFetch<SourceChange>(getInspectSourceChangeUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getInspectSourceChangeQueryKey = (id: string,) => {
+    return [
+    `/api/source-changes/${id}`
+    ] as const;
+    }
+
+
+export const getInspectSourceChangeQueryOptions = <TData = Awaited<ReturnType<typeof inspectSourceChange>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof inspectSourceChange>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getInspectSourceChangeQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof inspectSourceChange>>> = ({ signal }) => inspectSourceChange(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof inspectSourceChange>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type InspectSourceChangeQueryResult = NonNullable<Awaited<ReturnType<typeof inspectSourceChange>>>
+export type InspectSourceChangeQueryError = ErrorType<unknown>
+
+
+
+export function useInspectSourceChange<TData = Awaited<ReturnType<typeof inspectSourceChange>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof inspectSourceChange>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getInspectSourceChangeQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCheckSourceChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/source-changes/${id}/check`
+}
+
+export const checkSourceChange = async (id: string,
+    checkSourceChangeBody: CheckSourceChangeBody, options?: Parameters<typeof customFetch>[1]): Promise<SourceChange> => {
+
+  return customFetch<SourceChange>(getCheckSourceChangeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(checkSourceChangeBody)
+  }
+);}
+
+
+
+
+
+export const getCheckSourceChangeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkSourceChange>>, TError,{id: string;data: BodyType<CheckSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkSourceChange>>, TError,{id: string;data: BodyType<CheckSourceChangeBody>}, TContext> => {
+
+const mutationKey = ['checkSourceChange'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkSourceChange>>, {id: string;data: BodyType<CheckSourceChangeBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  checkSourceChange(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckSourceChangeMutationResult = NonNullable<Awaited<ReturnType<typeof checkSourceChange>>>
+    export type CheckSourceChangeMutationBody = BodyType<CheckSourceChangeBody>
+    export type CheckSourceChangeMutationError = ErrorType<void>
+
+    export const useCheckSourceChange = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkSourceChange>>, TError,{id: string;data: BodyType<CheckSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkSourceChange>>,
+        TError,
+        {id: string;data: BodyType<CheckSourceChangeBody>},
+        TContext
+      > => {
+      return useMutation(getCheckSourceChangeMutationOptions(options));
+    }
+
+export const getApplySourceChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/source-changes/${id}/apply`
+}
+
+export const applySourceChange = async (id: string,
+    applySourceChangeBody: ApplySourceChangeBody, options?: Parameters<typeof customFetch>[1]): Promise<SourceChange> => {
+
+  return customFetch<SourceChange>(getApplySourceChangeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(applySourceChangeBody)
+  }
+);}
+
+
+
+
+
+export const getApplySourceChangeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applySourceChange>>, TError,{id: string;data: BodyType<ApplySourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof applySourceChange>>, TError,{id: string;data: BodyType<ApplySourceChangeBody>}, TContext> => {
+
+const mutationKey = ['applySourceChange'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applySourceChange>>, {id: string;data: BodyType<ApplySourceChangeBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  applySourceChange(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplySourceChangeMutationResult = NonNullable<Awaited<ReturnType<typeof applySourceChange>>>
+    export type ApplySourceChangeMutationBody = BodyType<ApplySourceChangeBody>
+    export type ApplySourceChangeMutationError = ErrorType<void>
+
+    export const useApplySourceChange = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applySourceChange>>, TError,{id: string;data: BodyType<ApplySourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof applySourceChange>>,
+        TError,
+        {id: string;data: BodyType<ApplySourceChangeBody>},
+        TContext
+      > => {
+      return useMutation(getApplySourceChangeMutationOptions(options));
+    }
+
+export const getRollbackSourceChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/source-changes/${id}/rollback`
+}
+
+export const rollbackSourceChange = async (id: string,
+    rollbackSourceChangeBody: RollbackSourceChangeBody, options?: Parameters<typeof customFetch>[1]): Promise<SourceChange> => {
+
+  return customFetch<SourceChange>(getRollbackSourceChangeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(rollbackSourceChangeBody)
+  }
+);}
+
+
+
+
+
+export const getRollbackSourceChangeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rollbackSourceChange>>, TError,{id: string;data: BodyType<RollbackSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rollbackSourceChange>>, TError,{id: string;data: BodyType<RollbackSourceChangeBody>}, TContext> => {
+
+const mutationKey = ['rollbackSourceChange'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rollbackSourceChange>>, {id: string;data: BodyType<RollbackSourceChangeBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  rollbackSourceChange(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RollbackSourceChangeMutationResult = NonNullable<Awaited<ReturnType<typeof rollbackSourceChange>>>
+    export type RollbackSourceChangeMutationBody = BodyType<RollbackSourceChangeBody>
+    export type RollbackSourceChangeMutationError = ErrorType<void>
+
+    export const useRollbackSourceChange = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rollbackSourceChange>>, TError,{id: string;data: BodyType<RollbackSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rollbackSourceChange>>,
+        TError,
+        {id: string;data: BodyType<RollbackSourceChangeBody>},
+        TContext
+      > => {
+      return useMutation(getRollbackSourceChangeMutationOptions(options));
+    }
 
 export const getListPersonalCapabilitiesUrl = () => {
 

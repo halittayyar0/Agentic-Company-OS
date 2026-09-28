@@ -1,3 +1,4 @@
+import { SourceWorkspaceSettings } from "../components/settings/source-workspaces";
 import { LanguagePackStatus } from "../components/i18n/language-pack-status";
 import { ExecutionPolicySettings } from "../components/settings/execution-policy";
 import { useEffect, useRef, useState } from "react";
@@ -261,6 +262,7 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
         </p>
       </header>
       <ExecutionPolicySettings />
+      <SourceWorkspaceSettings />
       <section className={panelClass} aria-labelledby="preferences-title">
         <h2 id="preferences-title" className="text-lg font-semibold">
           {c.preferences}

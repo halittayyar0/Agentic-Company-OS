@@ -42,6 +42,164 @@ tags:
   - name: vm
     description: Per-agent virtual computer (sandbox filesystem + terminal)
 paths:
+  /source-changes:
+    get:
+      operationId: listSourceChanges
+      tags: [source]
+      responses:
+        "200":
+          description: Source change history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SourceChange"
+    post:
+      operationId: prepareSourceChange
+      tags: [source]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [id, agentId, sourcePath, request]
+              properties:
+                id: { type: string, format: uuid }
+                agentId: { type: integer, minimum: 1 }
+                sourcePath: { type: string, minLength: 1, maxLength: 2048 }
+                request: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        "200":
+          description: Isolated source workspace and agent project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourceChange"
+  /source-changes/{id}:
+    get:
+      operationId: inspectSourceChange
+      tags: [source]
+      parameters:
+        - {
+            name: id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: Source change and redacted diff
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourceChange"
+  /source-changes/{id}/check:
+    post:
+      operationId: checkSourceChange
+      tags: [source]
+      parameters:
+        - {
+            name: id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedRevision, command]
+              properties:
+                expectedRevision: { type: integer, minimum: 1 }
+                command:
+                  oneOf:
+                    - type: array
+                      minItems: 1
+                      maxItems: 64
+                      items: { type: string }
+                    - type: array
+                      minItems: 1
+                      maxItems: 4
+                      items:
+                        type: array
+                        minItems: 1
+                        maxItems: 64
+                        items: { type: string }
+      responses:
+        "200":
+          description: Recorded result; an unknown outcome must not be replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourceChange"
+        "409":
+          description: State, revision, repository or permission conflict
+  /source-changes/{id}/apply:
+    post:
+      operationId: applySourceChange
+      tags: [source]
+      parameters:
+        - {
+            name: id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedRevision]
+              properties:
+                expectedRevision: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Recorded result; an unknown outcome must not be replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourceChange"
+        "409":
+          description: State, revision, repository or permission conflict
+  /source-changes/{id}/rollback:
+    post:
+      operationId: rollbackSourceChange
+      tags: [source]
+      parameters:
+        - {
+            name: id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedRevision]
+              properties:
+                expectedRevision: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Recorded result; an unknown outcome must not be replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourceChange"
+        "409":
+          description: State, revision, repository or permission conflict
   /skills/extensions:
     get:
       operationId: listPersonalCapabilities
@@ -2234,6 +2392,63 @@ components:
       in: cookie
       name: agentic_os_session
   schemas:
+    SourceChange:
+      type: object
+      required:
+        [
+          id,
+          agentId,
+          sourcePath,
+          request,
+          state,
+          revision,
+          baseCommit,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        agentId: { type: integer }
+        sourcePath: { type: string }
+        request: { type: string }
+        state:
+          type: string
+          enum:
+            [
+              preparing,
+              draft,
+              checking,
+              verified,
+              applying,
+              applied,
+              rolling_back,
+              rolled_back,
+              failed,
+              unknown,
+            ]
+        revision: { type: integer }
+        baseCommit: { type: string }
+        candidateCommit: { type: [string, "null"] }
+        candidatePath: { type: [string, "null"] }
+        appliedCommit: { type: [string, "null"] }
+        taskId: { type: [integer, "null"] }
+        error: { type: [string, "null"] }
+        diff: { type: string }
+        status: { type: string }
+        workspace: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        check:
+          type: [object, "null"]
+          required: [command, exitCode, output, passed]
+          properties:
+            command: { type: array, items: { type: string } }
+            commands:
+              type: array
+              items: { type: array, items: { type: string } }
+            exitCode: { type: [integer, "null"] }
+            output: { type: string }
+            passed: { type: boolean }
     CapabilityPackId:
       type: string
       enum: [data, documents, web, code, planning]

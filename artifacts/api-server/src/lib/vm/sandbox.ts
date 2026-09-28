@@ -1329,6 +1329,7 @@ async function execInSandboxUnlocked(
   executionEpoch = captureLocalExecutionEpoch(),
   beforeEffect?: BeforeEffectHook,
   locale: WorkspaceLocale = "tr",
+  structuredArgs?: readonly string[],
 ): Promise<VmExecOutcome> {
   const copy = getTerminalCopy(locale);
   const startedAt = Date.now();
@@ -1339,7 +1340,7 @@ async function execInSandboxUnlocked(
   const cwdDisplay = `/${cwdState.rel}`.replace(/\/$/, "") || "/";
   await assertNoSymlinkPath(agentId, cwd);
 
-  const argv = tokenize(command);
+  const argv = structuredArgs ? [...structuredArgs] : tokenize(command);
   if (argv.length === 0) {
     return {
       ok: false,
@@ -1354,7 +1355,7 @@ async function execInSandboxUnlocked(
 
   const head = argv[0].toLowerCase();
 
-  if (FORBIDDEN_CHARS.test(command)) {
+  if (!structuredArgs && FORBIDDEN_CHARS.test(command)) {
     return {
       ok: false,
       exitCode: null,
@@ -1532,12 +1533,13 @@ async function execInSandboxUnlocked(
  * share the same virtual cwd, so their commands must never resolve `cd` and
  * relative paths concurrently.
  */
-export async function execInSandbox(
+async function runQueuedSandboxCommand(
   agentId: number,
   command: string,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   beforeEffect?: BeforeEffectHook,
   locale: WorkspaceLocale = "tr",
+  structuredArgs?: readonly string[],
 ): Promise<VmExecOutcome> {
   const copy = getTerminalCopy(locale);
   const executionEpoch = captureLocalExecutionEpoch();
@@ -1570,6 +1572,7 @@ export async function execInSandbox(
       executionEpoch,
       beforeEffect,
       locale,
+      structuredArgs,
     );
   } finally {
     release();
@@ -1582,6 +1585,50 @@ export async function execInSandbox(
 // ---------------------------------------------------------------------------
 // Agent sudo -- approval-controlled full-authority host execution
 // ---------------------------------------------------------------------------
+
+export function execInSandbox(
+  agentId: number,
+  command: string,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  beforeEffect?: BeforeEffectHook,
+  locale: WorkspaceLocale = "tr",
+) {
+  return runQueuedSandboxCommand(
+    agentId,
+    command,
+    timeoutMs,
+    beforeEffect,
+    locale,
+  );
+}
+
+/** Internal structured invocation for reviewed workflows. Retains executable
+ * allowlist, OS gate, FIFO ownership, stop epoch and the effect hook. Arguments
+ * go directly to spawn(shell:false); no shell parsing occurs. */
+export function execArgvInSandbox(
+  agentId: number,
+  argv: readonly string[],
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  beforeEffect?: BeforeEffectHook,
+  locale: WorkspaceLocale = "tr",
+) {
+  if (
+    !Array.isArray(argv) ||
+    argv.length < 1 ||
+    argv.length > 128 ||
+    argv.some((value) => typeof value !== "string" || value.includes("\0")) ||
+    JSON.stringify(argv).length > 16000
+  )
+    throw new TypeError("Invalid structured command arguments");
+  return runQueuedSandboxCommand(
+    agentId,
+    argv.join(" "),
+    timeoutMs,
+    beforeEffect,
+    locale,
+    argv,
+  );
+}
 
 const AGENT_SUDO_TIMEOUT_MS = 120_000;
 const AGENT_SUDO_MAX_OUTPUT = 256 * 1024;
