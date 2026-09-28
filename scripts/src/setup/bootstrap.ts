@@ -24,7 +24,7 @@ export function parseSetupArguments(argv: string[]) {
       }
     } else
       throw new Error(
-        "Usage: pnpm setup [--resume <installation directory>] [--data-dir <private parent directory>]",
+        "Usage: pnpm run setup [--resume <installation directory>] [--data-dir <private parent directory>]",
       );
   }
   if (resume && parent)
@@ -36,7 +36,7 @@ export async function launchSetup(argv = process.argv.slice(2)) {
     workspaceRoot = fileURLToPath(new URL("../../..", import.meta.url));
   const pnpmPath = process.env.npm_execpath;
   if (!pnpmPath || !path.isAbsolute(pnpmPath))
-    throw new Error("Start the installer with pnpm setup");
+    throw new Error("Start the installer with pnpm run setup");
   const controller = new AbortController();
   const restored = args.resume
     ? await readInstallation(args.resume, workspaceRoot)
@@ -92,7 +92,7 @@ export async function launchSetup(argv = process.argv.slice(2)) {
         try {
           const result = await executor.execute(plan, credentials, progress);
           process.stdout.write(
-            `Installation: ${executor.installationDirectory()}\nRestart: pnpm setup --resume "${executor.installationDirectory()}"\n`,
+            `Installation: ${executor.installationDirectory()}\nRestart: pnpm run setup --resume "${executor.installationDirectory()}"\n`,
           );
           return result;
         } catch (error) {

@@ -36,7 +36,7 @@ After installing Node 24 and the pinned pnpm version, clone this repository and 
 
 ```text
 pnpm install --frozen-lockfile
-pnpm setup
+pnpm run setup
 ```
 
 Open the private setup link printed in that terminal. The wizard offers Turkish, English, German, Russian, Simplified Chinese, Traditional Chinese and Arabic (right-to-left). Choose **This computer** or **Container**, a provider (or configure it later), execution permissions and tool packs. Docker is offered only when a running Linux engine and Compose v2 are detected. Native installation requires an existing dedicated PostgreSQL database; container installation creates its own database volume.
@@ -46,7 +46,7 @@ The installer builds the application, starts one API and two workers, persists y
 The terminal prints the installation directory. Resume or restart from the same checkout with:
 
 ```text
-pnpm setup --resume "/absolute/path/to/instance-UUID"
+pnpm run setup --resume "/absolute/path/to/instance-UUID"
 ```
 
 On Windows use the full Windows path instead. Completed installations retain later language, pack and permission changes. An interrupted installation reapplies the original reviewed choices before finishing. Only one launcher may own an installation at a time. Back up the private installation directory **and** PostgreSQL separately; never commit either to Git.

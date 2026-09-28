@@ -94,7 +94,7 @@ Playwright sessions and snapshot-ref registries stay in the worker process that 
 
 ## Quick start
 
-**Guided installation:** after installing the prerequisites below, run `pnpm install --frozen-lockfile` and `pnpm setup`. The browser wizard selects this computer or a container, seven languages, a model provider, execution permissions, tool packs and optional private phone access. See [setup and restart instructions](./docs/self-hosting.md#guided-installation-windows-linux-and-macos).
+**Guided installation:** after installing the prerequisites below, run `pnpm install --frozen-lockfile` and `pnpm run setup`. The browser wizard selects this computer or a container, seven languages, a model provider, execution permissions, tool packs and optional private phone access. See [setup and restart instructions](./docs/self-hosting.md#guided-installation-windows-linux-and-macos).
 
 ### Prerequisites
 

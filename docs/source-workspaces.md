@@ -14,7 +14,7 @@ Apply requires the original repository to remain clean at the exact starting com
 
 ## Runtime and recovery boundaries
 
-Applying source does **not** restart a running application or reverse database migrations. For this application's native installation, stop the owned runtime, run `pnpm build` from the updated checkout, then resume its existing private installation directory with `pnpm setup --resume <installation-directory>` and check readiness. Preserve the installation's secrets and database. For containers, rebuild and restart the existing installation without removing its volumes. Back up and review database migration compatibility before updating a live service.
+Applying source does **not** restart a running application or reverse database migrations. For this application's native installation, stop the owned runtime, run `pnpm build` from the updated checkout, then resume its existing private installation directory with `pnpm run setup --resume <installation-directory>` and check readiness. Preserve the installation's secrets and database. For containers, rebuild and restart the existing installation without removing its volumes. Back up and review database migration compatibility before updating a live service.
 
 A lost connection is not permission to repeat an action. Refresh the record. An interrupted apply/rollback is recorded as `unknown` when its failure can be recorded; a hard process crash may leave `preparing`, `checking`, `applying` or `rolling_back`. These states cannot be automatically applied again. Inspect Git status, HEAD, the recorded base/candidate and the service logs before manual reconciliation. No automated destructive recovery is provided.
 

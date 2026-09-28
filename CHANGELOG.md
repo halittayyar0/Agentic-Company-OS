@@ -7,7 +7,7 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Added
 
-- Seven-language `pnpm setup` wizard for native PostgreSQL or Docker Compose, private credentials, interruption/resume, tool packs and optional private HTTPS phone access.
+- Seven-language `pnpm run setup` wizard for native PostgreSQL or Docker Compose, private credentials, interruption/resume, tool packs and optional private HTTPS phone access.
 - Persisted read-only, approval, full-access and custom execution policy with fresh effect checks and revocation of stale automatic grants.
 - Personal guides, utility presets and revision-bound Node programs with import/export, enable/disable and recorded execution; 12 additional data/document processors.
 - Isolated Git source workspaces with agent projects, recorded checks, exact tested-revision application and rollback commits. Application deployment and database rollback remain separate operator tasks.

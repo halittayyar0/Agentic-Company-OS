@@ -94,7 +94,7 @@ Playwright oturumları ve snapshot-ref registry'leri, onları oluşturan worker 
 
 ## Hızlı başlangıç
 
-**Kurulum sihirbazı:** aşağıdaki gereksinimleri kurduktan sonra `pnpm install --frozen-lockfile` ve `pnpm setup` çalıştırın. Tarayıcıda bilgisayar/container, yedi dil, model sağlayıcısı, yetki modu, araç paketleri ve isteğe bağlı özel telefon erişimi seçilir. [Kurulum ve yeniden başlatma](./docs/self-hosting.md#guided-installation-windows-linux-and-macos) belgesini inceleyin.
+**Kurulum sihirbazı:** aşağıdaki gereksinimleri kurduktan sonra `pnpm install --frozen-lockfile` ve `pnpm run setup` çalıştırın. Tarayıcıda bilgisayar/container, yedi dil, model sağlayıcısı, yetki modu, araç paketleri ve isteğe bağlı özel telefon erişimi seçilir. [Kurulum ve yeniden başlatma](./docs/self-hosting.md#guided-installation-windows-linux-and-macos) belgesini inceleyin.
 
 ### Gereksinimler
 
@@ -295,6 +295,6 @@ Paketlenen IBM Plex font dosyaları SIL Open Font License 1.1 kapsamında kalır
 
 ## Birlikte kur, genişlet ve geliştir
 
-`pnpm install --frozen-lockfile` ardından `pnpm setup` çalıştırın. Kurulumda bilgisayar veya konteyner, yedi dil, model sağlayıcısı, izin seviyesi ve araç paketleri seçilir. Kişisel rehber, hazır araç ayarı veya kendi Node aracınızı oluşturup JSON olarak paylaşabilirsiniz; [çalıştırılabilir araçlar](docs/personal-programs.md) izin ve kayıt sisteminden geçer.
+`pnpm install --frozen-lockfile` ardından `pnpm run setup` çalıştırın. Kurulumda bilgisayar veya konteyner, yedi dil, model sağlayıcısı, izin seviyesi ve araç paketleri seçilir. Kişisel rehber, hazır araç ayarı veya kendi Node aracınızı oluşturup JSON olarak paylaşabilirsiniz; [çalıştırılabilir araçlar](docs/personal-programs.md) izin ve kayıt sisteminden geçer.
 
 Ayarlar bölümündeki [kaynak kodu çalışma alanı](docs/source-workspaces.md), ajana ayrı bir Git kopyası verir. Test edilen değişikliği inceleyip asıl depoya uygulayabilir ve geri alma kaydı oluşturabilirsiniz. Çalışan uygulamanın yeniden dağıtılması ile veritabanı göçlerinin geri alınması ayrıca yönetilir.
