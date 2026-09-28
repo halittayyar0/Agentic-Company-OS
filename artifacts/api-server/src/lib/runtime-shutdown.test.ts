@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import test from "node:test";
+import test, { after } from "node:test";
 import * as runtimeShutdown from "./runtime-shutdown";
 import {
   closeAllSessions,
@@ -10,6 +10,7 @@ import {
 } from "./vm/browser";
 
 const execFileAsync = promisify(execFile);
+after(() => closeAllSessions());
 
 function deferred() {
   let resolve!: () => void;
