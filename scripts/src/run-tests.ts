@@ -69,6 +69,8 @@ const child = spawn(
     "--import",
     testLoaderUrl,
     "--test",
+    // Fail and identify a hung file instead of consuming the whole CI job.
+    "--test-timeout=300000",
     `--test-concurrency=${concurrency}`,
     ...testFiles,
   ],
