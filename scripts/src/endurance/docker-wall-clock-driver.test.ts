@@ -797,6 +797,10 @@ test("Docker harness environment binds one control directory and four exact secr
     controlDirectory,
     environment: { KEEP_ME: "yes" },
   });
+  assert.equal(
+    environment.AGENTIC_SECRET_GID,
+    String(process.getgid?.() ?? 1000),
+  );
   assert.deepEqual(
     {
       keep: environment.KEEP_ME,

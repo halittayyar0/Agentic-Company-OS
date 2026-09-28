@@ -285,7 +285,7 @@ Set `SERVE_STATIC_UI=true` and `STATIC_UI_DIR` to that absolute directory to ser
 
 The root `Dockerfile` builds the UI/API and worker entrypoints, deploys only the API production dependency graph into the ordinary runtime stage, runs as a non-root user, installs Chromium, and exposes `/api/readyz` on the API image. `compose.yaml` starts one HTTP-only API and two scheduler-only workers on one PostgreSQL control plane. The API alone binds a loopback host port; workers open no listener and poll the API's private runtime-control endpoint. All runtime containers use read-only application files, drop Linux capabilities, provision Chromium shared memory, and share the persistent data/workspace volumes. They apply the bundled [Chromium seccomp profile](../deploy/README.md) to permit its user-namespace sandbox. Hosts must permit unprivileged user namespaces; a host policy that denies them prevents browser startup. Keep the sandbox enabled.
 
-Create `.secrets/` with mode `0700` and four one-line files with mode `0600`:
+Create `.secrets/` with mode `0700` and four one-line files with mode `0640`. On Linux/macOS set `AGENTIC_SECRET_GID` to the group that owns those files (`id -g` for files you create), so the non-root runtime can read the individually mounted secrets. Keep the parent directory private; do not make secrets world-readable. The default container group is `1000`; Docker Desktop on Windows manages host bind permissions through its VM. The soak runner sets the group from its own process automatically. Required files:
 
 - `operator_auth_token`: at least 32 cryptographically random characters;
 - `runtime_control_key`: a separate, independently generated secret of at least 32 characters;
