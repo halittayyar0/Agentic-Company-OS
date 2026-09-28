@@ -587,7 +587,19 @@ test("Playwright session gracefully closes context, browser, then server", async
       log.push("browser:close");
       browserClosed = true;
     },
-    newContext: async () => context,
+    newContext: async (options: Record<string, unknown>) => {
+      assert.equal(options.locale, "tr-TR");
+      assert.deepEqual(options.storageState, {
+        cookies: [],
+        origins: [
+          {
+            origin: "http://127.0.0.1:5000",
+            localStorage: [{ name: "acos.locale.v1", value: "tr" }],
+          },
+        ],
+      });
+      return context;
+    },
     version: () => "Chromium test",
   };
   const browserServer = {
