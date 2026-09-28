@@ -467,9 +467,8 @@ export async function markStaleRuntimeInstances(
   runtime: RuntimeInstanceStaleMarkRuntime = systemRuntime,
 ): Promise<number> {
   await dbReady;
-  const cutoff = new Date(
-    timestampFrom(runtime).getTime() - config.workerStaleAfterMs,
-  );
+  const observedAt = timestampFrom(runtime);
+  const cutoff = new Date(observedAt.getTime() - config.workerStaleAfterMs);
   const candidates = await db
     .select({
       id: runtimeInstancesTable.id,
@@ -494,19 +493,29 @@ export async function markStaleRuntimeInstances(
 
   let markedCount = 0;
   for (const candidate of candidates) {
-    const updated = await db
-      .update(runtimeInstancesTable)
-      .set({ state: "stale" })
-      .where(
-        and(
-          eq(runtimeInstancesTable.id, candidate.id),
-          eq(runtimeInstancesTable.startedAt, candidate.startedAt),
-          inArray(runtimeInstancesTable.state, [...CLAIMABLE_STATES]),
-          lte(runtimeInstancesTable.lastHeartbeatAt, cutoff),
-        ),
-      )
-      .returning({ id: runtimeInstancesTable.id });
-    markedCount += updated.length;
+    markedCount += await db.transaction(async (transaction) => {
+      const updated = await transaction
+        .update(runtimeInstancesTable)
+        .set({ state: "stale" })
+        .where(
+          and(
+            eq(runtimeInstancesTable.id, candidate.id),
+            eq(runtimeInstancesTable.startedAt, candidate.startedAt),
+            inArray(runtimeInstancesTable.state, [...CLAIMABLE_STATES]),
+            lte(runtimeInstancesTable.lastHeartbeatAt, cutoff),
+          ),
+        )
+        .returning({ id: runtimeInstancesTable.id });
+      if (updated.length === 1) {
+        await appendOperationsChanged(transaction, {
+          kind: "runtime_state_changed",
+          runtimeInstanceId: candidate.id,
+          state: "stale",
+          createdAt: observedAt,
+        });
+      }
+      return updated.length;
+    });
   }
   return markedCount;
 }

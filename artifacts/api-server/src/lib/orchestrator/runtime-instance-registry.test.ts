@@ -637,6 +637,22 @@ test("stale marking respects the threshold, excludes terminal rows, and compare-
   assert.equal(states[ids.stale], "stale");
   assert.equal(states[ids.stopped], "stopped");
   assert.equal(states[ids.replaced], "healthy");
+  const events = await db
+    .select()
+    .from(activityEventsTable)
+    .where(eq(activityEventsTable.type, "operations_changed"));
+  const staleEvents = events.filter(
+    (event) =>
+      event.detail?.state === "stale" &&
+      Object.values(ids).some((id) => id === event.detail?.runtimeInstanceId),
+  );
+  assert.deepEqual(
+    staleEvents.map((event) => event.detail?.runtimeInstanceId).sort(),
+    [ids.healthyStale, ids.startingStale].sort(),
+  );
+  assert.ok(
+    staleEvents.every((event) => event.createdAt.getTime() === now.getTime()),
+  );
   const replacement = rows.find((row) => row.id === ids.replaced);
   assert.equal(
     replacement?.startedAt.getTime(),

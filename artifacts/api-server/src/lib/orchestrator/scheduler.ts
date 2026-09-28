@@ -51,6 +51,7 @@ import {
 import {
   assertRuntimeClaimHandle,
   lockAndAssertRuntimeCanClaim,
+  markStaleRuntimeInstances,
   RuntimeClaimAdmissionError,
   type RuntimeInstanceHandle,
 } from "./runtime-instance-registry";
@@ -1337,6 +1338,7 @@ async function runTick(context: SchedulerContext): Promise<void> {
     // its own process-local browser/child-process state before returning.
     await synchronizeEmergencyStopForThisProcess();
     await assertExecutionAllowed();
+    await markStaleRuntimeInstances(context.config);
     await reviveAndReleaseStaleWorkCore(context.config.workerStaleAfterMs);
     if (!context.acceptingClaims) return;
     await executeApprovedActionBacklog(context.runtime, context.config);
