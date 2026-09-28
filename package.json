@@ -28,7 +28,10 @@
   "private": true,
   "pnpm": {
     "overrides": {
-      "qs": "6.16.0"
+      "qs": "6.16.0",
+      "fast-uri": "3.1.6",
+      "js-yaml": "4.3.2",
+      "@esbuild-kit/core-utils>esbuild": "0.25.12"
     }
   },
   "devDependencies": {
