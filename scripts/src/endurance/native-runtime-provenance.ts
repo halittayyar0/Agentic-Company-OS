@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { lstat, readdir, realpath } from "node:fs/promises";
+import { constants } from "node:fs";
+import { lstat, open, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
 export interface ExactDirectoryDigest {
@@ -38,9 +38,50 @@ export async function sha256ExactFile(
   if (pathIdentity(actual) !== pathIdentity(requested)) {
     throw new Error(`${label} must not be redirected`);
   }
-  const hash = createHash("sha256");
-  for await (const chunk of createReadStream(actual)) hash.update(chunk);
-  return hash.digest("hex");
+  const file = await open(
+    actual,
+    constants.O_RDONLY |
+      (process.platform === "win32"
+        ? 0
+        : constants.O_NOFOLLOW | constants.O_NONBLOCK),
+  );
+  try {
+    const opened = await file.stat();
+    if (
+      !opened.isFile() ||
+      opened.dev !== metadata.dev ||
+      opened.ino !== metadata.ino ||
+      opened.size !== metadata.size ||
+      opened.mtimeMs !== metadata.mtimeMs
+    )
+      throw new Error(`${label} changed before it was opened`);
+    const hash = createHash("sha256"),
+      buffer = Buffer.alloc(64 * 1024);
+    let length = 0;
+    while (true) {
+      const { bytesRead } = await file.read(buffer, 0, buffer.length, length);
+      if (!bytesRead) break;
+      length += bytesRead;
+      if (length > opened.size)
+        throw new Error(`${label} changed while reading`);
+      hash.update(buffer.subarray(0, bytesRead));
+    }
+    const after = await file.stat(),
+      leaf = await lstat(requested);
+    if (
+      length !== opened.size ||
+      after.size !== opened.size ||
+      after.mtimeMs !== opened.mtimeMs ||
+      leaf.isSymbolicLink() ||
+      leaf.dev !== opened.dev ||
+      leaf.ino !== opened.ino ||
+      pathIdentity(await realpath(requested)) !== pathIdentity(requested)
+    )
+      throw new Error(`${label} changed while reading`);
+    return hash.digest("hex");
+  } finally {
+    await file.close();
+  }
 }
 
 export async function hashExactDirectoryTree(

@@ -12,6 +12,7 @@ import {
 import {
   hashExactDirectoryTree,
   requireNode24Version,
+  sha256ExactFile,
 } from "./native-runtime-provenance";
 import {
   evaluateEnduranceInvariants,
@@ -1155,41 +1156,20 @@ async function validateNativeHostRuntimeBytes(
   }
 }
 
-const nativeHostDigestCache = new Map<
-  string,
-  Promise<{
-    nodeIsExactFile: boolean;
-    lockfileIsExactFile: boolean;
-    nodeExecutableSha256: string;
-    pnpmLockSha256: string;
-  }>
->();
-
-function nativeHostRuntimeDigests(workspaceRoot: string) {
-  const cacheKey = `${path.resolve(workspaceRoot)}\0${process.execPath}`;
-  let pending = nativeHostDigestCache.get(cacheKey);
-  if (!pending) {
-    pending = (async () => {
-      const lockfile = path.join(workspaceRoot, "pnpm-lock.yaml");
-      const [nodeMetadata, lockMetadata, nodeBytes, lockBytes] =
-        await Promise.all([
-          lstat(process.execPath),
-          lstat(lockfile),
-          readFile(process.execPath),
-          readFile(lockfile),
-        ]);
-      return {
-        nodeIsExactFile:
-          nodeMetadata.isFile() && !nodeMetadata.isSymbolicLink(),
-        lockfileIsExactFile:
-          lockMetadata.isFile() && !lockMetadata.isSymbolicLink(),
-        nodeExecutableSha256: sha256(nodeBytes),
-        pnpmLockSha256: sha256(lockBytes),
-      };
-    })();
-    nativeHostDigestCache.set(cacheKey, pending);
-  }
-  return pending;
+async function nativeHostRuntimeDigests(workspaceRoot: string) {
+  const [nodeExecutableSha256, pnpmLockSha256] = await Promise.all([
+    sha256ExactFile(process.execPath, "Node executable"),
+    sha256ExactFile(
+      path.join(workspaceRoot, "pnpm-lock.yaml"),
+      "pnpm lockfile",
+    ),
+  ]);
+  return {
+    nodeIsExactFile: true,
+    lockfileIsExactFile: true,
+    nodeExecutableSha256,
+    pnpmLockSha256,
+  };
 }
 
 function validateReport(

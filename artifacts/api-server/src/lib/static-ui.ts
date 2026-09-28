@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import express, { type Express } from "express";
 import { readBooleanEnvironment } from "./runtime-security";
+import { createRateLimiter } from "./rate-limit";
 
 export function configureStaticUi(app: Express): void {
   if (!readBooleanEnvironment("SERVE_STATIC_UI", false)) return;
@@ -20,6 +21,18 @@ export function configureStaticUi(app: Express): void {
     throw new Error("STATIC_UI_DIR does not contain a built index.html.");
   }
 
+  const uiLimit = createRateLimiter({
+    namespace: "static-ui",
+    max: 1200,
+    windowMs: 60_000,
+  });
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api/")) {
+      next();
+      return;
+    }
+    uiLimit(req, res, next);
+  });
   app.use(
     express.static(configuredDirectory, {
       index: false,

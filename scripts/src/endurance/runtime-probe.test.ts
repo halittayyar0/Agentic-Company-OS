@@ -10,6 +10,7 @@ import {
 test("runtime probe requires loopback and sends the operator token only there", async () => {
   const requests: Array<{ url: string; authorization: string | null }> = [];
   const fetchImpl: typeof fetch = async (input, init) => {
+    assert.equal(init?.redirect, "error");
     const headers = new Headers(init?.headers);
     requests.push({
       url: String(input),
@@ -52,6 +53,15 @@ test("runtime probe requires loopback and sends the operator token only there", 
   assert.equal(result.workerInstances, 2);
   assert.equal(result.schedulerWorkers, 2);
   assert.deepEqual(result.healthyWorkerIds, ["worker-1", "worker-2"]);
+  assert.equal(requests.length, 2);
+  await assert.rejects(
+    probeRuntimeTopology({
+      baseUrl: "http://name:password@127.0.0.1:54321",
+      operatorToken: "fixture",
+      fetchImpl,
+    }),
+    /loopback/,
+  );
   assert.equal(requests.length, 2);
   assert.equal(
     requests.every(

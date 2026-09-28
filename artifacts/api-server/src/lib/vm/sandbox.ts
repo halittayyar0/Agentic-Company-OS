@@ -481,7 +481,8 @@ function editableBytes(bytes: Buffer): boolean {
 }
 
 async function readFileBytes(abs: string): Promise<Buffer> {
-  if (!(await fsp.lstat(abs)).isFile())
+  const before = await fsp.lstat(abs);
+  if (!before.isFile())
     throw new VmError("Only regular files can be read.", {
       key: "regularFileReadOnly",
     });
@@ -494,7 +495,15 @@ async function readFileBytes(abs: string): Promise<Buffer> {
   );
   try {
     const stat = await file.stat();
-    if (!stat.isFile())
+    const leaf = await fsp.lstat(abs);
+    if (
+      !stat.isFile() ||
+      leaf.isSymbolicLink() ||
+      stat.dev !== before.dev ||
+      stat.ino !== before.ino ||
+      stat.dev !== leaf.dev ||
+      stat.ino !== leaf.ino
+    )
       throw new VmError("Only regular files can be read.", {
         key: "regularFileReadOnly",
       });

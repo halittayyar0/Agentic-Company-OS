@@ -74,6 +74,10 @@ const effects = new Map<string, string[]>();
 const server = createServer(async (request, response) => {
   const target = new URL(request.url!, "http://localhost");
   const id = target.searchParams.get("id")!;
+  if (!id || !/^[a-zA-Z0-9_-]{1,128}$/.test(id)) {
+    response.writeHead(400).end("Invalid fixture ID");
+    return;
+  }
   if (target.pathname === "/effect") {
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
