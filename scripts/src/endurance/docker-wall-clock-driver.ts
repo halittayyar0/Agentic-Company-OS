@@ -965,8 +965,21 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       const irreversible = IRREVERSIBLE_SIDE_EFFECTS.has(
         receipt.sideEffectClass,
       );
+      // Receipt completion and attempt completion are separate commits. Freeze
+      // their joined primary evidence only after both are durable. In particular,
+      // a running attempt may later become lost; retaining its running snapshot
+      // would hide that state from the independent stale-owner verifier.
+      const originFinalized =
+        !receipt.originAttemptId ||
+        Boolean(
+          receiptAttempt?.finishedAt &&
+          ["succeeded", "retrying", "blocked", "lost"].includes(
+            receiptAttempt.state,
+          ),
+        );
       const primaryRelevant =
         receipt.state === "succeeded" &&
+        originFinalized &&
         (receipt.toolName === "synthetic_fixture_write" ||
           irreversible ||
           receiptAttempt?.state === "lost");
@@ -1023,7 +1036,10 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
           );
         }
         this.taskByAgentId.set(attempt.agentId, attempt.taskId);
-        if (attempt.cycleNumber < this.requiredHealthBuckets) {
+        if (
+          originFinalized &&
+          attempt.cycleNumber < this.requiredHealthBuckets
+        ) {
           const coverageKey = `${attempt.taskId}:${attempt.agentId}:${attempt.cycleNumber}`;
           if (!this.responsibilityCoverage.has(coverageKey)) {
             this.responsibilityCoverage.add(coverageKey);

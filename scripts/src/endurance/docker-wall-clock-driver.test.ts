@@ -365,6 +365,26 @@ test("Docker driver starts the exact topology and derives minute evidence from d
     const observer = new RecordingSoakEvidenceObserver({
       expectedResponsibilities: 10,
     });
+    // A receipt can commit before its attempt is finalized. Do not freeze the
+    // joined running attempt into immutable evidence or count coverage early.
+    const completedAttempt = structuredClone(
+      snapshot.attempts[0] as Record<string, unknown>,
+    );
+    snapshot.attempts[0] = {
+      ...completedAttempt,
+      state: "running",
+      finishedAt: null,
+    };
+    await driver.captureEvidence(observer, { kind: "minute", minute: 1 });
+    assert.equal(observer.finalize().metrics.completedResponsibilities, 0);
+    assert.equal(
+      observer
+        .finalize()
+        .primaryEvidence.filter((row) => row.kind === "receipt_observed")
+        .length,
+      0,
+    );
+    snapshot.attempts[0] = completedAttempt;
     await driver.captureEvidence(observer, { kind: "minute", minute: 1 });
     await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
     const evidence = observer.finalize();
@@ -1064,10 +1084,40 @@ test("Docker driver ingests each succeeded irreversible receipt once and detects
       ],
     });
     const observer = new SoakEvidenceObserver({ expectedResponsibilities: 10 });
+    snapshot.attempts[0] = {
+      ...(snapshot.attempts[0] as Record<string, unknown>),
+      state: "running",
+      finishedAt: null,
+    };
     await driver.captureEvidence(observer, { kind: "minute", minute: 1 });
+    assert.equal(
+      observer.finalize().metrics.irreversibleReceiptSuccessCount,
+      2,
+    );
+    assert.equal(
+      observer
+        .finalize()
+        .primaryEvidence.filter((row) => row.kind === "receipt_observed")
+        .length,
+      0,
+    );
+    snapshot.attempts[0] = {
+      ...(snapshot.attempts[0] as Record<string, unknown>),
+      state: "lost",
+      finishedAt: "2026-09-01T00:00:08.500Z",
+    };
     await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
     const evidence = observer.finalize();
     assert.equal(evidence.metrics.irreversibleReceiptSuccessCount, 2);
+    assert.equal(evidence.metrics.staleOwnerCommits, 3);
+    assert.ok(
+      evidence.primaryEvidence
+        .filter((row) => row.kind === "receipt_observed")
+        .every(
+          (row) =>
+            (row.data.originAttempt as { state: string }).state === "lost",
+        ),
+    );
     assert.deepEqual(evidence.metrics.duplicateIrreversibleReceiptKeys, [
       duplicateKey,
     ]);
