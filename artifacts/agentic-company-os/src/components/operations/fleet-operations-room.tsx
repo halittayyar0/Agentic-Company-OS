@@ -67,7 +67,10 @@ export function FleetOperationsRoom({
             <ServerCog size={12} aria-hidden />
             {t("command")}
           </span>
-          <span className="font-mono text-[12px] text-muted-foreground">
+          <span
+            data-operations-cursor={model.cursor}
+            className="font-mono text-[12px] text-muted-foreground"
+          >
             {t("cursor", { id: model.cursor })}
           </span>
           <a

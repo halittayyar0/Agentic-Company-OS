@@ -118,7 +118,7 @@ test("container CI proves the synthetic image boundary and reuses the real short
   );
   assert.match(
     workflow,
-    /pnpm endurance:wall-clock --[\s\S]*?--duration-hours 0\.03333333333333333[\s\S]*?--fault-profile compressed-all/u,
+    /pnpm endurance:wall-clock --[\s\S]*?--duration-hours 0\.16666666666666666[\s\S]*?--fault-profile compressed-all/u,
   );
   assert.match(
     workflow,

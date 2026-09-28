@@ -725,12 +725,11 @@ export async function createPlaywrightOperationsSession(
   let cursorAdvanced = false;
   const readVisibleCursor = async (): Promise<bigint | null> => {
     const cursorText = await page
-      .getByText(/^imleç /)
+      .locator("[data-operations-cursor]")
       .first()
-      .textContent()
+      .getAttribute("data-operations-cursor")
       .catch(() => null);
-    const match = cursorText?.match(/imleç\s+(\d+)/);
-    return match ? BigInt(match[1]) : null;
+    return cursorText && /^\d+$/.test(cursorText) ? BigInt(cursorText) : null;
   };
 
   let gracefullyClosed = false;

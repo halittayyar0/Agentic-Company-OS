@@ -556,19 +556,38 @@ test("Playwright setup bounds a hung browser-server force kill", async () => {
 test("Playwright session gracefully closes context, browser, then server", async () => {
   const log: string[] = [];
   let browserClosed = false;
+  let cursor = "9007199254740993";
+  let transport = "disconnected";
   const locator = {
     first() {
       return this;
     },
-    getAttribute: async () => null,
+    getAttribute: async (name: string) =>
+      name === "data-operations-cursor"
+        ? cursor
+        : name === "data-transport"
+          ? transport
+          : "Canlı",
     innerText: async () => "",
     textContent: async () => null,
     waitFor: async () => undefined,
   };
   const page = {
     on: () => page,
-    getByText: () => locator,
-    locator: () => locator,
+    getByText: (text: string | RegExp) => {
+      assert.equal(text, "Operasyon odası");
+      return locator;
+    },
+    locator: (selector: string) => {
+      assert.ok(
+        [
+          "[data-operations-cursor]",
+          '[role="status"][data-runtime]',
+          "main",
+        ].includes(selector),
+      );
+      return locator;
+    },
     goto: async () => undefined,
     screenshot: async () => undefined,
     waitForTimeout: async () => undefined,
@@ -624,6 +643,11 @@ test("Playwright session gracefully closes context, browser, then server", async
       }),
     },
   );
+  assert.equal((await session.sample()).reconnectCursorAdvanced, false);
+  transport = "live";
+  assert.equal((await session.sample()).reconnectCursorAdvanced, false);
+  cursor = "9007199254740994";
+  assert.equal((await session.sample()).reconnectCursorAdvanced, true);
   await session.close();
   assert.deepEqual(log, ["context:close", "browser:close", "server:close"]);
 });
