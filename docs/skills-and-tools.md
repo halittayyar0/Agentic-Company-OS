@@ -1,7 +1,7 @@
 # Built-in skills and tools
 
 Open **Skills & tools** in the navigation or command palette. The library contains
-30 versioned work guides and ten new local helper tools, alongside the original
+30 versioned work guides and 24 capability tools, alongside the original
 22 runtime tools. An agent sees only the tools allowed by its current permissions
 and task context.
 
@@ -37,7 +37,7 @@ inputs or unavailable tools must be disclosed. An agent can discover a guide wit
 `list_skills` and load its complete instructions with `read_skill`; the latter
 also reports which referenced tools are unavailable in the current context.
 
-## The ten new tools
+## The ten core library and utility tools
 
 | Tool               | Behavior and limits                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -77,7 +77,7 @@ may incur its normal model usage charges.
 
 ## Runtime and API integration
 
-All ten tools pass through the production dispatcher, active-agent checks,
+All built-in utility tools pass through the production dispatcher, active-agent checks,
 emergency stop, explicit per-turn tool restrictions, task/agent leases and the
 existing read-only durable operation receipt protocol. Retrying a completed
 logical call follows the existing deferred/replay behavior. Raw utility output
@@ -89,6 +89,27 @@ authentication (when configured), rejects unsupported or repeated locales and
 unknown query fields, and sets `Cache-Control: private, no-store`. The endpoint
 and generated clients are described in `lib/api-spec/openapi.yaml`. It has no
 mutation endpoint and needs no database migration.
+
+## Additional tool packs and personal tools
+
+Five selectable packs cover research, software, data, documents and operations.
+Twelve additional bounded processors are `csv_filter`, `csv_sort`, `csv_dedupe`,
+`csv_join`, `csv_to_json`, `json_to_csv`, `json_diff`, `json_format`,
+`render_report`, `fill_template`, `markdown_outline` and `compare_page_text`.
+They process supplied text and do not fetch remote pages. CSV inputs are bounded
+to 2,000 rows and 128 columns; oversized inputs and outputs are rejected.
+
+The remaining two capability tools, `list_extensions` and `run_extension`,
+discover saved personal packages and execute built-in utility presets. Create,
+edit, import, export, enable or disable a package in the library. Personal
+packages are stored in PostgreSQL and survive restarts. Guide text is untrusted
+instructional content and cannot grant additional permission.
+
+[Executable Node tools](personal-programs.md) use the existing `vm_run_command`
+dispatcher with a revision-bound command, exact approval, durable receipt and
+fresh disablement check. Importing a package does not run it. Native programs
+have the service account's filesystem and network authority; use the container
+profile for a separate operating-system boundary.
 
 ## Contributing a guide or tool
 

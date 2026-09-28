@@ -7,7 +7,7 @@
 > [!IMPORTANT]
 > Bu proje **alpha yazılımdır** ve güvenilen tek operatör için tasarlanmıştır. Production ve loopback dışı başlangıç, yerleşik operatör token'ı ile kalıcı PostgreSQL olmadan fail-closed durur. Bu token çok kullanıcılı yetkilendirme değildir: uzak kurulumda TLS kullanın, API portunu private tutun ve aşağıdaki ağ/yedekleme kontrollerini uygulayın.
 
-**Yayın durumu:** Doğrulaması devam eden alpha sürüm. [Doğrulama kaydı](./docs/verification/2026-09-27-release-readiness.md), tamamlanan kaynak, tarayıcı, gizli bilgi/geçmiş ve PostgreSQL kontrollerini kalan kabul çalışmalarından ayırır. Kuracağınız sürümün sonuçlarını [GitHub Actions](https://github.com/halittayyar0/Agentic-Company-OS/actions) üzerinden kontrol edin. Kısa çalışma testi, 24 saat güvenilirlik veya gerçek telefon/ana dil kabulü anlamına gelmez.
+**Yayın durumu:** Doğrulaması devam eden alpha sürüm. [Doğrulama kaydı](./docs/verification/2026-09-28-extensible-release.md), tamamlanan kaynak, tarayıcı, gizli bilgi/geçmiş ve PostgreSQL kontrollerini kalan kabul çalışmalarından ayırır. Kuracağınız sürümün sonuçlarını [GitHub Actions](https://github.com/halittayyar0/Agentic-Company-OS/actions) üzerinden kontrol edin. Kısa çalışma testi, 24 saat güvenilirlik veya gerçek telefon/ana dil kabulü anlamına gelmez.
 
 Agentic Company OS, ajan orkestrasyonunu gözlemlenebilir bir işletim sistemine dönüştürür: operatör hedef tanımlar, herhangi bir ajanla konuşur, hiyerarşi üzerinden görev dağıtır, çalışan tüm işleri izler, onay taleplerini değerlendirir ve hangi ajanın ne yaptığını canlı görür.
 
@@ -17,7 +17,7 @@ Bu yalnızca bir sohbet arayüzü değildir. Depo; animasyonlu operasyon konsolu
 
 ## Neler var?
 
-- **Beceriler ve araçlar** — araştırma, yazılım, veri, içerik ve operasyon için 30 hazır iş rehberi ve 10 yeni yerel yardımcı araç. Yedi dilde kütüphaneden gereksinimleri inceleyip düzenlenebilir proje taslağı oluşturun. Ajanlar da aynı rehberleri keşfedip okuyabilir. [Kullanım rehberi](./docs/skills-and-tools.md).
+- **Beceriler ve araçlar** — araştırma, yazılım, veri, içerik ve operasyon için 30 hazır iş rehberi, 24 beceri aracı ve 22 çalışma aracı. Yedi dilde kütüphaneden gereksinimleri inceleyip düzenlenebilir proje taslağı oluşturun. Ajanlar da aynı rehberleri keşfedip okuyabilir. [Kullanım rehberi](./docs/skills-and-tools.md).
 
 - **Canlı komuta merkezi** — organizasyon ağacı, çalışan ajan nabzı, görev metrikleri, aktivite akışı, sparkline grafikler, sistem sağlığı ve klavye komut paleti.
 - **Proje Stüdyosu** — her kök proje kendi sohbetini, devredilen işlerini, toplantılarını, tutanaklarını, kararlarını, aksiyonlarını ve teslimat kanıtını tek kalıcı bağlamda tutar. Bilgisayar paneli koordinatörün ajan-kapsamlı çalışma alanını gösterir; aynı ajanın yönettiği başka projeler de bu alanı paylaşabilir.
@@ -33,7 +33,7 @@ Bu yalnızca bir sohbet arayüzü değildir. Depo; animasyonlu operasyon konsolu
 - **Runtime kapılı insan gözetimi** — tam kapsamlı, süreli ve tek kullanımlık onaylar ajan tarayıcı yazma, güvenli olmayan tıklama ve yıkıcı VM komutlarında zorlanır; daha geniş iş eylemi politikası görünür ve incelenebilirdir.
 - **Dayanıklı çoklu model yönlendirme** — otonom görev ve judge yürütmesi; Replit AI filosu, tam OpenRouter kataloğu, doğrudan OpenAI ve araç uyumlu yerel Ollama modelleri arasında sınırlı retry/fallback kullanabilir. Gereken kimlikler ad alanlıdır; görev model pinleri kalıcıdır ve açık ücretsiz/yerel seçim ücretliye kaymaz.
 - **Amaca hizmet eden hareket** — durum nabızları, geçişler, göstergeler, canlı ticker'lar ve grafikler organizasyondaki değişimi görünür kılar.
-- **İlk açılışta dil seçimi** — Türkçe, İngilizce, Almanca, Rusça, Basitleştirilmiş Çince, Geleneksel Çince ve Arapça seçenekleri kurulumda ve Ayarlar'da bulunur. Tercih çalışma alanında saklanır ve sonraki ajan yanıtlarına yol gösterir. Kurulum, giriş, gezinme, ortak durum metinleri, Ana Sayfa, proje listeleme/oluşturma, uzman listeleme/oluşturma, Ekip Stüdyosu, Onaylar, Şirket Odası, Bağlantılar/Ayarlar, uzman ve proje çalışma alanları, toplantılar, dosya/terminal/tarayıcı araçları, Operasyonlar ve ortak acil durdurma kontrolleri ile kurtarma mesajları çevrilmiştir. Sayfaların dil dosyaları gerektiğinde yüklenir. 15 hazır rol talimatı, üç ekip şablonu, 30 beceri rehberi ve toplam 32 aracın yeni uygulama çıktıları için yedi dilde katalog vardır. Birebir komutlar, özel talimatlar, dış kaynak çıktıları ve geçmiş kayıtlar özgün biçiminde korunur. Ana dili konuşan kişilerin incelemesi tamamlanmamıştır. Bir dili tamamlanmış saymadan önce [çeviri kapsamını](./docs/localization.md) inceleyin.
+- **İlk açılışta dil seçimi** — Türkçe, İngilizce, Almanca, Rusça, Basitleştirilmiş Çince, Geleneksel Çince ve Arapça seçenekleri kurulumda ve Ayarlar'da bulunur. Tercih çalışma alanında saklanır ve sonraki ajan yanıtlarına yol gösterir. Kurulum, giriş, gezinme, ortak durum metinleri, Ana Sayfa, proje listeleme/oluşturma, uzman listeleme/oluşturma, Ekip Stüdyosu, Onaylar, Şirket Odası, Bağlantılar/Ayarlar, uzman ve proje çalışma alanları, toplantılar, dosya/terminal/tarayıcı araçları, Operasyonlar ve ortak acil durdurma kontrolleri ile kurtarma mesajları çevrilmiştir. Sayfaların dil dosyaları gerektiğinde yüklenir. 15 hazır rol talimatı, üç ekip şablonu, 30 beceri rehberi ve toplam yerleşik araçların yeni uygulama çıktıları için yedi dilde katalog vardır. Birebir komutlar, özel talimatlar, dış kaynak çıktıları ve geçmiş kayıtlar özgün biçiminde korunur. Ana dili konuşan kişilerin incelemesi tamamlanmamıştır. Bir dili tamamlanmış saymadan önce [çeviri kapsamını](./docs/localization.md) inceleyin.
 - **Telefon tarayıcısından erişim** — ayrı bir mobil uygulama olmadan duyarlı web sayfaları kullanılabilir. [Özel erişim kılavuzu](./docs/mobile-access.tr.md), korunan web sunucusunu özel HTTPS tüneli veya kendi VPN'inizle telefona ulaştırır.
 - **Kayıtlı soru ve yanıt kurtarma** — ajanın gerçek sorusunu gör, taslağını sayfa yenilendiğinde koru ve belirsiz gönderimleri sunucudaki kalıcı kayıttan kontrol et. Gecikmiş bir yanıt başka bir soruyu yanıtlayamaz. [Yanıt kurtarma ve API yükseltmesi](./docs/task-answer-recovery.md) belgesine bakın.
 
@@ -292,3 +292,9 @@ Katkılar açıktır. [CONTRIBUTING.md](./CONTRIBUTING.md) ile başlayın, [Davr
 [MIT Lisansı](./LICENSE) ile lisanslanmıştır.
 
 Paketlenen IBM Plex font dosyaları SIL Open Font License 1.1 kapsamında kalır; dağıtıma dahil bildirim [THIRD_PARTY_NOTICES.txt](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt) dosyasındadır.
+
+## Birlikte kur, genişlet ve geliştir
+
+`pnpm install --frozen-lockfile` ardından `pnpm setup` çalıştırın. Kurulumda bilgisayar veya konteyner, yedi dil, model sağlayıcısı, izin seviyesi ve araç paketleri seçilir. Kişisel rehber, hazır araç ayarı veya kendi Node aracınızı oluşturup JSON olarak paylaşabilirsiniz; [çalıştırılabilir araçlar](docs/personal-programs.md) izin ve kayıt sisteminden geçer.
+
+Ayarlar bölümündeki [kaynak kodu çalışma alanı](docs/source-workspaces.md), ajana ayrı bir Git kopyası verir. Test edilen değişikliği inceleyip asıl depoya uygulayabilir ve geri alma kaydı oluşturabilirsiniz. Çalışan uygulamanın yeniden dağıtılması ile veritabanı göçlerinin geri alınması ayrıca yönetilir.
