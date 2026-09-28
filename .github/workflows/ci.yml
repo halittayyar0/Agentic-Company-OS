@@ -498,7 +498,7 @@ jobs:
           mkdir -p artifacts/endurance-reports
           set +e
           pnpm endurance:wall-clock -- \
-            --duration-hours 0.03333333333333333 \
+            --duration-hours 0.16666666666666666 \
             --fault-profile compressed-all \
             --seed 240901 \
             --output artifacts/endurance-reports/ci-postgres-smoke.json \

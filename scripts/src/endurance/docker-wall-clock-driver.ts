@@ -619,7 +619,10 @@ export function hasHealthyRuntimeTruth(
   return sample.runtimeTruthState === "live" && sample.healthyWorkerCount === 2;
 }
 
+import { DatabaseReadGate } from "./database-read-gate";
+
 export class DockerWallClockDriver implements WallClockRuntimeDriver {
+  private readonly databaseReadGate = new DatabaseReadGate();
   private readonly runId: string;
   private readonly seed: number;
   private readonly durationHours: number;
@@ -814,9 +817,11 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       168,
       Math.max(1, Math.ceil(this.durationHours) + 1),
     );
-    return parseProjectOperations(
-      await this.requestJson(
-        `/api/tasks/${this.requireProjectId()}/operations?windowHours=${windowHours}`,
+    return this.databaseReadGate.read(async () =>
+      parseProjectOperations(
+        await this.requestJson(
+          `/api/tasks/${this.requireProjectId()}/operations?windowHours=${windowHours}`,
+        ),
       ),
     );
   }
@@ -1406,7 +1411,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
     let snapshot = initialSnapshot;
     const durableSince = new Date(scheduledMs - 5_000);
     let durableEvents = this.harness.readDurableEnduranceEvents
-      ? await this.harness.readDurableEnduranceEvents(durableSince)
+      ? await this.databaseReadGate.read(() =>
+          this.harness.readDurableEnduranceEvents!(durableSince),
+        )
       : null;
     let missingEvidence = `Fault ${context.fault.id} produced no matching durable Operations incident evidence`;
 
@@ -1546,7 +1553,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
         [snapshot, durableEvents] = await Promise.all([
           this.readProjectOperations(),
           this.harness.readDurableEnduranceEvents
-            ? this.harness.readDurableEnduranceEvents(durableSince)
+            ? this.databaseReadGate.read(() =>
+                this.harness.readDurableEnduranceEvents!(durableSince),
+              )
             : Promise.resolve(null),
         ]);
       }
@@ -1781,11 +1790,11 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   }
 
   pauseDatabase(): Promise<void> {
-    return this.harness.pauseDatabase();
+    return this.databaseReadGate.pause(() => this.harness.pauseDatabase());
   }
 
   resumeDatabase(): Promise<void> {
-    return this.harness.resumeDatabase();
+    return this.databaseReadGate.resume(() => this.harness.resumeDatabase());
   }
 
   async disconnectObserverStream(): Promise<void> {
