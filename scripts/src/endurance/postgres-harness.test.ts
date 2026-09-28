@@ -463,7 +463,13 @@ test("short-run provider wake is project-scoped and returns only due continuous 
   fake.execute = async (execution) => {
     fake.calls.push(structuredClone(execution));
     if (execution.args.includes("--command")) {
-      return { stdout: "7\n9\n", stderr: "", exitCode: 0 };
+      return {
+        stdout: execution.args.includes("--quiet")
+          ? "7\n9\n"
+          : "7\n9\nUPDATE 2\n",
+        stderr: "",
+        exitCode: 0,
+      };
     }
     return { stdout: "ok", stderr: "", exitCode: 0 };
   };
