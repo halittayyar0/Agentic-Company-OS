@@ -83,6 +83,11 @@ jobs:
             sudo apparmor_parser -r /etc/apparmor.d/agentic-playwright
           fi
 
+      - name: Inspect platform fallback fonts before the full test suite
+        run: |
+          pnpm --filter @workspace/agentic-company-os run build
+          pnpm exec playwright test --config playwright.config.ts tests/ui/text-resize.spec.ts --grep 'default text 200% ru light phone' --workers 1
+
       - name: Test
         run: pnpm test
 
@@ -146,6 +151,16 @@ jobs:
 
       - name: Enforce frontend bundle budget
         run: pnpm --filter @workspace/scripts run check:bundle
+
+      - name: Preserve browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: browser-failure-evidence
+          path: |
+            test-results/ui-release-smoke/**
+            playwright-report/**
+          if-no-files-found: warn
 
   windows-runtime:
     name: Windows runtime and process-tree regression
@@ -232,12 +247,30 @@ jobs:
           if ($runnerStatus -ne 1) {
             throw "Expected a valid short wall-clock run to exit 1, received $runnerStatus"
           }
+          # Keep bounded diagnostic results in the job log even when verification fails.
+          $report = Get-Content -LiteralPath artifacts/endurance-reports/windows-native-wall-clock.json -Raw | ConvertFrom-Json
+          $report | Select-Object pass, verified24h, injections, metrics, assertions | ConvertTo-Json -Depth 8
           pnpm endurance:verify-report -- `
             artifacts/endurance-reports/windows-native-wall-clock.json `
             --expect-mode wall_clock `
             --expect-commit "$env:GITHUB_SHA" `
             --expect-runtime native-postgres `
             --allow-unverified-duration
+
+      - name: Preserve native PostgreSQL evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-native-runtime-evidence
+          path: |
+            artifacts/endurance-reports/windows-native-smoke.json
+            artifacts/endurance-reports/windows-native-wall-clock.json
+            artifacts/endurance-reports/windows-native-wall-clock.jsonl
+            artifacts/endurance-reports/windows-native-wall-clock.json.sha256
+            artifacts/endurance-reports/windows-native-wall-clock.json.browser-manifest.json
+            artifacts/endurance-reports/windows-native-wall-clock.json.primary-evidence.jsonl
+            artifacts/endurance-reports/windows-native-wall-clock.json.browser/**
+          if-no-files-found: warn
 
   container:
     name: Build and exercise production and endurance containers
