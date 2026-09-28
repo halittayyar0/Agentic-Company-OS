@@ -11,8 +11,8 @@ import {
   rename,
   rm,
 } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
+import { canonicalTempRoot } from "../temp-directory";
 
 import type {
   EnduranceBuildAttestation,
@@ -409,7 +409,7 @@ async function withIsolatedNativeBuild<T>(input: {
   consume: (isolatedWorkspaceRoot: string) => Promise<T>;
 }): Promise<T> {
   const isolatedRoot = await mkdtemp(
-    path.join(tmpdir(), "agentic-native-build-"),
+    path.join(canonicalTempRoot(), "agentic-native-build-"),
   );
   const isolatedWorkspaceRoot = path.join(isolatedRoot, "checkout");
   try {
