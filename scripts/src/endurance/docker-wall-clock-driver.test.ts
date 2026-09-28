@@ -1143,6 +1143,17 @@ test("provider faults reject unrelated incidents and timestamp-only recovery", a
           durableEvents = [
             ...durableEvents,
             {
+              id: "101",
+              eventType: "error",
+              kind: "task_retry_scheduled",
+              state: null,
+              taskId: 7,
+              attemptId: "eventual-provider-incident",
+              attemptNumber: 4,
+              occurredAt: "2026-09-01T00:03:05.000Z",
+              providerFailureKinds: ["timeout"],
+            },
+            {
               id: "102",
               eventType: "operations_changed",
               kind: "attempt_state_changed",
@@ -1375,6 +1386,7 @@ test("provider faults reject unrelated incidents and timestamp-only recovery", a
     const recoveryObserver = new SoakEvidenceObserver({
       expectedResponsibilities: 10,
     });
+    evidenceSleeps = 0;
     recoveryObserver.scheduleFault({
       id: "provider-timeout-2",
       kind: "provider_timeout",
@@ -1422,19 +1434,9 @@ test("provider faults reject unrelated incidents and timestamp-only recovery", a
     });
     await driver.setProviderFault("provider_timeout", "provider-timeout-3");
     await driver.clearProviderFault("provider-timeout-3");
-    durableEvents = [
-      {
-        id: "101",
-        eventType: "error",
-        kind: "task_retry_scheduled",
-        state: null,
-        taskId: 7,
-        attemptId: "eventual-provider-incident",
-        attemptNumber: 4,
-        occurredAt: "2026-09-01T00:03:05.000Z",
-        providerFailureKinds: ["timeout"],
-      },
-    ];
+    // A timeline entry can precede the exact provider incident. Keep polling
+    // within the evidence budget instead of treating unrelated activity as failure.
+    durableEvents = [];
     const eventualObserver = new SoakEvidenceObserver({
       expectedResponsibilities: 10,
     });

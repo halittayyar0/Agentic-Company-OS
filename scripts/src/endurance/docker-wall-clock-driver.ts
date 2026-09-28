@@ -1485,16 +1485,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
                   left.bucketAt.localeCompare(right.bucketAt),
                 )[0]
             : undefined;
-        if (
-          !exactIncident &&
-          !timelineIncident &&
-          !health &&
-          timeline.length > 0
-        ) {
-          throw new Error(
-            `Fault ${context.fault.id} produced no matching durable Operations incident evidence`,
-          );
-        }
+        // Other activity is not proof that this incident cannot arrive. A
+        // delayed provider timeout may outlive the injection window. Retain
+        // exact target/kind matching and wait only within the existing budget.
         if (exactIncident || timelineIncident || health) {
           const observedAt = exactIncident
             ? exactIncident.occurredAt
