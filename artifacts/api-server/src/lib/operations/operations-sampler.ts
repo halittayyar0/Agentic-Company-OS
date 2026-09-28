@@ -179,6 +179,7 @@ export async function recordOperationsHealthSample(input: {
   runtimeInstanceId: string;
   now?: Date;
   config: RuntimeOperationsConfig;
+  unavailableSamples?: readonly { bucketAt: Date; sampledAt: Date }[];
 }): Promise<boolean> {
   if (input.config.role === "api") return false;
   const now = input.now ?? new Date();
@@ -191,6 +192,31 @@ export async function recordOperationsHealthSample(input: {
       await transaction.execute(
         sql`select pg_advisory_xact_lock(${SAMPLER_ADVISORY_LOCK_CLASS}, ${bucketNumber})`,
       );
+    }
+    // Failed observations can recover inside the same completed-minute bucket.
+    // Preserve those observations before considering a current healthy sample;
+    // the ordinary missing-bucket backfill cannot detect this shorter outage.
+    if (input.unavailableSamples?.length) {
+      const insertedUnavailable = await transaction
+        .insert(runtimeHealthSamplesTable)
+        .values(
+          input.unavailableSamples.map((sample) => ({
+            bucketAt: sample.bucketAt,
+            sampledAt: sample.sampledAt,
+            sampledByInstanceId: input.runtimeInstanceId,
+            runtimeTruthState: "offline" as const,
+          })),
+        )
+        .onConflictDoNothing({ target: runtimeHealthSamplesTable.bucketAt })
+        .returning({ bucketAt: runtimeHealthSamplesTable.bucketAt });
+      for (const sample of insertedUnavailable) {
+        await appendOperationsChanged(transaction, {
+          kind: "health_sample_recorded",
+          runtimeInstanceId: input.runtimeInstanceId,
+          bucketAt: sample.bucketAt,
+          createdAt: now,
+        });
+      }
     }
     const [existing] = await transaction
       .select({ bucketAt: runtimeHealthSamplesTable.bucketAt })
@@ -290,6 +316,7 @@ export function startOperationsHealthSampler(
   options: {
     autoTrigger?: boolean;
     recordSample?: typeof recordOperationsHealthSample;
+    now?: () => Date;
   } = {},
 ): OperationsHealthSamplerController {
   if (config.role === "api") {
@@ -300,18 +327,37 @@ export function startOperationsHealthSampler(
     });
   }
   const recordSample = options.recordSample ?? recordOperationsHealthSample;
+  const nowImpl = options.now ?? (() => new Date());
+  const unavailableSamples = new Map<
+    number,
+    { bucketAt: Date; sampledAt: Date }
+  >();
   let stopped = false;
   let pending = false;
   let inFlight: Promise<void> | null = null;
   const run = async (): Promise<void> => {
     do {
       pending = false;
+      const now = nowImpl();
       try {
         await recordSample({
           runtimeInstanceId: runtime.id,
           config,
+          now,
+          unavailableSamples: [...unavailableSamples.values()],
         });
+        unavailableSamples.clear();
       } catch (error) {
+        const bucketAt = completedOperationsMinute(now);
+        if (!unavailableSamples.has(bucketAt.getTime())) {
+          unavailableSamples.set(bucketAt.getTime(), {
+            bucketAt,
+            sampledAt: now,
+          });
+        }
+        while (unavailableSamples.size > MAX_CONSERVATIVE_BACKFILL_BUCKETS) {
+          unavailableSamples.delete(unavailableSamples.keys().next().value!);
+        }
         logger.warn(
           { error: safeErrorForLog(error), runtimeId: runtime.id },
           "Operations health sample failed",
