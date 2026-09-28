@@ -295,7 +295,7 @@ jobs:
       - name: Smoke-test Chromium sandbox profile
         run: >-
           docker run --rm --read-only --cap-drop ALL
-          --security-opt no-new-privileges:true --shm-size 1gb
+          --security-opt no-new-privileges:true --security-opt seccomp=./deploy/chromium-seccomp.json --shm-size 1gb
           --tmpfs /tmp:size=512m,mode=1777
           --entrypoint /usr/bin/chromium agentic-company-os:ci
           --headless --disable-gpu --no-first-run
@@ -320,7 +320,7 @@ jobs:
         run: |
           docker run --detach --name agentic-ci-app --network agentic-ci --network-alias app \
             --publish 127.0.0.1:5000:5000 \
-            --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+            --read-only --cap-drop ALL --security-opt no-new-privileges:true --security-opt seccomp=./deploy/chromium-seccomp.json \
             --shm-size 1gb --tmpfs /tmp:size=512m,mode=1777 \
             --tmpfs /home/node/.cache:size=256m,uid=1000,gid=1000,mode=0700 \
             --env DATABASE_URL=postgresql://agentic:agentic_ci_password@agentic-ci-db:5432/agentic_os \
@@ -343,7 +343,7 @@ jobs:
         run: |
           for worker in 1 2; do
             docker run --detach --name "agentic-ci-worker-${worker}" --network agentic-ci \
-              --read-only --no-healthcheck --cap-drop ALL --security-opt no-new-privileges:true \
+              --read-only --no-healthcheck --cap-drop ALL --security-opt no-new-privileges:true --security-opt seccomp=./deploy/chromium-seccomp.json \
               --shm-size 1gb --tmpfs /tmp:size=512m,mode=1777 \
               --tmpfs /home/node/.cache:size=256m,uid=1000,gid=1000,mode=0700 \
               --env DATABASE_URL=postgresql://agentic:agentic_ci_password@agentic-ci-db:5432/agentic_os \

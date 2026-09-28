@@ -7,7 +7,7 @@
 > [!IMPORTANT]
 > This project is **alpha software** and is designed for one trusted operator. Production and non-loopback startup fail closed without the built-in operator token and durable PostgreSQL. The token is not multi-user authorization: put remote deployments behind TLS, keep the API port private, and apply the network and backup controls described below.
 
-**Release status:** Release preparation is still in progress. The [current verification record](./docs/verification/2026-09-27-release-readiness.md) records the passing combined local source/browser gates and representative route review, while separating outstanding secret/history scanning, clean-candidate proof and unverified PostgreSQL/container, physical-phone and native-language acceptance. This working tree is not yet a release attestation.
+**Release status:** Alpha under active verification. The [verification record](./docs/verification/2026-09-27-release-readiness.md) separates completed source, browser, secret/history and PostgreSQL checks from remaining acceptance work. Check [GitHub Actions](https://github.com/halittayyar0/Agentic-Company-OS/actions) for the result of the exact revision you install. A passing smoke test does not establish 24-hour reliability or physical-phone/native-language acceptance.
 
 Agentic Company OS turns agent orchestration into an observable operating system: an operator can define goals, talk to any agent, delegate through a hierarchy, inspect every active task, review approval requests, and see which agent is doing what in real time.
 

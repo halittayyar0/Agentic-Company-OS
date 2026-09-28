@@ -43,6 +43,7 @@ x-runtime-service: &runtime-service
     - /home/node/.cache:size=256m,uid=1000,gid=1000,mode=0700
   security_opt:
     - no-new-privileges:true
+    - seccomp=./deploy/chromium-seccomp.json
   cap_drop:
     - ALL
   pids_limit: 512

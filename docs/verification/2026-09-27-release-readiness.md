@@ -1,10 +1,14 @@
 # Release readiness — updated 28 September 2026
 
-**Status: local source/history secret scanning and a repaired real PostgreSQL
-process smoke passed. GitHub publication remains pending authentication and CI.**
-A separate source-only publication copy has local commits; the original working
-tree and history remain intact. No remote push, tag or public publication has
-been verified. Goal 7 is not complete.
+**Status: reviewed source has been pushed to the initially private
+[GitHub repository](https://github.com/halittayyar0/Agentic-Company-OS).
+Authentication is complete. Remote secret scanning passed; full CI is in progress.**
+The original working tree and history remain intact. Development dependency
+patches cleared all seven initial Dependabot alerts, and the complete local
+production/development audit passed. A real PostgreSQL process smoke passed.
+The first container checks exposed Chromium writable-directory and sandbox
+configuration defects; repairs require the subsequent remote container result.
+No public release or 24-hour reliability is asserted by this checkpoint.
 
 ## Latest local checkpoint
 

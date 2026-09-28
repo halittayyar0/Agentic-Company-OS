@@ -7,7 +7,7 @@
 > [!IMPORTANT]
 > Bu proje **alpha yazılımdır** ve güvenilen tek operatör için tasarlanmıştır. Production ve loopback dışı başlangıç, yerleşik operatör token'ı ile kalıcı PostgreSQL olmadan fail-closed durur. Bu token çok kullanıcılı yetkilendirme değildir: uzak kurulumda TLS kullanın, API portunu private tutun ve aşağıdaki ağ/yedekleme kontrollerini uygulayın.
 
-**Yayın durumu:** Yayın hazırlığı devam ediyor. [Güncel doğrulama kaydı](./docs/verification/2026-09-27-release-readiness.md), geçen bütünleşik yerel kaynak/tarayıcı kontrollerini ve örnek sayfa incelemelerini kaydeder; bekleyen içerik/geçmiş gizli bilgi taraması, temiz yayın adayı doğrulaması ve henüz tamamlanmamış PostgreSQL/container, gerçek telefon ve ana dil kontrollerini ayrı gösterir. Bu çalışma ağacı henüz doğrulanmış bir yayın adayı değildir.
+**Yayın durumu:** Doğrulaması devam eden alpha sürüm. [Doğrulama kaydı](./docs/verification/2026-09-27-release-readiness.md), tamamlanan kaynak, tarayıcı, gizli bilgi/geçmiş ve PostgreSQL kontrollerini kalan kabul çalışmalarından ayırır. Kuracağınız sürümün sonuçlarını [GitHub Actions](https://github.com/halittayyar0/Agentic-Company-OS/actions) üzerinden kontrol edin. Kısa çalışma testi, 24 saat güvenilirlik veya gerçek telefon/ana dil kabulü anlamına gelmez.
 
 Agentic Company OS, ajan orkestrasyonunu gözlemlenebilir bir işletim sistemine dönüştürür: operatör hedef tanımlar, herhangi bir ajanla konuşur, hiyerarşi üzerinden görev dağıtır, çalışan tüm işleri izler, onay taleplerini değerlendirir ve hangi ajanın ne yaptığını canlı görür.
 

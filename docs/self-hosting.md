@@ -283,7 +283,7 @@ Set `SERVE_STATIC_UI=true` and `STATIC_UI_DIR` to that absolute directory to ser
 
 ### Docker Compose baseline
 
-The root `Dockerfile` builds the UI/API and worker entrypoints, deploys only the API production dependency graph into the ordinary runtime stage, runs as a non-root user, installs Chromium, and exposes `/api/readyz` on the API image. `compose.yaml` starts one HTTP-only API and two scheduler-only workers on one PostgreSQL control plane. The API alone binds a loopback host port; workers open no listener and poll the API's private runtime-control endpoint. All runtime containers use read-only application files, drop Linux capabilities, provision Chromium shared memory, and share the persistent data/workspace volumes.
+The root `Dockerfile` builds the UI/API and worker entrypoints, deploys only the API production dependency graph into the ordinary runtime stage, runs as a non-root user, installs Chromium, and exposes `/api/readyz` on the API image. `compose.yaml` starts one HTTP-only API and two scheduler-only workers on one PostgreSQL control plane. The API alone binds a loopback host port; workers open no listener and poll the API's private runtime-control endpoint. All runtime containers use read-only application files, drop Linux capabilities, provision Chromium shared memory, and share the persistent data/workspace volumes. They apply the bundled [Chromium seccomp profile](../deploy/README.md) to permit its user-namespace sandbox. Hosts must permit unprivileged user namespaces; a host policy that denies them prevents browser startup. Keep the sandbox enabled.
 
 Create `.secrets/` with mode `0700` and four one-line files with mode `0600`:
 
