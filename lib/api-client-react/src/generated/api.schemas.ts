@@ -5,6 +5,207 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+export type SourceChangeState = typeof SourceChangeState[keyof typeof SourceChangeState];
+
+
+export const SourceChangeState = {
+  preparing: 'preparing',
+  draft: 'draft',
+  checking: 'checking',
+  verified: 'verified',
+  applying: 'applying',
+  applied: 'applied',
+  rolling_back: 'rolling_back',
+  rolled_back: 'rolled_back',
+  failed: 'failed',
+  unknown: 'unknown',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SourceChangeCheck = {
+  command: string[];
+  commands?: string[][];
+  /** @nullable */
+  exitCode: number | null;
+  output: string;
+  passed: boolean;
+} | null;
+
+export interface SourceChange {
+  id: string;
+  agentId: number;
+  sourcePath: string;
+  request: string;
+  state: SourceChangeState;
+  revision: number;
+  baseCommit: string;
+  /** @nullable */
+  candidateCommit?: string | null;
+  /** @nullable */
+  candidatePath?: string | null;
+  /** @nullable */
+  appliedCommit?: string | null;
+  /** @nullable */
+  taskId?: number | null;
+  /** @nullable */
+  error?: string | null;
+  diff?: string;
+  status?: string;
+  workspace?: string;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  check?: SourceChangeCheck;
+}
+
+export type CapabilityPackId = typeof CapabilityPackId[keyof typeof CapabilityPackId];
+
+
+export const CapabilityPackId = {
+  data: 'data',
+  documents: 'documents',
+  web: 'web',
+  code: 'code',
+  planning: 'planning',
+} as const;
+
+export type CapabilityPackSelectionId = typeof CapabilityPackSelectionId[keyof typeof CapabilityPackSelectionId];
+
+
+export const CapabilityPackSelectionId = {
+  NUMBER_1: 1,
+} as const;
+
+export interface CapabilityPackSelection {
+  id: CapabilityPackSelectionId;
+  enabledPacks: CapabilityPackId[];
+  /** @minimum 1 */
+  revision: number;
+}
+
+/**
+ * Versioned personal skill, bounded utility preset or operator-installed Node program. Maximum serialized size is 16000 characters. Programs declare terminal authority and execute through the exact approval-bound terminal path. No credential or arbitrary executable fields are accepted.
+ */
+export type PersonalCapabilityManifest = {
+  schemaVersion: 1;
+  /** @pattern ^user-[a-z0-9][a-z0-9-]{0,59}$ */
+  id: string;
+  kind: 'skill';
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  description: string;
+  /**
+     * @minLength 1
+     * @maxLength 8000
+     */
+  instructions: string;
+} | {
+  schemaVersion: 1;
+  /** @pattern ^user-[a-z0-9][a-z0-9-]{0,59}$ */
+  id: string;
+  kind: 'tool';
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  description: string;
+  /** Exact built-in utility name from the capability catalog */
+  tool: string;
+  defaults: {[key: string]: unknown};
+} | {
+  schemaVersion: 1;
+  /** @pattern ^user-[a-z0-9][a-z0-9-]{0,59}$ */
+  id: string;
+  kind: 'program';
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  description: string;
+  /**
+     * @minLength 1
+     * @maxLength 8000
+     */
+  code: string;
+  /**
+     * @minItems 1
+     * @maxItems 1
+     */
+  permissions: 'terminal'[];
+};
+
+export interface PersonalCapability {
+  id: string;
+  manifest: PersonalCapabilityManifest;
+  enabled: boolean;
+  /** @minimum 1 */
+  revision: number;
+  updatedAt: string;
+}
+
+export interface CustomExecutionPermissions {
+  files: boolean;
+  terminal: boolean;
+  browser: boolean;
+  delegation: boolean;
+  sudo: boolean;
+}
+
+export type ExecutionPolicyMode = typeof ExecutionPolicyMode[keyof typeof ExecutionPolicyMode];
+
+
+export const ExecutionPolicyMode = {
+  read_only: 'read_only',
+  approval: 'approval',
+  full_access: 'full_access',
+  custom: 'custom',
+} as const;
+
+export interface ExecutionPolicy {
+  id: number;
+  mode: ExecutionPolicyMode;
+  custom: CustomExecutionPermissions | null;
+  /** @minimum 1 */
+  revision: number;
+  updatedAt: string;
+}
+
+export type UpdateExecutionPolicyBodyMode = typeof UpdateExecutionPolicyBodyMode[keyof typeof UpdateExecutionPolicyBodyMode];
+
+
+export const UpdateExecutionPolicyBodyMode = {
+  read_only: 'read_only',
+  approval: 'approval',
+  full_access: 'full_access',
+  custom: 'custom',
+} as const;
+
+export interface UpdateExecutionPolicyBody {
+  mode: UpdateExecutionPolicyBodyMode;
+  /** @minimum 1 */
+  expectedRevision: number;
+  custom?: CustomExecutionPermissions;
+}
+
 export interface CapabilityLibraryCopy {
   title: string;
   intro: string;
@@ -3247,6 +3448,52 @@ export type PageLimitParameter = number;
  * Return rows with an id lower than this cursor.
  */
 export type BeforeIdParameter = number;
+
+export type PrepareSourceChangeBody = {
+  id: string;
+  /** @minimum 1 */
+  agentId: number;
+  /**
+     * @minLength 1
+     * @maxLength 2048
+     */
+  sourcePath: string;
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  request: string;
+};
+
+export type CheckSourceChangeBody = {
+  /** @minimum 1 */
+  expectedRevision: number;
+  command: string[] | string[][];
+};
+
+export type ApplySourceChangeBody = {
+  /** @minimum 1 */
+  expectedRevision: number;
+};
+
+export type RollbackSourceChangeBody = {
+  /** @minimum 1 */
+  expectedRevision: number;
+};
+
+export type SavePersonalCapabilityBody = {
+  manifest: PersonalCapabilityManifest;
+  enabled: boolean;
+  /** @minimum 0 */
+  expectedRevision: number;
+};
+
+export type UpdateCapabilityPacksBody = {
+  /** @maxItems 5 */
+  enabledPacks: CapabilityPackId[];
+  /** @minimum 1 */
+  expectedRevision: number;
+};
 
 export type GetCapabilityCatalogParams = {
 locale?: GetCapabilityCatalogLocale;

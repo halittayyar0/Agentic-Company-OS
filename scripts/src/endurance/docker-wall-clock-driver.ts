@@ -25,6 +25,7 @@ import { waitForRuntimeTopology } from "./runtime-probe";
 import type {
   EnduranceFaultEvidenceSourceKind,
   EnduranceRuntimeAttestation,
+  EnduranceRuntimeRecoveryEvidence,
 } from "./report-schema";
 import type { SoakEvidenceObserver } from "./soak-observer";
 import type {
@@ -70,6 +71,7 @@ export interface DockerWallClockDriverOptions {
     operatorToken: string;
     signal?: AbortSignal;
     cleanupTimeoutMs?: number;
+    isExpectedDatabaseOutage?: () => boolean;
   }) => Promise<BrowserMonitorSession>;
   sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
   now?: () => Date;
@@ -127,6 +129,9 @@ interface ProjectOperationsEvidence {
     state: string;
     databaseBackend: string;
     durable: boolean;
+    healthyWorkerCount: number;
+    staleWorkerCount: number;
+    schedulerTickAgeMs: number | null;
   };
   members: Array<{ agentId: number }>;
   attempts: OperationsAttemptEvidence[];
@@ -153,6 +158,7 @@ interface FaultRecoveryEvidence {
   recoveredAt: string;
   sourceKind: EnduranceFaultEvidenceSourceKind;
   sourceId: string;
+  runtimeEvidence?: EnduranceRuntimeRecoveryEvidence;
 }
 
 const EXPECTED_SERVICES = new Set(["app", "db", "worker-1", "worker-2"]);
@@ -177,7 +183,16 @@ export function isScheduledDisruptiveHealthWindow(
     (fault) =>
       HEALTH_DISRUPTIVE_FAULTS.has(fault.kind) &&
       elapsedMs >= fault.atMs &&
-      elapsedMs <= fault.atMs + fault.durationMs + HEALTH_RECOVERY_GRACE_MS,
+      elapsedMs <=
+        fault.atMs +
+          fault.durationMs +
+          // After a database outage the minute sampler persists conservative
+          // missing buckets on its next tick. Admit that bounded recovery here;
+          // the independent verifier still requires actual durable recovery and
+          // rejects degraded samples after that recovery's five-second window.
+          (fault.kind === "database_unavailable"
+            ? 120_000
+            : HEALTH_RECOVERY_GRACE_MS),
   );
 }
 
@@ -231,6 +246,8 @@ export function createDockerWallClockEnvironment(input: {
   };
   return {
     ...input.environment,
+    // Generated bind files belong to this process, not necessarily image UID 1000.
+    AGENTIC_SECRET_GID: String(process.getgid?.() ?? 1000),
     ENDURANCE_RUN_ID: input.runId,
     ENDURANCE_SEED: String(input.seed),
     ENDURANCE_EXPECTED_AGENTS: "10",
@@ -329,16 +346,18 @@ function abortableDelay(
   }
   if (signal?.aborted) return Promise.reject(signal.reason);
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, milliseconds);
-    timer.unref?.();
-    signal?.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(signal.reason);
-      },
-      { once: true },
-    );
+    const onAbort = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      reject(signal?.reason);
+    };
+    // Polling is outstanding work. Unref would let the CLI exit successfully
+    // between requests before it writes its mandatory evidence report.
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -503,6 +522,18 @@ function parseProjectOperations(value: unknown): ProjectOperationsEvidence {
         "project operations database backend",
       ),
       durable: runtime.durable === true,
+      healthyWorkerCount: integer(
+        runtime.healthyWorkerCount,
+        "runtime healthy worker count",
+      ),
+      staleWorkerCount: integer(
+        runtime.staleWorkerCount,
+        "runtime stale worker count",
+      ),
+      schedulerTickAgeMs:
+        runtime.schedulerTickAgeMs === null
+          ? null
+          : integer(runtime.schedulerTickAgeMs, "runtime scheduler tick age"),
     },
     members: (body.members as unknown[]).map((member, index) => ({
       agentId: integer(
@@ -615,7 +646,12 @@ export function hasHealthyRuntimeTruth(
   return sample.runtimeTruthState === "live" && sample.healthyWorkerCount === 2;
 }
 
+import { DatabaseReadGate } from "./database-read-gate";
+
 export class DockerWallClockDriver implements WallClockRuntimeDriver {
+  private readonly databaseReadGate = new DatabaseReadGate();
+  private databasePaused = false;
+  private databaseFailureDrainUntil = 0;
   private readonly runId: string;
   private readonly seed: number;
   private readonly durationHours: number;
@@ -714,6 +750,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       seed: options.seed,
       runDirectory: controlDirectory,
       controlFile: path.join(controlDirectory, "fault-control.json"),
+      fileMode: 0o640,
     });
     this.harness =
       options.harness ??
@@ -809,9 +846,11 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       168,
       Math.max(1, Math.ceil(this.durationHours) + 1),
     );
-    return parseProjectOperations(
-      await this.requestJson(
-        `/api/tasks/${this.requireProjectId()}/operations?windowHours=${windowHours}`,
+    return this.databaseReadGate.read(async () =>
+      parseProjectOperations(
+        await this.requestJson(
+          `/api/tasks/${this.requireProjectId()}/operations?windowHours=${windowHours}`,
+        ),
       ),
     );
   }
@@ -930,7 +969,15 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       }
       this.attemptsById.set(attempt.id, attempt);
     }
-    for (const receipt of snapshot.receipts) {
+    // The API returns newest-first. Several completed cycles can arrive in one
+    // snapshot after a provider/database fault. Emit their durable chronology
+    // so the primary verifier can still reject a genuinely missing predecessor.
+    for (const receipt of [...snapshot.receipts].sort(
+      (left, right) =>
+        (left.finishedAt ?? left.reservedAt).localeCompare(
+          right.finishedAt ?? right.reservedAt,
+        ) || left.id.localeCompare(right.id),
+    )) {
       assertIrreversibleReceiptInvocationEvidence(receipt);
       const receiptAttempt = receipt.originAttemptId
         ? this.attemptsById.get(receipt.originAttemptId)
@@ -938,8 +985,21 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       const irreversible = IRREVERSIBLE_SIDE_EFFECTS.has(
         receipt.sideEffectClass,
       );
+      // Receipt completion and attempt completion are separate commits. Freeze
+      // their joined primary evidence only after both are durable. In particular,
+      // a running attempt may later become lost; retaining its running snapshot
+      // would hide that state from the independent stale-owner verifier.
+      const originFinalized =
+        !receipt.originAttemptId ||
+        Boolean(
+          receiptAttempt?.finishedAt &&
+          ["succeeded", "retrying", "blocked", "lost"].includes(
+            receiptAttempt.state,
+          ),
+        );
       const primaryRelevant =
         receipt.state === "succeeded" &&
+        originFinalized &&
         (receipt.toolName === "synthetic_fixture_write" ||
           irreversible ||
           receiptAttempt?.state === "lost");
@@ -996,7 +1056,10 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
           );
         }
         this.taskByAgentId.set(attempt.agentId, attempt.taskId);
-        if (attempt.cycleNumber < this.requiredHealthBuckets) {
+        if (
+          originFinalized &&
+          attempt.cycleNumber < this.requiredHealthBuckets
+        ) {
           const coverageKey = `${attempt.taskId}:${attempt.agentId}:${attempt.cycleNumber}`;
           if (!this.responsibilityCoverage.has(coverageKey)) {
             this.responsibilityCoverage.add(coverageKey);
@@ -1103,6 +1166,23 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   private async assertHealthyTopology(
     snapshot: ProjectOperationsEvidence,
   ): Promise<void> {
+    // A worker's first heartbeat can precede its first scheduler tick. A
+    // durable recovery event does not make an older degraded snapshot healthy.
+    // Poll fresh evidence within the existing recovery budget before accepting.
+    const healthPolls = Math.ceil(this.faultEvidenceTimeoutMs / 1_000);
+    for (
+      let poll = 0;
+      snapshot.runtime.state !== "live" && poll < healthPolls;
+      poll += 1
+    ) {
+      if (
+        snapshot.runtime.databaseBackend !== "postgresql" ||
+        !snapshot.runtime.durable
+      )
+        break;
+      await this.sleepImpl(1_000);
+      snapshot = await this.readProjectOperations();
+    }
     if (
       snapshot.runtime.state !== "live" ||
       snapshot.runtime.databaseBackend !== "postgresql" ||
@@ -1159,7 +1239,15 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
             add(attempt.finishedAt, "durable_event", attempt.id);
           }
         }
-        for (const receipt of snapshot.receipts) {
+        // The API returns newest-first. Several completed cycles can arrive in one
+        // snapshot after a provider/database fault. Emit their durable chronology
+        // so the primary verifier can still reject a genuinely missing predecessor.
+        for (const receipt of [...snapshot.receipts].sort(
+          (left, right) =>
+            (left.finishedAt ?? left.reservedAt).localeCompare(
+              right.finishedAt ?? right.reservedAt,
+            ) || left.id.localeCompare(right.id),
+        )) {
           if (receipt.state === "succeeded") {
             add(receipt.finishedAt, "durable_event", receipt.id);
           }
@@ -1181,6 +1269,29 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
         }
         break;
       case "database_unavailable":
+        // Minute buckets preserve the outage even after the fleet recovers.
+        // Persist the fresh SQL-backed read model as primary recovery evidence;
+        // never overwrite an offline bucket or wait for its next aggregation.
+        if (
+          new Date(snapshot.generatedAt).getTime() > afterMs &&
+          snapshot.runtime.state === "live" &&
+          snapshot.runtime.databaseBackend === "postgresql" &&
+          snapshot.runtime.durable &&
+          snapshot.runtime.healthyWorkerCount === 2 &&
+          snapshot.runtime.schedulerTickAgeMs !== null &&
+          snapshot.runtime.schedulerTickAgeMs <= 5_000
+        ) {
+          evidence.push({
+            recoveredAt: snapshot.generatedAt,
+            sourceKind: "runtime_snapshot",
+            sourceId: `operations-runtime:${snapshot.cursor}:${snapshot.generatedAt}`,
+            runtimeEvidence: {
+              generatedAt: snapshot.generatedAt,
+              cursor: snapshot.cursor,
+              ...snapshot.runtime,
+            },
+          });
+        }
         for (const sample of snapshot.fleetHealthSamples) {
           if (hasHealthyRuntimeTruth(sample)) {
             add(
@@ -1207,7 +1318,15 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
             add(attempt.finishedAt, "durable_event", attempt.id);
           }
         }
-        for (const receipt of snapshot.receipts) {
+        // The API returns newest-first. Several completed cycles can arrive in one
+        // snapshot after a provider/database fault. Emit their durable chronology
+        // so the primary verifier can still reject a genuinely missing predecessor.
+        for (const receipt of [...snapshot.receipts].sort(
+          (left, right) =>
+            (left.finishedAt ?? left.reservedAt).localeCompare(
+              right.finishedAt ?? right.reservedAt,
+            ) || left.id.localeCompare(right.id),
+        )) {
           if (receipt.state === "succeeded") {
             add(receipt.finishedAt, "durable_event", receipt.id);
           }
@@ -1384,7 +1503,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
     let snapshot = initialSnapshot;
     const durableSince = new Date(scheduledMs - 5_000);
     let durableEvents = this.harness.readDurableEnduranceEvents
-      ? await this.harness.readDurableEnduranceEvents(durableSince)
+      ? await this.databaseReadGate.read(() =>
+          this.harness.readDurableEnduranceEvents!(durableSince),
+        )
       : null;
     let missingEvidence = `Fault ${context.fault.id} produced no matching durable Operations incident evidence`;
 
@@ -1465,16 +1586,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
                   left.bucketAt.localeCompare(right.bucketAt),
                 )[0]
             : undefined;
-        if (
-          !exactIncident &&
-          !timelineIncident &&
-          !health &&
-          timeline.length > 0
-        ) {
-          throw new Error(
-            `Fault ${context.fault.id} produced no matching durable Operations incident evidence`,
-          );
-        }
+        // Other activity is not proof that this incident cannot arrive. A
+        // delayed provider timeout may outlive the injection window. Retain
+        // exact target/kind matching and wait only within the existing budget.
         if (exactIncident || timelineIncident || health) {
           const observedAt = exactIncident
             ? exactIncident.occurredAt
@@ -1520,6 +1634,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
               recoveredAt: recovery.recoveredAt,
               sourceKind: recovery.sourceKind,
               sourceId: recovery.sourceId,
+              runtimeEvidence: recovery.runtimeEvidence,
             });
             return;
           }
@@ -1531,7 +1646,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
         [snapshot, durableEvents] = await Promise.all([
           this.readProjectOperations(),
           this.harness.readDurableEnduranceEvents
-            ? this.harness.readDurableEnduranceEvents(durableSince)
+            ? this.databaseReadGate.read(() =>
+                this.harness.readDurableEnduranceEvents!(durableSince),
+              )
             : Promise.resolve(null),
         ]);
       }
@@ -1561,6 +1678,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       operatorToken: this.operatorToken,
       signal,
       cleanupTimeoutMs,
+      isExpectedDatabaseOutage: () =>
+        this.databasePaused ||
+        this.nowImpl().getTime() < this.databaseFailureDrainUntil,
     });
     this.activeBrowserSession = session;
     if (session.browserVersion) this.browserVersion = session.browserVersion;
@@ -1766,11 +1886,23 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   }
 
   pauseDatabase(): Promise<void> {
-    return this.harness.pauseDatabase();
+    return this.databaseReadGate.pause(async () => {
+      this.databasePaused = true;
+      try {
+        await this.harness.pauseDatabase();
+      } catch (error) {
+        this.databasePaused = false;
+        throw error;
+      }
+    });
   }
 
-  resumeDatabase(): Promise<void> {
-    return this.harness.resumeDatabase();
+  async resumeDatabase(): Promise<void> {
+    await this.databaseReadGate.resume(() => this.harness.resumeDatabase());
+    this.databasePaused = false;
+    // Responses already in flight may arrive just after the database resumes.
+    this.databaseFailureDrainUntil =
+      this.nowImpl().getTime() + Math.min(this.requestTimeoutMs, 30_000);
   }
 
   async disconnectObserverStream(): Promise<void> {

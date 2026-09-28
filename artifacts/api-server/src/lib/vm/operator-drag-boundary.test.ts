@@ -14,7 +14,7 @@ test(
     const server = createServer((_req, res) => {
       res.setHeader("Content-Type", "text/html");
       res.end(
-        '<html><body><pre id="counts">moves:0 down:0 up:0</pre><script>const n={moves:0,down:0,up:0};for(const [event,key] of [["mousemove","moves"],["mousedown","down"],["mouseup","up"]])document.addEventListener(event,()=>{n[key]++;document.getElementById("counts").textContent=`moves:${n.moves} down:${n.down} up:${n.up}`})</script></body></html>',
+        '<html><body><pre id="counts">waiting</pre><script>const n={moves:0,down:0,up:0,destination:0};for(const [event,key] of [["mousemove","moves"],["mousedown","down"],["mouseup","up"]])document.addEventListener(event,(e)=>{n[key]++;if(e.clientX===250&&e.clientY===250)n.destination++;document.getElementById("counts").textContent=`down:${n.down} up:${n.up} destination:${n.destination} last:${e.clientX},${e.clientY}`})</script></body></html>',
       );
     });
     await new Promise<void>((resolve) =>
@@ -55,7 +55,12 @@ test(
       browser.isBrowserActionOutcomeUnknownError,
     );
     const snapshot = await browser.snapshotPage(agentId);
-    assert.match(snapshot.lines.join("\n"), /moves:1 down:0 up:0/);
+    // Chromium may dispatch an initial hover on navigation. Assert the actual
+    // effect boundary: moved to the source, never pressed or reached the target.
+    assert.match(
+      snapshot.lines.join("\n"),
+      /down:0 up:0 destination:0 last:50,50/,
+    );
     assert.equal(checks, 2);
     await browser.navigateTo(
       agentId,
@@ -78,7 +83,10 @@ test(
       browser.isBrowserActionOutcomeUnknownError,
     );
     const interrupted = await browser.snapshotPage(agentId);
-    assert.match(interrupted.lines.join("\n"), /moves:1 down:1 up:1/);
+    assert.match(
+      interrupted.lines.join("\n"),
+      /down:1 up:1 destination:0 last:60,60/,
+    );
     assert.equal(checks, 3);
   },
 );

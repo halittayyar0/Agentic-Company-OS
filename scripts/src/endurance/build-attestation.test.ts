@@ -6,6 +6,8 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  realpath,
+  rename,
   rm,
   symlink,
   writeFile,
@@ -268,6 +270,68 @@ async function writeNativeBuildOutputs(
   ]);
 }
 
+test("native isolated builds canonicalize the OS temp alias without allowing external dependencies", async () => {
+  const workspace = await createWorkspace();
+  const temporaryRoot = await mkdtemp(
+    path.join(await realpath(tmpdir()), "native-build-temp-alias-"),
+  );
+  const actualTemp = path.join(temporaryRoot, "actual");
+  const aliasTemp = path.join(temporaryRoot, "alias");
+  const saved = {
+    TEMP: process.env.TEMP,
+    TMP: process.env.TMP,
+    TMPDIR: process.env.TMPDIR,
+  };
+  try {
+    await mkdir(actualTemp);
+    await symlink(
+      actualTemp,
+      aliasTemp,
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    process.env.TEMP = process.env.TMP = process.env.TMPDIR = aliasTemp;
+    const result = await prepareWallClockBuildAttestation({
+      workspaceRoot: workspace.root,
+      runtime: "native-postgres",
+      expectedCommitSha: workspace.commitSha,
+      runNativeBuild: async (isolated) => {
+        assert.equal(isolated, await realpath(isolated));
+        await writeNativeBuildOutputs(isolated, "export const api = true;\n");
+      },
+    });
+    assert.equal(result.sourceCommitSha, workspace.commitSha);
+    await assert.rejects(
+      prepareWallClockBuildAttestation({
+        workspaceRoot: workspace.root,
+        runtime: "native-postgres",
+        expectedCommitSha: workspace.commitSha,
+        runNativeBuild: async (isolated) => {
+          await writeNativeBuildOutputs(isolated, "export const api = true;\n");
+          const requested = path.join(
+            isolated,
+            "artifacts/api-server/node_modules/@electric-sql/pglite",
+          );
+          const outside = path.join(temporaryRoot, "external-package");
+          await rename(requested, outside);
+          await symlink(
+            outside,
+            requested,
+            process.platform === "win32" ? "junction" : "dir",
+          );
+        },
+      }),
+      /escaped the isolated frozen install/,
+    );
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    await rm(temporaryRoot, { recursive: true, force: true });
+    await rm(workspace.root, { recursive: true, force: true });
+  }
+});
+
 test("native attestation builds first and binds exact runtime artifact bytes", async () => {
   const workspace = await createWorkspace();
   let builds = 0;
@@ -300,6 +364,26 @@ test("native attestation builds first and binds exact runtime artifact bytes", a
         await writeNativeBuildOutputs(
           isolatedWorkspaceRoot,
           "export const api = 'fresh-build';\n",
+        );
+        // pnpm installs package-directory links, including junctions on Windows.
+        const requested = path.join(
+          isolatedWorkspaceRoot,
+          "artifacts/api-server/node_modules/@electric-sql/pglite",
+        );
+        const packageStore = path.join(
+          isolatedWorkspaceRoot,
+          "node_modules/.pnpm/pglite-fixture",
+        );
+        for (const candidate of [requested, packageStore])
+          assert.ok(
+            !path.relative(isolatedWorkspaceRoot, candidate).startsWith(".."),
+          );
+        await mkdir(path.dirname(packageStore), { recursive: true });
+        await rename(requested, packageStore);
+        await symlink(
+          packageStore,
+          requested,
+          process.platform === "win32" ? "junction" : "dir",
         );
       },
     });

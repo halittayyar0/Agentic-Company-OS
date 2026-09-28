@@ -3,6 +3,103 @@ import { installStudioFixtures } from "./helpers/studio-fixtures";
 import { getCapabilityCatalog } from "../../artifacts/api-server/src/lib/capabilities/catalog";
 import { WORKSPACE_LOCALES } from "../../artifacts/api-server/src/lib/workspace-locale";
 
+test("personal capability creates, edits, exports and persists disabled state on a phone", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installStudioFixtures(page);
+  const rows: Array<{
+    id: string;
+    revision: number;
+    enabled: boolean;
+    manifest: Record<string, unknown>;
+  }> = [];
+  await page.route("**/api/skills?*", (route) =>
+    route.fulfill({ json: getCapabilityCatalog("en") }),
+  );
+  await page.route("**/api/skills/extensions", async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ json: rows });
+    const input = route.request().postDataJSON(),
+      existing = rows.find((row) => row.id === input.manifest.id);
+    if (input.expectedRevision !== (existing?.revision ?? 0))
+      return route.fulfill({
+        status: 409,
+        json: { code: "CAPABILITY_REVISION_CONFLICT" },
+      });
+    const saved = {
+      id: input.manifest.id,
+      manifest: input.manifest,
+      enabled: input.enabled,
+      revision: input.expectedRevision + 1,
+    };
+    if (existing) Object.assign(existing, saved);
+    else rows.push(saved);
+    return route.fulfill({ json: saved });
+  });
+  await page.route("**/api/skills/extensions/*/export", (route) =>
+    route.fulfill({ json: rows[0].manifest }),
+  );
+  await page.goto("/skills");
+  await page
+    .getByRole("region", { name: "Personal skills and tools" })
+    .getByRole("button", { name: "Create new", exact: true })
+    .click();
+  await page
+    .getByLabel("ID (starts with user-)", { exact: true })
+    .fill("user-research-guide");
+  await page.getByLabel("Title", { exact: true }).fill("My research guide");
+  await page
+    .getByLabel("Description", { exact: true })
+    .fill("Source-backed research");
+  await page
+    .getByLabel("Instructions", { exact: true })
+    .fill("Read the supplied sources and report uncertainties.");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "My research guide", exact: true }),
+  ).toBeVisible();
+  expect(rows).toHaveLength(1);
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByLabel("ID (starts with user-)")).toHaveAttribute(
+    "readonly",
+    "",
+  );
+  await page.getByLabel("Title", { exact: true }).fill("Updated guide");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Updated guide", exact: true }),
+  ).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export", exact: true }).click();
+  expect((await download).suggestedFilename()).toBe("user-research-guide.json");
+  await expect(
+    page.getByRole("button", { name: "Enabled", exact: true }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "Enabled", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Disabled", exact: true }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Disabled", exact: true }),
+  ).toBeVisible();
+  expect(rows[0].enabled).toBe(false);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByLabel("Import JSON", { exact: true }).setInputFiles({
+    name: "bad.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"id":"../escape"}'),
+  });
+  await expect(page.getByRole("alert")).toContainText("Could not save");
+  expect(rows).toHaveLength(1);
+});
+
 for (const locale of WORKSPACE_LOCALES) {
   test(`${locale} phone library searches real skills and hands off a reviewable draft`, async ({
     page,
@@ -138,4 +235,56 @@ test("light desktop library shows loading and filters by area", async ({
     fullPage: true,
   });
   expect(harness.requests).toHaveLength(0);
+});
+
+test("an operator can author and reload an executable tool without losing its declared permission", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installStudioFixtures(page);
+  let saved: any = null;
+  await page.route("**/api/skills/extensions", async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ json: saved ? [saved] : [] });
+    const input = route.request().postDataJSON();
+    saved = {
+      id: input.manifest.id,
+      manifest: input.manifest,
+      enabled: input.enabled,
+      revision: input.expectedRevision + 1,
+    };
+    return route.fulfill({ json: saved });
+  });
+  await page.goto("/skills");
+  const panel = page.getByRole("region", { name: "Personal skills and tools" });
+  await panel.getByRole("button", { name: "Create new", exact: true }).click();
+  await page
+    .getByLabel("ID (starts with user-)", { exact: true })
+    .fill("user-invoice");
+  await page.getByLabel("Title", { exact: true }).fill("Invoice tool");
+  await page
+    .getByLabel("Description", { exact: true })
+    .fill("Calculate invoice totals from supplied units and price");
+  await page.getByLabel("Type", { exact: true }).selectOption("program");
+  await expect(page.getByText(/This code runs in Node/)).toBeVisible();
+  await page
+    .getByLabel("JavaScript body", { exact: true })
+    .fill("return {total: input.units * input.price};");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Invoice tool", exact: true }),
+  ).toBeVisible();
+  expect(saved.manifest.permissions).toEqual(["terminal"]);
+  expect(saved.manifest.kind).toBe("program");
+  await page.reload();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByLabel("JavaScript body", { exact: true })).toHaveValue(
+    "return {total: input.units * input.price};",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
 });

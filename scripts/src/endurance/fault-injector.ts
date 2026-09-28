@@ -87,6 +87,9 @@ export function createSeededFaultSchedule(input: {
   }
   const random = mulberry32(input.seed);
   const compressedAll = profile === "compressed-all";
+  // Live CI uses ten minutes so each provider fault spans the production
+  // scheduler cadence and leaves time for the real 60-second recovery cycle.
+  const providerWindowMs = Math.min(15000, Math.floor(input.durationMs / 30));
   const longRun = !compressedAll && input.durationMs >= 24 * 60 * 60 * 1_000;
   const schedule: ScheduledInjectedFault[] = [];
   const workerFractions = compressedAll
@@ -102,7 +105,7 @@ export function createSeededFaultSchedule(input: {
       // Short validation runs must isolate each recovery before the next fault.
       // Preserve the wider, seeded outage distribution for the 24-hour run.
       durationMs: compressedAll
-        ? 4_000
+        ? 12_000
         : longRun
           ? 30_000 + Math.floor(random() * 75_000)
           : SHORT_RUN_WORKER_LOSS_MS,
@@ -121,25 +124,28 @@ export function createSeededFaultSchedule(input: {
           id: "provider-timeout-1",
           kind: "provider_timeout",
           fraction: 0.2,
-          durationMs: 4_000,
+          durationMs: providerWindowMs,
         },
         {
           id: "provider-rate-limit-1",
           kind: "provider_rate_limit",
           fraction: 0.35,
-          durationMs: 4_000,
+          durationMs: providerWindowMs,
         },
         {
           id: "provider-malformed-1",
           kind: "provider_malformed_output",
           fraction: 0.5,
-          durationMs: 4_000,
+          durationMs: providerWindowMs,
         },
         {
           id: "database-unavailable-1",
           kind: "database_unavailable",
           fraction: 0.65,
-          durationMs: 6_000,
+          // The real runtime can buffer a six-second pause without losing a
+          // heartbeat or sample. Live ten-minute proofs must span a complete
+          // sampling interval so unavailable-state evidence can be observed.
+          durationMs: input.durationMs >= 600_000 ? 75_000 : 6_000,
         },
         {
           id: "sse-disconnect-1",

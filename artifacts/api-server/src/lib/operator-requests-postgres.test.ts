@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { eq, sql } from "drizzle-orm";
+import { redactAuditText } from "./audit-redaction";
 
 test(
   "PostgreSQL operator identity admits one process and fences stop and expiry across connections",
@@ -114,16 +115,13 @@ test(
     await closeDatabase();
     process.stdin.destroy();
   `;
+    // A real module entry avoids passing --input-type into database worker threads.
+    const participantPath = path.join(sandboxRoot, "operator-participant.mjs");
+    await fsp.writeFile(participantPath, source);
     function participant() {
       const child = spawn(
         process.execPath,
-        [
-          "--import",
-          import.meta.resolve("tsx"),
-          "--input-type=module",
-          "-e",
-          source,
-        ],
+        ["--import", import.meta.resolve("tsx"), participantPath],
         {
           env: { ...process.env, NODE_ENV: "test" },
           windowsHide: true,
@@ -148,7 +146,10 @@ test(
         if (match)
           admitted = (JSON.parse(match[1]) as { admitted: boolean }).admitted;
       });
-      child.stderr.resume();
+      let diagnostic = "";
+      child.stderr.on("data", (part) => {
+        diagnostic = (diagnostic + String(part)).slice(-8000);
+      });
       child.stdin.on("error", (error) => {
         ready();
         fail(error);
@@ -157,10 +158,15 @@ test(
         ready();
         fail(error);
       });
-      child.once("exit", (code) => {
+      child.once("close", (code) => {
         ready();
         if (code === 0 && typeof admitted === "boolean") finish(admitted);
-        else fail(Error("isolated operator participant did not finish"));
+        else
+          fail(
+            Error(
+              `isolated operator participant did not finish (exit ${code}): ${redactAuditText(diagnostic.replaceAll(url!, "[DATABASE_URL]"), 4000)}`,
+            ),
+          );
       });
       void result.catch(() => undefined);
       return { child, started, result };

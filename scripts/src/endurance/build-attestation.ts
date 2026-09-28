@@ -11,8 +11,8 @@ import {
   rename,
   rm,
 } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
+import { canonicalTempRoot } from "../temp-directory";
 
 import type {
   EnduranceBuildAttestation,
@@ -244,13 +244,19 @@ async function materializeNativeRuntimeDependencies(
       ...dependency.sourcePath.split("/"),
     );
     const sourceMetadata = await lstat(sourceRequested).catch(() => null);
-    if (!sourceMetadata?.isDirectory()) {
+    if (
+      !sourceMetadata ||
+      (!sourceMetadata.isDirectory() && !sourceMetadata.isSymbolicLink())
+    ) {
       throw new Error(
         `Native runtime dependency ${dependency.name} is missing from the isolated frozen install`,
       );
     }
     const source = await realpath(sourceRequested);
-    if (!pathBelow(isolatedWorkspaceRoot, source)) {
+    if (
+      !pathBelow(isolatedWorkspaceRoot, source) ||
+      !(await lstat(source)).isDirectory()
+    ) {
       throw new Error(
         `Native runtime dependency ${dependency.name} escaped the isolated frozen install`,
       );
@@ -403,7 +409,7 @@ async function withIsolatedNativeBuild<T>(input: {
   consume: (isolatedWorkspaceRoot: string) => Promise<T>;
 }): Promise<T> {
   const isolatedRoot = await mkdtemp(
-    path.join(tmpdir(), "agentic-native-build-"),
+    path.join(canonicalTempRoot(), "agentic-native-build-"),
   );
   const isolatedWorkspaceRoot = path.join(isolatedRoot, "checkout");
   try {

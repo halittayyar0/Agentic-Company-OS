@@ -53,7 +53,7 @@ const runtime = await registerRuntimeInstance(
 const server = createServer((request, response) => {
   response.setHeader("content-type", "text/html");
   response.end(
-    `<!doctype html><title>Evidence ${request.url}</title><body style="background:${request.url === "/a" ? "red" : "blue"}"><h1>${request.url}</h1></body>`,
+    `<!doctype html><title>Evidence ${request.url === "/a" ? "A" : "B"}</title><body style="background:${request.url === "/a" ? "red" : "blue"}"><h1>${request.url === "/a" ? "A" : "B"}</h1></body>`,
   );
 });
 await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));

@@ -132,6 +132,7 @@ export interface BoundedCommandExecution {
   timeoutMs: number;
   maxBufferBytes: number;
   ignoreInheritedStdio?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface BoundedCommandResult {
@@ -143,6 +144,8 @@ export interface BoundedCommandResult {
 export function executeBoundedCommand(
   execution: BoundedCommandExecution,
 ): Promise<BoundedCommandResult> {
+  if (execution.signal?.aborted)
+    return Promise.reject(new Error("Command cancelled before launch"));
   if (!Number.isFinite(execution.timeoutMs) || execution.timeoutMs <= 0) {
     throw new TypeError("command timeoutMs must be positive");
   }
@@ -173,6 +176,7 @@ export function executeBoundedCommand(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      execution.signal?.removeEventListener("abort", onAbort);
       if (error) reject(error);
       else resolve(result!);
     };
@@ -204,6 +208,7 @@ export function executeBoundedCommand(
       );
     });
     const timer = setTimeout(() => {
+      if (settled || timedOut) return;
       timedOut = true;
       void terminateExactProcessTree(child, 1_000).then(
         () =>
@@ -226,6 +231,20 @@ export function executeBoundedCommand(
           ),
       );
     }, execution.timeoutMs);
+    const onAbort = () => {
+      if (settled || timedOut) return;
+      timedOut = true;
+      clearTimeout(timer);
+      void terminateExactProcessTree(child, 1000).then(
+        () => finish(new Error("Command cancelled")),
+        (error) =>
+          finish(
+            new AggregateError([error], "Cancelled command cleanup failed"),
+          ),
+      );
+    };
+    execution.signal?.addEventListener("abort", onAbort, { once: true });
+    if (execution.signal?.aborted) onAbort();
   });
 }
 

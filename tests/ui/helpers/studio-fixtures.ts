@@ -54,6 +54,22 @@ export async function installStudioFixtures(page: Page) {
       });
     if (path === "/api/settings/locale" && request.method() === "PUT")
       return json(route, request.postDataJSON());
+    if (path === "/api/skills/extensions" && request.method() === "GET")
+      return json(route, []);
+    if (path === "/api/skills/packs" && request.method() === "GET")
+      return json(route, {
+        id: 1,
+        enabledPacks: ["data", "documents", "web", "code", "planning"],
+        revision: 1,
+      });
+    if (path === "/api/settings/execution-policy" && request.method() === "GET")
+      return json(route, {
+        id: 1,
+        mode: "approval",
+        custom: null,
+        revision: 1,
+        updatedAt: now,
+      });
     if (path === "/api/ops/control")
       return json(route, {
         emergencyStopEnabled: false,

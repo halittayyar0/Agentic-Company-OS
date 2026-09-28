@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -114,6 +121,38 @@ test("fault control writer rejects path escape, duplicate identities, and foreig
       "utf8",
     );
     await assert.rejects(writer.clear(), /does not match this endurance run/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("fault control bind mode preserves group readability on atomic replacement and rejects broad modes", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-fault-mode-"));
+  const controlFile = path.join(directory, "fault-control.json");
+  try {
+    assert.throws(
+      () =>
+        createEnduranceFaultControlWriter({
+          runId: "mode-check",
+          seed: 1,
+          runDirectory: directory,
+          controlFile,
+          fileMode: 0o666 as 0o640,
+        }),
+      /fileMode/,
+    );
+    const writer = createEnduranceFaultControlWriter({
+      runId: "mode-check",
+      seed: 1,
+      runDirectory: directory,
+      controlFile,
+      fileMode: 0o640,
+    });
+    await writer.clear();
+    await writer.clear();
+    assert.equal(JSON.parse(await readFile(controlFile, "utf8")).revision, 2);
+    if (process.platform !== "win32")
+      assert.equal((await stat(controlFile)).mode & 0o777, 0o640);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

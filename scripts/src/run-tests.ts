@@ -1,11 +1,23 @@
 import { spawn } from "node:child_process";
-import { readdir } from "node:fs/promises";
+import { readdir, realpath } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { testLoaderUrl } from "./test-node-options";
 import { assertLocalTestEnvironment } from "./test-environment";
 
 assertLocalTestEnvironment(process.env);
+
+// Windows hosted runners expose TEMP through an 8.3 account alias. Resolve the
+// OS-selected root before tests create their owned files; never relax the
+// production checks rejecting redirected user-supplied output directories.
+const canonicalTemp = await realpath(tmpdir());
+const testEnvironment = {
+  ...process.env,
+  TEMP: canonicalTemp,
+  TMP: canonicalTemp,
+  TMPDIR: canonicalTemp,
+};
 
 const workspaceRoot = fileURLToPath(new URL("../..", import.meta.url));
 const scanRoots = ["artifacts", "lib", "scripts"];
@@ -69,12 +81,14 @@ const child = spawn(
     "--import",
     testLoaderUrl,
     "--test",
+    // Fail and identify a hung file instead of consuming the whole CI job.
+    "--test-timeout=300000",
     `--test-concurrency=${concurrency}`,
     ...testFiles,
   ],
   {
     cwd: workspaceRoot,
-    env: process.env,
+    env: testEnvironment,
     stdio: "inherit",
     windowsHide: true,
   },

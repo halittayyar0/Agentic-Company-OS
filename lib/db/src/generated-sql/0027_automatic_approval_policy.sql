@@ -1,0 +1,1 @@
+ALTER TABLE "approval_requests" ADD COLUMN "automatic_policy_revision" integer;

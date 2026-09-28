@@ -23,8 +23,9 @@ ENV NODE_ENV=production \
     AGENT_BROWSER_HEADLESS=true
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates chromium curl tini \
+    && apt-get install -y --no-install-recommends ca-certificates chromium curl git tini \
     && rm -rf /var/lib/apt/lists/*
+RUN npm install --global pnpm@10.17.1 --ignore-scripts
 
 WORKDIR /app
 COPY --from=build --chown=node:node /prod/api/node_modules ./node_modules

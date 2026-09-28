@@ -7,7 +7,7 @@
 > [!IMPORTANT]
 > This project is **alpha software** and is designed for one trusted operator. Production and non-loopback startup fail closed without the built-in operator token and durable PostgreSQL. The token is not multi-user authorization: put remote deployments behind TLS, keep the API port private, and apply the network and backup controls described below.
 
-**Release status:** Alpha under active verification. The [verification record](./docs/verification/2026-09-27-release-readiness.md) separates completed source, browser, secret/history and PostgreSQL checks from remaining acceptance work. Check [GitHub Actions](https://github.com/halittayyar0/Agentic-Company-OS/actions) for the result of the exact revision you install. A passing smoke test does not establish 24-hour reliability or physical-phone/native-language acceptance.
+**Release status:** Alpha under active verification. The [verification record](./docs/verification/2026-09-28-extensible-release.md) separates completed source, browser, secret/history and PostgreSQL checks from remaining acceptance work. Check [GitHub Actions](https://github.com/halittayyar0/Agentic-Company-OS/actions) for the result of the exact revision you install. A passing smoke test does not establish 24-hour reliability or physical-phone/native-language acceptance.
 
 Agentic Company OS turns agent orchestration into an observable operating system: an operator can define goals, talk to any agent, delegate through a hierarchy, inspect every active task, review approval requests, and see which agent is doing what in real time.
 
@@ -17,7 +17,7 @@ It is deliberately more than a chat UI. The repository combines an animated oper
 
 ## What is here
 
-- **Skills and tools** — 30 first-party work guides across research, software, data, content and operations, plus ten bounded local helper tools. Browse the seven-language library, inspect requirements, and create an editable project draft. Agents can discover and read the same guides. See [skills and tools](./docs/skills-and-tools.md).
+- **Skills and tools** — 30 first-party work guides across research, software, data, content and operations, plus 24 capability tools and 22 runtime tools. Browse the seven-language library, inspect requirements, and create an editable project draft. Agents can discover and read the same guides. See [skills and tools](./docs/skills-and-tools.md).
 
 - **Live command center** — org chart, active-agent pulse, task metrics, activity stream, sparklines, health state, and keyboard command palette.
 - **Project Studio** — every root project keeps its own chat, delegated work, meetings, transcripts, decisions, action items, and delivery evidence in one durable context. Its computer panel shows the coordinator's agent-scoped workspace, which may also serve other projects owned by that agent.
@@ -33,7 +33,7 @@ It is deliberately more than a chat UI. The repository combines an animated oper
 - **Human oversight with runtime gates** — exact, expiring, single-use approvals are enforced for agent browser typing, unsafe clicks, and destructive VM commands; broader business-action policy remains visible and reviewable.
 - **Resilient multi-provider models** — autonomous task and judge execution can route across the built-in Replit AI fleet, the complete live OpenRouter catalog, direct OpenAI, and tool-capable local Ollama models with bounded retry/fallback. Provider IDs are namespaced where necessary, task-owned manual pins persist, and explicit free/local selections never drift to paid routes.
 - **Motion with purpose** — status pulses, transitions, gauges, live tickers, and charts make changes in the organization visible rather than decorative.
-- **Language at first run** — choose Turkish, English, German, Russian, Simplified Chinese, Traditional Chinese, or Arabic before sign-in and change it later in Settings. The selected language persists for the workspace and guides future agent replies. Setup, login, navigation, shared status, Home, project listing/creation, expert listing/creation, Team Studio, Approvals, Company Room, Connections/Settings, expert and project workspaces, meetings, file/terminal/browser tools, Operations and the shared emergency stop have translated controls and recovery messages. Route language packs load on demand. The 15 managed role playbooks, three team blueprints, 30 skill guides and new application-authored output from all 32 tools have seven-language catalogs. Exact commands, custom instructions, external output and historical records retain their original content. Native-speaker acceptance remains outstanding. See [localization coverage](./docs/localization.md) before treating a language as complete.
+- **Language at first run** — choose Turkish, English, German, Russian, Simplified Chinese, Traditional Chinese, or Arabic before sign-in and change it later in Settings. The selected language persists for the workspace and guides future agent replies. Setup, login, navigation, shared status, Home, project listing/creation, expert listing/creation, Team Studio, Approvals, Company Room, Connections/Settings, expert and project workspaces, meetings, file/terminal/browser tools, Operations and the shared emergency stop have translated controls and recovery messages. Route language packs load on demand. The 15 managed role playbooks, three team blueprints, 30 skill guides and new application-authored output from the built-in tools have seven-language catalogs. Exact commands, custom instructions, external output and historical records retain their original content. Native-speaker acceptance remains outstanding. See [localization coverage](./docs/localization.md) before treating a language as complete.
 - **Phone browser access** — responsive pages work on a phone without a separate app. The [private access guide](./docs/mobile-access.md) uses the existing protected web server and a private HTTPS tunnel or self-managed VPN.
 - **Recorded questions and answer recovery** — review the exact question, keep a draft through reloads, and recover uncertain sends from a durable receipt. A delayed answer cannot resume a different question. See [answer recovery and the alpha API upgrade](./docs/task-answer-recovery.md).
 
@@ -93,6 +93,8 @@ Runtime approval checks bind protected tools to one tool/argument hash, task, ag
 Playwright sessions and snapshot-ref registries stay in the worker process that created them. The API records that exact runtime/session/epoch owner and sends browser commands only through the authenticated, encrypted runtime-control channel for that owner; browser-client sticky routing is not the ownership mechanism. Immediately before a protected action, the worker rechecks the captured page/element binding. A dead or restarted owner, stale snapshot, changed target, missing acknowledgement, or ambiguous post-dispatch outcome is never silently retargeted or automatically replayed. Depending on where execution stopped, the operation is safely dropped or durably marked `unknown` for explicit operator reconciliation and, when needed, a fresh snapshot and approval.
 
 ## Quick start
+
+**Guided installation:** after installing the prerequisites below, run `pnpm install --frozen-lockfile` and `pnpm run setup`. The browser wizard selects this computer or a container, seven languages, a model provider, execution permissions, tool packs and optional private phone access. See [setup and restart instructions](./docs/self-hosting.md#guided-installation-windows-linux-and-macos).
 
 ### Prerequisites
 
@@ -294,3 +296,11 @@ Contributions are welcome. Start with [CONTRIBUTING.md](./CONTRIBUTING.md), foll
 Licensed under the [MIT License](./LICENSE).
 
 Bundled IBM Plex font files remain under the SIL Open Font License 1.1; the distributable notice is in [THIRD_PARTY_NOTICES.txt](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt).
+
+### Let an agent improve a repository
+
+Settings includes a [reviewed source-change workflow](docs/source-workspaces.md): isolated Git copies, real agent projects, recorded checks, exact-version application and rollback commits. Applying source and deploying a running service are separate steps.
+
+### Add your own executable tools
+
+The Skills editor accepts [user-authored Node tool packages](docs/personal-programs.md), alongside guides and built-in utility presets. Execution follows terminal permission, exact approval, emergency-stop and durable-receipt rules.

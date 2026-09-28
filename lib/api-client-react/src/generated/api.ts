@@ -29,6 +29,7 @@ import type {
   AgentRequestReceipt,
   AgentTemplate,
   AgentUpdate,
+  ApplySourceChangeBody,
   ApprovalDecisionInput,
   ApprovalRequest,
   BrowserCloseInput,
@@ -38,6 +39,8 @@ import type {
   BrowserNavigateInput,
   BrowserView,
   CapabilityCatalog,
+  CapabilityPackSelection,
+  CheckSourceChangeBody,
   CompanyChannel,
   CompanyChannelMember,
   CompanyChannelMemberInput,
@@ -46,6 +49,7 @@ import type {
   CompanyMessageResponse,
   EmergencyStopStatus,
   EmergencyStopTransition,
+  ExecutionPolicy,
   GetAgentAvatarParams,
   GetCapabilityCatalogParams,
   GetOperationsOverviewParams,
@@ -82,6 +86,9 @@ import type {
   OperatorRequestReceipt,
   OperatorTerminalResponse,
   OrgSummary,
+  PersonalCapability,
+  PersonalCapabilityManifest,
+  PrepareSourceChangeBody,
   ProjectMeetingActionItemInput,
   ProjectMeetingActionItemUpdate,
   ProjectMeetingCommandReceipt,
@@ -102,6 +109,9 @@ import type {
   ReadinessStatus,
   ReconcileOperationInput,
   ResetAgentAvatarParams,
+  RollbackSourceChangeBody,
+  SavePersonalCapabilityBody,
+  SourceChange,
   StreamOperationsParams,
   Task,
   TaskAnswerReceipt,
@@ -110,6 +120,8 @@ import type {
   TaskQuestion,
   TaskResumeInput,
   TestLlmInput,
+  UpdateCapabilityPacksBody,
+  UpdateExecutionPolicyBody,
   UpdateLlmSettingsInput,
   UpdateLlmSettingsResult,
   UpdateOpsControlInput,
@@ -156,6 +168,784 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListSourceChangesUrl = () => {
+
+
+
+
+  return `/api/source-changes`
+}
+
+export const listSourceChanges = async ( options?: Parameters<typeof customFetch>[1]): Promise<SourceChange[]> => {
+
+  return customFetch<SourceChange[]>(getListSourceChangesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSourceChangesQueryKey = () => {
+    return [
+    `/api/source-changes`
+    ] as const;
+    }
+
+
+export const getListSourceChangesQueryOptions = <TData = Awaited<ReturnType<typeof listSourceChanges>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSourceChanges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSourceChangesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSourceChanges>>> = ({ signal }) => listSourceChanges({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSourceChanges>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSourceChangesQueryResult = NonNullable<Awaited<ReturnType<typeof listSourceChanges>>>
+export type ListSourceChangesQueryError = ErrorType<unknown>
+
+
+
+export function useListSourceChanges<TData = Awaited<ReturnType<typeof listSourceChanges>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSourceChanges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSourceChangesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPrepareSourceChangeUrl = () => {
+
+
+
+
+  return `/api/source-changes`
+}
+
+export const prepareSourceChange = async (prepareSourceChangeBody: PrepareSourceChangeBody, options?: Parameters<typeof customFetch>[1]): Promise<SourceChange> => {
+
+  return customFetch<SourceChange>(getPrepareSourceChangeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(prepareSourceChangeBody)
+  }
+);}
+
+
+
+
+
+export const getPrepareSourceChangeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof prepareSourceChange>>, TError,{data: BodyType<PrepareSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof prepareSourceChange>>, TError,{data: BodyType<PrepareSourceChangeBody>}, TContext> => {
+
+const mutationKey = ['prepareSourceChange'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof prepareSourceChange>>, {data: BodyType<PrepareSourceChangeBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  prepareSourceChange(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PrepareSourceChangeMutationResult = NonNullable<Awaited<ReturnType<typeof prepareSourceChange>>>
+    export type PrepareSourceChangeMutationBody = BodyType<PrepareSourceChangeBody>
+    export type PrepareSourceChangeMutationError = ErrorType<unknown>
+
+    export const usePrepareSourceChange = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof prepareSourceChange>>, TError,{data: BodyType<PrepareSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof prepareSourceChange>>,
+        TError,
+        {data: BodyType<PrepareSourceChangeBody>},
+        TContext
+      > => {
+      return useMutation(getPrepareSourceChangeMutationOptions(options));
+    }
+
+export const getInspectSourceChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/source-changes/${id}`
+}
+
+export const inspectSourceChange = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<SourceChange> => {
+
+  return customFetch<SourceChange>(getInspectSourceChangeUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getInspectSourceChangeQueryKey = (id: string,) => {
+    return [
+    `/api/source-changes/${id}`
+    ] as const;
+    }
+
+
+export const getInspectSourceChangeQueryOptions = <TData = Awaited<ReturnType<typeof inspectSourceChange>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof inspectSourceChange>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getInspectSourceChangeQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof inspectSourceChange>>> = ({ signal }) => inspectSourceChange(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof inspectSourceChange>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type InspectSourceChangeQueryResult = NonNullable<Awaited<ReturnType<typeof inspectSourceChange>>>
+export type InspectSourceChangeQueryError = ErrorType<unknown>
+
+
+
+export function useInspectSourceChange<TData = Awaited<ReturnType<typeof inspectSourceChange>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof inspectSourceChange>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getInspectSourceChangeQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCheckSourceChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/source-changes/${id}/check`
+}
+
+export const checkSourceChange = async (id: string,
+    checkSourceChangeBody: CheckSourceChangeBody, options?: Parameters<typeof customFetch>[1]): Promise<SourceChange> => {
+
+  return customFetch<SourceChange>(getCheckSourceChangeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(checkSourceChangeBody)
+  }
+);}
+
+
+
+
+
+export const getCheckSourceChangeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkSourceChange>>, TError,{id: string;data: BodyType<CheckSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkSourceChange>>, TError,{id: string;data: BodyType<CheckSourceChangeBody>}, TContext> => {
+
+const mutationKey = ['checkSourceChange'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkSourceChange>>, {id: string;data: BodyType<CheckSourceChangeBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  checkSourceChange(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckSourceChangeMutationResult = NonNullable<Awaited<ReturnType<typeof checkSourceChange>>>
+    export type CheckSourceChangeMutationBody = BodyType<CheckSourceChangeBody>
+    export type CheckSourceChangeMutationError = ErrorType<void>
+
+    export const useCheckSourceChange = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkSourceChange>>, TError,{id: string;data: BodyType<CheckSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkSourceChange>>,
+        TError,
+        {id: string;data: BodyType<CheckSourceChangeBody>},
+        TContext
+      > => {
+      return useMutation(getCheckSourceChangeMutationOptions(options));
+    }
+
+export const getApplySourceChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/source-changes/${id}/apply`
+}
+
+export const applySourceChange = async (id: string,
+    applySourceChangeBody: ApplySourceChangeBody, options?: Parameters<typeof customFetch>[1]): Promise<SourceChange> => {
+
+  return customFetch<SourceChange>(getApplySourceChangeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(applySourceChangeBody)
+  }
+);}
+
+
+
+
+
+export const getApplySourceChangeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applySourceChange>>, TError,{id: string;data: BodyType<ApplySourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof applySourceChange>>, TError,{id: string;data: BodyType<ApplySourceChangeBody>}, TContext> => {
+
+const mutationKey = ['applySourceChange'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applySourceChange>>, {id: string;data: BodyType<ApplySourceChangeBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  applySourceChange(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplySourceChangeMutationResult = NonNullable<Awaited<ReturnType<typeof applySourceChange>>>
+    export type ApplySourceChangeMutationBody = BodyType<ApplySourceChangeBody>
+    export type ApplySourceChangeMutationError = ErrorType<void>
+
+    export const useApplySourceChange = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applySourceChange>>, TError,{id: string;data: BodyType<ApplySourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof applySourceChange>>,
+        TError,
+        {id: string;data: BodyType<ApplySourceChangeBody>},
+        TContext
+      > => {
+      return useMutation(getApplySourceChangeMutationOptions(options));
+    }
+
+export const getRollbackSourceChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/source-changes/${id}/rollback`
+}
+
+export const rollbackSourceChange = async (id: string,
+    rollbackSourceChangeBody: RollbackSourceChangeBody, options?: Parameters<typeof customFetch>[1]): Promise<SourceChange> => {
+
+  return customFetch<SourceChange>(getRollbackSourceChangeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(rollbackSourceChangeBody)
+  }
+);}
+
+
+
+
+
+export const getRollbackSourceChangeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rollbackSourceChange>>, TError,{id: string;data: BodyType<RollbackSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rollbackSourceChange>>, TError,{id: string;data: BodyType<RollbackSourceChangeBody>}, TContext> => {
+
+const mutationKey = ['rollbackSourceChange'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rollbackSourceChange>>, {id: string;data: BodyType<RollbackSourceChangeBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  rollbackSourceChange(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RollbackSourceChangeMutationResult = NonNullable<Awaited<ReturnType<typeof rollbackSourceChange>>>
+    export type RollbackSourceChangeMutationBody = BodyType<RollbackSourceChangeBody>
+    export type RollbackSourceChangeMutationError = ErrorType<void>
+
+    export const useRollbackSourceChange = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rollbackSourceChange>>, TError,{id: string;data: BodyType<RollbackSourceChangeBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rollbackSourceChange>>,
+        TError,
+        {id: string;data: BodyType<RollbackSourceChangeBody>},
+        TContext
+      > => {
+      return useMutation(getRollbackSourceChangeMutationOptions(options));
+    }
+
+export const getListPersonalCapabilitiesUrl = () => {
+
+
+
+
+  return `/api/skills/extensions`
+}
+
+/**
+ * @summary List persistent personal skills and utility presets
+ */
+export const listPersonalCapabilities = async ( options?: Parameters<typeof customFetch>[1]): Promise<PersonalCapability[]> => {
+
+  return customFetch<PersonalCapability[]>(getListPersonalCapabilitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPersonalCapabilitiesQueryKey = () => {
+    return [
+    `/api/skills/extensions`
+    ] as const;
+    }
+
+
+export const getListPersonalCapabilitiesQueryOptions = <TData = Awaited<ReturnType<typeof listPersonalCapabilities>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPersonalCapabilities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPersonalCapabilitiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPersonalCapabilities>>> = ({ signal }) => listPersonalCapabilities({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPersonalCapabilities>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPersonalCapabilitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listPersonalCapabilities>>>
+export type ListPersonalCapabilitiesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List persistent personal skills and utility presets
+ */
+
+export function useListPersonalCapabilities<TData = Awaited<ReturnType<typeof listPersonalCapabilities>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPersonalCapabilities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPersonalCapabilitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSavePersonalCapabilityUrl = () => {
+
+
+
+
+  return `/api/skills/extensions`
+}
+
+/**
+ * @summary Atomically create or update a personal capability
+ */
+export const savePersonalCapability = async (savePersonalCapabilityBody: SavePersonalCapabilityBody, options?: Parameters<typeof customFetch>[1]): Promise<PersonalCapability> => {
+
+  return customFetch<PersonalCapability>(getSavePersonalCapabilityUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(savePersonalCapabilityBody)
+  }
+);}
+
+
+
+
+
+export const getSavePersonalCapabilityMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof savePersonalCapability>>, TError,{data: BodyType<SavePersonalCapabilityBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof savePersonalCapability>>, TError,{data: BodyType<SavePersonalCapabilityBody>}, TContext> => {
+
+const mutationKey = ['savePersonalCapability'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof savePersonalCapability>>, {data: BodyType<SavePersonalCapabilityBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  savePersonalCapability(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SavePersonalCapabilityMutationResult = NonNullable<Awaited<ReturnType<typeof savePersonalCapability>>>
+    export type SavePersonalCapabilityMutationBody = BodyType<SavePersonalCapabilityBody>
+    export type SavePersonalCapabilityMutationError = ErrorType<void>
+
+    /**
+ * @summary Atomically create or update a personal capability
+ */
+export const useSavePersonalCapability = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof savePersonalCapability>>, TError,{data: BodyType<SavePersonalCapabilityBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof savePersonalCapability>>,
+        TError,
+        {data: BodyType<SavePersonalCapabilityBody>},
+        TContext
+      > => {
+      return useMutation(getSavePersonalCapabilityMutationOptions(options));
+    }
+
+export const getExportPersonalCapabilityUrl = (id: string,) => {
+
+
+
+
+  return `/api/skills/extensions/${id}/export`
+}
+
+/**
+ * @summary Export the manifest without installation state
+ */
+export const exportPersonalCapability = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<PersonalCapabilityManifest> => {
+
+  return customFetch<PersonalCapabilityManifest>(getExportPersonalCapabilityUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportPersonalCapabilityQueryKey = (id: string,) => {
+    return [
+    `/api/skills/extensions/${id}/export`
+    ] as const;
+    }
+
+
+export const getExportPersonalCapabilityQueryOptions = <TData = Awaited<ReturnType<typeof exportPersonalCapability>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportPersonalCapability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportPersonalCapabilityQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportPersonalCapability>>> = ({ signal }) => exportPersonalCapability(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportPersonalCapability>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportPersonalCapabilityQueryResult = NonNullable<Awaited<ReturnType<typeof exportPersonalCapability>>>
+export type ExportPersonalCapabilityQueryError = ErrorType<void>
+
+
+/**
+ * @summary Export the manifest without installation state
+ */
+
+export function useExportPersonalCapability<TData = Awaited<ReturnType<typeof exportPersonalCapability>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportPersonalCapability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportPersonalCapabilityQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCapabilityPacksUrl = () => {
+
+
+
+
+  return `/api/skills/packs`
+}
+
+/**
+ * @summary Read enabled capability packs
+ */
+export const getCapabilityPacks = async ( options?: Parameters<typeof customFetch>[1]): Promise<CapabilityPackSelection> => {
+
+  return customFetch<CapabilityPackSelection>(getGetCapabilityPacksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCapabilityPacksQueryKey = () => {
+    return [
+    `/api/skills/packs`
+    ] as const;
+    }
+
+
+export const getGetCapabilityPacksQueryOptions = <TData = Awaited<ReturnType<typeof getCapabilityPacks>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCapabilityPacks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCapabilityPacksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCapabilityPacks>>> = ({ signal }) => getCapabilityPacks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCapabilityPacks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCapabilityPacksQueryResult = NonNullable<Awaited<ReturnType<typeof getCapabilityPacks>>>
+export type GetCapabilityPacksQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read enabled capability packs
+ */
+
+export function useGetCapabilityPacks<TData = Awaited<ReturnType<typeof getCapabilityPacks>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCapabilityPacks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCapabilityPacksQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCapabilityPacksUrl = () => {
+
+
+
+
+  return `/api/skills/packs`
+}
+
+/**
+ * @summary Persist the selected packs with a revision check
+ */
+export const updateCapabilityPacks = async (updateCapabilityPacksBody: UpdateCapabilityPacksBody, options?: Parameters<typeof customFetch>[1]): Promise<CapabilityPackSelection> => {
+
+  return customFetch<CapabilityPackSelection>(getUpdateCapabilityPacksUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateCapabilityPacksBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateCapabilityPacksMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCapabilityPacks>>, TError,{data: BodyType<UpdateCapabilityPacksBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCapabilityPacks>>, TError,{data: BodyType<UpdateCapabilityPacksBody>}, TContext> => {
+
+const mutationKey = ['updateCapabilityPacks'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCapabilityPacks>>, {data: BodyType<UpdateCapabilityPacksBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateCapabilityPacks(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCapabilityPacksMutationResult = NonNullable<Awaited<ReturnType<typeof updateCapabilityPacks>>>
+    export type UpdateCapabilityPacksMutationBody = BodyType<UpdateCapabilityPacksBody>
+    export type UpdateCapabilityPacksMutationError = ErrorType<void>
+
+    /**
+ * @summary Persist the selected packs with a revision check
+ */
+export const useUpdateCapabilityPacks = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCapabilityPacks>>, TError,{data: BodyType<UpdateCapabilityPacksBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCapabilityPacks>>,
+        TError,
+        {data: BodyType<UpdateCapabilityPacksBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateCapabilityPacksMutationOptions(options));
+    }
 
 export const getGetCapabilityCatalogUrl = (params?: GetCapabilityCatalogParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4514,6 +5304,154 @@ export const useUpdateLlmSettings = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateLlmSettingsMutationOptions(options));
+    }
+
+export const getGetExecutionPolicyUrl = () => {
+
+
+
+
+  return `/api/settings/execution-policy`
+}
+
+/**
+ * @summary Read persisted operator execution permissions
+ */
+export const getExecutionPolicy = async ( options?: Parameters<typeof customFetch>[1]): Promise<ExecutionPolicy> => {
+
+  return customFetch<ExecutionPolicy>(getGetExecutionPolicyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetExecutionPolicyQueryKey = () => {
+    return [
+    `/api/settings/execution-policy`
+    ] as const;
+    }
+
+
+export const getGetExecutionPolicyQueryOptions = <TData = Awaited<ReturnType<typeof getExecutionPolicy>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExecutionPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetExecutionPolicyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getExecutionPolicy>>> = ({ signal }) => getExecutionPolicy({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getExecutionPolicy>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetExecutionPolicyQueryResult = NonNullable<Awaited<ReturnType<typeof getExecutionPolicy>>>
+export type GetExecutionPolicyQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read persisted operator execution permissions
+ */
+
+export function useGetExecutionPolicy<TData = Awaited<ReturnType<typeof getExecutionPolicy>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExecutionPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetExecutionPolicyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateExecutionPolicyUrl = () => {
+
+
+
+
+  return `/api/settings/execution-policy`
+}
+
+/**
+ * @summary Change execution permissions with revision checking
+ */
+export const updateExecutionPolicy = async (updateExecutionPolicyBody: UpdateExecutionPolicyBody, options?: Parameters<typeof customFetch>[1]): Promise<ExecutionPolicy> => {
+
+  return customFetch<ExecutionPolicy>(getUpdateExecutionPolicyUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateExecutionPolicyBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateExecutionPolicyMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateExecutionPolicy>>, TError,{data: BodyType<UpdateExecutionPolicyBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateExecutionPolicy>>, TError,{data: BodyType<UpdateExecutionPolicyBody>}, TContext> => {
+
+const mutationKey = ['updateExecutionPolicy'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateExecutionPolicy>>, {data: BodyType<UpdateExecutionPolicyBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateExecutionPolicy(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateExecutionPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof updateExecutionPolicy>>>
+    export type UpdateExecutionPolicyMutationBody = BodyType<UpdateExecutionPolicyBody>
+    export type UpdateExecutionPolicyMutationError = ErrorType<void>
+
+    /**
+ * @summary Change execution permissions with revision checking
+ */
+export const useUpdateExecutionPolicy = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateExecutionPolicy>>, TError,{data: BodyType<UpdateExecutionPolicyBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateExecutionPolicy>>,
+        TError,
+        {data: BodyType<UpdateExecutionPolicyBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateExecutionPolicyMutationOptions(options));
     }
 
 export const getGetWorkspaceLocaleUrl = () => {

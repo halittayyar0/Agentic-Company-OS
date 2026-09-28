@@ -25,6 +25,8 @@ export interface EnduranceFaultControlWriterOptions {
   seed: number;
   runDirectory: string;
   controlFile: string;
+  /** Group-readable only for a read-only Docker bind inside a private host parent. */
+  fileMode?: 0o600 | 0o640;
 }
 
 export interface EnduranceFaultControlWriter {
@@ -61,6 +63,13 @@ function normalizedPath(value: string): string {
 function validateOptions(
   options: EnduranceFaultControlWriterOptions,
 ): EnduranceFaultControlWriterOptions {
+  if (
+    options.fileMode !== undefined &&
+    options.fileMode !== 0o600 &&
+    options.fileMode !== 0o640
+  ) {
+    throw new TypeError("fault control fileMode must be 0600 or 0640");
+  }
   if (!SAFE_RUN_ID.test(options.runId)) {
     throw new TypeError(
       "runId must use lowercase letters, digits, and hyphens with no path segments",
@@ -258,7 +267,8 @@ async function writeDocument(
   );
   let handle: Awaited<ReturnType<typeof open>> | null = null;
   try {
-    handle = await open(temporary, "wx", 0o600);
+    handle = await open(temporary, "wx", options.fileMode ?? 0o600);
+    await handle.chmod(options.fileMode ?? 0o600);
     await handle.writeFile(serialized, "utf8");
     await handle.sync();
     await handle.close();

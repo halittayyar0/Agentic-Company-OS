@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import test from "node:test";
 import {
   assertRuntimeConfiguration,
@@ -368,8 +369,10 @@ test("soak synthetic runtime requires one local run-scoped control file", async 
   await withEnvironment(
     {
       ...base,
-      ENDURANCE_RUN_DIR: "D:\\endurance\\soak-security-test",
-      SYNTHETIC_RUNTIME_CONTROL_FILE: "D:\\endurance\\outside\\faults.json",
+      ENDURANCE_RUN_DIR: path.resolve("endurance/soak-security-test"),
+      SYNTHETIC_RUNTIME_CONTROL_FILE: path.resolve(
+        "endurance/outside/faults.json",
+      ),
     },
     () => {
       assert.throws(
@@ -381,16 +384,17 @@ test("soak synthetic runtime requires one local run-scoped control file", async 
   await withEnvironment(
     {
       ...base,
-      ENDURANCE_RUN_DIR: "D:\\endurance\\soak-security-test",
-      SYNTHETIC_RUNTIME_CONTROL_FILE:
-        "D:\\endurance\\soak-security-test\\faults.json",
+      ENDURANCE_RUN_DIR: path.resolve("endurance/soak-security-test"),
+      SYNTHETIC_RUNTIME_CONTROL_FILE: path.resolve(
+        "endurance/soak-security-test/faults.json",
+      ),
     },
     () => {
       const config = readSyntheticRuntimeConfiguration();
       assert.equal(config?.mode, "soak");
       assert.equal(
         config?.controlFile,
-        "D:\\endurance\\soak-security-test\\faults.json",
+        path.resolve("endurance/soak-security-test/faults.json"),
       );
     },
   );

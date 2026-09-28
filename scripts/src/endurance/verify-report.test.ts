@@ -268,7 +268,7 @@ function validWallClockReport() {
     provenance: {
       runner: {
         os: "test-os",
-        node: "v24.19.0",
+        node: process.version,
         postgres: "PostgreSQL 17.6",
         browser: "chromium-test",
       },
@@ -289,7 +289,7 @@ function validWallClockReport() {
       buildAttestation: {
         schemaVersion: 1,
         cleanTree: true,
-        nodeVersion: "v24.19.0",
+        nodeVersion: process.version,
         sourceCommitSha: TEST_COMMIT,
         sourceTreeSha256: TEST_SOURCE_TREE_SHA,
         runtime: "native-postgres",
@@ -315,7 +315,7 @@ function validWallClockReport() {
       },
       runtimeAttestation: {
         kind: "native-postgres",
-        nodeVersion: "v24.19.0",
+        nodeVersion: process.version,
         postgresVersion: "PostgreSQL 17.6",
         postgresToolchainSha256: postgresToolchainDigest(),
         postgresBinaries: nativePostgresBinaries,
@@ -1453,7 +1453,8 @@ for (const scenario of [
         },
       });
     },
-    expected: /health.*coverage|extra.*health|health.*out.of.order/iu,
+    expected:
+      /health.*coverage|extra.*health|health.*out.of.order|health.*cadence/iu,
   },
   {
     name: "extra lag primary evidence",
@@ -1498,31 +1499,6 @@ for (const scenario of [
       records.find((item) => item.kind === "fault_observed").data.sourceId = "";
     },
     expected: /fault.*source|source.*fault|durable source/iu,
-  },
-  {
-    name: "reordered deterministic primary fault evidence",
-    mutate: (records: any[]) => {
-      const observed = records.filter((item) => item.kind === "fault_observed");
-      const recovered = records.filter(
-        (item) => item.kind === "fault_recovered",
-      );
-      const firstObservedIndex = records.indexOf(observed[0]);
-      const secondObservedIndex = records.indexOf(observed[1]);
-      const firstRecoveredIndex = records.indexOf(recovered[0]);
-      const secondRecoveredIndex = records.indexOf(recovered[1]);
-      [records[firstObservedIndex], records[secondObservedIndex]] = [
-        records[secondObservedIndex],
-        records[firstObservedIndex],
-      ];
-      [records[firstRecoveredIndex], records[secondRecoveredIndex]] = [
-        records[secondRecoveredIndex],
-        records[firstRecoveredIndex],
-      ];
-      records.forEach((item, index) => {
-        item.sequence = index;
-      });
-    },
-    expected: /fault.*order|deterministic.*fault|fault.*schedule/iu,
   },
   {
     name: "extra duplicate primary fault evidence pair",
@@ -1614,6 +1590,87 @@ for (const scenario of [
         verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
         scenario.expected,
       );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const scenario of [
+  { name: "fresh healthy runtime", patch: {}, accepted: true },
+  { name: "degraded runtime", patch: { state: "degraded" }, accepted: false },
+  {
+    name: "one healthy worker",
+    patch: { healthyWorkerCount: 1 },
+    accepted: false,
+  },
+  {
+    name: "stale scheduler",
+    patch: { schedulerTickAgeMs: 5_001 },
+    accepted: false,
+  },
+  {
+    name: "missing scheduler tick",
+    patch: { schedulerTickAgeMs: null },
+    accepted: false,
+  },
+  {
+    name: "ephemeral database",
+    patch: { databaseBackend: "pglite" },
+    accepted: false,
+  },
+  { name: "non-durable runtime", patch: { durable: false }, accepted: false },
+  {
+    name: "mismatched observation time",
+    patch: { generatedAt: "2026-09-01T00:00:00.000Z" },
+    accepted: false,
+  },
+  {
+    name: "mismatched source cursor",
+    patch: { cursor: "999" },
+    accepted: false,
+  },
+]) {
+  test(`database recovery verification: ${scenario.name}`, async () => {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "agentic-db-recovery-verify-"),
+    );
+    try {
+      const reportPath = await writeFixture(directory, validWallClockReport());
+      const records = (
+        await readFile(`${reportPath}.primary-evidence.jsonl`, "utf8")
+      )
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      const recovery = records.find(
+        (event) =>
+          event.kind === "fault_recovered" &&
+          event.data.faultKind === "database_unavailable",
+      );
+      assert.ok(recovery);
+      recovery.data.sourceKind = "runtime_snapshot";
+      recovery.data.sourceId = `operations-runtime:123:${recovery.occurredAt}`;
+      recovery.data.runtimeEvidence = {
+        generatedAt: recovery.occurredAt,
+        cursor: "123",
+        state: "live",
+        databaseBackend: "postgresql",
+        durable: true,
+        healthyWorkerCount: 2,
+        staleWorkerCount: 0,
+        schedulerTickAgeMs: 1_000,
+        ...scenario.patch,
+      };
+      await writeBoundPrimaryEvidence(reportPath, records);
+      if (scenario.accepted) {
+        await verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" });
+      } else {
+        await assert.rejects(
+          verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+          /runtime recovery/iu,
+        );
+      }
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -2201,3 +2258,96 @@ test("verifier permits degraded health only through the five-second recovery pol
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("verifier accepts independently completed fault pairs while retaining schedule order", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-os-verify-"));
+  try {
+    const records = journal();
+    const positions = records.flatMap((event, index) =>
+      event.kind === "fault_observed" ? [index] : [],
+    );
+    [records[positions[0]], records[positions[1]]] = [
+      records[positions[1]],
+      records[positions[0]],
+    ];
+    records.forEach((event, index) => {
+      event.sequence = index;
+    });
+    const reportPath = await writeFixture(
+      directory,
+      validWallClockReport(),
+      records,
+    );
+    const primaryPath = `${reportPath}.primary-evidence.jsonl`;
+    const primaryRecords = (await readFile(primaryPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    for (const kind of ["fault_observed", "fault_recovered"]) {
+      const indices = primaryRecords.flatMap((event, index) =>
+        event.kind === kind ? [index] : [],
+      );
+      [primaryRecords[indices[0]], primaryRecords[indices[1]]] = [
+        primaryRecords[indices[1]],
+        primaryRecords[indices[0]],
+      ];
+    }
+    primaryRecords.forEach((event, index) => {
+      event.sequence = index;
+    });
+    await writeBoundPrimaryEvidence(reportPath, primaryRecords);
+    await verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("verifier rejects duplicated observation identity even with unchanged row count", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-os-verify-"));
+  try {
+    const records = journal();
+    const observations = records.filter(
+      (event) => event.kind === "fault_observed",
+    );
+    observations[1].data = structuredClone(observations[0].data);
+    const reportPath = await writeFixture(
+      directory,
+      validWallClockReport(),
+      records,
+    );
+    await assert.rejects(
+      verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+      /fault_observed.*duplicated/iu,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+for (const delayMs of [120000, 121000]) {
+  test(`completed-minute health evidence validates the sampler age ${delayMs}`, async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "agentic-health-age-"));
+    try {
+      const reportPath = await writeFixture(directory, validWallClockReport());
+      const records = (
+        await readFile(`${reportPath}.primary-evidence.jsonl`, "utf8")
+      )
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      for (const row of records.filter((row) => row.kind === "health_observed"))
+        row.data.bucketAt = new Date(
+          new Date(row.data.sampledAt).getTime() - delayMs,
+        ).toISOString();
+      await writeBoundPrimaryEvidence(reportPath, records);
+      const verification = verifyEnduranceReport({
+        reportPath,
+        expectedMode: "wall_clock",
+      });
+      if (delayMs === 120000) await verification;
+      else await assert.rejects(verification, /health sample time/);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}

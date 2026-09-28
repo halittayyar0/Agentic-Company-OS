@@ -24,7 +24,11 @@ test.after(async () => {
   await fsp.rm(base, { recursive: true, force: true });
 });
 
-test("deletion review includes every folder and raw binary file, stays stable, and deletes only its scope", async () => {
+test("deletion review includes every folder and raw binary file, stays stable, and deletes only its scope", async (t) => {
+  // This case checks content and scope. Shared CI CPU pauses must not consume
+  // the review clock; the deadline is exercised explicitly below.
+  const now = Date.now();
+  t.mock.method(Date, "now", () => now);
   await writeBinaryFile(1, "project/原文.bin", Buffer.from([0, 255, 13, 10]));
   await writeTextFile(1, "keep.txt", "outside scope");
   await fsp.mkdir(safeResolve(1, "project/empty").abs);
@@ -49,6 +53,22 @@ test("deletion review includes every folder and raw binary file, stays stable, a
       expectedVersion: preview.version,
     }),
     { code: "VM_DELETE_MISSING" },
+  );
+});
+
+test("deletion review fails closed after its five-second inspection budget", async (t) => {
+  await writeTextFile(7, "deadline.txt", "keep on timeout");
+  let now = Date.now();
+  t.mock.method(Date, "now", () => {
+    now += 3000;
+    return now;
+  });
+  await assert.rejects(previewDeletion(7, "deadline.txt"), {
+    code: "VM_DELETE_NOT_REVIEWABLE",
+  });
+  assert.equal(
+    await fsp.readFile(safeResolve(7, "deadline.txt").abs, "utf8"),
+    "keep on timeout",
   );
 });
 

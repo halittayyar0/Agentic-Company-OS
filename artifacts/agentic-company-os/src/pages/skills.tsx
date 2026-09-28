@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { LanguagePackStatus } from "@/components/i18n/language-pack-status";
+import { lazy, Suspense, useState } from "react";
 import { useLocation } from "wouter";
 import {
   useGetCapabilityCatalog,
@@ -8,6 +9,11 @@ import {
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { buildSkillDraft } from "@/lib/skill-draft";
+const ExtensionLibrary = lazy(() =>
+  import("@/components/extension-library").then((module) => ({
+    default: module.ExtensionLibrary,
+  })),
+);
 
 export default function SkillsPage() {
   const { locale, t } = useLocale();
@@ -48,6 +54,9 @@ export default function SkillsPage() {
           </p>
         )}
       </header>
+      <Suspense fallback={<LanguagePackStatus error={false} />}>
+        <ExtensionLibrary />
+      </Suspense>
       {catalog.isError ? (
         <div
           role="alert"

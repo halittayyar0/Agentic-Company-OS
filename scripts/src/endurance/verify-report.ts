@@ -12,6 +12,7 @@ import {
 import {
   hashExactDirectoryTree,
   requireNode24Version,
+  sha256ExactFile,
 } from "./native-runtime-provenance";
 import {
   evaluateEnduranceInvariants,
@@ -359,6 +360,19 @@ function validateWallClockJournalContract(
       "Wall-clock journal fault_observed count does not match the deterministic plan",
     );
   }
+  const observationsById = new Map<string, (typeof observedEvents)[number]>();
+  for (const event of observedEvents) {
+    const data = record(event.data, "wall-clock fault_observed");
+    if (
+      typeof data.faultId !== "string" ||
+      observationsById.has(data.faultId)
+    ) {
+      throw new Error(
+        "Wall-clock fault_observed identity is missing or duplicated",
+      );
+    }
+    observationsById.set(data.faultId, event);
+  }
   const startedAtMs = new Date(report.startedAt).getTime();
   const completedAtMs = new Date(report.completedAt).getTime();
   const incidentIds = new Set<string>();
@@ -435,7 +449,11 @@ function validateWallClockJournalContract(
     incidentIds.add(injection.incidentId);
     recoveryDurationsMs.push(recoveredAtMs - observedAtMs);
 
-    const observedEvent = observedEvents[index];
+    // Concurrent faults finish independently; identity, not completion position,
+    // binds each observation to its deterministic schedule entry.
+    const observedEvent = observationsById.get(expected.id);
+    if (!observedEvent)
+      throw new Error("Wall-clock fault_observed identity is missing");
     const observedData = record(
       observedEvent.data,
       `wall-clock fault_observed ${index}`,
@@ -1155,41 +1173,20 @@ async function validateNativeHostRuntimeBytes(
   }
 }
 
-const nativeHostDigestCache = new Map<
-  string,
-  Promise<{
-    nodeIsExactFile: boolean;
-    lockfileIsExactFile: boolean;
-    nodeExecutableSha256: string;
-    pnpmLockSha256: string;
-  }>
->();
-
-function nativeHostRuntimeDigests(workspaceRoot: string) {
-  const cacheKey = `${path.resolve(workspaceRoot)}\0${process.execPath}`;
-  let pending = nativeHostDigestCache.get(cacheKey);
-  if (!pending) {
-    pending = (async () => {
-      const lockfile = path.join(workspaceRoot, "pnpm-lock.yaml");
-      const [nodeMetadata, lockMetadata, nodeBytes, lockBytes] =
-        await Promise.all([
-          lstat(process.execPath),
-          lstat(lockfile),
-          readFile(process.execPath),
-          readFile(lockfile),
-        ]);
-      return {
-        nodeIsExactFile:
-          nodeMetadata.isFile() && !nodeMetadata.isSymbolicLink(),
-        lockfileIsExactFile:
-          lockMetadata.isFile() && !lockMetadata.isSymbolicLink(),
-        nodeExecutableSha256: sha256(nodeBytes),
-        pnpmLockSha256: sha256(lockBytes),
-      };
-    })();
-    nativeHostDigestCache.set(cacheKey, pending);
-  }
-  return pending;
+async function nativeHostRuntimeDigests(workspaceRoot: string) {
+  const [nodeExecutableSha256, pnpmLockSha256] = await Promise.all([
+    sha256ExactFile(process.execPath, "Node executable"),
+    sha256ExactFile(
+      path.join(workspaceRoot, "pnpm-lock.yaml"),
+      "pnpm lockfile",
+    ),
+  ]);
+  return {
+    nodeIsExactFile: true,
+    lockfileIsExactFile: true,
+    nodeExecutableSha256,
+    pnpmLockSha256,
+  };
 }
 
 function validateReport(

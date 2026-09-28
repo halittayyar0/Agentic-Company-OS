@@ -186,6 +186,23 @@ test("only scheduled disruptive faults allow bounded degraded health", () => {
     isScheduledDisruptiveHealthWindow(schedule, providerFault.atMs),
     false,
   );
+  const databaseFault = schedule.find(
+    (fault) => fault.kind === "database_unavailable",
+  )!;
+  assert.equal(
+    isScheduledDisruptiveHealthWindow(
+      schedule,
+      databaseFault.atMs + databaseFault.durationMs + 120_000,
+    ),
+    true,
+  );
+  assert.equal(
+    isScheduledDisruptiveHealthWindow(
+      schedule,
+      databaseFault.atMs + databaseFault.durationMs + 120_001,
+    ),
+    false,
+  );
 });
 
 test("Docker driver starts the exact topology and derives minute evidence from durable operations", async () => {
@@ -343,13 +360,41 @@ test("Docker driver starts the exact topology and derives minute evidence from d
         },
       ],
     });
+    // Match the production API's newest-first batch after delayed observation.
+    snapshot.receipts.reverse();
     const observer = new RecordingSoakEvidenceObserver({
       expectedResponsibilities: 10,
     });
+    // A receipt can commit before its attempt is finalized. Do not freeze the
+    // joined running attempt into immutable evidence or count coverage early.
+    const completedAttempt = structuredClone(
+      snapshot.attempts[0] as Record<string, unknown>,
+    );
+    snapshot.attempts[0] = {
+      ...completedAttempt,
+      state: "running",
+      finishedAt: null,
+    };
+    await driver.captureEvidence(observer, { kind: "minute", minute: 1 });
+    assert.equal(observer.finalize().metrics.completedResponsibilities, 0);
+    assert.equal(
+      observer
+        .finalize()
+        .primaryEvidence.filter((row) => row.kind === "receipt_observed")
+        .length,
+      0,
+    );
+    snapshot.attempts[0] = completedAttempt;
     await driver.captureEvidence(observer, { kind: "minute", minute: 1 });
     await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
     const evidence = observer.finalize();
     assert.equal(evidence.metrics.completedResponsibilities, 1);
+    assert.equal(
+      evidence.primaryEvidence.find(
+        (row) => row.kind === "responsibility_completed",
+      )?.data.receiptId,
+      "receipt-1",
+    );
     assert.equal(evidence.metrics.maxResponsibilityCycleLag, 2);
     assert.equal(evidence.metrics.healthSampleBuckets, 2);
     assert.deepEqual(evidence.metrics.healthTruthMismatches, []);
@@ -425,6 +470,8 @@ test("Docker driver starts the exact topology and derives minute evidence from d
 test("Docker driver controls only run-scoped faults and proves SSE recovery by cursor advance", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "agentic-driver-test-"));
   const log: string[] = [];
+  let now = new Date("2026-09-01T00:03:00.000Z");
+  let expectedDatabaseOutage = () => false;
   let emergencyEnabled = false;
   let emergencyVersion = 1;
   let emergencyUpdatedAt = "2026-09-01T00:00:00.000Z";
@@ -544,11 +591,17 @@ test("Docker driver controls only run-scoped faults and proves SSE recovery by c
       harness: harness(log),
       fetchImpl,
       topologyTimeoutMs: 100,
-      browserSessionFactory: async () => session,
+      browserSessionFactory: async (input) => {
+        expectedDatabaseOutage =
+          input.isExpectedDatabaseOutage ?? (() => false);
+        return session;
+      },
       sleep: async () => undefined,
-      now: () => new Date("2026-09-01T00:03:00.000Z"),
+      now: () => now,
     });
     await driver.start();
+    const activeSession = await driver.createBrowserSession();
+    assert.equal(expectedDatabaseOutage(), false);
     assert.deepEqual(await driver.listActiveWorkers(), [
       "worker-1",
       "worker-2",
@@ -556,7 +609,11 @@ test("Docker driver controls only run-scoped faults and proves SSE recovery by c
     await driver.killWorker("worker-1");
     await driver.restartWorker("worker-1");
     await driver.pauseDatabase();
+    assert.equal(expectedDatabaseOutage(), true);
     await driver.resumeDatabase();
+    assert.equal(expectedDatabaseOutage(), true);
+    now = new Date(now.getTime() + 30_001);
+    assert.equal(expectedDatabaseOutage(), false);
 
     await driver.setProviderFault("provider_rate_limit", "provider-fault-1");
     assert.equal(log.includes("harness:due:7:7"), true);
@@ -581,7 +638,6 @@ test("Docker driver controls only run-scoped faults and proves SSE recovery by c
       [],
     );
 
-    const activeSession = await driver.createBrowserSession();
     await driver.disconnectObserverStream();
     await driver.reconnectObserverStream();
     const observer = new SoakEvidenceObserver({ expectedResponsibilities: 10 });
@@ -797,6 +853,10 @@ test("Docker harness environment binds one control directory and four exact secr
     controlDirectory,
     environment: { KEEP_ME: "yes" },
   });
+  assert.equal(
+    environment.AGENTIC_SECRET_GID,
+    String(process.getgid?.() ?? 1000),
+  );
   assert.deepEqual(
     {
       keep: environment.KEEP_ME,
@@ -1035,10 +1095,40 @@ test("Docker driver ingests each succeeded irreversible receipt once and detects
       ],
     });
     const observer = new SoakEvidenceObserver({ expectedResponsibilities: 10 });
+    snapshot.attempts[0] = {
+      ...(snapshot.attempts[0] as Record<string, unknown>),
+      state: "running",
+      finishedAt: null,
+    };
     await driver.captureEvidence(observer, { kind: "minute", minute: 1 });
+    assert.equal(
+      observer.finalize().metrics.irreversibleReceiptSuccessCount,
+      2,
+    );
+    assert.equal(
+      observer
+        .finalize()
+        .primaryEvidence.filter((row) => row.kind === "receipt_observed")
+        .length,
+      0,
+    );
+    snapshot.attempts[0] = {
+      ...(snapshot.attempts[0] as Record<string, unknown>),
+      state: "lost",
+      finishedAt: "2026-09-01T00:00:08.500Z",
+    };
     await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
     const evidence = observer.finalize();
     assert.equal(evidence.metrics.irreversibleReceiptSuccessCount, 2);
+    assert.equal(evidence.metrics.staleOwnerCommits, 3);
+    assert.ok(
+      evidence.primaryEvidence
+        .filter((row) => row.kind === "receipt_observed")
+        .every(
+          (row) =>
+            (row.data.originAttempt as { state: string }).state === "lost",
+        ),
+    );
     assert.deepEqual(evidence.metrics.duplicateIrreversibleReceiptKeys, [
       duplicateKey,
     ]);
@@ -1138,6 +1228,17 @@ test("provider faults reject unrelated incidents and timestamp-only recovery", a
         if (permitEventualRecovery && evidenceSleeps === 1) {
           durableEvents = [
             ...durableEvents,
+            {
+              id: "101",
+              eventType: "error",
+              kind: "task_retry_scheduled",
+              state: null,
+              taskId: 7,
+              attemptId: "eventual-provider-incident",
+              attemptNumber: 4,
+              occurredAt: "2026-09-01T00:03:05.000Z",
+              providerFailureKinds: ["timeout"],
+            },
             {
               id: "102",
               eventType: "operations_changed",
@@ -1371,6 +1472,7 @@ test("provider faults reject unrelated incidents and timestamp-only recovery", a
     const recoveryObserver = new SoakEvidenceObserver({
       expectedResponsibilities: 10,
     });
+    evidenceSleeps = 0;
     recoveryObserver.scheduleFault({
       id: "provider-timeout-2",
       kind: "provider_timeout",
@@ -1418,19 +1520,9 @@ test("provider faults reject unrelated incidents and timestamp-only recovery", a
     });
     await driver.setProviderFault("provider_timeout", "provider-timeout-3");
     await driver.clearProviderFault("provider-timeout-3");
-    durableEvents = [
-      {
-        id: "101",
-        eventType: "error",
-        kind: "task_retry_scheduled",
-        state: null,
-        taskId: 7,
-        attemptId: "eventual-provider-incident",
-        attemptNumber: 4,
-        occurredAt: "2026-09-01T00:03:05.000Z",
-        providerFailureKinds: ["timeout"],
-      },
-    ];
+    // A timeline entry can precede the exact provider incident. Keep polling
+    // within the evidence budget instead of treating unrelated activity as failure.
+    durableEvents = [];
     const eventualObserver = new SoakEvidenceObserver({
       expectedResponsibilities: 10,
     });
@@ -1457,12 +1549,125 @@ test("provider faults reject unrelated incidents and timestamp-only recovery", a
   }
 });
 
+test("database recovery uses a fresh healthy observation before the next minute bucket", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-db-recovery-"));
+  const snapshot = operationsSnapshot({ cursor: "2" });
+  let sleeps = 0;
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/api/readyz")
+      return Response.json({ status: "ready" });
+    if (url.pathname === "/api/ops/instances")
+      return Response.json({
+        instances: [
+          {
+            id: "api-1",
+            role: "api",
+            effectiveState: "healthy",
+            schedulerEnabled: false,
+          },
+          {
+            id: "worker-1",
+            role: "worker",
+            effectiveState: "healthy",
+            schedulerEnabled: true,
+          },
+          {
+            id: "worker-2",
+            role: "worker",
+            effectiveState: "healthy",
+            schedulerEnabled: true,
+          },
+        ],
+      });
+    if (url.pathname === "/api/tasks" && init?.method === "POST")
+      return Response.json({ id: 7 });
+    if (url.pathname === "/api/tasks/7/operations")
+      return Response.json(snapshot);
+    return Response.json({ emergencyStopEnabled: false });
+  };
+  const driver = new DockerWallClockDriver({
+    runId: "soak-database-recovery",
+    seed: 1,
+    durationHours: 1 / 60,
+    workspaceRoot: process.cwd(),
+    controlDirectory: directory,
+    baseUrl: "http://127.0.0.1:5000",
+    operatorToken: "token",
+    harness: harness([]),
+    fetchImpl,
+    topologyTimeoutMs: 100,
+    faultEvidenceTimeoutMs: 1_000,
+    sleep: async () => {
+      sleeps += 1;
+      snapshot.generatedAt = "2026-09-01T00:02:21.000Z";
+      snapshot.runtime.schedulerTickAgeMs = 1_000;
+    },
+    now: () => new Date("2026-09-01T00:00:00.000Z"),
+  });
+  try {
+    await driver.start();
+    snapshot.generatedAt = "2026-09-01T00:02:20.000Z";
+    snapshot.runtime.schedulerTickAgeMs = 6_000;
+    snapshot.fleetHealthSamples.push({
+      bucketAt: "2026-09-01T00:00:00.000Z",
+      sampledAt: "2026-09-01T00:01:03.000Z",
+      runtimeTruthState: "offline",
+      healthyWorkerCount: 0,
+      staleWorkerCount: 0,
+      schedulerTickAgeMs: null,
+    });
+    const observer = new SoakEvidenceObserver({ expectedResponsibilities: 10 });
+    observer.scheduleFault({
+      id: "database-unavailable-1",
+      kind: "database_unavailable",
+      scheduledAt: "2026-09-01T00:01:00.000Z",
+    });
+    await driver.captureEvidence(observer, {
+      kind: "post_fault",
+      fault: {
+        id: "database-unavailable-1",
+        kind: "database_unavailable",
+        atMs: 1,
+        durationMs: 75_000,
+        targetIndex: 0,
+      },
+      scheduledAt: "2026-09-01T00:01:00.000Z",
+    });
+    const result = observer.finalize();
+    assert.equal(result.injections[0]?.pass, true);
+    assert.equal(result.injections[0]?.recoveredAt, "2026-09-01T00:02:21.000Z");
+    assert.equal(
+      sleeps,
+      1,
+      "stale scheduler truth must not establish recovery",
+    );
+    assert.equal(
+      snapshot.fleetHealthSamples.length,
+      1,
+      "the historical offline bucket remains intact",
+    );
+    const recovery = result.primaryEvidence.find(
+      (event) => event.kind === "fault_recovered",
+    );
+    assert.equal(recovery?.data.sourceKind, "runtime_snapshot");
+    assert.equal(
+      (recovery?.data.runtimeEvidence as any)?.healthyWorkerCount,
+      2,
+    );
+  } finally {
+    await driver.stop({ keepData: false });
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("worker replacement healthy runtime event is durable recovery for a stale runtime incident", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "agentic-driver-test-"));
   const snapshot = operationsSnapshot({
     cursor: "2",
     generatedAt: "2026-09-01T00:01:10.000Z",
   });
+  let healthSleeps = 0;
   const evidenceHarness = harness([]);
   evidenceHarness.readDurableEnduranceEvents = async () => [
     {
@@ -1536,11 +1741,15 @@ test("worker replacement healthy runtime event is durable recovery for a stale r
     fetchImpl,
     topologyTimeoutMs: 100,
     faultEvidenceTimeoutMs: 1_000,
-    sleep: async () => undefined,
+    sleep: async () => {
+      healthSleeps += 1;
+      snapshot.runtime.state = "live";
+    },
     now: () => new Date("2026-09-01T00:00:00.000Z"),
   });
   try {
     await driver.start();
+    snapshot.runtime.state = "degraded";
     const observer = new SoakEvidenceObserver({ expectedResponsibilities: 10 });
     observer.scheduleFault({
       id: "worker-loss-1",
@@ -1562,6 +1771,11 @@ test("worker replacement healthy runtime event is durable recovery for a stale r
     assert.equal(injection?.pass, true);
     assert.equal(injection?.incidentId?.includes("postgres:201"), true);
     assert.equal(injection?.recoveredAt, "2026-09-01T00:01:08.000Z");
+    assert.equal(
+      healthSleeps,
+      1,
+      "a fresh healthy fleet snapshot is required before recording recovery",
+    );
   } finally {
     await driver.stop({ keepData: false });
     await rm(directory, { recursive: true, force: true });

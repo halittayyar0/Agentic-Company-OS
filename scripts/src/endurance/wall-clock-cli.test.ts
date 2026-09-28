@@ -77,7 +77,7 @@ test("wall-clock CLI validates duration, seed, output, and retention flags", () 
   assert.equal(path.isAbsolute(defaults.output), true);
 
   assert.throws(
-    () => parseWallClockArguments(["--runtime", "native"]),
+    () => parseWallClockArguments(["--runtime", "native"], {}),
     /postgres-root is required/,
   );
   assert.throws(

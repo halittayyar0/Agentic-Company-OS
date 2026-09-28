@@ -74,14 +74,19 @@ const budgets = {
   // meeting-turn inbox checkpoint, including one selected recovery pack.
   // Allow 15 KB raw / 4 KB gzip for this feature; individual assets, media,
   // and existing language-family budgets stay fixed.
-  totalCodeRawBytes: 1_345_000,
+  // User-requested permission controls, executable extension editor and source
+  // review add separately loaded components and one customization locale pack.
+  // Give this new scope 30 KB raw / 10 KB gzip; retain the original base limit.
+  customizationRawBytes: 30_000,
+  customizationGzipBytes: 10_000,
+  totalCodeRawBytes: 1_345_000 + 30_000,
   // The separately requested 30-skill library adds a lazy route and a small
   // draft helper. Preserve the previous 396 KB ceiling for all other code;
   // bound this new feature independently to 2.5 KB gzip / 8 KB raw below.
   baseCodeGzipBytes: 396_000,
   skillLibraryRawBytes: 8_000,
   skillLibraryGzipBytes: 2_500,
-  totalCodeGzipBytes: 398_500,
+  totalCodeGzipBytes: 398_500 + 10_000,
   allHomeLocaleRawBytes: 60_000,
   allHomeLocaleGzipBytes: 25_000,
   allProjectLocaleRawBytes: 25_000,
@@ -172,6 +177,10 @@ const newAgentLocaleAssets = languagePackAssets("new-expert-", "new expert");
 const shellLocaleAssets = languagePackAssets("shell-", "shell");
 const approvalLocaleAssets = languagePackAssets("approval-", "approvals");
 const settingsLocaleAssets = languagePackAssets("settings-", "settings");
+const customizationLocaleAssets = languagePackAssets(
+  "customization-",
+  "workspace customization",
+);
 const expertDetailLocaleAssets = languagePackAssets(
   "expert-detail-",
   "expert detail",
@@ -234,6 +243,7 @@ const localeAssetNames = new Set(
     ...approvalLocaleAssets,
     ...roomLocaleAssets,
     ...settingsLocaleAssets,
+    ...customizationLocaleAssets,
     ...expertDetailLocaleAssets,
     ...expertChatLocaleAssets,
     ...studioLocaleAssets,
@@ -284,6 +294,7 @@ const totalCodeRawBytes =
   Math.max(...expertChatLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...expertDetailLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...settingsLocaleAssets.map((asset) => asset.rawBytes)) +
+  Math.max(...customizationLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...roomLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...approvalLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...workforceLocaleAssets.map((asset) => asset.rawBytes)) +
@@ -309,6 +320,7 @@ const totalCodeGzipBytes =
   Math.max(...expertChatLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...expertDetailLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...settingsLocaleAssets.map((asset) => asset.gzipBytes)) +
+  Math.max(...customizationLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...roomLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...approvalLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...workforceLocaleAssets.map((asset) => asset.gzipBytes)) +
@@ -400,6 +412,15 @@ if (
   settingsLocaleAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0) > 26000
 )
   violations.push("Settings language packs exceed their aggregate budget.");
+if (
+  customizationLocaleAssets.reduce((sum, asset) => sum + asset.rawBytes, 0) >
+    70000 ||
+  customizationLocaleAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0) >
+    24000
+)
+  violations.push(
+    "Customization language packs exceed their aggregate budget.",
+  );
 if (
   roomLocaleAssets.reduce((sum, asset) => sum + asset.rawBytes, 0) > 50000 ||
   roomLocaleAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0) > 22000
@@ -518,9 +539,35 @@ if (
     `skill library exceeds its 8 KB raw / 2.5 KB gzip feature budget`,
   );
 }
-if (totalCodeGzipBytes - skillLibraryGzipBytes > budgets.baseCodeGzipBytes) {
+const customizationCodeAssets = codeAssets.filter((asset) =>
+  /^(?:extension-library|execution-policy|source-workspaces|customization-copy)-/.test(
+    asset.fileName,
+  ),
+);
+// Generated API bindings and lazy import plumbing share existing chunks;
+// reserve a fixed 4 KB raw / 1.5 KB gzip integration allowance inside this
+// feature's total, rather than increasing the old routes' budget.
+const customizationRawBytes =
+  4_000 +
+  customizationCodeAssets.reduce((sum, asset) => sum + asset.rawBytes, 0) +
+  Math.max(...customizationLocaleAssets.map((asset) => asset.rawBytes));
+const customizationGzipBytes =
+  1_500 +
+  customizationCodeAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0) +
+  Math.max(...customizationLocaleAssets.map((asset) => asset.gzipBytes));
+if (
+  customizationRawBytes > budgets.customizationRawBytes ||
+  customizationGzipBytes > budgets.customizationGzipBytes
+)
   violations.push(
-    `code excluding the new skill library exceeds the original 396 KB gzip budget`,
+    "Workspace customization exceeds its 30 KB raw / 10 KB gzip feature budget.",
+  );
+if (
+  totalCodeGzipBytes - skillLibraryGzipBytes - customizationGzipBytes >
+  budgets.baseCodeGzipBytes
+) {
+  violations.push(
+    `code excluding bounded new features exceeds the original 396 KB gzip budget`,
   );
 }
 

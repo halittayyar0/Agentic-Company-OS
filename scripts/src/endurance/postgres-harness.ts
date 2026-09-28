@@ -503,16 +503,31 @@ export class PostgresEnduranceHarness {
       if (!this.prebuiltRuntimeImage) {
         await this.run(["build", "app", "worker-1", "worker-2"]);
       }
-      await this.run([
-        "up",
-        "--detach",
-        "--no-build",
-        "--wait",
-        "--wait-timeout",
-        "180",
-      ]);
+      // Workers report readiness through durable heartbeats, without HTTP healthchecks.
+      // The driver waits for the complete API/worker topology after startup.
+      await this.run(["up", "--detach", "--no-build"]);
       this.running = true;
     } catch (error) {
+      let startupError = error;
+      try {
+        const logs = await this.run(
+          ["logs", "--no-color", "--tail", "40"],
+          10_000,
+        );
+        const codes = [
+          ...new Set(
+            `${logs.stdout}\n${logs.stderr}`.match(
+              /\b(?:EACCES|EPERM|ENOENT|EROFS|ENOSPC|ECONNREFUSED|ETIMEDOUT)\b/gu,
+            ) ?? [],
+          ),
+        ];
+        startupError = new Error(
+          `Container startup error codes: ${codes.join(", ") || "unclassified"}; ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        );
+      } catch {
+        // Diagnostics must not prevent exact-project cleanup.
+      }
       try {
         await this.run(
           ["down", "--volumes", "--remove-orphans", "--timeout", "30"],
@@ -522,11 +537,11 @@ export class PostgresEnduranceHarness {
         this.composeTouched = false;
       } catch (cleanupError) {
         throw new AggregateError(
-          [error, cleanupError],
+          [startupError, cleanupError],
           "Endurance topology startup and cleanup failed",
         );
       }
-      throw error;
+      throw startupError;
     }
   }
 
@@ -678,6 +693,7 @@ export class PostgresEnduranceHarness {
       "db",
       "psql",
       "--no-psqlrc",
+      "--quiet",
       "--set",
       "ON_ERROR_STOP=1",
       "--username",

@@ -42,4 +42,109 @@ test("the real catalog route requires authentication and validates every locale"
     assert.equal((await fetch(`${url}?${query}`, { headers })).status, 400);
   }
   assert.equal((await fetch(url, { method: "POST", headers })).status, 404);
+  const jsonHeaders = { ...headers, "content-type": "application/json" };
+  for (const endpoint of [
+    "extensions",
+    "packs",
+    "extensions/user-test/export",
+  ]) {
+    assert.equal((await fetch(`${url}/${endpoint}`)).status, 401);
+  }
+  const manifest = {
+    schemaVersion: 1,
+    id: "user-http-guide",
+    kind: "skill",
+    title: "HTTP guide",
+    description: "A test guide",
+    instructions: "Review the result.",
+  };
+  const save = (body: unknown) =>
+    fetch(`${url}/extensions`, {
+      method: "PUT",
+      headers: jsonHeaders,
+      body: JSON.stringify(body),
+    });
+  assert.equal(
+    (
+      await fetch(`${url}/extensions`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ manifest, enabled: true, expectedRevision: 0 }),
+      })
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await save({
+        manifest: { ...manifest, apiKey: "never-export" },
+        enabled: true,
+        expectedRevision: 0,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await save({ manifest, enabled: true, expectedRevision: 0 })).status,
+    200,
+  );
+  assert.equal(
+    (await save({ manifest, enabled: true, expectedRevision: 0 })).status,
+    409,
+  );
+  assert.deepEqual(
+    await (
+      await fetch(`${url}/extensions/${manifest.id}/export`, { headers })
+    ).json(),
+    manifest,
+  );
+  assert.equal(
+    (await save({ manifest, enabled: false, expectedRevision: 1 })).status,
+    200,
+  );
+  const entries = (await (
+    await fetch(`${url}/extensions`, { headers })
+  ).json()) as { id: string; enabled: boolean }[];
+  assert.equal(
+    entries.find((entry: { id: string }) => entry.id === manifest.id)?.enabled,
+    false,
+  );
+  const packs = (await (await fetch(`${url}/packs`, { headers })).json()) as {
+    revision: number;
+  };
+  const updatePacks = (body: unknown) =>
+    fetch(`${url}/packs`, {
+      method: "PUT",
+      headers: jsonHeaders,
+      body: JSON.stringify(body),
+    });
+  assert.equal(
+    (
+      await updatePacks({
+        enabledPacks: ["unknown"],
+        expectedRevision: packs.revision,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await updatePacks({ enabledPacks: [], expectedRevision: packs.revision }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (
+      await updatePacks({
+        enabledPacks: ["data"],
+        expectedRevision: packs.revision,
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    GetCapabilityCatalogResponse.parse(
+      await (await fetch(`${url}?locale=en`, { headers })).json(),
+    ).skills.length,
+    0,
+  );
 });

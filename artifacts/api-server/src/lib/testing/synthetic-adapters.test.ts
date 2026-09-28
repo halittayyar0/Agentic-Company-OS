@@ -756,3 +756,113 @@ test("run-scoped atomic fault control sets and clears provider faults across pro
     /run directory/iu,
   );
 });
+
+test("synthetic recovery reuses the completed task-cycle receipt across physical attempts", async () => {
+  const fixture = await createDurableTaskFixture();
+  const firstIdentity = { taskId: fixture.task.id, attemptNumber: 1, step: 0 };
+  const execute = async (
+    stepIdentity: SyntheticStepIdentity,
+    context: ToolRuntimeContext,
+  ) => {
+    const options = {
+      runId: RUN_ID,
+      seed: SEED,
+      identity: stepIdentity,
+      faultPlan: planFor(stepIdentity, "success"),
+    };
+    const completion =
+      await createSyntheticCompletion(options)(completionArgs());
+    const call = completion.completion.choices[0]!.message.tool_calls![0]!;
+    return {
+      call,
+      result: await createSyntheticToolExecutor(options)(
+        context,
+        call.function.name,
+        call.function.arguments,
+      ),
+    };
+  };
+  const first = await execute(firstIdentity, fixture.context);
+  assert.equal(first.result.toolOutcome, "succeeded");
+  await db
+    .update(taskAttemptsTable)
+    .set({ state: "lost", finishedAt: new Date() })
+    .where(eq(taskAttemptsTable.id, fixture.context.runtimeAttemptId!));
+  const leaseOwner = `synthetic-recovery-${randomUUID()}`;
+  const leaseExpiresAt = new Date(Date.now() + 120_000);
+  const [task] = await db
+    .update(tasksTable)
+    .set({ stepAttempts: 2, leaseOwner, leaseExpiresAt })
+    .where(eq(tasksTable.id, fixture.task.id))
+    .returning();
+  const [agent] = await db
+    .update(agentsTable)
+    .set({ runLeaseOwner: leaseOwner, runLeaseExpiresAt: leaseExpiresAt })
+    .where(eq(agentsTable.id, fixture.agent.id))
+    .returning();
+  const { createTaskAttempt, recoveryParentForTask } =
+    await import("../orchestrator/task-attempt-store");
+  const recoveryOfAttemptId = await recoveryParentForTask(task);
+  assert.equal(recoveryOfAttemptId, fixture.context.runtimeAttemptId);
+  const attempt = await createTaskAttempt({
+    task: { ...task, leaseOwner },
+    workerInstanceId: fixture.context.operationIdentity!.runtimeInstanceId!,
+    recoveryOfAttemptId,
+  });
+  assert.equal(
+    attempt.logicalExecutionId,
+    fixture.context.operationIdentity!.logicalExecutionId,
+  );
+  await db
+    .update(taskAttemptsTable)
+    .set({ state: "running" })
+    .where(eq(taskAttemptsTable.id, attempt.id));
+  const recoveredContext: ToolRuntimeContext = {
+    ...fixture.context,
+    agent,
+    taskLeaseOwner: leaseOwner,
+    runtimeAttemptId: attempt.id,
+    operationIdentity: {
+      ...fixture.context.operationIdentity!,
+      logicalExecutionId: attempt.logicalExecutionId,
+      originAttemptId: attempt.id,
+      agentLeaseOwner: leaseOwner,
+      modelToolCallId: "new-physical-call",
+    },
+  };
+  const recovered = await execute(
+    { ...firstIdentity, attemptNumber: 2 },
+    recoveredContext,
+  );
+  assert.equal(recovered.result.toolOutcome, "succeeded");
+  assert.equal(recovered.result.receiptId, first.result.receiptId);
+  const receipts = await db
+    .select()
+    .from(operationReceiptsTable)
+    .where(eq(operationReceiptsTable.taskId, task.id));
+  assert.equal(
+    receipts.length,
+    1,
+    "recovery must not create another irreversible effect",
+  );
+  const { operationInvocationsTable } = await import("@workspace/db");
+  const invocations = await db
+    .select()
+    .from(operationInvocationsTable)
+    .where(eq(operationInvocationsTable.receiptId, first.result.receiptId!));
+  assert.equal(invocations.length, 1);
+  const nextCycle = await createSyntheticCompletion({
+    runId: RUN_ID,
+    seed: SEED,
+    identity: { ...firstIdentity, attemptNumber: 3, step: 1 },
+    faultPlan: planFor(
+      { ...firstIdentity, attemptNumber: 3, step: 1 },
+      "success",
+    ),
+  })(completionArgs());
+  assert.notEqual(
+    nextCycle.completion.choices[0]!.message.tool_calls![0]!.function.arguments,
+    first.call.function.arguments,
+    "a later cycle remains a distinct responsibility",
+  );
+});

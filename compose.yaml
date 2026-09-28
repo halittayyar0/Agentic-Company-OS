@@ -44,6 +44,8 @@ x-runtime-service: &runtime-service
   security_opt:
     - no-new-privileges:true
     - seccomp=./deploy/chromium-seccomp.json
+  group_add:
+    - "${AGENTIC_SECRET_GID:-1000}"
   cap_drop:
     - ALL
   pids_limit: 512

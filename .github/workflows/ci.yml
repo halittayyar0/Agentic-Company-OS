@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -21,6 +22,7 @@ jobs:
     timeout-minutes: 60
     env:
       CI: true
+      AGENT_BROWSER_CHANNEL: chromium
     services:
       postgres:
         image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
@@ -64,6 +66,27 @@ jobs:
 
       - name: Check production dependency licenses
         run: pnpm --filter @workspace/scripts run check:licenses
+
+      - name: Install browser for source and UI tests
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Allow browser user namespaces in the ephemeral Linux runner
+        run: |
+          if command -v apparmor_parser >/dev/null && test -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns; then
+            cat <<EOF | sudo tee /etc/apparmor.d/agentic-playwright >/dev/null
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile agentic-playwright "${HOME}/.cache/ms-playwright/**" flags=(unconfined) {
+            userns,
+          }
+          EOF
+            sudo apparmor_parser -r /etc/apparmor.d/agentic-playwright
+          fi
+
+      - name: Inspect platform fallback fonts before the full test suite
+        run: |
+          pnpm --filter @workspace/agentic-company-os run build
+          pnpm exec playwright test --config playwright.config.ts tests/ui/text-resize.spec.ts --grep 'default text 200% ru light phone' --workers 1
 
       - name: Test
         run: pnpm test
@@ -123,19 +146,28 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      - name: Install UI smoke browser
-        run: pnpm exec playwright install --with-deps chromium
-
       - name: Run UI release smoke
         run: pnpm exec playwright test --config playwright.config.ts
 
       - name: Enforce frontend bundle budget
         run: pnpm --filter @workspace/scripts run check:bundle
 
+      - name: Preserve browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: browser-failure-evidence
+          path: |
+            test-results/ui-release-smoke/**
+            playwright-report/**
+          if-no-files-found: warn
+
   windows-runtime:
     name: Windows runtime and process-tree regression
     runs-on: windows-latest
     timeout-minutes: 60
+    env:
+      AGENT_BROWSER_CHANNEL: chromium
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -182,6 +214,9 @@ jobs:
           }
           "ENDURANCE_POSTGRES_ROOT=$postgresRoot" >> $env:GITHUB_ENV
 
+      - name: Install browser for source and native runtime tests
+        run: pnpm exec playwright install chromium
+
       - name: Test Windows runtime paths
         run: pnpm test
 
@@ -190,9 +225,6 @@ jobs:
 
       - name: Build native runtime artifacts from the frozen lockfile
         run: pnpm run build
-
-      - name: Install native endurance observer browser
-        run: pnpm exec playwright install chromium
 
       - name: Exercise native PostgreSQL process topology
         run: >-
@@ -206,7 +238,7 @@ jobs:
         run: |
           pnpm endurance:wall-clock:native -- `
             --postgres-root "$env:ENDURANCE_POSTGRES_ROOT" `
-            --duration-hours 0.03333333333333333 `
+            --duration-hours 0.16666666666666666 `
             --fault-profile compressed-all `
             --seed 240901 `
             --output artifacts/endurance-reports/windows-native-wall-clock.json `
@@ -215,12 +247,30 @@ jobs:
           if ($runnerStatus -ne 1) {
             throw "Expected a valid short wall-clock run to exit 1, received $runnerStatus"
           }
+          # Keep bounded diagnostic results in the job log even when verification fails.
+          $report = Get-Content -LiteralPath artifacts/endurance-reports/windows-native-wall-clock.json -Raw | ConvertFrom-Json
+          $report | Select-Object pass, verified24h, injections, metrics, assertions | ConvertTo-Json -Depth 8
           pnpm endurance:verify-report -- `
             artifacts/endurance-reports/windows-native-wall-clock.json `
             --expect-mode wall_clock `
             --expect-commit "$env:GITHUB_SHA" `
             --expect-runtime native-postgres `
             --allow-unverified-duration
+
+      - name: Preserve native PostgreSQL evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-native-runtime-evidence
+          path: |
+            artifacts/endurance-reports/windows-native-smoke.json
+            artifacts/endurance-reports/windows-native-wall-clock.json
+            artifacts/endurance-reports/windows-native-wall-clock.jsonl
+            artifacts/endurance-reports/windows-native-wall-clock.json.sha256
+            artifacts/endurance-reports/windows-native-wall-clock.json.browser-manifest.json
+            artifacts/endurance-reports/windows-native-wall-clock.json.primary-evidence.jsonl
+            artifacts/endurance-reports/windows-native-wall-clock.json.browser/**
+          if-no-files-found: warn
 
   container:
     name: Build and exercise production and endurance containers
@@ -481,13 +531,14 @@ jobs:
           mkdir -p artifacts/endurance-reports
           set +e
           pnpm endurance:wall-clock -- \
-            --duration-hours 0.03333333333333333 \
+            --duration-hours 0.16666666666666666 \
             --fault-profile compressed-all \
             --seed 240901 \
             --output artifacts/endurance-reports/ci-postgres-smoke.json \
             --overwrite
           runner_status=$?
           set -e
+          echo "::notice::Endurance runner exit code: $runner_status"
           # A valid short run is intentionally nonzero because it cannot claim verified24h.
           test "$runner_status" -eq 1
           pnpm endurance:verify-report -- \
@@ -496,3 +547,16 @@ jobs:
             --expect-commit "$GITHUB_SHA" \
             --expect-runtime docker-compose \
             --allow-unverified-duration
+
+      - name: Preserve endurance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: container-endurance-evidence
+          path: |
+            artifacts/endurance-reports/*.json
+            artifacts/endurance-reports/*.jsonl
+            artifacts/endurance-reports/*.sha256
+            artifacts/endurance-reports/**/*.png
+          if-no-files-found: warn
+          retention-days: 7

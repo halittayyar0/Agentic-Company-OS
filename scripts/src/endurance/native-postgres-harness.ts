@@ -10,8 +10,8 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
 import path from "node:path";
+import { canonicalTempRoot } from "../temp-directory";
 
 import {
   probeRuntimeTopology,
@@ -172,7 +172,7 @@ export function validateNativeStateDirectoryTarget(
   const resolved = path.resolve(stateDirectory);
   if (
     normalizedForTargetComparison(path.dirname(resolved)) !==
-    normalizedForTargetComparison(tmpdir())
+    normalizedForTargetComparison(canonicalTempRoot())
   ) {
     throw new Error(
       "Native state directory must be a direct child of the process temp root",
@@ -304,8 +304,11 @@ function withoutInheritedSecrets(
     OPERATOR_AUTH_TOKEN_FILE: undefined,
     RUNTIME_CONTROL_KEY_FILE: undefined,
     OPENROUTER_API_KEY: undefined,
+    OPENROUTER_API_KEY_FILE: undefined,
     OPENAI_API_KEY: undefined,
+    OPENAI_API_KEY_FILE: undefined,
     AI_INTEGRATIONS_OPENAI_API_KEY: undefined,
+    AI_INTEGRATIONS_OPENAI_API_KEY_FILE: undefined,
   };
 }
 
@@ -323,6 +326,7 @@ export function createNativeRuntimeEnvironments(
   const runDirectory = path.resolve(input.runDirectory);
   const common: NodeJS.ProcessEnv = {
     ...withoutInheritedSecrets(input.baseEnvironment ?? process.env),
+    WORKSPACE_ENV_FILE: path.join(runDirectory, "runtime-test.env"),
     NODE_ENV: "development",
     DATABASE_URL: input.databaseUrl,
     HOST: "127.0.0.1",
@@ -556,7 +560,10 @@ export class NativePostgresEnduranceHarness {
     this.execute = options.execute ?? executeNativeCommand;
     this.createStateDirectory =
       options.createStateDirectory ??
-      (() => mkdtemp(path.join(tmpdir(), `agentic-native-${this.runId}-`)));
+      (() =>
+        mkdtemp(
+          path.join(canonicalTempRoot(), `agentic-native-${this.runId}-`),
+        ));
     this.waitForApiReady = options.waitForApiReady ?? defaultWaitForApiReady;
     this.waitForTopology = options.waitForTopology ?? defaultWaitForTopology;
     this.probeTopology =
@@ -708,6 +715,7 @@ export class NativePostgresEnduranceHarness {
       command: this.requireBinaries().psql,
       args: [
         "--no-psqlrc",
+        "--quiet",
         "--no-password",
         "--set",
         "ON_ERROR_STOP=1",
@@ -782,8 +790,14 @@ export class NativePostgresEnduranceHarness {
     return {
       name,
       command: this.nodeExecutable,
-      args: [name === "app" ? "start.mjs" : "start-worker.mjs"],
-      cwd: apiDirectory,
+      args: [
+        path.join(
+          apiDirectory,
+          name === "app" ? "start.mjs" : "start-worker.mjs",
+        ),
+      ],
+      // Resolve code explicitly while all relative state remains run-owned.
+      cwd: this.runDirectory,
       env: environment,
     };
   }

@@ -1,5 +1,5 @@
 import { LanguagePackStatus } from "../components/i18n/language-pack-status";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getLlmSettings,
@@ -25,6 +25,16 @@ import { loadSettingsCopy, type SettingsCopy } from "@/lib/settings-copy";
 import { applyColorMode, getSavedColorMode, type ColorMode } from "@/lib/theme";
 import { matchesModelSearch } from "@/lib/model-search";
 
+const SourceWorkspaceSettings = lazy(() =>
+  import("../components/settings/source-workspaces").then((module) => ({
+    default: module.SourceWorkspaceSettings,
+  })),
+);
+const ExecutionPolicySettings = lazy(() =>
+  import("../components/settings/execution-policy").then((module) => ({
+    default: module.ExecutionPolicySettings,
+  })),
+);
 const settingsKey = ["settings", "llm"] as const;
 const providers = ["openrouter", "openai", "ollama", "replit"] as const;
 const names = {
@@ -259,6 +269,10 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
           {c.description}
         </p>
       </header>
+      <Suspense fallback={<LanguagePackStatus error={false} />}>
+        <ExecutionPolicySettings />
+        <SourceWorkspaceSettings />
+      </Suspense>
       <section className={panelClass} aria-labelledby="preferences-title">
         <h2 id="preferences-title" className="text-lg font-semibold">
           {c.preferences}

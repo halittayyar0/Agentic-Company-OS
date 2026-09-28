@@ -168,7 +168,10 @@ export function ProjectOperationsRoom({
             <span className="font-mono text-[12px] text-muted-foreground">
               {t("projectId", { id: project.id })}
             </span>
-            <span className="ms-auto font-mono text-[12px] text-muted-foreground">
+            <span
+              data-operations-cursor={model.cursor}
+              className="ms-auto font-mono text-[12px] text-muted-foreground"
+            >
               {t("cursor", { id: model.cursor })}
             </span>
             {onRefresh ? (

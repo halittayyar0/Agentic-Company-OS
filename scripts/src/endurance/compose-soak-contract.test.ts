@@ -118,7 +118,7 @@ test("container CI proves the synthetic image boundary and reuses the real short
   );
   assert.match(
     workflow,
-    /pnpm endurance:wall-clock --[\s\S]*?--duration-hours 0\.03333333333333333[\s\S]*?--fault-profile compressed-all/u,
+    /pnpm endurance:wall-clock --[\s\S]*?--duration-hours 0\.16666666666666666[\s\S]*?--fault-profile compressed-all/u,
   );
   assert.match(
     workflow,
@@ -148,7 +148,7 @@ test("Windows CI verifies a SHA256-pinned PostgreSQL 17 artifact and runs native
   assert.match(windowsJob, /endurance:native-postgres-smoke/u);
   assert.match(
     windowsJob,
-    /endurance:wall-clock:native[\s\S]*?--duration-hours 0\.03333333333333333[\s\S]*?--fault-profile compressed-all/u,
+    /endurance:wall-clock:native[\s\S]*?--duration-hours 0\.16666666666666666[\s\S]*?--fault-profile compressed-all/u,
   );
   assert.match(
     windowsJob,

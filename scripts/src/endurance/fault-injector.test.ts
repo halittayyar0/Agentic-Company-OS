@@ -119,6 +119,10 @@ test("compressed-all profile live-exercises every fault kind inside a short non-
     ]),
   );
   assert.equal(schedule.length, 7);
+  assert.ok(
+    schedule.find((fault) => fault.kind === "worker_loss")!.durationMs > 10_000,
+    "worker loss must span the five-second stale threshold plus a scheduler tick",
+  );
   for (const [index, fault] of schedule.entries()) {
     assert.ok(fault.atMs + fault.durationMs < durationMs);
     const next = schedule[index + 1];
@@ -146,6 +150,20 @@ test("compressed-all profile refuses a horizon too short for isolated all-fault 
       }),
     /compressed-all.*two minutes|two-minute/iu,
   );
+});
+
+test("live compressed database outage spans a sample interval and leaves recovery before the next fault", () => {
+  const schedule = createSeededFaultSchedule({
+    seed: 240_901,
+    durationMs: 600_000,
+    profile: "compressed-all",
+  });
+  const database = schedule.find(
+    (fault) => fault.kind === "database_unavailable",
+  )!;
+  const next = schedule.find((fault) => fault.atMs > database.atMs)!;
+  assert.equal(database.durationMs, 75_000);
+  assert.ok(database.atMs + database.durationMs + 5000 < next.atMs);
 });
 
 test("long-run seeded jitter never overlaps fault or recovery windows", () => {

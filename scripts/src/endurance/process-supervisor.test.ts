@@ -13,6 +13,26 @@ process.on("SIGTERM", () => {
 });
 setInterval(() => {}, 1000);
 `;
+test("bounded command cancellation ends the owned process before the ordinary timeout", async () => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 50);
+  try {
+    await assert.rejects(
+      executeBoundedCommand({
+        command: process.execPath,
+        args: ["-e", "setInterval(()=>{},1000)"],
+        cwd: process.cwd(),
+        environment: { ...process.env },
+        timeoutMs: 500,
+        maxBufferBytes: 16384,
+        signal: controller.signal,
+      }),
+      /cancelled/,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+});
 
 test("bounded commands time out and terminate only their spawned process tree", async () => {
   const startedAt = Date.now();

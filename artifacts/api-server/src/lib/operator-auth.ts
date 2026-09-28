@@ -66,7 +66,7 @@ export function matchesOperatorToken(
 }
 
 function parseCookies(header: string | undefined): Record<string, string> {
-  const result: Record<string, string> = {};
+  const result: Record<string, string> = Object.create(null);
   if (!header) return result;
   for (const item of header.split(";")) {
     const separator = item.indexOf("=");

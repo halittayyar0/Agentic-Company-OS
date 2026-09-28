@@ -11,6 +11,7 @@ const FAULT_SOURCE_KINDS = new Set([
   "durable_event",
   "operations_timeline",
   "health_sample",
+  "runtime_snapshot",
   "runtime_control",
   "sse_cursor",
 ]);
@@ -101,6 +102,8 @@ interface ResponsibilityLagProof {
 }
 
 interface HealthProof {
+  bucketAt: string;
+  conservativeGap: boolean;
   minute: number;
   sampledAt: string;
   reportedState: string;
@@ -492,9 +495,32 @@ export function validateAndRecomputePrimaryEvidence(input: {
         }
         const sampledAtMs = new Date(sampledAt).getTime();
         const bucketAtMs = new Date(bucketAt).getTime();
+        // Production rows describe the last completed minute. A sampler that
+        // runs partway through the following minute legitimately records an
+        // age of 60–120 seconds. Database gaps are explicit offline markers,
+        // never reconstructed healthy samples, and must bind to the observed
+        // database incident and its independently verified recovery window.
+        const conservativeGap =
+          data.runtimeTruthState === "offline" &&
+          data.healthyWorkerCount === 0 &&
+          data.staleWorkerCount === 0 &&
+          data.schedulerTickAgeMs === null &&
+          input.report.injections.some(
+            (injection) =>
+              injection.kind === "database_unavailable" &&
+              injection.observedAt === sampledAt &&
+              injection.recoveredAt !== null &&
+              bucketAtMs + 120_000 >=
+                new Date(injection.scheduledAt).getTime() &&
+              bucketAtMs + 60_000 <=
+                new Date(injection.recoveredAt).getTime() &&
+              sampledAtMs <=
+                new Date(injection.recoveredAt).getTime() +
+                  FAULT_EVIDENCE_POLL_TOLERANCE_MS,
+          );
         if (
           bucketAtMs > sampledAtMs ||
-          sampledAtMs - bucketAtMs > 60_000 ||
+          (sampledAtMs - bucketAtMs > 120_000 && !conservativeGap) ||
           (minute === 1 && sampledAtMs - startedAtMs > 120_000)
         ) {
           throw new Error("Primary evidence health sample time is invalid");
@@ -502,8 +528,12 @@ export function validateAndRecomputePrimaryEvidence(input: {
         const priorHealth = health.get(minute - 1);
         if (
           priorHealth &&
-          (sampledAtMs <= new Date(priorHealth.sampledAt).getTime() ||
-            sampledAtMs - new Date(priorHealth.sampledAt).getTime() > 90_000)
+          (bucketAtMs - new Date(priorHealth.bucketAt).getTime() !== 60_000 ||
+            sampledAtMs < new Date(priorHealth.sampledAt).getTime() ||
+            (sampledAtMs === new Date(priorHealth.sampledAt).getTime() &&
+              !priorHealth.conservativeGap) ||
+            (sampledAtMs - new Date(priorHealth.sampledAt).getTime() > 90_000 &&
+              !conservativeGap))
         ) {
           throw new Error("Primary evidence health sample cadence is invalid");
         }
@@ -545,6 +575,8 @@ export function validateAndRecomputePrimaryEvidence(input: {
           );
         }
         health.set(minute, {
+          bucketAt,
+          conservativeGap,
           minute,
           sampledAt,
           reportedState,
@@ -558,8 +590,11 @@ export function validateAndRecomputePrimaryEvidence(input: {
             `Primary fault recovery is missing before ${String(data.faultId)}`,
           );
         }
-        const expected = input.expectedFaults[observedFaults.size];
         const faultId = text(data.faultId, `fault observation ${index} id`);
+        const faultIndex = input.expectedFaults.findIndex(
+          (fault) => fault.id === faultId,
+        );
+        const expected = input.expectedFaults[faultIndex];
         const faultKind = text(
           data.faultKind,
           `fault observation ${index} kind`,
@@ -580,7 +615,10 @@ export function validateAndRecomputePrimaryEvidence(input: {
           data.sourceId,
           `fault observation ${index} source id`,
         );
-        if (!FAULT_SOURCE_KINDS.has(sourceKind)) {
+        if (
+          !FAULT_SOURCE_KINDS.has(sourceKind) ||
+          sourceKind === "runtime_snapshot"
+        ) {
           throw new Error(
             `Primary fault ${faultId} durable source kind is invalid`,
           );
@@ -590,7 +628,7 @@ export function validateAndRecomputePrimaryEvidence(input: {
           throw new Error(`Primary fault ${faultId} reused a source identity`);
         }
         faultSourceIdentities.add(sourceIdentity);
-        const injection = input.report.injections[observedFaults.size];
+        const injection = input.report.injections[faultIndex];
         if (
           !expected ||
           !injection ||
@@ -632,8 +670,11 @@ export function validateAndRecomputePrimaryEvidence(input: {
         break;
       }
       case "fault_recovered": {
-        const expected = input.expectedFaults[recoveredFaults.size];
         const faultId = text(data.faultId, `fault recovery ${index} id`);
+        const faultIndex = input.expectedFaults.findIndex(
+          (fault) => fault.id === faultId,
+        );
+        const expected = input.expectedFaults[faultIndex];
         const faultKind = text(data.faultKind, `fault recovery ${index} kind`);
         const scheduledAt = iso(
           data.scheduledAt,
@@ -656,13 +697,54 @@ export function validateAndRecomputePrimaryEvidence(input: {
             `Primary fault ${faultId} recovery source is invalid`,
           );
         }
+        if (sourceKind === "runtime_snapshot") {
+          const runtime = object(
+            data.runtimeEvidence,
+            "runtime recovery evidence",
+          );
+          const generatedAt = iso(
+            runtime.generatedAt,
+            "runtime recovery generatedAt",
+          );
+          const cursor = decimalCursor(
+            runtime.cursor,
+            "runtime recovery cursor",
+          ).toString();
+          const healthyWorkers = integer(
+            runtime.healthyWorkerCount,
+            "runtime recovery healthy workers",
+          );
+          integer(runtime.staleWorkerCount, "runtime recovery stale workers");
+          const tickAge = integer(
+            runtime.schedulerTickAgeMs,
+            "runtime recovery scheduler tick age",
+          );
+          if (
+            faultKind !== "database_unavailable" ||
+            generatedAt !== occurredAt ||
+            sourceId !== `operations-runtime:${cursor}:${generatedAt}` ||
+            runtime.state !== "live" ||
+            runtime.databaseBackend !== "postgresql" ||
+            runtime.durable !== true ||
+            healthyWorkers !== 2 ||
+            tickAge > 5_000
+          ) {
+            throw new Error(
+              "Primary runtime recovery evidence is not fresh durable healthy truth",
+            );
+          }
+        } else if (data.runtimeEvidence !== undefined) {
+          throw new Error(
+            "Primary runtime recovery evidence has the wrong source kind",
+          );
+        }
         const sourceIdentity = `${sourceKind}:${sourceId}`;
         if (faultSourceIdentities.has(sourceIdentity)) {
           throw new Error(`Primary fault ${faultId} reused a source identity`);
         }
         faultSourceIdentities.add(sourceIdentity);
         const observed = observedFaults.get(faultId);
-        const injection = input.report.injections[recoveredFaults.size];
+        const injection = input.report.injections[faultIndex];
         if (
           !expected ||
           !observed ||

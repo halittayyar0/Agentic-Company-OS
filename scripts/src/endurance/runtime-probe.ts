@@ -21,7 +21,7 @@ function delay(milliseconds: number): Promise<void> {
 
 function validatedLoopbackUrl(value: string): URL {
   const url = new URL(value);
-  if (url.protocol !== "http:") {
+  if (url.protocol !== "http:" || url.username || url.password) {
     throw new TypeError("Runtime probe requires a loopback HTTP URL");
   }
   const hostname = url.hostname.toLowerCase();
@@ -65,6 +65,7 @@ async function requestJson(
       new URL(pathname, baseUrl),
       {
         headers: { authorization: `Bearer ${options.operatorToken}` },
+        redirect: "error",
         signal: controller.signal,
       },
     );

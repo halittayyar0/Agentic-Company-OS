@@ -302,6 +302,15 @@ rejects internal or start/end browser sampling blind windows over 90 seconds,
 and recomputes the incident/SSE aggregates without page errors or mismatches.
 Only then is `verified24h` exactly `true`.
 
+Database recovery can be established by a fresh Operations snapshot read from
+PostgreSQL after database access resumes. Its server timestamp, event cursor,
+database identity, durability, worker counts and scheduler age are retained in
+the primary evidence. The independent verifier requires live PostgreSQL truth,
+exactly two healthy workers and a scheduler tick no older than five seconds;
+the driver also checks the actual API/worker process topology. Historical
+offline minute buckets remain unchanged. Recovery therefore does not wait for
+the next minute aggregation, and the 120-second recovery limit is unchanged.
+
 The accelerated command is deterministic test evidence only:
 
 ```bash

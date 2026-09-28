@@ -179,11 +179,22 @@ export async function recordOperationsHealthSample(input: {
   runtimeInstanceId: string;
   now?: Date;
   config: RuntimeOperationsConfig;
+  unavailableSamples?: readonly { bucketAt: Date; sampledAt: Date }[];
+  monotonicNow?: () => number;
 }): Promise<boolean> {
   if (input.config.role === "api") return false;
   const now = input.now ?? new Date();
   const bucketAt = completedOperationsMinute(now);
   const bucketNumber = Math.floor(bucketAt.getTime() / MINUTE_MS);
+  const monotonicNow = input.monotonicNow ?? (() => performance.now());
+  const observationStarted = monotonicNow();
+  const requireFreshObservation = () => {
+    if (monotonicNow() - observationStarted > input.config.workerStaleAfterMs) {
+      throw new Error(
+        "Operations health observation exceeded its freshness deadline",
+      );
+    }
+  };
   return db.transaction(async (transaction) => {
     if (databaseBackend === "postgresql") {
       // Transaction-scoped ownership serializes replicas for one bucket. The
@@ -192,11 +203,38 @@ export async function recordOperationsHealthSample(input: {
         sql`select pg_advisory_xact_lock(${SAMPLER_ADVISORY_LOCK_CLASS}, ${bucketNumber})`,
       );
     }
+    requireFreshObservation();
+    // Failed observations can recover inside the same completed-minute bucket.
+    // Preserve those observations before considering a current healthy sample;
+    // the ordinary missing-bucket backfill cannot detect this shorter outage.
+    if (input.unavailableSamples?.length) {
+      const insertedUnavailable = await transaction
+        .insert(runtimeHealthSamplesTable)
+        .values(
+          input.unavailableSamples.map((sample) => ({
+            bucketAt: sample.bucketAt,
+            sampledAt: sample.sampledAt,
+            sampledByInstanceId: input.runtimeInstanceId,
+            runtimeTruthState: "offline" as const,
+          })),
+        )
+        .onConflictDoNothing({ target: runtimeHealthSamplesTable.bucketAt })
+        .returning({ bucketAt: runtimeHealthSamplesTable.bucketAt });
+      for (const sample of insertedUnavailable) {
+        await appendOperationsChanged(transaction, {
+          kind: "health_sample_recorded",
+          runtimeInstanceId: input.runtimeInstanceId,
+          bucketAt: sample.bucketAt,
+          createdAt: now,
+        });
+      }
+    }
     const [existing] = await transaction
       .select({ bucketAt: runtimeHealthSamplesTable.bucketAt })
       .from(runtimeHealthSamplesTable)
       .where(eq(runtimeHealthSamplesTable.bucketAt, bucketAt))
       .limit(1);
+    requireFreshObservation();
     if (existing) return false;
 
     const [latest] = await transaction
@@ -250,6 +288,7 @@ export async function recordOperationsHealthSample(input: {
       bucketAt,
       config: input.config,
     });
+    requireFreshObservation();
     const inserted = await transaction
       .insert(runtimeHealthSamplesTable)
       .values({
@@ -290,6 +329,7 @@ export function startOperationsHealthSampler(
   options: {
     autoTrigger?: boolean;
     recordSample?: typeof recordOperationsHealthSample;
+    now?: () => Date;
   } = {},
 ): OperationsHealthSamplerController {
   if (config.role === "api") {
@@ -300,18 +340,50 @@ export function startOperationsHealthSampler(
     });
   }
   const recordSample = options.recordSample ?? recordOperationsHealthSample;
+  const nowImpl = options.now ?? (() => new Date());
+  const unavailableSamples = new Map<
+    number,
+    { bucketAt: Date; sampledAt: Date }
+  >();
   let stopped = false;
   let pending = false;
   let inFlight: Promise<void> | null = null;
   const run = async (): Promise<void> => {
     do {
       pending = false;
+      const now = nowImpl();
       try {
         await recordSample({
           runtimeInstanceId: runtime.id,
           config,
+          now,
+          unavailableSamples: [...unavailableSamples.values()],
         });
+        unavailableSamples.clear();
       } catch (error) {
+        const failedAt = nowImpl();
+        const lastBucket = completedOperationsMinute(failedAt).getTime();
+        const firstBucket = Math.max(
+          completedOperationsMinute(now).getTime(),
+          lastBucket - (MAX_CONSERVATIVE_BACKFILL_BUCKETS - 1) * MINUTE_MS,
+        );
+        // Paused PostgreSQL can resume a queued query without disconnecting.
+        // A stale observation must retain every minute missed while awaiting it.
+        for (
+          let bucket = firstBucket;
+          bucket <= lastBucket;
+          bucket += MINUTE_MS
+        ) {
+          if (!unavailableSamples.has(bucket)) {
+            unavailableSamples.set(bucket, {
+              bucketAt: new Date(bucket),
+              sampledAt: failedAt,
+            });
+          }
+        }
+        while (unavailableSamples.size > MAX_CONSERVATIVE_BACKFILL_BUCKETS) {
+          unavailableSamples.delete(unavailableSamples.keys().next().value!);
+        }
         logger.warn(
           { error: safeErrorForLog(error), runtimeId: runtime.id },
           "Operations health sample failed",

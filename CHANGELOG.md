@@ -7,6 +7,12 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Added
 
+- Seven-language `pnpm run setup` wizard for native PostgreSQL or Docker Compose, private credentials, interruption/resume, tool packs and optional private HTTPS phone access.
+- Persisted read-only, approval, full-access and custom execution policy with fresh effect checks and revocation of stale automatic grants.
+- Personal guides, utility presets and revision-bound Node programs with import/export, enable/disable and recorded execution; 12 additional data/document processors.
+- Isolated Git source workspaces with agent projects, recorded checks, exact tested-revision application and rollback commits. Application deployment and database rollback remain separate operator tasks.
+- Linux container, Windows native and macOS Intel/Apple Silicon verification workflows, secret-history scanning and CodeQL analysis.
+
 - Durable UUID admission and exact authenticated receipt queries for Terminal and Browser actions (migration 0025), encrypted Terminal output recovery, worker effect fencing, and seven-language local review. Older local-only records are not replayed or upgraded. Deploy API and UI together and retain the matching runtime key with protected database backups; see [operator recovery](docs/operator-recovery.md).
 
 - Required UUIDs and compact, atomic receipts for all manual meeting writes (migration 0024), with project-scoped receipt checks, original-identity retries and seven-language recovery review. Meeting creation saves a draft before an explicit model start. Deploy the matching API and clients together; see [meeting upgrades](docs/meeting-turns.md).

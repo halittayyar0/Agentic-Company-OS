@@ -147,6 +147,74 @@ async function setup(page: Page, locale: Locale = "en") {
   return { ...harness, state, c: await loadSettingsCopy(locale) };
 }
 
+test("execution permissions save explicit custom rights and recover a stale revision", async ({
+  page,
+}) => {
+  await setup(page, "en");
+  let saved: Record<string, unknown> = {
+    id: 1,
+    mode: "approval",
+    custom: null,
+    revision: 1,
+    updatedAt: "2026-09-28T00:00:00Z",
+  };
+  const writes: Record<string, unknown>[] = [];
+  let conflict = false;
+  await page.route("**/api/settings/execution-policy", async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ json: saved });
+    const body = route.request().postDataJSON();
+    writes.push(body);
+    if (conflict) {
+      saved = { ...saved, mode: "read_only", revision: 3 };
+      return route.fulfill({
+        status: 409,
+        json: { code: "EXECUTION_POLICY_CONFLICT" },
+      });
+    }
+    saved = {
+      ...saved,
+      mode: body.mode,
+      custom: body.custom ?? null,
+      revision: Number(saved.revision) + 1,
+    };
+    return route.fulfill({ json: saved });
+  });
+  await page.goto("/settings");
+  const panel = page.locator(
+    'section[aria-labelledby="execution-policy-title"]',
+  );
+  await panel.getByRole("radio", { name: "Custom", exact: true }).check();
+  await panel
+    .getByRole("checkbox", { name: "File changes", exact: true })
+    .check();
+  await panel.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    panel.getByText("Permissions saved.", { exact: true }),
+  ).toBeVisible();
+  expect(writes[0]).toEqual({
+    mode: "custom",
+    expectedRevision: 1,
+    custom: {
+      files: true,
+      terminal: false,
+      browser: false,
+      delegation: false,
+      sudo: false,
+    },
+  });
+  conflict = true;
+  await panel.getByRole("radio", { name: "Full access", exact: true }).check();
+  await panel.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    panel.getByRole("radio", { name: "Read only", exact: true }),
+  ).toBeChecked();
+  await expect(
+    panel.getByText(/Permissions could not be loaded or have changed/),
+  ).toBeVisible();
+  expect(writes).toHaveLength(2);
+});
+
 for (const locale of LOCALES) {
   test(`${locale} settings save, test with consent, preserve catalog and remove with environment fallback on a phone`, async ({
     page,

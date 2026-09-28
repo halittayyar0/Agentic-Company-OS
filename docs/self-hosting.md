@@ -30,6 +30,39 @@ Process/browser execution should run inside a disposable container or VM if enab
 
 ## 1. Install reproducibly
 
+### Guided installation (Windows, Linux and macOS)
+
+After installing Node 24 and the pinned pnpm version, clone this repository and run these commands from its directory in PowerShell or a POSIX terminal:
+
+```text
+pnpm install --frozen-lockfile
+pnpm run setup
+```
+
+Open the private setup link printed in that terminal. The wizard offers Turkish, English, German, Russian, Simplified Chinese, Traditional Chinese and Arabic (right-to-left). Choose **This computer** or **Container**, a provider (or configure it later), execution permissions and tool packs. Docker is offered only when a running Linux engine and Compose v2 are detected. Native installation requires an existing dedicated PostgreSQL database; container installation creates its own database volume.
+
+The installer builds the application, starts one API and two workers, persists your choices, and checks runtime readiness. Provider credentials and independent operator/control keys are stored outside the checkout under your private installation directory. The native launcher must remain running; Ctrl+C stops its child processes. Container services continue under Compose. A failed container installation retains its services and database for diagnosis and resumption; no volumes are deleted automatically.
+
+The terminal prints the installation directory. Resume or restart from the same checkout with:
+
+```text
+pnpm run setup --resume "/absolute/path/to/instance-UUID"
+```
+
+On Windows use the full Windows path instead. Completed installations retain later language, pack and permission changes. An interrupted installation reapplies the original reviewed choices before finishing. Only one launcher may own an installation at a time. Back up the private installation directory **and** PostgreSQL separately; never commit either to Git.
+
+### Phone browser access
+
+The optional private-phone setting uses an existing Tailscale connection and HTTPS Serve on port 8443. Sign the host and phone into the same private network and enable HTTPS certificates for that network before selecting it. The setup checks for a conflicting listener, preserves unrelated listeners, and verifies that the UI loads, anonymous API requests are rejected and the operator key works. It does not create a public Funnel or require a separately developed mobile application. Tailscale eligibility and plan limits are governed by its service; it is optional.
+
+Open the resulting HTTPS link in the phone's browser and enter the workspace operator key. The wizard reveals that key once to its authenticated setup session; it remains recoverable from the private `secrets/operator_auth_token` file. The host must remain online. You can instead operate your own VPN and TLS reverse proxy using the remote-access settings below.
+
+### Execution choices and personal capabilities
+
+Settings offers read-only, approval, full-access and custom modes. Full access automatically authorizes supported exact queued actions; emergency stop, agent permissions, ownership checks and OS/container limits still apply. A downgrade invalidates older automatic grants before subsequent effects. Selecting full access does not give a container access to your host files.
+
+The Skills page supports persistent personal guides, presets for built-in bounded utility tools, and [user-authored Node programs](personal-programs.md), with JSON import/export, enable/disable and five pack selections. Imported manifests cannot replace built-ins or grant authority. Importing a program stores its code without executing it; execution requires terminal authority and a revision-bound approval. Guides provide instructions, while tools perform operations. Utility additions cover CSV filter/sort/deduplicate/join/conversion, JSON formatting/diff, escaped HTML reports, templates, Markdown outlines and comparison of supplied page text. Arbitrary MCP servers and automatic third-party dependency installation are not included.
+
 From a reviewed commit:
 
 ```bash
@@ -285,7 +318,7 @@ Set `SERVE_STATIC_UI=true` and `STATIC_UI_DIR` to that absolute directory to ser
 
 The root `Dockerfile` builds the UI/API and worker entrypoints, deploys only the API production dependency graph into the ordinary runtime stage, runs as a non-root user, installs Chromium, and exposes `/api/readyz` on the API image. `compose.yaml` starts one HTTP-only API and two scheduler-only workers on one PostgreSQL control plane. The API alone binds a loopback host port; workers open no listener and poll the API's private runtime-control endpoint. All runtime containers use read-only application files, drop Linux capabilities, provision Chromium shared memory, and share the persistent data/workspace volumes. They apply the bundled [Chromium seccomp profile](../deploy/README.md) to permit its user-namespace sandbox. Hosts must permit unprivileged user namespaces; a host policy that denies them prevents browser startup. Keep the sandbox enabled.
 
-Create `.secrets/` with mode `0700` and four one-line files with mode `0600`:
+Create `.secrets/` with mode `0700` and four one-line files with mode `0640`. On Linux/macOS set `AGENTIC_SECRET_GID` to the group that owns those files (`id -g` for files you create), so the non-root runtime can read the individually mounted secrets. Keep the parent directory private; do not make secrets world-readable. The default container group is `1000`; Docker Desktop on Windows manages host bind permissions through its VM. The soak runner sets the group from its own process automatically. Required files:
 
 - `operator_auth_token`: at least 32 cryptographically random characters;
 - `runtime_control_key`: a separate, independently generated secret of at least 32 characters;

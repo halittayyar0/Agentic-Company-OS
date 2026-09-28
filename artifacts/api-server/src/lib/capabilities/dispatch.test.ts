@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import type { ToolRuntimeContext } from "../orchestrator/execute-tool";
 import { CAPABILITY_TOOL_NAMES, getCapabilityCatalog } from "./catalog";
 import { WORKSPACE_LOCALES } from "../workspace-locale";
+import { saveExtension, listExtensions } from "./extension-store";
 
 delete process.env.DATABASE_URL;
 process.env.NODE_ENV = "test";
@@ -32,6 +33,20 @@ test.after(async () => {
 
 async function fixture(): Promise<ToolRuntimeContext> {
   await dbReady;
+  if (!(await listExtensions()).some((row) => row.id === "user-test-total"))
+    await saveExtension({
+      manifest: {
+        schemaVersion: 1,
+        id: "user-test-total",
+        kind: "tool",
+        title: "Total",
+        description: "Test",
+        tool: "calculate",
+        defaults: { operation: "add" },
+      },
+      expectedRevision: 0,
+      enabled: true,
+    });
   const [agent] = await db
     .insert(agentsTable)
     .values({
@@ -59,9 +74,36 @@ const samples = {
   convert_datetime: { iso: "2026-09-28T12:00:00Z", timeZone: "UTC" },
   inspect_url: { url: "https://example.com/a" },
   hash_text: { text: "abc" },
+  list_extensions: {},
+  run_extension: { id: "user-test-total", args: { values: [2, 3] } },
+  csv_filter: {
+    text: "id,name\n1,A\n2,B",
+    column: "id",
+    operator: "equals",
+    value: "1",
+  },
+  csv_sort: { text: "id\n2\n1", column: "id", direction: "asc" },
+  csv_dedupe: { text: "id\n1\n1", keys: ["id"] },
+  csv_join: {
+    left: "id,name\n1,A",
+    right: "id,value\n1,x",
+    key: "id",
+    kind: "inner",
+  },
+  csv_to_json: { text: "id\n1" },
+  json_to_csv: { text: '[{"id":"1"}]' },
+  json_diff: { before: '{"a":1}', after: '{"a":2}' },
+  json_format: { text: '{"a":1}' },
+  render_report: {
+    title: "Report",
+    sections: [{ heading: "Result", body: "Test" }],
+  },
+  fill_template: { template: "Hello {{name}}", values: { name: "Ada" } },
+  markdown_outline: { text: "# Report\n## Findings" },
+  compare_page_text: { before: "old page", after: "new page" },
 };
 
-test("all ten production tools execute locally in seven languages without file or browser permission", async () => {
+test("all production capability tools execute locally in seven languages without file or browser permission", async () => {
   const ctx = await fixture();
   const names = (await getToolsForAgent(ctx.agent, false)).map(
     (tool) => tool.function.name,
