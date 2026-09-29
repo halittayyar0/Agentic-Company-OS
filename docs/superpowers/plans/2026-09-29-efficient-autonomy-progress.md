@@ -25,6 +25,7 @@ Current full-suite log: OS temp acos-efficient-full-tests.log. No 24-hour certif
 ## Independent final review and fixes
 
 One read-only whole-branch review of 822e4deb..0424209c found three important issues; no declined judgments or deferred minors.
+
 - Review outage classification: preserve ModelRoutesExhaustedError instead of converting a provider failure to a runtime bug. Provider classification test failed before the fix and passed after it.
 - Review budget bypass: check durable admission before each execution and review provider attempt. Completion/approval review admission test failed before the fix and passed after it, with zero review requests after exhaustion.
 - Unknown cost: keep null costs and explicit no_usage/unknown/partial/complete coverage. Empty/null/mixed tests failed before the fix and passed after it; scheduler audit includes coverage.
