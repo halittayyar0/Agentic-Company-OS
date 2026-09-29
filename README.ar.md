@@ -16,7 +16,7 @@
 
 </div>
 
-<p dir="ltr"><strong>Windows · macOS · Linux</strong> &nbsp; / &nbsp; <bdi dir="rtl"><strong>7 لغات</strong></bdi> &nbsp; / &nbsp; <bdi dir="rtl"><strong>ترخيص MIT</strong></bdi></p>
+<p dir="ltr"><strong>Windows · macOS · Linux</strong> &nbsp; / &nbsp; <span dir="rtl"><strong>7 لغات</strong></span> &nbsp; / &nbsp; <span dir="rtl"><strong>ترخيص MIT</strong></span></p>
 
 </div>
 
