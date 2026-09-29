@@ -1,6 +1,6 @@
 # Contributing to Agentic Company OS
 
-Thanks for helping build Agentic Company OS. The project is an early, local-first alpha, so useful contributions include product work, tests, documentation, accessibility, security hardening, and careful simplification.
+Thanks for helping build Agentic Company OS. The project is a pre-1.0, local-first product, so useful contributions include product work, tests, documentation, accessibility, security hardening, and careful simplification.
 
 Please read the [Code of Conduct](./CODE_OF_CONDUCT.md) before participating. Security vulnerabilities belong in the private process described in [SECURITY.md](./SECURITY.md), not in a public issue.
 
@@ -21,7 +21,7 @@ pnpm --version
 pnpm install --frozen-lockfile
 ```
 
-Run the API and UI in separate terminals as documented in [README.md](./README.md#quick-start). `.env.example` documents variables but is not loaded automatically.
+Run the API and UI in separate terminals as documented in [development setup reference](./docs/operator-reference.md#quick-start). `.env.example` documents variables but is not loaded automatically.
 
 ## Repository conventions
 
