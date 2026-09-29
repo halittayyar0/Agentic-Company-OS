@@ -424,6 +424,7 @@ export async function enforceTaskBudgets(): Promise<void> {
           stepAttempts: task.stepAttempts,
           tokensUsed: admission.tokensUsed,
           reportedCostUsd: admission.reportedCostUsd,
+          costCoverage: admission.costCoverage,
           materializedTokensUsed: task.tokensUsed,
           materializedReportedCostUsd: task.estimatedCostUsd,
           usageSource: admission.usageSource,

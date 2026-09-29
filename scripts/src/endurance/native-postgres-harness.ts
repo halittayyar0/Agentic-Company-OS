@@ -341,6 +341,7 @@ export function createNativeRuntimeEnvironments(
     ENDURANCE_RUN_ID: input.runId,
     ENDURANCE_RUN_DIR: runDirectory,
     ENDURANCE_EXPECTED_AGENTS: String(input.expectedAgents),
+    MAX_TASK_FAMILY_ACTIVE: String(input.expectedAgents),
     SYNTHETIC_RUNTIME_SEED: String(input.seed),
     SYNTHETIC_RUNTIME_FAULT_PLAN: undefined,
     SYNTHETIC_RUNTIME_CONTROL_FILE: path.join(

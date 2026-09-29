@@ -9,7 +9,14 @@ import { logger } from "../logger";
 import { redactAuditText } from "../audit-redaction";
 import { recordCompletionUsage } from "./usage-ledger";
 import { selectModelPlan } from "./model-select";
-import { runWithModelFallback } from "./model-fallback";
+import {
+  runWithModelFallback,
+  ModelRoutesExhaustedError,
+} from "./model-fallback";
+import {
+  assertTaskInferenceAdmission,
+  TaskSpendBudgetError,
+} from "./task-spend-admission";
 import type { ModelRouteCandidate } from "./model-select";
 
 export type JudgeVerdict = "pass" | "warn" | "block";
@@ -18,6 +25,7 @@ export interface JudgeResult {
   verdict: JudgeVerdict;
   reasoning: string;
   unavailable?: boolean;
+  providerFailure?: ModelRoutesExhaustedError;
 }
 
 export interface JudgeReviewRecord {
@@ -155,13 +163,14 @@ Kontrol et:
       routes: modelPlan.routes,
       execute: async (route) => {
         await assertJudgeOwnership(beforeAttempt, route);
+        if (taskId !== null) await assertTaskInferenceAdmission(taskId, locale);
         const result = await createChatCompletion({
           model: route.modelId,
           messages: [
             { role: "system", content: policy },
             { role: "user", content: prompt },
           ],
-          maxTokens: 400,
+          maxTokens: 1200,
           responseFormat: { type: "json_object" },
         });
         try {
@@ -254,6 +263,7 @@ Kontrol et:
     return { verdict, reasoning: safeReasoning };
   } catch (error) {
     if (error instanceof JudgeOwnershipBoundaryError) throw error.original;
+    if (error instanceof TaskSpendBudgetError) throw error;
     logger.error({ error, agentId: agent.id, taskId }, "Judge review failed");
     const verdict: JudgeVerdict = purpose === "completion" ? "block" : "warn";
     const reasoning =
@@ -297,6 +307,9 @@ Kontrol et:
       verdict,
       reasoning,
       unavailable: true,
+      ...(error instanceof ModelRoutesExhaustedError
+        ? { providerFailure: error }
+        : {}),
     };
   }
 }

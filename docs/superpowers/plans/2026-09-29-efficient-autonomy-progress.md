@@ -21,3 +21,14 @@ The existing alpha remains public; this candidate is not yet certified or publis
 Additional work: replace eager full task tool schemas with an authorized on-demand catalog; stop the current attempt when completion review is unavailable, allowing scheduler backoff instead of same-round report regeneration. Keep fail-closed completion and free-only routing. Repeat live acceptance and preserve failure evidence. These changes do not bypass review or assume unreported cost is zero.
 
 Current full-suite log: OS temp acos-efficient-full-tests.log. No 24-hour certification is claimed.
+
+## Independent final review and fixes
+
+One read-only whole-branch review of 822e4deb..0424209c found three important issues; no declined judgments or deferred minors.
+- Review outage classification: preserve ModelRoutesExhaustedError instead of converting a provider failure to a runtime bug. Provider classification test failed before the fix and passed after it.
+- Review budget bypass: check durable admission before each execution and review provider attempt. Completion/approval review admission test failed before the fix and passed after it, with zero review requests after exhaustion.
+- Unknown cost: keep null costs and explicit no_usage/unknown/partial/complete coverage. Empty/null/mixed tests failed before the fix and passed after it; scheduler audit includes coverage.
+
+Live diagnostic reproduced another cause: the exact judge prompt at 400 output tokens returned finish_reason=length and no content; 1,200 returned valid pass JSON (1,260 total tokens, provider-reported cost zero). Review output allowance is now bounded at 1,200. End-to-end live rerun remains required.
+
+Production container installation and resume passed in the first CI run. The separate ten-agent endurance workload hit the new default four-task family limit; its isolated test configuration now explicitly requests capacity ten. Production defaults remain four. Regression tests passed after adjusting the fallback fixture to explicitly select a premium route and preserving reported-cost decimal formatting. Windows scheduler-test teardown now awaits heartbeat and database shutdown; the prior EBUSY reproduction now passes (8 tests).

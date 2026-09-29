@@ -7,7 +7,61 @@ import {
   tasksTable,
   usageEventsTable,
 } from "@workspace/db";
-import { readTaskSpendBlockReason } from "./task-spend-admission";
+import {
+  readTaskSpendBlockReason,
+  readTaskSpendAdmission,
+} from "./task-spend-admission";
+
+test("reported cost coverage distinguishes empty, unknown and partial provider receipts", async () => {
+  await dbReady;
+  const [agent] = await db
+    .insert(agentsTable)
+    .values({ name: "Coverage", role: "Test", systemPrompt: "Test" })
+    .returning();
+  for (const autonomyMode of ["finite", "continuous"] as const) {
+    const [task] = await db
+      .insert(tasksTable)
+      .values({
+        ownerAgentId: agent.id,
+        title: "Coverage",
+        brief: "Test",
+        autonomyMode,
+      })
+      .returning();
+    const limits = { maxSteps: null, maxTokens: 1, maxReportedCostUsd: 1 };
+    let result = await readTaskSpendAdmission(task, limits, "en");
+    assert.equal(result.reportedCostUsd, null);
+    assert.equal(result.costCoverage, "no_usage");
+    await db
+      .insert(usageEventsTable)
+      .values({
+        agentId: agent.id,
+        taskId: task.id,
+        kind: "task_step",
+        modelId: "test",
+        provider: "test",
+        totalTokens: 2,
+        reportedCostUsd: null,
+      });
+    result = await readTaskSpendAdmission(task, limits, "en");
+    assert.equal(result.reportedCostUsd, null);
+    assert.equal(result.costCoverage, "unknown");
+    await db
+      .insert(usageEventsTable)
+      .values({
+        agentId: agent.id,
+        taskId: task.id,
+        kind: "judge",
+        modelId: "test",
+        provider: "test",
+        totalTokens: 2,
+        reportedCostUsd: "0.20",
+      });
+    result = await readTaskSpendAdmission(task, limits, "en");
+    assert.equal(Number(result.reportedCostUsd), 0.2);
+    assert.equal(result.costCoverage, "partial");
+  }
+});
 
 test("recurring budgets use current-cycle usage and durable rolling usage separately", async () => {
   await dbReady;

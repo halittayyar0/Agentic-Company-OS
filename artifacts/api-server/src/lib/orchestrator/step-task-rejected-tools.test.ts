@@ -40,6 +40,8 @@ test("malformed nonterminal tools use bounded fallback then durable backoff", as
     .insert(agentsTable)
     .values({
       name: "Rejected tool protocol owner",
+      modelMode: "manual",
+      modelId: "gpt-5.6-sol",
       role: "Test",
       systemPrompt: "Test only",
       createdByUser: true,

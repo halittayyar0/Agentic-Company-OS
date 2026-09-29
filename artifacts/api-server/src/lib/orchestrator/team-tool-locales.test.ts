@@ -67,6 +67,7 @@ const {
   closeDatabase,
   agentsTable,
   tasksTable,
+  usageEventsTable,
   taskAttemptsTable,
   runtimeInstancesTable,
   activityEventsTable,
@@ -82,6 +83,8 @@ const { getToolCopy, toolMessage } = await import("./tool-localization");
 const { WORKSPACE_LOCALES } = await import("../workspace-locale");
 const browser = await import("../vm/browser");
 const { runJudge } = await import("./judge");
+const { ModelRoutesExhaustedError } = await import("./model-fallback");
+const { TaskSpendBudgetError } = await import("./task-spend-admission");
 const { canonicalArgumentHash } = await import("./operation-receipts");
 const { getAgentSudoTarget } = await import("../vm/sandbox");
 const { stepTask } = await import("./step-task");
@@ -921,6 +924,36 @@ test("browser approval previews localize headings while retaining literal target
   }
 });
 
+test("a consumed execution allowance prevents starting completion and approval reviews", async () => {
+  const ctx = await context("en", true);
+  await db
+    .insert(usageEventsTable)
+    .values({
+      agentId: ctx.agent.id,
+      taskId: ctx.taskId!,
+      kind: "task_step",
+      modelId: "test",
+      provider: "test",
+      totalTokens: 100000,
+    });
+  const before = judgeRequests.length;
+  for (const purpose of ["completion", "approval"] as const) {
+    await assert.rejects(
+      runJudge({
+        agent: ctx.agent,
+        taskId: ctx.taskId!,
+        locale: "en",
+        purpose,
+        originalBrief: "Test",
+        actionSummary: "Done",
+        beforeAttempt: async () => {},
+      }),
+      TaskSpendBudgetError,
+    );
+  }
+  assert.equal(judgeRequests.length, before);
+});
+
 test("judge fallback retains blocking policy in every selected language", async () => {
   const ctx = await context();
   judgeVerdict = "unsupported";
@@ -936,6 +969,7 @@ test("judge fallback retains blocking policy in every selected language", async 
           actionSummary: source,
         });
         const copy = getToolCopy(locale);
+        assert.ok(result.providerFailure instanceof ModelRoutesExhaustedError);
         assert.equal(
           result.verdict,
           purpose === "completion" ? "block" : "warn",

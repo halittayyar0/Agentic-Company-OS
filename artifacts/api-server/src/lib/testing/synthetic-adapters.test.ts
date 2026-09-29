@@ -321,7 +321,14 @@ async function claimSyntheticCycle(
   };
 }
 
-test("one full synthetic stepTask cycle advances all ten agents while finite children remain blockers", async () => {
+test("one full synthetic stepTask cycle advances all ten agents while finite children remain blockers", async (t) => {
+  const previousFamilyLimit = process.env.MAX_TASK_FAMILY_ACTIVE;
+  process.env.MAX_TASK_FAMILY_ACTIVE = "10";
+  t.after(() => {
+    if (previousFamilyLimit === undefined)
+      delete process.env.MAX_TASK_FAMILY_ACTIVE;
+    else process.env.MAX_TASK_FAMILY_ACTIVE = previousFamilyLimit;
+  });
   await dbReady;
   const suffix = randomUUID();
   const runId = `ten-agent-${suffix}`;

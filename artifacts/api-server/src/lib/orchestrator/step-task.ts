@@ -46,6 +46,7 @@ import {
   readTaskSpendBlockReason,
   executionSpendLimits,
   TaskSpendBudgetError,
+  assertTaskInferenceAdmission,
 } from "./task-spend-admission";
 import {
   computerSurfaceForTool,
@@ -716,6 +717,7 @@ export async function stepTask(
           await leaseHeartbeat.assertOwned(
             toolMessage(locale, "taskModelRunning", { model: route.modelId }),
           );
+          await assertTaskInferenceAdmission(task.id, locale);
           const result = await createCompletion({
             model: route.modelId,
             messages,
