@@ -83,6 +83,8 @@ For recurring work, include both the interval and what should count as a finishe
 
 A **skill** is a guide for doing a job. A **tool** performs an action, such as inspecting data or using a browser. An **agent** combines instructions, a model and permitted tools to work on a task.
 
+The Run Inspector can also download a narrow, [shareable evidence packet](./docs/shareable-evidence.md) for the selected activity page. It leaves out task text and raw tool data and includes a local checksum check.
+
 ## Useful tools, room to grow
 
 The built-in library covers **research, software, data, documents and operations**. It includes work guides, capability tools and runtime tools. Agents can discover guides and load their instructions when needed.

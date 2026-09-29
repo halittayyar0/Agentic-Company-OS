@@ -9,6 +9,11 @@ const copy: TraceCopy = {
   snapshot: "Geladenes Aktivitätsfenster",
   retry: "Erneut versuchen",
   export: "Aktivitäten als JSON herunterladen",
+  evidenceExport: "Teilbare Nachweise herunterladen",
+  evidenceHelp:
+    "Eine Aktivitätsseite mit Datensatz-IDs, Status und Zahlen. Ohne Aufgabentext, Zusammenfassungen, Befehle oder rohe Werkzeugdaten. Die Prüfsumme erkennt versehentliche Änderungen; sie beweist weder Urheberschaft noch Aufgabenerfolg.",
+  evidenceError:
+    "Nachweise konnten nicht erstellt werden. Bitte erneut versuchen.",
   exportHelp:
     "Enthält Originalzusammenfassungen und zugelassene Metadaten. Datei vor dem Teilen prüfen.",
   operations: "Ausführungsbelege öffnen",

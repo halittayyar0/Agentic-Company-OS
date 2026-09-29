@@ -8,6 +8,10 @@ const copy: TraceCopy = {
   snapshot: "已載入的活動範圍",
   retry: "重試",
   export: "下載活動 JSON",
+  evidenceExport: "下載可分享的證據包",
+  evidenceHelp:
+    "僅包含一頁活動的紀錄 ID、狀態和計數，不含任務文字、摘要、命令或原始工具資料。校驗碼可發現意外修改，但無法證明作者身分或任務成功。",
+  evidenceError: "無法產生證據包，請重試。",
   exportHelp: "包含原始摘要與允許公開的中繼資料。分享前請檢查檔案。",
   operations: "開啟操作回執",
   window:

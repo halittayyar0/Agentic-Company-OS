@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
 import {
   LOCALES,
@@ -194,6 +195,30 @@ for (const locale of LOCALES) {
       expect(payload.task).not.toHaveProperty("attemptId");
       expect(JSON.stringify(payload)).not.toMatch(
         /SECRET|PRIVATE_PROMPT|FOREIGN_TASK/,
+      );
+      const evidenceDownload = page.waitForEvent("download");
+      await region
+        .getByRole("button", { name: c.evidenceExport, exact: true })
+        .click();
+      const evidenceFile = await evidenceDownload;
+      const evidence = JSON.parse(
+        await readFile((await evidenceFile.path())!, "utf8"),
+      );
+      expect(evidence.boundary).toMatchObject({
+        taskId: 101,
+        fullHistory: false,
+        receipts: false,
+        pageNumber: 1,
+      });
+      const { integrity, ...evidenceBody } = evidence;
+      expect(integrity).toEqual({
+        algorithm: "SHA-256",
+        digest: createHash("sha256")
+          .update(JSON.stringify(evidenceBody))
+          .digest("hex"),
+      });
+      expect(JSON.stringify(evidence)).not.toMatch(
+        /Original|SECRET|PRIVATE_PROMPT|FOREIGN_TASK|Saved task brief/,
       );
       if (locale === "en" || locale === "ar") {
         await row.click();

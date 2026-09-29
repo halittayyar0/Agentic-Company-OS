@@ -10,6 +10,7 @@
   },
   "scripts": {
     "setup": "tsx ./scripts/src/setup/bootstrap.ts",
+    "evidence:verify": "tsx ./scripts/src/verify-evidence.ts",
     "dev": "pnpm --parallel --filter @workspace/api-server --filter @workspace/agentic-company-os run dev",
     "endurance:accelerated": "tsx ./scripts/src/run-accelerated-endurance.ts",
     "endurance:wall-clock": "tsx ./scripts/src/run-wall-clock-soak.ts",
