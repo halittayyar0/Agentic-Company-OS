@@ -69,12 +69,24 @@ test("public start page supports seven languages, phone width and real task copy
       locale === "ar" ? "rtl" : "ltr",
     );
     assert.equal(await page.locator(".recipe button").count(), 3);
-    assert.equal(
-      await page.evaluate<boolean>(
-        "document.documentElement.scrollWidth <= innerWidth",
-      ),
-      true,
-      locale,
+    const overflow = await page.evaluate<{
+      viewport: number;
+      document: number;
+      elements: string[];
+    }>(`(() => ({
+      viewport: innerWidth,
+      document: document.documentElement.scrollWidth,
+      elements: [...document.querySelectorAll("body *")]
+        .filter(element => {
+          const rect = element.getBoundingClientRect();
+          return rect.width && (rect.right > innerWidth + 1 || rect.left < -1);
+        })
+        .slice(0, 8)
+        .map(element => element.tagName.toLowerCase() + "#" + element.id + "." + element.className),
+    }))()`);
+    assert.ok(
+      overflow.document <= overflow.viewport,
+      `${locale}: ${JSON.stringify(overflow)}`,
     );
     assert.ok((await page.locator("h1").innerText()).length > 5);
     assert.ok((await page.locator("#quick-title").innerText()).length > 5);
