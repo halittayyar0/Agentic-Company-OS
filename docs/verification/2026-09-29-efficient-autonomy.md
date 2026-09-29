@@ -38,6 +38,11 @@ after its second cycle and stopped its isolated API, workers and PostgreSQL.
 
 ## Limits that remain
 
+The final dependency review found GHSA-58mr-gqgx-xq4g in fast-uri 3.1.6.
+The locked override was updated to 3.1.7. Four upstream unterminated-host
+examples were accepted by the old version and rejected by the fixed version;
+valid IPv6 parsing was retained. Production audit and license checks passed.
+
 No 24-hour soak certification, physical-phone/carrier test, universal external
 exactly-once delivery, native-speaker translation certification, multi-user tenancy,
 or hardened host-shell isolation is claimed. Reported spend limits can overshoot

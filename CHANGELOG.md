@@ -13,6 +13,7 @@ All notable changes to Agentic Company OS are documented here. The project uses
 - Durable current-cycle and rolling-day usage admission before execution and review calls; explicit unknown and partial reported-cost coverage.
 - Model-free waiting for finite children, provider-outage backoff for unavailable completion review, and room for reasoning models to return a review verdict.
 - Real container installation/resume acceptance and opt-in free-only live finite/recurring task proof.
+- Updated fast-uri to 3.1.7 for GHSA-58mr-gqgx-xq4g; verified the upstream malformed-host regression cases.
 
 See [release verification](docs/verification/2026-09-29-efficient-autonomy.md) for the acceptance scope and remaining limits.
 
