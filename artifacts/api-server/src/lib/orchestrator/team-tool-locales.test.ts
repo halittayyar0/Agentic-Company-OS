@@ -926,16 +926,14 @@ test("browser approval previews localize headings while retaining literal target
 
 test("a consumed execution allowance prevents starting completion and approval reviews", async () => {
   const ctx = await context("en", true);
-  await db
-    .insert(usageEventsTable)
-    .values({
-      agentId: ctx.agent.id,
-      taskId: ctx.taskId!,
-      kind: "task_step",
-      modelId: "test",
-      provider: "test",
-      totalTokens: 100000,
-    });
+  await db.insert(usageEventsTable).values({
+    agentId: ctx.agent.id,
+    taskId: ctx.taskId!,
+    kind: "task_step",
+    modelId: "test",
+    provider: "test",
+    totalTokens: 100000,
+  });
   const before = judgeRequests.length;
   for (const purpose of ["completion", "approval"] as const) {
     await assert.rejects(

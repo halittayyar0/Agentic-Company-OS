@@ -1,4 +1,4 @@
-# Public alpha release checklist
+# Public release checklist
 
 Use this checklist for every public release. Never publish from an unreviewed
 working tree or from a directory that contains operator runtime data.

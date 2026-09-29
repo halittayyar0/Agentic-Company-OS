@@ -32,31 +32,27 @@ test("reported cost coverage distinguishes empty, unknown and partial provider r
     let result = await readTaskSpendAdmission(task, limits, "en");
     assert.equal(result.reportedCostUsd, null);
     assert.equal(result.costCoverage, "no_usage");
-    await db
-      .insert(usageEventsTable)
-      .values({
-        agentId: agent.id,
-        taskId: task.id,
-        kind: "task_step",
-        modelId: "test",
-        provider: "test",
-        totalTokens: 2,
-        reportedCostUsd: null,
-      });
+    await db.insert(usageEventsTable).values({
+      agentId: agent.id,
+      taskId: task.id,
+      kind: "task_step",
+      modelId: "test",
+      provider: "test",
+      totalTokens: 2,
+      reportedCostUsd: null,
+    });
     result = await readTaskSpendAdmission(task, limits, "en");
     assert.equal(result.reportedCostUsd, null);
     assert.equal(result.costCoverage, "unknown");
-    await db
-      .insert(usageEventsTable)
-      .values({
-        agentId: agent.id,
-        taskId: task.id,
-        kind: "judge",
-        modelId: "test",
-        provider: "test",
-        totalTokens: 2,
-        reportedCostUsd: "0.20",
-      });
+    await db.insert(usageEventsTable).values({
+      agentId: agent.id,
+      taskId: task.id,
+      kind: "judge",
+      modelId: "test",
+      provider: "test",
+      totalTokens: 2,
+      reportedCostUsd: "0.20",
+    });
     result = await readTaskSpendAdmission(task, limits, "en");
     assert.equal(Number(result.reportedCostUsd), 0.2);
     assert.equal(result.costCoverage, "partial");

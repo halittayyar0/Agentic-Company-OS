@@ -5,9 +5,9 @@
 [Türkçe](./README.tr.md) · [Architecture](./docs/architecture.md) · [Competitive benchmark](./docs/competitive-benchmark.md) · [Security model](./docs/security-model.md) · [Self-hosting](./docs/self-hosting.md) · [Phone access](./docs/mobile-access.md) · [Localization](./docs/localization.md) · [Endurance proof](./docs/endurance.md) · [Release checklist](./docs/release-checklist.md) · [Changelog](./CHANGELOG.md) · [Roadmap](./docs/roadmap.md)
 
 > [!IMPORTANT]
-> This project is **alpha software** and is designed for one trusted operator. Production and non-loopback startup fail closed without the built-in operator token and durable PostgreSQL. The token is not multi-user authorization: put remote deployments behind TLS, keep the API port private, and apply the network and backup controls described below.
+> This project is designed for **one trusted operator**. Production and non-loopback startup fail closed without the built-in operator token and durable PostgreSQL. The token is not multi-user authorization: put remote deployments behind TLS, keep the API port private, and apply the network and backup controls described below.
 
-**Release status:** Alpha under active verification. The [verification record](./docs/verification/2026-09-28-extensible-release.md) separates completed source, browser, secret/history and PostgreSQL checks from remaining acceptance work. Check [GitHub Actions](https://github.com/halittayyar0/Agentic-Company-OS/actions) for the result of the exact revision you install. A passing smoke test does not establish 24-hour reliability or physical-phone/native-language acceptance.
+**Release status:** 0.2.0 targets private single-operator installations. See the [release verification record](./docs/verification/2026-09-29-efficient-autonomy.md), [release notes](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) and exact-revision [GitHub Actions](https://github.com/halittayyar0/Agentic-Company-OS/actions) results. A short acceptance run does not establish 24-hour reliability or physical-phone/native-language acceptance.
 
 Agentic Company OS turns agent orchestration into an observable operating system: an operator can define goals, talk to any agent, delegate through a hierarchy, inspect every active task, review approval requests, and see which agent is doing what in real time.
 
@@ -93,6 +93,8 @@ Runtime approval checks bind protected tools to one tool/argument hash, task, ag
 Playwright sessions and snapshot-ref registries stay in the worker process that created them. The API records that exact runtime/session/epoch owner and sends browser commands only through the authenticated, encrypted runtime-control channel for that owner; browser-client sticky routing is not the ownership mechanism. Immediately before a protected action, the worker rechecks the captured page/element binding. A dead or restarted owner, stale snapshot, changed target, missing acknowledgement, or ambiguous post-dispatch outcome is never silently retargeted or automatically replayed. Depending on where execution stopped, the operation is safely dropped or durably marked `unknown` for explicit operator reconciliation and, when needed, a fresh snapshot and approval.
 
 ## Quick start
+
+**Portable container setup:** install Node.js 24 and start Docker with a Linux engine and Compose v2. Extract the setup ZIP from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest), then open `START.cmd` on Windows or run `sh START.command` on macOS/Linux. Follow the private local link and choose your language, provider and permissions. No Git, pnpm or source build is needed for this path. [Public start page](https://halittayyar0.github.io/Agentic-Company-OS/) · [Efficient work and budgets](./docs/efficient-work.md).
 
 **Guided installation:** after installing the prerequisites below, run `pnpm install --frozen-lockfile` and `pnpm run setup`. The browser wizard selects this computer or a container, seven languages, a model provider, execution permissions, tool packs and optional private phone access. See [setup and restart instructions](./docs/self-hosting.md#guided-installation-windows-linux-and-macos).
 
@@ -285,7 +287,7 @@ pnpm run typecheck
 
 ## Project status
 
-Agentic Company OS is an experimental, local-first alpha with a supported single-operator private-server baseline: fail-closed auth, versioned migrations, split API/worker processes, durable operation receipts, probes, bounded requests, and container artifacts are included. Near-term priorities are multi-user authorization, hardened disposable tool sandboxes, stronger universal side-effect policy, distributed quotas, recurring recovery drills, and broader end-to-end coverage. Product work is tracked in the [roadmap](./docs/roadmap.md); exact residual risks are tracked in the [security model](./docs/security-model.md).
+Agentic Company OS is a pre-1.0, local-first product with a single-operator private-server baseline: fail-closed auth, versioned migrations, split API/worker processes, durable operation receipts, probes, bounded requests, and container artifacts are included. Near-term priorities are multi-user authorization, hardened disposable tool sandboxes, stronger universal side-effect policy, distributed quotas, recurring recovery drills, and broader end-to-end coverage. Product work is tracked in the [roadmap](./docs/roadmap.md); exact residual risks are tracked in the [security model](./docs/security-model.md).
 
 ## Contributing
 
