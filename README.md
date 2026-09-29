@@ -83,7 +83,7 @@ For recurring work, include both the interval and what should count as a finishe
 
 A **skill** is a guide for doing a job. A **tool** performs an action, such as inspecting data or using a browser. An **agent** combines instructions, a model and permitted tools to work on a task.
 
-The Run Inspector can also download a narrow, [shareable evidence packet](./docs/shareable-evidence.md) for the selected activity page. It leaves out task text and raw tool data and includes a local checksum check.
+The Run Inspector can also download a narrow, [shareable evidence packet](./docs/shareable-evidence.md) for the selected activity page. It leaves out task text and raw tool data. The setup ZIP includes an offline checksum verifier that needs no Git or pnpm.
 
 ## Useful tools, room to grow
 

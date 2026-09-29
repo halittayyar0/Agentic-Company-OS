@@ -44,6 +44,15 @@ await build({
   target: "node24",
   logLevel: "warning",
 });
+await build({
+  entryPoints: [path.join(root, "scripts/src/verify-evidence.ts")],
+  outfile: path.join(setup, "verify-evidence.mjs"),
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  target: "node24",
+  logLevel: "warning",
+});
 for (const name of ["compose.yaml", "deploy/chromium-seccomp.json", "LICENSE"])
   await copyFile(path.join(root, name), path.join(directory, name));
 await copyFile(
@@ -64,7 +73,16 @@ await writeFile(
   { mode: 0o755 },
 );
 await writeFile(
+  path.join(directory, "VERIFY-EVIDENCE.cmd"),
+  '@echo off\r\nnode "%~dp0scripts\\src\\setup\\verify-evidence.mjs" %*\r\npause\r\n',
+);
+await writeFile(
+  path.join(directory, "VERIFY-EVIDENCE.command"),
+  '#!/bin/sh\nset -eu\ncd "$(dirname "$0")"\nexec node scripts/src/setup/verify-evidence.mjs "$@"\n',
+  { mode: 0o755 },
+);
+await writeFile(
   path.join(directory, "START-HERE.txt"),
-  `Agentic Company OS\n\n1. Install Node.js 24 and start Docker with a Linux engine and Compose v2.\n2. Run: node scripts/src/setup/bootstrap.mjs\n3. Open the private local link printed in your terminal. Choose your language, provider, permissions and tools. The installer pulls a pinned image and creates a private PostgreSQL database. No Git, pnpm or source compilation is needed.\n\nWindows: START.cmd. macOS/Linux: sh START.command.\nKeep the printed installation directory. To resume: node scripts/src/setup/bootstrap.mjs --resume "YOUR_INSTALLATION_DIRECTORY"\n\nCloud model charges belong to your own provider account. Ollama requires a separately configured local model and suitable memory. Never share the operator key. Each installation is one operator workspace.\n\nNative computer installation and source code: https://github.com/halittayyar0/Agentic-Company-OS\nSource revision: ${commit}\nImage: ${image}\n`,
+  `Agentic Company OS\n\n1. Install Node.js 24 and start Docker with a Linux engine and Compose v2.\n2. Run: node scripts/src/setup/bootstrap.mjs\n3. Open the private local link printed in your terminal. Choose your language, provider, permissions and tools. The installer pulls a pinned image and creates a private PostgreSQL database. No Git, pnpm or source compilation is needed.\n\nWindows: START.cmd. macOS/Linux: sh START.command.\nKeep the printed installation directory. To resume: node scripts/src/setup/bootstrap.mjs --resume "YOUR_INSTALLATION_DIRECTORY"\n\nTo check a downloaded task evidence JSON without installing Git or pnpm:\nWindows: drag the file onto VERIFY-EVIDENCE.cmd, or run VERIFY-EVIDENCE.cmd "FULL_PATH_TO_FILE".\nmacOS/Linux: sh VERIFY-EVIDENCE.command "/path/to/file".\nThe checksum detects accidental changes, not who created the file or whether the task succeeded.\n\nCloud model charges belong to your own provider account. Ollama requires a separately configured local model and suitable memory. Never share the operator key. Each installation is one operator workspace.\n\nNative computer installation and source code: https://github.com/halittayyar0/Agentic-Company-OS\nSource revision: ${commit}\nImage: ${image}\n`,
 );
 console.log(JSON.stringify({ directory, commit, image }));

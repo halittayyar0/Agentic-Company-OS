@@ -4,7 +4,14 @@ Open a project, choose **Activity records**, then select **Download shareable ev
 
 The packet includes task and record IDs, status, stage markers, timestamps and counts. It excludes the task title and brief, result text, activity summaries, agent names, command text, tool arguments and raw output. It also excludes receipt details and files. The original **Download activity JSON** remains available for private debugging and may contain sensitive summaries; review that file before sharing it.
 
-To check that the downloaded packet has not changed accidentally, run from a source checkout:
+To check that the downloaded packet has not changed accidentally, use the **same setup ZIP** you installed from:
+
+```text
+Windows: drag the evidence JSON onto VERIFY-EVIDENCE.cmd
+macOS/Linux: sh VERIFY-EVIDENCE.command "/path/to/task-123-evidence.json"
+```
+
+From a source checkout, use:
 
 ```text
 pnpm run evidence:verify -- /path/to/task-123-evidence.json
