@@ -170,7 +170,9 @@ Kontrol et:
             { role: "system", content: policy },
             { role: "user", content: prompt },
           ],
-          maxTokens: 1200,
+          // Some providers count reasoning inside this ceiling. A tiny cap
+          // can consume tokens without producing any verdict, forcing retries.
+          maxTokens: 4096,
           responseFormat: { type: "json_object" },
         });
         try {
