@@ -24,6 +24,8 @@ Her kurulum, bilgisayarında veya sunucunda çalışan **tek kullanıcıya ait �
 
 Kurulumdan önce [üç tarayıcı aracını dene](https://halittayyar0.github.io/Agentic-Company-OS/#try): CSV'de eksik değerleri ve tekrarları bul, JSON yapısını özetle veya iki listeyi karşılaştır. Hesap, model veya yükleme gerekmez; işlem bu sekmede yapılır. Raporu indirebilir, daha ayrıntılı inceleme için özel çalışma alanına bir devam görevi kopyalayabilirsin. [Sınırlar ve gizlilik →](./docs/quick-tools.md)
 
+Ürünü düzenli olarak geliştirmek için [uzun soluklu Goal metni →](./docs/continuous-development-goal.tr.md)
+
 | Tek seferlik bir işle başla                              | Ya da düzenli bir sorumluluk ver                                  |
 | -------------------------------------------------------- | ----------------------------------------------------------------- |
 | Üç ürünü kaynak bağlantılarıyla karşılaştır.             | Her gün bir web sayfasındaki anlamlı değişiklikleri kaydet.       |
