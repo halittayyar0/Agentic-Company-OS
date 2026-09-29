@@ -67,6 +67,7 @@ test("finite budgets use the durable usage ledger including judge calls", async 
     {
       agentId: agent.id,
       taskId: continuousTask.id,
+      createdAt: new Date(Date.now() - 2 * 86_400_000),
       kind: "judge",
       modelId: "judge-test",
       provider: "openrouter",

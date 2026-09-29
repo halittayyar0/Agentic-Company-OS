@@ -142,8 +142,18 @@ export function buildContainerDeployment(
   resources: InstallationResources,
   credentials: InstallationCredentials,
   phoneUrl?: string,
+  prebuiltImage?: string,
 ) {
   validateRoots(source, resources);
+  if (
+    prebuiltImage &&
+    !/^ghcr\.io\/[a-z0-9_.-]+\/[a-z0-9_.-]+@sha256:[a-f0-9]{64}$/u.test(
+      prebuiltImage,
+    )
+  )
+    throw new Error(
+      "Prebuilt installation requires an immutable GHCR image digest",
+    );
   if (plan.settings.mode !== "container")
     throw new Error("Container deployment requires container mode");
   const common: Record<string, string> = {
@@ -166,10 +176,11 @@ export function buildContainerDeployment(
     : [];
   const services: Record<
     string,
-    { environment: Record<string, string>; secrets: string[] }
+    { environment: Record<string, string>; secrets: string[]; image?: string }
   > = {};
   for (const name of ["app", "worker-1", "worker-2"])
     services[name] = {
+      ...(prebuiltImage ? { image: prebuiltImage } : {}),
       environment: { ...common },
       secrets: [
         "database_url",
@@ -196,7 +207,7 @@ export function buildContainerDeployment(
       path.join(resources.directory, "compose.override.json"),
       "up",
       "--detach",
-      "--build",
+      ...(prebuiltImage ? ["--no-build", "--pull", "always"] : ["--build"]),
       "--remove-orphans",
     ],
     environment: {

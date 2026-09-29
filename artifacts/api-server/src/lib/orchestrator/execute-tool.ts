@@ -1,3 +1,7 @@
+import {
+  assertDelegationBudget,
+  assertAgentCreationBudget,
+} from "./delegation-budget";
 import { resolveLocalProgram } from "../capabilities/local-program";
 import { hasLocalizedToolOutput, toolReceiptLocale } from "./tool-presentation";
 import { withToolPolicy, ExecutionPolicyDenied } from "../execution-policy";
@@ -6300,6 +6304,7 @@ async function createSubAgent(
   try {
     created = await withTaskMutationFence(ctx, async (tx) => {
       await assertActiveAgentCapacity(tx);
+      await assertAgentCreationBudget(tx, ctx.agent.id);
       if (ctx.taskId) {
         const [lockedTask] = await tx
           .update(tasksTable)
@@ -6465,6 +6470,7 @@ async function delegateTask(
         if (!target || !target.isActive) return null;
         if (target.parentAgentId !== ctx.agent.id) return null;
         await assertOutstandingTaskCapacity(tx);
+        if (ctx.taskId) await assertDelegationBudget(tx, ctx.taskId);
         if (ctx.taskId) {
           const [lockedTask] = await tx
             .update(tasksTable)

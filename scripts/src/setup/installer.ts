@@ -43,6 +43,7 @@ export function createInstallationExecutor(options: {
   workspaceRoot: string;
   installationParent: string;
   pnpmPath: string;
+  prebuiltImage?: string;
   // This must persist every selected policy/tool/language setting before setup
   // can finish. Kept mandatory so a UI-only selection cannot claim completion.
   applyPreferences: (
@@ -142,6 +143,10 @@ export function createInstallationExecutor(options: {
     const baseUrl = `http://127.0.0.1:${plan.settings.port}`;
     try {
       await step("check_environment", async () => {
+        if (options.prebuiltImage && plan.settings.mode !== "container")
+          throw new Error(
+            "The portable distribution supports containers; use source setup for native installation",
+          );
         planInstallation(
           plan.settings,
           await (options.capabilities ?? detectInstallCapabilities)(),
@@ -245,6 +250,7 @@ export function createInstallationExecutor(options: {
             owned,
             credentials,
             phone?.url,
+            options.prebuiltImage,
           );
           await writeExactOutputBundle({
             outputDirectory: owned.directory,

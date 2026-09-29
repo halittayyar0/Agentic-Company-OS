@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 export type PreflightIssue =
+  | "native_source_required"
   | "unsupported_platform"
   | "unsupported_architecture"
   | "node_24_required"

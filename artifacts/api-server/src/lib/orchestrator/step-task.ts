@@ -40,6 +40,12 @@ import {
   type TaskStepFailureKind,
 } from "./task-retry-policy";
 import { recordCompletionUsage } from "./usage-ledger";
+import { executionComplexity } from "./execution-economy";
+import {
+  readTaskSpendBlockReason,
+  executionSpendLimits,
+  TaskSpendBudgetError,
+} from "./task-spend-admission";
 import {
   computerSurfaceForTool,
   deferredComputerToolMessage,
@@ -560,6 +566,7 @@ export async function stepTask(
   let reportedCostSeen = false;
   let toolUsed = false;
   let stepError: string | null = null;
+  let spendBudgetExceeded = false;
   let stepFailureKind: TaskStepFailureKind | null = null;
   let exhaustedModelFailures: ReadonlyArray<ModelAttemptFailure> = [];
   let attemptDisposition: "succeeded" | "blocked" | null = null;
@@ -616,7 +623,7 @@ export async function stepTask(
     const modelPlan = createModelPlan({
       purpose: "execution_step",
       agentDepth: agent.depth,
-      complexityHint: agent.depth <= 1 ? "high" : "normal",
+      complexityHint: executionComplexity(task),
       agent: { modelMode: agent.modelMode, modelId: agent.modelId },
       taskExecutionModelId: task.executionModelId,
     });
@@ -681,6 +688,12 @@ export async function stepTask(
     };
 
     for (let round = 0; round < maxToolRounds; round++) {
+      const spendBlock = await readTaskSpendBlockReason(
+        task,
+        { ...executionSpendLimits(), maxSteps: null },
+        locale,
+      );
+      if (spendBlock) throw new TaskSpendBudgetError(spendBlock);
       await leaseHeartbeat.assertOwned(
         toolMessage(locale, "taskPlanning", {
           round: round + 1,
@@ -1132,6 +1145,9 @@ export async function stepTask(
         },
         "Task step stopped after durable ownership loss",
       );
+    } else if (error instanceof TaskSpendBudgetError) {
+      spendBudgetExceeded = true;
+      stepError = error.message;
     } else if (error instanceof ModelRoutesExhaustedError) {
       stepFailureKind = "model_routes_exhausted";
       exhaustedModelFailures = error.failures;
@@ -1164,7 +1180,8 @@ export async function stepTask(
               maxConsecutiveRuntimeFailures: MAX_CONSECUTIVE_FAILURES,
             })
           : null;
-        const shouldBlock = retryDecision?.shouldBlock ?? false;
+        const shouldBlock =
+          spendBudgetExceeded || (retryDecision?.shouldBlock ?? false);
         const retryDelayMs = retryDecision?.retryDelayMs ?? 0;
         const nextRetryAt =
           stepError && !shouldBlock
@@ -1327,7 +1344,9 @@ export async function stepTask(
               ...(shouldBlock
                 ? {
                     status: "blocked",
-                    blockedReason: "runtime_failure" as const,
+                    blockedReason: spendBudgetExceeded
+                      ? ("budget" as const)
+                      : ("runtime_failure" as const),
                   }
                 : operationOutcomeUnknown
                   ? {

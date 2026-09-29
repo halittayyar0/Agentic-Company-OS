@@ -14,7 +14,6 @@ import {
   ne,
   or,
   sql,
-  sum,
 } from "drizzle-orm";
 import {
   db,
@@ -26,7 +25,6 @@ import {
   runtimeInstancesTable,
   taskAttemptsTable,
   tasksTable,
-  usageEventsTable,
   type Task,
 } from "@workspace/db";
 import { logger } from "../logger";
@@ -39,7 +37,7 @@ import {
 } from "./execute-tool";
 import { recoverInterruptedOperation } from "./operation-receipts";
 import { scrubExpiredApprovals } from "./sudo-approval-retention";
-import { taskBudgetBlockReason } from "./task-budget-policy";
+import { readTaskSpendAdmission } from "./task-spend-admission";
 import { readWorkspaceLocale } from "../workspace-locale";
 import { getToolCopy, toolMessage } from "./tool-localization";
 import {
@@ -95,6 +93,11 @@ const MAX_TASK_REPORTED_COST_USD = positiveNumber(
 const ACTIVE_STATUSES = ["pending", "planning", "in_progress"] as const;
 const activeStatusCondition = () =>
   inArray(tasksTable.status, ACTIVE_STATUSES as unknown as string[]);
+const noPendingFiniteChildren = () => sql`NOT EXISTS (
+  SELECT 1 FROM tasks child WHERE child.parent_task_id = ${tasksTable.id}
+    AND child.autonomy_mode = 'finite'
+    AND child.status IN ('pending', 'planning', 'in_progress', 'awaiting_approval')
+)`;
 const leaseAvailable = (now: Date) =>
   or(isNull(tasksTable.leaseExpiresAt), lt(tasksTable.leaseExpiresAt, now));
 const agentLeaseAvailable = (now: Date) =>
@@ -155,6 +158,7 @@ export async function claimDueTasks(
     .where(
       and(
         activeStatusCondition(),
+        noPendingFiniteChildren(),
         or(
           isNull(tasksTable.lastSteppedAt),
           lt(tasksTable.lastSteppedAt, selectionCutoff),
@@ -241,6 +245,13 @@ export async function claimDueTasks(
         ) {
           throw new ClaimConflictError();
         }
+        const [readyParent] = await tx
+          .select({ id: tasksTable.id })
+          .from(tasksTable)
+          .where(
+            and(eq(tasksTable.id, liveTask.id), noPendingFiniteChildren()),
+          );
+        if (!readyParent) throw new ClaimConflictError();
         // An expired lease is not proof that its physical attempt reached a
         // terminal state. Recovery owns that transition and its accounting.
         // Serialize behind it in task -> attempt order, then defer this claim
@@ -371,64 +382,18 @@ export async function enforceTaskBudgets(): Promise<void> {
     .from(tasksTable)
     .where(and(activeStatusCondition(), leaseAvailable(now)));
 
-  const finiteTaskIds = active
-    .filter((task) => task.autonomyMode !== "continuous")
-    .map((task) => task.id);
-  const ledgerRows =
-    finiteTaskIds.length === 0
-      ? []
-      : await db
-          .select({
-            taskId: usageEventsTable.taskId,
-            totalTokens: sum(usageEventsTable.totalTokens),
-            reportedCostUsd: sum(usageEventsTable.reportedCostUsd),
-          })
-          .from(usageEventsTable)
-          .where(inArray(usageEventsTable.taskId, finiteTaskIds))
-          .groupBy(usageEventsTable.taskId);
-  const ledgerByTask = new Map(
-    ledgerRows.map((row) => [
-      row.taskId,
-      {
-        tokensUsed: Number(row.totalTokens ?? 0),
-        reportedCostUsd: Number(row.reportedCostUsd ?? 0),
-      },
-    ]),
-  );
-
   for (const task of active) {
-    // Continuous responsibilities are deliberately not stopped by lifetime
-    // step/token/cost counters: usage_events remains the durable accounting
-    // ledger, while cadence controls wake frequency. Lifetime cumulative cost
-    // cannot be a per-cycle ceiling. A finite task retains stricter one-shot
-    // guardrails.
-    const ledger = ledgerByTask.get(task.id);
-    // The append-only usage ledger covers judge calls and survives a process
-    // crash between provider completion and task aggregate cleanup. Keep the
-    // larger value for pre-ledger/partial-failure compatibility without
-    // double-counting task-step usage represented in both stores.
-    const effectiveTokensUsed = Math.max(
-      task.tokensUsed,
-      ledger?.tokensUsed ?? 0,
-    );
-    const effectiveReportedCostUsd = Math.max(
-      Number(task.estimatedCostUsd ?? "0"),
-      ledger?.reportedCostUsd ?? 0,
-    );
-    const budgetSnapshot = {
-      ...task,
-      tokensUsed: effectiveTokensUsed,
-      estimatedCostUsd: effectiveReportedCostUsd.toFixed(6),
-    };
-    const reason = taskBudgetBlockReason(
-      budgetSnapshot,
+    const admission = await readTaskSpendAdmission(
+      task,
       {
         maxSteps: MAX_TASK_STEPS,
         maxTokens: MAX_TASK_TOKENS,
         maxReportedCostUsd: MAX_TASK_REPORTED_COST_USD,
       },
       locale,
+      now,
     );
+    const reason = admission.reason;
     if (!reason) continue;
 
     const [blocked] = await db
@@ -457,11 +422,11 @@ export async function enforceTaskBudgets(): Promise<void> {
         summary: toolMessage(locale, "schedulerBudgetStopped", { reason }),
         detail: {
           stepAttempts: task.stepAttempts,
-          tokensUsed: effectiveTokensUsed,
-          reportedCostUsd: effectiveReportedCostUsd.toFixed(6),
+          tokensUsed: admission.tokensUsed,
+          reportedCostUsd: admission.reportedCostUsd,
           materializedTokensUsed: task.tokensUsed,
           materializedReportedCostUsd: task.estimatedCostUsd,
-          usageSource: "max(task_aggregate,usage_events_ledger)",
+          usageSource: admission.usageSource,
         },
         severity: "critical",
       });

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A private, open-source workspace for AI agents. Give it a task, review the evidence, and schedule recurring work. Install on your computer or server."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <title>Agentic Company OS — Your work, under your control.</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#start" data-i18n="skip">Skip to setup</a>
+    <header>
+      <a class="brand" href="#">Agentic<span>Company OS</span></a>
+      <nav aria-label="Main">
+        <a href="https://github.com/halittayyar0/Agentic-Company-OS">GitHub ↗</a
+        ><label
+          ><span class="sr-only">Language</span
+          ><select id="language" aria-label="Language">
+            <option value="en">English</option>
+            <option value="tr">Türkçe</option>
+            <option value="de">Deutsch</option>
+            <option value="ru">Русский</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="zh-TW">繁體中文</option>
+            <option value="ar">العربية</option>
+          </select></label
+        >
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <p class="eyebrow" data-i18n="eyebrow">
+          OPEN SOURCE · YOUR OWN WORKSPACE
+        </p>
+        <h1 data-i18n="title">Give it work.<br />Keep control.</h1>
+        <p class="lede" data-i18n="intro">
+          One task or an ongoing responsibility. Agents work with tools, keep
+          their results, and ask at the boundaries you choose.
+        </p>
+        <div class="actions">
+          <a class="primary" href="#start" data-i18n="start"
+            >Set up your workspace</a
+          ><a href="#examples" data-i18n="examples">Find a first task ↓</a>
+        </div>
+        <p class="small" data-i18n="ownership">
+          Windows, macOS and Linux. Your files, your model account, your rules.
+        </p>
+      </section>
+      <figure>
+        <img
+          src="workspace.png"
+          alt="Agentic Company OS workspace showing agents, tasks and activity"
+          width="1440"
+          height="900"
+          loading="lazy"
+        />
+        <figcaption data-i18n="caption">
+          The actual workspace. This public page never accesses your files or
+          asks for your API key.
+        </figcaption>
+      </figure>
+      <section class="principles">
+        <div>
+          <span class="number">01</span>
+          <h2 data-i18n="smallTitle">Start small.</h2>
+          <p data-i18n="smallBody">
+            Routine work starts economically. Existing agents are reused, and
+            delegation has a server-enforced limit.
+          </p>
+        </div>
+        <div>
+          <span class="number">02</span>
+          <h2 data-i18n="repeatTitle">Keep a rhythm.</h2>
+          <p data-i18n="repeatBody">
+            Recurring work waits for its next cycle. Cycle and rolling usage
+            limits stop continued model calls when reported usage reaches the
+            allowance.
+          </p>
+        </div>
+        <div>
+          <span class="number">03</span>
+          <h2 data-i18n="controlTitle">See what happened.</h2>
+          <p data-i18n="controlBody">
+            Review files, task history, approvals and results. Choose read-only,
+            approval, full-access or custom permissions.
+          </p>
+        </div>
+      </section>
+      <section id="start" class="start">
+        <div>
+          <p class="eyebrow" data-i18n="setupLabel">GET STARTED</p>
+          <h2 data-i18n="setupTitle">A workspace of your own.</h2>
+          <p data-i18n="setupIntro">
+            Use the ready-made container package, or install the source directly
+            on your computer.
+          </p>
+          <a
+            class="primary"
+            href="https://github.com/halittayyar0/Agentic-Company-OS/releases"
+            data-i18n="download"
+            >Open downloads & release notes ↗</a
+          >
+        </div>
+        <ol>
+          <li>
+            <strong data-i18n="step1Title">Prepare your computer</strong>
+            <p data-i18n="step1">
+              Ready-made package: Node.js 24 and a running Docker Linux engine
+              with Compose v2. No Git, pnpm or source build. Local AI models
+              need additional memory.
+            </p>
+            <div class="links">
+              <a href="https://nodejs.org/en/download">Node.js ↗</a
+              ><a href="https://docs.docker.com/get-started/get-docker/"
+                >Docker ↗</a
+              >
+            </div>
+          </li>
+          <li>
+            <strong data-i18n="step2Title">Open the installer</strong>
+            <p data-i18n="step2">
+              Extract the setup package. On Windows open START.cmd; on
+              macOS/Linux run sh START.command. Open the private link printed by
+              the launcher.
+            </p>
+          </li>
+          <li>
+            <strong data-i18n="step3Title"
+              >Choose your language and model</strong
+            >
+            <p data-i18n="step3">
+              Select permissions, tools and your provider. The installer creates
+              the database and verifies the workspace. Save its private
+              installation directory for restart.
+            </p>
+          </li>
+        </ol>
+      </section>
+      <section id="examples">
+        <p class="eyebrow" data-i18n="examplesLabel">YOUR FIRST JOB</p>
+        <h2 data-i18n="examplesTitle">Start with a useful result.</h2>
+        <p data-i18n="examplesIntro">
+          Copy an example into your workspace. Replace the details with your
+          own. Nothing runs on this public page.
+        </p>
+        <div id="recipes"></div>
+        <p id="copy-status" role="status" aria-live="polite"></p>
+      </section>
+      <section class="boundaries">
+        <h2 data-i18n="knowTitle">Know before you start.</h2>
+        <p data-i18n="knowBody">
+          Each installation is a single-operator workspace. Cloud model charges
+          belong to your provider account; set a hard spending cap there.
+          Reported usage limits cannot cancel an already running provider
+          request. Local models avoid per-token API charges but use your
+          hardware. Use private HTTPS for phone access. No separate AgenticOS
+          mobile app is needed.
+        </p>
+        <div class="links">
+          <a
+            href="https://github.com/halittayyar0/Agentic-Company-OS/blob/main/docs/self-hosting.md"
+            data-i18n="native"
+            >Native installation</a
+          ><a
+            href="https://github.com/halittayyar0/Agentic-Company-OS/blob/main/docs/mobile-access.md"
+            data-i18n="phone"
+            >Phone access</a
+          ><a
+            href="https://github.com/halittayyar0/Agentic-Company-OS/blob/main/SECURITY.md"
+            data-i18n="security"
+            >Security</a
+          >
+        </div>
+      </section>
+    </main>
+    <footer>
+      <span>Agentic Company OS · MIT</span
+      ><a
+        href="https://github.com/halittayyar0/Agentic-Company-OS/issues"
+        data-i18n="feedback"
+        >Report a problem ↗</a
+      >
+    </footer>
+  </body>
+</html>
