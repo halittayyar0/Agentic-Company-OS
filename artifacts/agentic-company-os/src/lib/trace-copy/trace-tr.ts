@@ -8,6 +8,10 @@ const copy: TraceCopy = {
   snapshot: "Yüklenen faaliyet aralığı",
   retry: "Yeniden dene",
   export: "Faaliyet JSON dosyasını indir",
+  evidenceExport: "Paylaşılabilir kanıtı indir",
+  evidenceHelp:
+    "Kayıt kimlikleri, durumlar ve sayılarla tek faaliyet sayfası. Görev metni, özetler, komutlar ve ham araç verisi yoktur. Sağlama toplamı kazara değişikliği saptar; kimin hazırladığını veya görevin başarıyla bittiğini kanıtlamaz.",
+  evidenceError: "Kanıt hazırlanamadı. Tekrar deneyin.",
   exportHelp:
     "Özgün özetleri ve izin verilen üst verileri içerir. Paylaşmadan önce dosyayı gözden geçir.",
   operations: "İşlem makbuzlarını aç",

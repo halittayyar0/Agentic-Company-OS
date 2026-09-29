@@ -10,6 +10,7 @@ Agentic Company OS is an early, local-first alpha. The roadmap is ordered by ris
 - Editable agent identities and default role prompts; direct chat with every agent; hierarchical task delegation and lease-controlled autonomous scheduling.
 - Versioned Workforce Studio blueprints with explicit AI/next/review handoffs, parent-bounded permissions, atomic hierarchy installation, and optional finite or continuous root outcomes.
 - A six-stage Run Inspector reconstructed from persisted evidence, with routing/tool/judge/model recovery visibility and a sanitized trace export.
+- A shareable, narrow activity-page evidence packet with a local checksum verifier. It excludes free-form text and raw tool data; the checksum does not authenticate the operator or prove work success. See [shareable evidence](./shareable-evidence.md).
 - Per-agent computer workspace combining files, terminal, browser, screenshots, action trace, ownership state, and human handoff.
 - Complete live OpenRouter text-model catalog plus direct OpenAI and private-endpoint Ollama adapters, namespaced model IDs, fail-closed tool capability discovery, provider-aware routing, request-ID observability, and usage telemetry.
 - Exact, expiring, single-use approvals; live permission rechecks; a canonical-root-CEO host-shell gate; persisted emergency stop; bounded loops, quotas, retries, and model deadlines.

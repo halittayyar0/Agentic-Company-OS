@@ -9,6 +9,9 @@ export type TraceCopy = {
   retry: string;
   export: string;
   exportHelp: string;
+  evidenceExport: string;
+  evidenceHelp: string;
+  evidenceError: string;
   operations: string;
   window: string;
   range: string;

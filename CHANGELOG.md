@@ -17,10 +17,11 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 See [release verification](docs/verification/2026-09-29-efficient-autonomy.md) for the acceptance scope and remaining limits.
 
-## Unreleased
+## [0.3.0] - 2026-09-29
 
 ### Added
 
+- Shareable, text-free evidence packets for one selected task-activity page, with SHA-256 checksum and an offline verifier included in the portable installer. The packet does not authenticate its creator or establish task success.
 - Separate German, Russian, Simplified Chinese, Traditional Chinese and Arabic welcome READMEs, with a seven-language switcher and English as the default entry point.
 - Twenty task-specific work guides in all seven languages, bringing the built-in catalog to 50 guides with explicit inputs, procedures and acceptance checks.
 - Ten bounded data/document processors for CSV grouping and selection, JSON paths and flattening, list comparison, literal text operations, Markdown tables, exact unit conversion and calendar intervals. The 34-tool capability catalog retains lazy schema loading, pack revocation and personal utility presets.

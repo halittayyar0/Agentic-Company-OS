@@ -8,6 +8,10 @@ const copy: TraceCopy = {
   snapshot: "Loaded activity window",
   retry: "Try again",
   export: "Download activity JSON",
+  evidenceExport: "Download shareable evidence",
+  evidenceHelp:
+    "One activity page with record IDs, states and counts. No task text, summaries, commands or raw tool data. The checksum detects accidental changes; it does not prove authorship or task success.",
+  evidenceError: "Evidence could not be prepared. Try again.",
   exportHelp:
     "Includes original summaries and allowlisted metadata. Review the file before sharing.",
   operations: "Open operation receipts",

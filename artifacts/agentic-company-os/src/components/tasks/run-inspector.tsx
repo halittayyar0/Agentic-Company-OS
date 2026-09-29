@@ -18,6 +18,10 @@ import { cn } from "@/lib/utils";
 import { TraceCopyBoundary, TraceTime } from "./trace-shared";
 import { useRecordHistory } from "@/hooks/use-record-history";
 import { HistoryControls } from "@/components/history-controls";
+import {
+  createEvidencePacket,
+  evidenceWindowBody,
+} from "@/lib/evidence-packet";
 
 type Props = {
   task: Task;
@@ -56,6 +60,8 @@ function Inspector({ task, subtasks, agents, c }: Props & { c: TraceCopy }) {
   );
   const [filter, setFilter] = useState<RunTraceCategory>("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [exportingEvidence, setExportingEvidence] = useState(false);
+  const [evidenceError, setEvidenceError] = useState(false);
   const events = filterRunTraceEvents(trace.events, filter).slice().reverse();
   const number = (value: number) => new Intl.NumberFormat(locale).format(value);
   const actor = (id: number | null) =>
@@ -108,6 +114,42 @@ function Inspector({ task, subtasks, agents, c }: Props & { c: TraceCopy }) {
     anchor.download = `task-${task.id}-activity.json`;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  async function downloadEvidence() {
+    if (!known || exportingEvidence) return;
+    setExportingEvidence(true);
+    setEvidenceError(false);
+    try {
+      const packet = await createEvidencePacket(
+        evidenceWindowBody({
+          task,
+          trace,
+          exportedAt: new Date().toISOString(),
+          boundary: {
+            taskId: task.id,
+            capturedAt,
+            beforeId: history.page?.beforeId ?? null,
+            nextBeforeId: history.page?.nextBeforeId ?? null,
+            pageNumber: history.trail.length + 1,
+            refreshFailed: Boolean(error),
+          },
+        }),
+      );
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(packet, null, 2)], {
+          type: "application/json",
+        }),
+      );
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `task-${task.id}-evidence.json`;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setEvidenceError(true);
+    } finally {
+      setExportingEvidence(false);
+    }
   }
   return (
     <section className="min-w-0 space-y-5 p-4 sm:p-6" aria-label={c.title}>
@@ -230,6 +272,17 @@ function Inspector({ task, subtasks, agents, c }: Props & { c: TraceCopy }) {
           {c.export}
         </Button>
         <p className="text-xs text-muted-foreground">{c.exportHelp}</p>
+        <Button
+          variant="outline"
+          className="h-auto min-h-11 whitespace-normal text-start"
+          disabled={!known || exportingEvidence}
+          onClick={() => void downloadEvidence()}
+        >
+          <Download size={16} aria-hidden />
+          {c.evidenceExport}
+        </Button>
+        <p className="text-xs text-muted-foreground">{c.evidenceHelp}</p>
+        {evidenceError && <p role="alert">{c.evidenceError}</p>}
       </div>
       <div role="group" aria-label={c.title} className="flex flex-wrap gap-2">
         {FILTERS.map((item) => (
