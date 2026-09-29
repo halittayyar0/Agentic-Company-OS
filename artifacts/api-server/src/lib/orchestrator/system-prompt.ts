@@ -1,3 +1,4 @@
+import { efficiencyGuidance } from "./efficiency-guidance";
 import { and, desc, eq, gt, inArray, or } from "drizzle-orm";
 import {
   activityEventsTable,
@@ -581,6 +582,7 @@ export async function buildTaskStepSystemPrompt(
     CORE_SYSTEM_PROMPT,
     workspaceLanguageContract(locale),
     TASK_MODE_PROMPT,
+    efficiencyGuidance(locale),
     reconciliationDirectives,
     describeAgentProfile(agent, locale),
     capabilities,

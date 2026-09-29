@@ -16,6 +16,15 @@
     ar: "الإعداد|مساحتك. قواعدك.|اختر مكان عمل الوكلاء وما يمكنهم فعله.|أين تريد التشغيل؟|على هذا الكمبيوتر|تشغيل مباشر على Windows أو macOS أو Linux. يتطلب PostgreSQL.|داخل حاوية|شغّل التطبيق وقاعدة البيانات معًا باستخدام Docker.|صلاحيات الوكلاء|قراءة فقط|طلب الموافقة|وصول كامل|مخصص|يقتصر الوصول على مساحة العمل وصلاحيات نظام التشغيل.|مزود الذكاء الاصطناعي|الإعداد لاحقًا|عنوان اتصال PostgreSQL|مفتاح API|المنفذ المحلي|حزم الأدوات|البيانات|المستندات|الويب|البرمجة|التخطيط|الوصول من الهاتف|هذا الكمبيوتر فقط|شبكة خاصة|استخدم متصفح هاتفك. تحتاج الشبكة الخاصة إلى اتصال مُعدّ مسبقًا؛ لا حاجة إلى تطبيق هاتف.|مراجعة التثبيت|تبقى بيانات الدخول في مجلد التثبيت الخاص ولا تظهر في الملخص.|فتح مساحة العمل|رجوع|متابعة|تثبيت|جارٍ فحص الكمبيوتر…|جاهز للمتابعة.|المتطلبات غير مكتملة. تحقق من Node 24 أو محرك Docker يعمل بنظام Linux مع Compose v2.|تعذرت المتابعة. تحقق من البيانات والاتصال ثم حاول مجددًا.|جارٍ التثبيت…|تم التحقق من التثبيت.|توقف التثبيت. تم الاحتفاظ بالإعدادات؛ افحص أداة التثبيت قبل البدء مجددًا.|افتح رابط الإعداد الذي يعرضه برنامج التشغيل.",
   };
   const permissionKeys = ["files", "terminal", "browser", "delegation", "sudo"];
+  const nativeSourceWords = {
+    en: "This ready-to-run package uses Docker. For installation directly on your computer, open the native setup guide.",
+    tr: "Bu hazır paket Docker kullanır. Doğrudan bilgisayarına kurmak için yerel kurulum rehberini aç.",
+    de: "Dieses fertige Paket verwendet Docker. Für die direkte Installation öffne die native Installationsanleitung.",
+    ru: "Этот готовый пакет использует Docker. Для прямой установки откройте руководство по локальной установке.",
+    "zh-CN": "此预构建软件包使用 Docker。直接安装到计算机请打开本地安装指南。",
+    "zh-TW": "此預先建置的套件使用 Docker。直接安裝到電腦請開啟本機安裝指南。",
+    ar: "تستخدم هذه الحزمة الجاهزة Docker. للتثبيت مباشرة على الكمبيوتر، افتح دليل التثبيت المحلي.",
+  };
   const permissionWords = {
     tr: [
       "Dosya değişiklikleri",
@@ -169,6 +178,12 @@
       : capabilities[value("mode")].ready
         ? copy.ready
         : copy.unavailable;
+    const portable = capabilities?.native?.issues?.includes(
+      "native_source_required",
+    );
+    $("native-source").hidden = !portable;
+    $("native-source").textContent =
+      nativeSourceWords[$("language").value] || nativeSourceWords.en;
     $("database-field").hidden = value("mode") !== "native";
     $("custom-fields").hidden = value("accessMode") !== "custom";
     $("key-field").hidden = !["openai", "openrouter"].includes(
@@ -356,6 +371,11 @@
   api("capabilities")
     .then((result) => {
       capabilities = result;
+      if (result.native.issues.includes("native_source_required")) {
+        document.querySelector('[name="mode"][value="native"]').disabled = true;
+        document.querySelector('[name="mode"][value="container"]').checked =
+          true;
+      }
       draw();
     })
     .catch((error) => {

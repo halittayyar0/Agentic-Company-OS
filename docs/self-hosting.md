@@ -9,14 +9,18 @@ Read [security-model.md](./security-model.md) before choosing a topology.
 
 ## Supported operating profiles
 
-| Profile                                 | Status                         | Notes                                                                                                                                |
-| --------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| One operator on one development machine | Supported for alpha evaluation | API, Vite dev, and Vite preview bind to loopback by default. Keep those defaults and a host firewall enabled.                        |
-| One operator on a private server/VPN    | Supported alpha profile        | Requires built-in operator auth, TLS, firewall rules, a dedicated OS account, PostgreSQL, and reviewed secret/backups configuration. |
-| Shared team or multi-tenant service     | Not supported                  | The built-in token is one operator identity; there is no object-level authorization or tenant isolation.                             |
-| Direct public-internet service          | Not supported                  | Do not expose the API or Vite server directly.                                                                                       |
+| Profile                                 | Status                          | Notes                                                                                                                                |
+| --------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| One operator on one development machine | Single-operator development     | API, Vite dev, and Vite preview bind to loopback by default. Keep those defaults and a host firewall enabled.                        |
+| One operator on a private server/VPN    | Single-operator private profile | Requires built-in operator auth, TLS, firewall rules, a dedicated OS account, PostgreSQL, and reviewed secret/backups configuration. |
+| Shared team or multi-tenant service     | Not supported                   | The built-in token is one operator identity; there is no object-level authorization or tenant isolation.                             |
+| Direct public-internet service          | Not supported                   | Do not expose the API or Vite server directly.                                                                                       |
 
-## Prerequisites
+## Portable container installer
+
+Install Node.js 24 and start a Docker Linux engine with Compose v2. Extract the setup ZIP from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest), then run `START.cmd` (Windows) or `sh START.command` (macOS/Linux). Open the printed private link. The wizard pulls a pinned image and provisions PostgreSQL; Git, pnpm and a local source build are unnecessary. Keep both the extracted bundle and the private installation directory to resume. Advanced container budget overrides belong in the installation directory’s `compose.env`; see [efficient work](efficient-work.md).
+
+## Source installation prerequisites
 
 - 64-bit host supported by Node.js 24 and the repository's native dependencies
 - Node.js 24

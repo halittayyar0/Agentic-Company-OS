@@ -5,6 +5,8 @@ import { createSetupSession } from "./session";
 import { createInstallationExecutor } from "./installer";
 import { applyInstallationPreferences } from "./preferences";
 import { readInstallation } from "./resume";
+import { readDistribution } from "./distribution";
+import { detectInstallCapabilities } from "./preflight";
 
 export function parseSetupArguments(argv: string[]) {
   const args = argv[0] === "--" ? argv.slice(1) : argv;
@@ -34,7 +36,17 @@ export function parseSetupArguments(argv: string[]) {
 export async function launchSetup(argv = process.argv.slice(2)) {
   const args = parseSetupArguments(argv),
     workspaceRoot = fileURLToPath(new URL("../../..", import.meta.url));
-  const pnpmPath = process.env.npm_execpath;
+  const distribution = await readDistribution(workspaceRoot);
+  const capabilities: typeof detectInstallCapabilities = async () => {
+    const detected = await detectInstallCapabilities();
+    return distribution
+      ? {
+          ...detected,
+          native: { ready: false, issues: ["native_source_required"] },
+        }
+      : detected;
+  };
+  const pnpmPath = distribution ? process.execPath : process.env.npm_execpath;
   if (!pnpmPath || !path.isAbsolute(pnpmPath))
     throw new Error("Start the installer with pnpm run setup");
   const controller = new AbortController();
@@ -48,6 +60,8 @@ export async function launchSetup(argv = process.argv.slice(2)) {
       : (args.parent ??
         path.join(homedir(), ".agentic-company-os", "instances")),
     pnpmPath,
+    capabilities,
+    ...(distribution ? { prebuiltImage: distribution.image } : {}),
     applyPreferences: applyInstallationPreferences,
     signal: controller.signal,
     ...(restored
@@ -88,11 +102,12 @@ export async function launchSetup(argv = process.argv.slice(2)) {
     );
   } else {
     session = await createSetupSession({
+      capabilities,
       execute: async (plan, credentials, progress) => {
         try {
           const result = await executor.execute(plan, credentials, progress);
           process.stdout.write(
-            `Installation: ${executor.installationDirectory()}\nRestart: pnpm run setup --resume "${executor.installationDirectory()}"\n`,
+            `Installation: ${executor.installationDirectory()}\nRestart: ${distribution ? `node "${fileURLToPath(import.meta.url)}"` : "pnpm run setup"} --resume "${executor.installationDirectory()}"\n`,
           );
           return result;
         } catch (error) {

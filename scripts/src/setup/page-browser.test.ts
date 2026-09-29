@@ -5,6 +5,39 @@ import { createSetupSession } from "./session";
 import type { InstallationPlan } from "./plan";
 import type { InstallationCredentials } from "./session";
 
+test("portable setup selects its supported container mode and explains native source setup", async (t) => {
+  const browser = await chromium.launch({
+    headless: true,
+    chromiumSandbox: true,
+  });
+  t.after(() => browser.close());
+  const session = await createSetupSession({
+    capabilities: async () => ({
+      platform: "linux",
+      architecture: "x64",
+      nodeVersion: "v24.19.0",
+      postgresClientVersion: null,
+      composeVersion: "2.40.0",
+      native: { ready: false, issues: ["native_source_required"] },
+      container: { ready: true, issues: [] },
+    }),
+    execute: async () => ({ url: "http://127.0.0.1:5000" }),
+  });
+  t.after(() => session.close());
+  const page = await browser.newPage();
+  await page.goto(session.url);
+  await page.locator("#next:not([disabled])").waitFor({ timeout: 3000 });
+  assert.equal(
+    await page.locator('[name="mode"][value="container"]').isChecked(),
+    true,
+  );
+  assert.equal(
+    await page.locator('[name="mode"][value="native"]').isDisabled(),
+    true,
+  );
+  assert.equal(await page.locator("#native-source").isVisible(), true);
+});
+
 test("container setup blocks a missing engine and submits container settings when available", async (t) => {
   const browser = await chromium.launch({
     headless: true,

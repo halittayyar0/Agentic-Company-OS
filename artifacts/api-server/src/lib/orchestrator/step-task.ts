@@ -1,3 +1,4 @@
+import { createTaskToolCatalog } from "./task-tool-catalog";
 import {
   getToolCopy,
   toolMessage,
@@ -40,6 +41,13 @@ import {
   type TaskStepFailureKind,
 } from "./task-retry-policy";
 import { recordCompletionUsage } from "./usage-ledger";
+import { executionComplexity } from "./execution-economy";
+import {
+  readTaskSpendBlockReason,
+  executionSpendLimits,
+  TaskSpendBudgetError,
+  assertTaskInferenceAdmission,
+} from "./task-spend-admission";
 import {
   computerSurfaceForTool,
   deferredComputerToolMessage,
@@ -560,6 +568,7 @@ export async function stepTask(
   let reportedCostSeen = false;
   let toolUsed = false;
   let stepError: string | null = null;
+  let spendBudgetExceeded = false;
   let stepFailureKind: TaskStepFailureKind | null = null;
   let exhaustedModelFailures: ReadonlyArray<ModelAttemptFailure> = [];
   let attemptDisposition: "succeeded" | "blocked" | null = null;
@@ -597,17 +606,25 @@ export async function stepTask(
     const systemPrompt = exclusivePolicy
       ? `${baseSystemPrompt}\n\n${exclusiveTurnSystemPrompt(exclusivePolicy, locale)}`
       : baseSystemPrompt;
-    const tools = filterToolsForExclusiveTurn(
+    const authorizedTools = filterToolsForExclusiveTurn(
       await getToolsForAgent(agent, true),
       exclusivePolicy,
     );
     const maxToolRounds = resolveMaxToolRounds(
       "task",
-      tools.map((tool) => tool.function.name),
+      authorizedTools.map((tool) => tool.function.name),
     );
     const maxToolCallsPerRound = resolveMaxToolCallsPerRound();
+    const toolCatalog = exclusivePolicy
+      ? null
+      : createTaskToolCatalog(authorizedTools);
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-      { role: "system", content: systemPrompt },
+      {
+        role: "system",
+        content: toolCatalog
+          ? `${systemPrompt}\n\n${toolCatalog.index}`
+          : systemPrompt,
+      },
       {
         role: "user",
         content: statusCopy.taskAdvanceInstruction,
@@ -616,7 +633,7 @@ export async function stepTask(
     const modelPlan = createModelPlan({
       purpose: "execution_step",
       agentDepth: agent.depth,
-      complexityHint: agent.depth <= 1 ? "high" : "normal",
+      complexityHint: executionComplexity(task),
       agent: { modelMode: agent.modelMode, modelId: agent.modelId },
       taskExecutionModelId: task.executionModelId,
     });
@@ -681,6 +698,12 @@ export async function stepTask(
     };
 
     for (let round = 0; round < maxToolRounds; round++) {
+      const spendBlock = await readTaskSpendBlockReason(
+        task,
+        { ...executionSpendLimits(), maxSteps: null },
+        locale,
+      );
+      if (spendBlock) throw new TaskSpendBudgetError(spendBlock);
       await leaseHeartbeat.assertOwned(
         toolMessage(locale, "taskPlanning", {
           round: round + 1,
@@ -694,10 +717,11 @@ export async function stepTask(
           await leaseHeartbeat.assertOwned(
             toolMessage(locale, "taskModelRunning", { model: route.modelId }),
           );
+          await assertTaskInferenceAdmission(task.id, locale);
           const result = await createCompletion({
             model: route.modelId,
             messages,
-            tools,
+            tools: toolCatalog?.tools ?? authorizedTools,
             maxTokens: DEFAULT_MAX_COMPLETION_TOKENS,
           });
           try {
@@ -904,6 +928,20 @@ export async function stepTask(
           continue;
         }
         const toolName = toolCall.function.name;
+        if (toolName === "load_tools" && toolCatalog) {
+          await leaseHeartbeat.assertOwned();
+          let content: string;
+          try {
+            content = toolCatalog.load(toolCall.function.arguments);
+            succeededToolCall = true;
+          } catch (error) {
+            content =
+              error instanceof Error ? error.message : "Invalid tool selection";
+            rejectedToolCall = true;
+          }
+          messages.push({ role: "tool", tool_call_id: toolCall.id, content });
+          continue;
+        }
         if (exclusivePolicy) {
           const scopeDecision = evaluateExclusiveToolCall(
             exclusivePolicy,
@@ -1132,6 +1170,9 @@ export async function stepTask(
         },
         "Task step stopped after durable ownership loss",
       );
+    } else if (error instanceof TaskSpendBudgetError) {
+      spendBudgetExceeded = true;
+      stepError = error.message;
     } else if (error instanceof ModelRoutesExhaustedError) {
       stepFailureKind = "model_routes_exhausted";
       exhaustedModelFailures = error.failures;
@@ -1164,7 +1205,8 @@ export async function stepTask(
               maxConsecutiveRuntimeFailures: MAX_CONSECUTIVE_FAILURES,
             })
           : null;
-        const shouldBlock = retryDecision?.shouldBlock ?? false;
+        const shouldBlock =
+          spendBudgetExceeded || (retryDecision?.shouldBlock ?? false);
         const retryDelayMs = retryDecision?.retryDelayMs ?? 0;
         const nextRetryAt =
           stepError && !shouldBlock
@@ -1327,7 +1369,9 @@ export async function stepTask(
               ...(shouldBlock
                 ? {
                     status: "blocked",
-                    blockedReason: "runtime_failure" as const,
+                    blockedReason: spendBudgetExceeded
+                      ? ("budget" as const)
+                      : ("runtime_failure" as const),
                   }
                 : operationOutcomeUnknown
                   ? {

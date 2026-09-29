@@ -10,6 +10,7 @@ import {
   agentsTable,
   db,
   dbReady,
+  closeDatabase,
   taskAttemptsTable,
   tasksTable,
 } from "@workspace/db";
@@ -163,7 +164,8 @@ before(async () => {
 });
 
 after(async () => {
-  runtime?.stopHeartbeat();
+  await runtime?.stopHeartbeat();
+  await closeDatabase();
   process.chdir(originalDirectory);
   for (const [index, name] of budgetNames.entries()) {
     if (originalBudget[index] === undefined) delete process.env[name];

@@ -24,6 +24,7 @@ services:
       ENDURANCE_RUN_DIR: /app/endurance-control
       ENDURANCE_EXPECTED_AGENTS: "10"
       SYNTHETIC_RUNTIME_ENABLED: "true"
+      MAX_TASK_FAMILY_ACTIVE: "10"
       SYNTHETIC_RUNTIME_SEED: ${ENDURANCE_SEED:-240901}
       SYNTHETIC_RUNTIME_CONTROL_FILE: /app/endurance-control/fault-control.json
       OPS_SAMPLE_MS: ${ENDURANCE_OPS_SAMPLE_MS:-60000}
@@ -50,6 +51,7 @@ services:
       ENDURANCE_RUN_DIR: /app/endurance-control
       ENDURANCE_EXPECTED_AGENTS: "10"
       SYNTHETIC_RUNTIME_ENABLED: "true"
+      MAX_TASK_FAMILY_ACTIVE: "10"
       SYNTHETIC_RUNTIME_SEED: ${ENDURANCE_SEED:-240901}
       SYNTHETIC_RUNTIME_CONTROL_FILE: /app/endurance-control/fault-control.json
       OPS_SAMPLE_MS: ${ENDURANCE_OPS_SAMPLE_MS:-60000}
@@ -76,6 +78,7 @@ services:
       ENDURANCE_RUN_DIR: /app/endurance-control
       ENDURANCE_EXPECTED_AGENTS: "10"
       SYNTHETIC_RUNTIME_ENABLED: "true"
+      MAX_TASK_FAMILY_ACTIVE: "10"
       SYNTHETIC_RUNTIME_SEED: ${ENDURANCE_SEED:-240901}
       SYNTHETIC_RUNTIME_CONTROL_FILE: /app/endurance-control/fault-control.json
       OPS_SAMPLE_MS: ${ENDURANCE_OPS_SAMPLE_MS:-60000}

@@ -5,9 +5,9 @@
 [English](./README.md) · [Mimari](./docs/architecture.md) · [Rakip ürün kıyaslaması](./docs/competitive-benchmark.md) · [Güvenlik modeli](./docs/security-model.md) · [Self-hosting](./docs/self-hosting.md) · [Telefondan erişim](./docs/mobile-access.tr.md) · [Dayanıklılık kanıtı](./docs/endurance.md) · [Yayın kontrolü](./docs/release-checklist.md) · [Değişiklikler](./CHANGELOG.md) · [Yol haritası](./docs/roadmap.md)
 
 > [!IMPORTANT]
-> Bu proje **alpha yazılımdır** ve güvenilen tek operatör için tasarlanmıştır. Production ve loopback dışı başlangıç, yerleşik operatör token'ı ile kalıcı PostgreSQL olmadan fail-closed durur. Bu token çok kullanıcılı yetkilendirme değildir: uzak kurulumda TLS kullanın, API portunu private tutun ve aşağıdaki ağ/yedekleme kontrollerini uygulayın.
+> Bu proje **güvenilen tek operatör** için tasarlanmıştır. Production ve loopback dışı başlangıç, yerleşik operatör token'ı ile kalıcı PostgreSQL olmadan fail-closed durur. Bu token çok kullanıcılı yetkilendirme değildir: uzak kurulumda TLS kullanın, API portunu private tutun ve aşağıdaki ağ/yedekleme kontrollerini uygulayın.
 
-**Yayın durumu:** Doğrulaması devam eden alpha sürüm. [Doğrulama kaydı](./docs/verification/2026-09-28-extensible-release.md), tamamlanan kaynak, tarayıcı, gizli bilgi/geçmiş ve PostgreSQL kontrollerini kalan kabul çalışmalarından ayırır. Kuracağınız sürümün sonuçlarını [GitHub Actions](https://github.com/halittayyar0/Agentic-Company-OS/actions) üzerinden kontrol edin. Kısa çalışma testi, 24 saat güvenilirlik veya gerçek telefon/ana dil kabulü anlamına gelmez.
+**Yayın durumu:** 0.2.0, özel tek-operatör kurulumları içindir. [Doğrulama kaydı](./docs/verification/2026-09-29-efficient-autonomy.md), [sürüm notları](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) ve kuracağınız sürümün [GitHub Actions](https://github.com/halittayyar0/Agentic-Company-OS/actions) sonuçlarını inceleyin. Kısa kabul testi, 24 saat güvenilirlik veya gerçek telefon/ana dil kabulü anlamına gelmez.
 
 Agentic Company OS, ajan orkestrasyonunu gözlemlenebilir bir işletim sistemine dönüştürür: operatör hedef tanımlar, herhangi bir ajanla konuşur, hiyerarşi üzerinden görev dağıtır, çalışan tüm işleri izler, onay taleplerini değerlendirir ve hangi ajanın ne yaptığını canlı görür.
 
@@ -94,7 +94,9 @@ Playwright oturumları ve snapshot-ref registry'leri, onları oluşturan worker 
 
 ## Hızlı başlangıç
 
-**Kurulum sihirbazı:** aşağıdaki gereksinimleri kurduktan sonra `pnpm install --frozen-lockfile` ve `pnpm run setup` çalıştırın. Tarayıcıda bilgisayar/container, yedi dil, model sağlayıcısı, yetki modu, araç paketleri ve isteğe bağlı özel telefon erişimi seçilir. [Kurulum ve yeniden başlatma](./docs/self-hosting.md#guided-installation-windows-linux-and-macos) belgesini inceleyin.
+**Hazır konteyner kurulumu:** Node.js 24 kurun ve Docker Linux motoru ile Compose v2’yi başlatın. [Sürümlerden](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) kurulum ZIP’ini çıkarın. Windows’ta `START.cmd`, macOS/Linux’ta `sh START.command` çalıştırın. Yazılan özel bağlantıda dilini, modelini ve yetkilerini seç. Bu yol Git, pnpm veya kaynak derlemesi gerektirmez. [Başlangıç sayfası](https://halittayyar0.github.io/Agentic-Company-OS/) · [Verimli çalışma ve bütçeler](./docs/efficient-work.md).
+
+**Kaynak koddan kurulum sihirbazı:** aşağıdaki gereksinimleri kurduktan sonra `pnpm install --frozen-lockfile` ve `pnpm run setup` çalıştırın. Tarayıcıda bilgisayar/container, yedi dil, model sağlayıcısı, yetki modu, araç paketleri ve isteğe bağlı özel telefon erişimi seçilir. [Kurulum ve yeniden başlatma](./docs/self-hosting.md#guided-installation-windows-linux-and-macos) belgesini inceleyin.
 
 ### Gereksinimler
 
@@ -281,7 +283,7 @@ pnpm run typecheck
 
 ## Proje durumu
 
-Agentic Company OS; fail-closed auth, versioned migration, ayrılmış API/worker süreçleri, kalıcı operation receipt'leri, probe, istek sınırı ve container artifact'ları içeren tek-operatör private-server profiline sahip deneysel, local-first bir alpha'dır. Yakın dönem öncelikleri çok kullanıcılı yetkilendirme, disposable araç sandbox'ları, evrensel yan-etki politikası, dağıtık kotalar, düzenli recovery drill'leri ve daha geniş uçtan uca testlerdir. Ürün işleri [yol haritasında](./docs/roadmap.md), kalan riskler [güvenlik modelinde](./docs/security-model.md) izlenir.
+Agentic Company OS; fail-closed auth, versioned migration, ayrılmış API/worker süreçleri, kalıcı operation receipt'leri, probe, istek sınırı ve container artifact'ları içeren tek-operatör private-server profiline sahip 1.0 öncesi, yerel öncelikli bir üründür. Yakın dönem öncelikleri çok kullanıcılı yetkilendirme, disposable araç sandbox'ları, evrensel yan-etki politikası, dağıtık kotalar, düzenli recovery drill'leri ve daha geniş uçtan uca testlerdir. Ürün işleri [yol haritasında](./docs/roadmap.md), kalan riskler [güvenlik modelinde](./docs/security-model.md) izlenir.
 
 ## Katkı
 
