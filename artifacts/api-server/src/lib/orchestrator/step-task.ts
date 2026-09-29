@@ -1,3 +1,4 @@
+import { createTaskToolCatalog } from "./task-tool-catalog";
 import {
   getToolCopy,
   toolMessage,
@@ -604,17 +605,25 @@ export async function stepTask(
     const systemPrompt = exclusivePolicy
       ? `${baseSystemPrompt}\n\n${exclusiveTurnSystemPrompt(exclusivePolicy, locale)}`
       : baseSystemPrompt;
-    const tools = filterToolsForExclusiveTurn(
+    const authorizedTools = filterToolsForExclusiveTurn(
       await getToolsForAgent(agent, true),
       exclusivePolicy,
     );
     const maxToolRounds = resolveMaxToolRounds(
       "task",
-      tools.map((tool) => tool.function.name),
+      authorizedTools.map((tool) => tool.function.name),
     );
     const maxToolCallsPerRound = resolveMaxToolCallsPerRound();
+    const toolCatalog = exclusivePolicy
+      ? null
+      : createTaskToolCatalog(authorizedTools);
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-      { role: "system", content: systemPrompt },
+      {
+        role: "system",
+        content: toolCatalog
+          ? `${systemPrompt}\n\n${toolCatalog.index}`
+          : systemPrompt,
+      },
       {
         role: "user",
         content: statusCopy.taskAdvanceInstruction,
@@ -710,7 +719,7 @@ export async function stepTask(
           const result = await createCompletion({
             model: route.modelId,
             messages,
-            tools,
+            tools: toolCatalog?.tools ?? authorizedTools,
             maxTokens: DEFAULT_MAX_COMPLETION_TOKENS,
           });
           try {
@@ -917,6 +926,20 @@ export async function stepTask(
           continue;
         }
         const toolName = toolCall.function.name;
+        if (toolName === "load_tools" && toolCatalog) {
+          await leaseHeartbeat.assertOwned();
+          let content: string;
+          try {
+            content = toolCatalog.load(toolCall.function.arguments);
+            succeededToolCall = true;
+          } catch (error) {
+            content =
+              error instanceof Error ? error.message : "Invalid tool selection";
+            rejectedToolCall = true;
+          }
+          messages.push({ role: "tool", tool_call_id: toolCall.id, content });
+          continue;
+        }
         if (exclusivePolicy) {
           const scopeDecision = evaluateExclusiveToolCall(
             exclusivePolicy,

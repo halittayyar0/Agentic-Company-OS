@@ -105,7 +105,12 @@ const directory = await runNativeInstallSmoke(postgresBin, pnpmPath, {
           ) {
             assert.match(state.resultSummary ?? "", /391/);
             assert.equal(state.lastModelId?.endsWith(":free"), true);
-            assert.equal(Number(state.estimatedCostUsd ?? 0), 0);
+            assert.notEqual(
+              state.estimatedCostUsd,
+              null,
+              "Provider cost must be reported, not inferred",
+            );
+            assert.equal(Number(state.estimatedCostUsd), 0);
             results.push({ mode, taskId: task.id, ...state });
             done = true;
             break;
@@ -120,6 +125,20 @@ const directory = await runNativeInstallSmoke(postgresBin, pnpmPath, {
           `Live ${mode} task did not finish before its deadline`,
         );
       } finally {
+        await writeFile(
+          path.join(directory, `live-${mode}-evidence.json`),
+          JSON.stringify(
+            {
+              modelId,
+              passed: done,
+              verifiedAt: new Date().toISOString(),
+              state: await request(`/tasks/${task.id}`),
+              activity: await request(`/tasks/${task.id}/activity`),
+            },
+            null,
+            2,
+          ),
+        );
         if (mode === "continuous" || !done)
           await request(`/tasks/${task.id}/cancel`, "POST", {});
       }

@@ -17,6 +17,7 @@ export type JudgeVerdict = "pass" | "warn" | "block";
 export interface JudgeResult {
   verdict: JudgeVerdict;
   reasoning: string;
+  unavailable?: boolean;
 }
 
 export interface JudgeReviewRecord {
@@ -295,6 +296,7 @@ Kontrol et:
     return {
       verdict,
       reasoning,
+      unavailable: true,
     };
   }
 }

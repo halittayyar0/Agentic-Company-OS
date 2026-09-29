@@ -498,6 +498,9 @@ jobs:
       - name: Stop production profile cleanly
         run: docker stop --time 25 agentic-ci-worker-1 agentic-ci-worker-2 agentic-ci-app
 
+      - name: Install and resume through the real container wizard executor
+        run: pnpm exec tsx scripts/src/setup/container-install-smoke.ts
+
       - name: Print production logs on failure
         if: failure()
         run: |

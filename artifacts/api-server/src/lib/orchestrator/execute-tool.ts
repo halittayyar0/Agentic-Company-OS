@@ -6724,6 +6724,9 @@ async function completeTask(
   });
   await heartbeatJudgeTaskLease(ctx);
 
+  // A provider outage is not a rejected work product. End this attempt so
+  // scheduler backoff applies instead of regenerating the same report.
+  if (judgeResult.unavailable) throw new Error(judgeResult.reasoning);
   if (judgeResult.verdict === "block") {
     return empty(
       text("teamCompletionRejected", { reason: judgeResult.reasoning }),
