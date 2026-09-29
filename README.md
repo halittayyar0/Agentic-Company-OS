@@ -22,6 +22,8 @@ Give an agent a defined job, or assign a responsibility that repeats on a schedu
 
 Each installation is a **private workspace for one operator**, running on your computer or server. You choose the model provider and keep your own credentials. The public website is a starting point for installation; your tasks run in your own workspace.
 
+Before installing, you can [try three browser tools](https://halittayyar0.github.io/Agentic-Company-OS/#try): check a CSV for missing values and duplicate rows, map a JSON file's structure, or compare two lists. They run locally in the tab with no account, model or upload. Download the report, then copy a follow-up task into your private workspace if you want an agent to investigate further. [What the checks do and their limits →](./docs/quick-tools.md)
+
 | Start with a job                                      | Or make it a responsibility                                  |
 | ----------------------------------------------------- | ------------------------------------------------------------ |
 | Compare three products using linked sources.          | Check a public page every day and record meaningful changes. |

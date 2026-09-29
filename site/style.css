@@ -18,6 +18,9 @@
 * {
   box-sizing: border-box;
 }
+[hidden] {
+  display: none !important;
+}
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 2rem;
@@ -30,7 +33,9 @@ a {
   text-underline-offset: 0.25em;
 }
 button,
-select {
+select,
+textarea,
+input {
   font: inherit;
 }
 a,
@@ -40,7 +45,9 @@ select {
 }
 a:focus-visible,
 button:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
   outline: 3px solid #b57410;
   outline-offset: 5px;
 }
@@ -179,6 +186,149 @@ figcaption {
 .principles h2 {
   font-size: 1.5rem;
 }
+.quick-tools {
+  margin-block: 64px 0;
+  padding: clamp(22px, 4vw, 48px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 18px 60px #1b30280a;
+}
+.quick-heading,
+.quick-result-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 28px;
+}
+.quick-heading h2 {
+  max-width: 700px;
+  margin-block: 12px;
+}
+.quick-heading > div > p:last-child {
+  max-width: 620px;
+}
+.quick-private {
+  flex: 0 1 235px;
+  border-inline-start: 3px solid var(--accent);
+  padding-inline-start: 16px;
+  font-size: 0.87rem;
+}
+.quick-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-block: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.quick-switch button,
+.quiet-button {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--accent);
+  cursor: pointer;
+}
+.quick-switch button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+.quick-switch button:hover,
+.quiet-button:hover {
+  border-color: var(--accent);
+}
+.quick-form {
+  padding-top: 26px;
+}
+.quick-inputs label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 650;
+}
+.quick-inputs textarea {
+  display: block;
+  width: 100%;
+  min-height: 150px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: inherit;
+  font:
+    0.92rem/1.5 ui-monospace,
+    "SFMono-Regular",
+    Consolas,
+    monospace;
+  resize: vertical;
+}
+.quick-list-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.quick-controls,
+.quick-result-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+.quick-file {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 220px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.quick-file input {
+  max-width: 100%;
+  font-size: 0.82rem;
+}
+.quick-limit {
+  font-size: 0.82rem;
+  margin-bottom: 0;
+}
+.quick-error {
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  border-inline-start: 3px solid #a14a34;
+  background: #a14a3412;
+  color: inherit;
+}
+.quick-result {
+  margin-top: 30px;
+  padding-top: 25px;
+  border-top: 1px solid var(--line);
+}
+.quick-result h3 {
+  font-size: 1.35rem;
+  margin: 7px 0;
+}
+.quick-result-actions {
+  margin-top: 0;
+  justify-content: flex-end;
+}
+.quick-result pre {
+  overflow: auto;
+  max-height: 22rem;
+  padding: 18px;
+  background: #1b3028;
+  color: #eef5e9;
+  border-radius: 12px;
+  font:
+    0.83rem/1.65 ui-monospace,
+    "SFMono-Regular",
+    Consolas,
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.quick-result #quick-status {
+  min-height: 1.4em;
+  margin-bottom: 0;
+  font-size: 0.86rem;
+}
 .start {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -286,6 +436,27 @@ footer {
     grid-template-columns: 1fr;
     gap: 20px;
     padding-block: 45px;
+  }
+  .quick-tools {
+    margin-top: 30px;
+  }
+  .quick-heading,
+  .quick-result-head {
+    display: block;
+  }
+  .quick-private {
+    max-width: 100%;
+  }
+  .quick-list-grid {
+    grid-template-columns: 1fr;
+  }
+  .quick-switch button,
+  .quick-controls button,
+  .quick-result-actions button {
+    flex: 1 1 100%;
+  }
+  .quick-result-actions {
+    justify-content: start;
   }
   .principles > div {
     border-top: 1px solid var(--line);
