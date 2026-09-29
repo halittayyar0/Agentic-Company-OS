@@ -6,7 +6,9 @@
 
 Araçlarla çalışan, görev kayıtlarını tutan ve seçtiğin yetkilere göre hareket eden yapay zekâ ajanları için açık kaynak çalışma alanı.
 
-[**Kuruluma başla**](#hızlı-başlangıç) · [**Çalışma alanını tanı**](#hangi-ekran-ne-işe-yarar) · [**Web sitesi**](https://halittayyar0.github.io/Agentic-Company-OS/) · [**English**](./README.md)
+[**Kuruluma başla**](#hızlı-başlangıç) · [**Çalışma alanını tanı**](#hangi-ekran-ne-işe-yarar) · [**Web sitesi**](https://halittayyar0.github.io/Agentic-Company-OS/)
+
+[English](./README.md) · [Türkçe](./README.tr.md) · [Deutsch](./README.de.md) · [Русский](./README.ru.md) · [简体中文](./README.zh-CN.md) · [繁體中文](./README.zh-TW.md) · [العربية](./README.ar.md)
 
 **Windows · macOS · Linux** &nbsp; / &nbsp; **7 dil** &nbsp; / &nbsp; **MIT lisansı**
 
@@ -73,7 +75,7 @@ Düzenli bir iş için hem aralığı hem de her turun ne zaman tamamlanacağın
 | **Ana Sayfa**                              | Ajanlarını, devam eden işleri ve son faaliyetleri görürsün.                                  |
 | **Projeler**                               | Görev tanımını, sohbetleri, devredilen işleri, toplantıları ve sonuçları bir arada tutarsın. |
 | **Uzmanlar ve Ekip Stüdyosu**              | Ajan rollerini ve modellerini düzenler veya hazır bir ekip şablonuyla başlarsın.             |
-| **Beceriler ve araçlar**                   | 30 iş rehberini inceler, gereken araçları görür ve proje taslağı oluşturursun.               |
+| **Beceriler ve araçlar**                   | İş rehberlerini inceler, gereken araçları görür ve proje taslağı oluşturursun.               |
 | **Onaylar**                                | Senin kararını bekleyen eylemleri gerçekleşmeden önce incelersin.                            |
 | **Operasyonlar ve çalıştırma ayrıntıları** | Araç kullanımını, kesintileri, kurtarma adımlarını ve çalışma kayıtlarını takip edersin.     |
 | **Şirket Odası**                           | Seçtiğin ajanlarla konuşur; belirli birine seslenmek için onu etiketlersin.                  |
@@ -83,7 +85,7 @@ Düzenli bir iş için hem aralığı hem de her turun ne zaman tamamlanacağın
 
 ## Hazır araçlar, ekleyebileceğin yetenekler
 
-Kütüphane **araştırma, yazılım, veri, belgeler ve operasyon** alanlarını kapsar: 30 iş rehberi, 24 beceri aracı ve 22 çalışma aracı bulunur. Ajanlar rehberleri bulabilir ve ihtiyaç duyduklarında okuyabilir.
+Kütüphane **araştırma, yazılım, veri, belgeler ve operasyon** alanlarını kapsar: iş rehberleri, beceri araçları ve çalışma araçları bulunur. Ajanlar rehberleri bulabilir ve ihtiyaç duyduklarında okuyabilir.
 
 - **Kendi rehberini ekle.** Kişisel beceriler ve yardımcı araç şablonları oluştur, düzenle, içe veya dışa aktar.
 - **Çalıştırılabilir araç yaz.** Düzenleyiciden Node araçları tanımla; çalıştırma, seçilen izin ve onay kurallarına uyar. [Araç oluşturma →](./docs/personal-programs.md)

@@ -118,7 +118,7 @@ for (const locale of WORKSPACE_LOCALES) {
     await expect(
       page.getByRole("heading", { level: 1, name: catalog.copy.title }),
     ).toBeVisible();
-    await expect(page.locator("[data-skill-id]")).toHaveCount(30);
+    await expect(page.locator("[data-skill-id]")).toHaveCount(50);
     await page
       .getByRole("searchbox", { name: catalog.copy.search })
       .fill(" CSV-QUALITY ");
@@ -175,7 +175,7 @@ test("library recovers from loading and errors and shows an empty search without
   await expect(page.getByRole("alert")).toContainText("could not be loaded");
   fail = false;
   await page.getByRole("button", { name: "Check again", exact: true }).click();
-  await expect(page.locator("[data-skill-id]")).toHaveCount(30);
+  await expect(page.locator("[data-skill-id]")).toHaveCount(50);
   await page
     .getByRole("searchbox", { name: "Search skills" })
     .fill("no-such-result");
@@ -217,11 +217,11 @@ test("light desktop library shows loading and filters by area", async ({
       .filter({ hasText: /^Loading page$/ }),
   ).toBeVisible();
   release();
-  await expect(page.locator("[data-skill-id]")).toHaveCount(30);
+  await expect(page.locator("[data-skill-id]")).toHaveCount(50);
   await page
     .getByRole("combobox", { name: "All areas" })
     .selectOption("engineering");
-  await expect(page.locator("[data-skill-id]")).toHaveCount(6);
+  await expect(page.locator("[data-skill-id]")).toHaveCount(10);
   await page
     .getByRole("searchbox", { name: "Search skills" })
     .fill("code-review");
@@ -287,4 +287,112 @@ test("an operator can author and reload an executable tool without losing its de
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
   ).toBe(true);
+});
+
+for (const locale of WORKSPACE_LOCALES) {
+  test(`${locale} advanced guide shows specific checks and transfers its complete scope`, async ({
+    page,
+  }) => {
+    const catalog = getCapabilityCatalog(locale);
+    const guide = catalog.skills[30];
+    expect(guide).toBeDefined();
+    await page.setViewportSize({ width: 360, height: 780 });
+    await page.addInitScript(
+      (language) => localStorage.setItem("acos.locale.v1", language),
+      locale,
+    );
+    const harness = await installStudioFixtures(page);
+    await page.route("**/api/skills?*", (route) =>
+      route.fulfill({ json: catalog }),
+    );
+    await page.goto("/skills");
+    await page
+      .getByRole("searchbox", { name: catalog.copy.search })
+      .fill(guide.id);
+    await expect(page.locator("[data-skill-id]")).toHaveCount(1);
+    const row = page.locator(`[data-skill-id="${guide.id}"]`);
+    await row.locator("summary").click();
+    for (const line of [...guide.inputs, ...guide.steps, ...guide.checks]) {
+      await expect(row.getByText(line, { exact: true })).toBeVisible();
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await row.getByRole("button", { name: catalog.copy.use }).click();
+    await expect(page).toHaveURL(/\/projects\/new$/u);
+    await expect(page.locator("input#title")).toHaveValue(guide.title);
+    const brief = await page.locator("textarea#brief").inputValue();
+    for (const line of [
+      guide.deliverable,
+      ...guide.inputs,
+      ...guide.steps,
+      ...guide.checks,
+    ])
+      expect(brief).toContain(line);
+    expect(harness.requests).toHaveLength(0);
+    expect([...harness.unexpected]).toEqual([]);
+  });
+}
+
+test("an operator can save and reload a new CSV processor as a personal tool", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installStudioFixtures(page);
+  let saved: any = null;
+  await page.route("**/api/skills/extensions", async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ json: saved ? [saved] : [] });
+    const input = route.request().postDataJSON();
+    saved = {
+      id: input.manifest.id,
+      manifest: input.manifest,
+      revision: input.expectedRevision + 1,
+      enabled: input.enabled,
+    };
+    return route.fulfill({ json: saved });
+  });
+  await page.goto("/skills");
+  await page
+    .getByRole("region", { name: "Personal skills and tools" })
+    .getByRole("button", { name: "Create new", exact: true })
+    .click();
+  await page
+    .getByLabel("ID (starts with user-)", { exact: true })
+    .fill("user-sales-totals");
+  await page.getByLabel("Title", { exact: true }).fill("Sales totals");
+  await page
+    .getByLabel("Description", { exact: true })
+    .fill("Exact totals by region");
+  await page.getByLabel("Type", { exact: true }).selectOption("tool");
+  await page
+    .getByLabel("Underlying tool", { exact: true })
+    .selectOption("csv_group");
+  const defaults = { keys: ["region"], column: "revenue", operation: "sum" };
+  await page
+    .getByRole("textbox", { name: "Fixed inputs (JSON)", exact: true })
+    .fill(JSON.stringify(defaults));
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Sales totals", exact: true }),
+  ).toBeVisible();
+  expect(saved.manifest).toMatchObject({
+    tool: "csv_group",
+    kind: "tool",
+    defaults,
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByLabel("Underlying tool", { exact: true })).toHaveValue(
+    "csv_group",
+  );
+  expect(
+    JSON.parse(
+      await page
+        .getByRole("textbox", { name: "Fixed inputs (JSON)", exact: true })
+        .inputValue(),
+    ),
+  ).toEqual(defaults);
 });

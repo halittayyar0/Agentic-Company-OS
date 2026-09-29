@@ -21,6 +21,9 @@ See [release verification](docs/verification/2026-09-29-efficient-autonomy.md) f
 
 ### Added
 
+- Separate German, Russian, Simplified Chinese, Traditional Chinese and Arabic welcome READMEs, with a seven-language switcher and English as the default entry point.
+- Twenty task-specific work guides in all seven languages, bringing the built-in catalog to 50 guides with explicit inputs, procedures and acceptance checks.
+- Ten bounded data/document processors for CSV grouping and selection, JSON paths and flattening, list comparison, literal text operations, Markdown tables, exact unit conversion and calendar intervals. The 34-tool capability catalog retains lazy schema loading, pack revocation and personal utility presets.
 - Seven-language `pnpm run setup` wizard for native PostgreSQL or Docker Compose, private credentials, interruption/resume, tool packs and optional private HTTPS phone access.
 - Persisted read-only, approval, full-access and custom execution policy with fresh effect checks and revocation of stale automatic grants.
 - Personal guides, utility presets and revision-bound Node programs with import/export, enable/disable and recorded execution; 12 additional data/document processors.

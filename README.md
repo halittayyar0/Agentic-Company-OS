@@ -6,7 +6,9 @@
 
 An open-source workspace for AI agents that work with tools, keep task records, and follow the permissions you choose.
 
-[**Get started**](#quick-start) · [**Explore the workspace**](#find-your-way-around) · [**Website**](https://halittayyar0.github.io/Agentic-Company-OS/) · [**Türkçe**](./README.tr.md)
+[**Get started**](#quick-start) · [**Explore the workspace**](#find-your-way-around) · [**Website**](https://halittayyar0.github.io/Agentic-Company-OS/)
+
+[English](./README.md) · [Türkçe](./README.tr.md) · [Deutsch](./README.de.md) · [Русский](./README.ru.md) · [简体中文](./README.zh-CN.md) · [繁體中文](./README.zh-TW.md) · [العربية](./README.ar.md)
 
 **Windows · macOS · Linux** &nbsp; / &nbsp; **7 languages** &nbsp; / &nbsp; **MIT licensed**
 
@@ -73,7 +75,7 @@ For recurring work, include both the interval and what should count as a finishe
 | **Home**                       | See your agents, current work and recent activity.                             |
 | **Projects**                   | Keep the brief, conversations, delegated work, meetings and results together.  |
 | **Experts & Team Studio**      | Edit agent roles and model choices, or start from a team blueprint.            |
-| **Skills & tools**             | Browse 30 work guides, inspect tool requirements and create a project draft.   |
+| **Skills & tools**             | Browse work guides, inspect tool requirements and create a project draft.      |
 | **Approvals**                  | Review actions that need your decision before they proceed.                    |
 | **Operations & Run Inspector** | Inspect execution records, tool activity, interruptions and recovery.          |
 | **Company Room**               | Talk with selected agents; use mentions to address specific participants.      |
@@ -83,7 +85,7 @@ A **skill** is a guide for doing a job. A **tool** performs an action, such as i
 
 ## Useful tools, room to grow
 
-The built-in library covers **research, software, data, documents and operations**. It includes 30 work guides, 24 capability tools and 22 runtime tools. Agents can discover guides and load their instructions when needed.
+The built-in library covers **research, software, data, documents and operations**. It includes work guides, capability tools and runtime tools. Agents can discover guides and load their instructions when needed.
 
 - **Bring your own guidance.** Create, edit, import or export personal skills and utility presets.
 - **Add executable tools.** Define Node tools through the editor; execution follows the configured permission and approval rules. [Tool authoring →](./docs/personal-programs.md)

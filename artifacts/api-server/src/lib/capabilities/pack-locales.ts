@@ -1,3 +1,4 @@
+import { advancedCatalog } from "./advanced-locales";
 import type { WorkspaceLocale } from "../workspace-locale";
 import { PACK_TOOL_NAMES, EXTENSION_TOOL_NAMES } from "./names";
 const titles: Record<WorkspaceLocale, string> = {
@@ -32,11 +33,17 @@ const extensionTitles: Record<WorkspaceLocale, string> = {
 export function packCatalog(locale: WorkspaceLocale) {
   const words = [
     ...titles[locale].split("|"),
+    ...[...advancedCatalog(locale).values()].map((value) => value.title),
     ...extensionTitles[locale].split("|"),
   ];
   return [...PACK_TOOL_NAMES, ...EXTENSION_TOOL_NAMES].map((name, index) => ({
     name,
     title: words[index],
-    description: boundary[locale],
+    description:
+      (advancedCatalog(locale).get(
+        name as import("./advanced-tools").AdvancedToolName,
+      )?.description ?? "") +
+      " " +
+      boundary[locale],
   }));
 }
