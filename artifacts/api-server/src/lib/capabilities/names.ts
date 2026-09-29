@@ -23,6 +23,16 @@ export const PACK_TOOL_NAMES = [
   "fill_template",
   "markdown_outline",
   "compare_page_text",
+  "csv_select",
+  "csv_group",
+  "json_select",
+  "json_flatten",
+  "compare_lists",
+  "text_find",
+  "text_replace",
+  "markdown_table",
+  "convert_units",
+  "date_interval",
 ] as const;
 export const EXTENSION_TOOL_NAMES = [
   "list_extensions",

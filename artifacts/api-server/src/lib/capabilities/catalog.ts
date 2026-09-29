@@ -3,6 +3,7 @@ import { GROUPS, type BuiltinSkill, type LibraryCopy } from "./catalog-types";
 import { catalogLocales } from "./catalog-locales";
 import { CORE_CAPABILITY_TOOL_NAMES } from "./names";
 import { packCatalog } from "./pack-locales";
+import { advancedGuides } from "./advanced-guides";
 export { CAPABILITY_TOOL_NAMES } from "./names";
 
 const ids = [
@@ -95,10 +96,10 @@ export function getCapabilityCatalog(locale: WorkspaceLocale) {
   });
   return {
     locale,
-    version: 1,
+    version: 2,
     copy: { ...data.copy },
     groups: GROUPS.map((id) => ({ id, title: data.groups[id].title })),
-    skills,
+    skills: [...skills, ...advancedGuides(locale, data.groups)],
     tools: [
       ...CORE_CAPABILITY_TOOL_NAMES.map((name, index) => ({
         name,

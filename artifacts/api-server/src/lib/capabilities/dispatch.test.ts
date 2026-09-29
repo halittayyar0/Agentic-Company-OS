@@ -5,7 +5,14 @@ import { eq } from "drizzle-orm";
 import type { ToolRuntimeContext } from "../orchestrator/execute-tool";
 import { CAPABILITY_TOOL_NAMES, getCapabilityCatalog } from "./catalog";
 import { WORKSPACE_LOCALES } from "../workspace-locale";
-import { saveExtension, listExtensions } from "./extension-store";
+import {
+  saveExtension,
+  listExtensions,
+  readCapabilityPacks,
+  setCapabilityPacks,
+  toolPack,
+} from "./extension-store";
+import { createTaskToolCatalog } from "../orchestrator/task-tool-catalog";
 
 delete process.env.DATABASE_URL;
 process.env.NODE_ENV = "test";
@@ -64,6 +71,21 @@ async function fixture(): Promise<ToolRuntimeContext> {
   return { agent, taskId: null, locale: "en" };
 }
 const samples = {
+  csv_select: { text: "name,total\nA,2", columns: ["total"] },
+  csv_group: {
+    text: "team,total\na,0.1\na,0.2",
+    keys: ["team"],
+    column: "total",
+    operation: "sum",
+  },
+  json_select: { text: '{"id":"001"}', paths: ["/id", "/missing"] },
+  json_flatten: { text: '{"items":[{"name":"A"}]}' },
+  compare_lists: { left: ["A", "A"], right: ["A", "B"], mode: "multiset" },
+  text_find: { text: "Résumé 原文", query: "原文" },
+  text_replace: { text: "{{title}}", search: "{{title}}", replacement: "$&" },
+  markdown_table: { headers: ["Name"], rows: [["<tag> | value"]] },
+  convert_units: { value: "1.25", from: "km", to: "m" },
+  date_interval: { start: "2024-02-28", end: "2024-03-01" },
   list_skills: {},
   read_skill: { id: "csv-quality" },
   calculate: { operation: "add", values: [2, 3] },
@@ -282,4 +304,80 @@ test("task-backed computation uses durable read-only receipts and replay boundar
   );
   assert.equal(replay.toolOutcome, "deferred");
   assert.equal(replay.receiptId, result.receiptId);
+});
+
+test("new tools stay lazy and disabled packs revoke direct and personal execution", async () => {
+  const ctx = await fixture();
+  const definitions = await getToolsForAgent(ctx.agent, false);
+  const catalog = createTaskToolCatalog(definitions);
+  assert.ok(catalog.index.includes("csv_group"));
+  assert.ok(!catalog.tools.some((tool) => tool.function.name === "csv_group"));
+  catalog.load('{"names":["csv_group"]}');
+  assert.ok(catalog.tools.some((tool) => tool.function.name === "csv_group"));
+  const saved = await saveExtension({
+    manifest: {
+      schemaVersion: 1,
+      id: "user-region-totals",
+      kind: "tool",
+      title: "Region totals",
+      description: "Sum supplied revenue by region",
+      tool: "csv_group",
+      defaults: { keys: ["team"], column: "total", operation: "sum" },
+    },
+    expectedRevision: 0,
+    enabled: true,
+  });
+  assert.equal(saved.enabled, true);
+  const invocation = JSON.stringify({
+    id: "user-region-totals",
+    args: { text: samples.csv_group.text },
+  });
+  const result = await executeTool(ctx, "run_extension", invocation);
+  assert.equal(result.toolOutcome, "succeeded", result.content);
+  assert.equal(JSON.parse(result.content).data.groups[0].value, "0.3");
+  const packs = await readCapabilityPacks();
+  const disabled = await setCapabilityPacks({
+    enabledPacks: [],
+    expectedRevision: packs.revision,
+  });
+  try {
+    const restricted = createTaskToolCatalog(
+      await getToolsForAgent(ctx.agent, false),
+    );
+    for (const name of [
+      "csv_select",
+      "csv_group",
+      "json_select",
+      "json_flatten",
+      "compare_lists",
+      "text_find",
+      "text_replace",
+      "markdown_table",
+      "convert_units",
+      "date_interval",
+    ] as const) {
+      assert.ok(toolPack(name), name);
+      assert.throws(
+        () => restricted.load(JSON.stringify({ names: [name] })),
+        name,
+      );
+      const direct = await executeTool(
+        ctx,
+        name,
+        JSON.stringify(samples[name]),
+      );
+      assert.equal(
+        direct.toolOutcome,
+        "rejected",
+        `${name}: ${direct.content}`,
+      );
+    }
+    const personal = await executeTool(ctx, "run_extension", invocation);
+    assert.equal(personal.toolOutcome, "rejected", personal.content);
+  } finally {
+    await setCapabilityPacks({
+      enabledPacks: packs.enabledPacks,
+      expectedRevision: disabled.revision,
+    });
+  }
 });

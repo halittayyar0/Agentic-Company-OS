@@ -46,7 +46,7 @@ export const capabilityToolDefinitions: OpenAI.Chat.Completions.ChatCompletionTo
       function: {
         name: "list_skills",
         description:
-          "Discover 30 built-in work guides by keyword or area. Use read_skill for steps, prerequisites and checks. Skills do not grant permissions or authorize external actions.",
+          "Discover built-in work guides by keyword or area. Use read_skill for steps, prerequisites and checks. Skills do not grant permissions or authorize external actions.",
         parameters: z.toJSONSchema(discoverySchema),
       },
     },

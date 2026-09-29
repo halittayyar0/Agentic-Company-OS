@@ -226,8 +226,23 @@ export async function setCapabilityPacks(input: unknown) {
   });
 }
 export function toolPack(name: string): (typeof PACK_IDS)[number] | null {
-  if (name.startsWith("csv_") || name.startsWith("json_")) return "data";
-  if (["render_report", "fill_template", "markdown_outline"].includes(name))
+  if (
+    name.startsWith("csv_") ||
+    name.startsWith("json_") ||
+    ["compare_lists", "convert_units"].includes(name)
+  )
+    return "data";
+  if (name === "date_interval") return "planning";
+  if (
+    [
+      "render_report",
+      "fill_template",
+      "markdown_outline",
+      "markdown_table",
+      "text_find",
+      "text_replace",
+    ].includes(name)
+  )
     return "documents";
   if (name === "compare_page_text") return "web";
   return null;

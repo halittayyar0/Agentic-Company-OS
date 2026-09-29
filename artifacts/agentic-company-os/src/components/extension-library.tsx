@@ -62,6 +62,16 @@ const operations = [
   "fill_template",
   "markdown_outline",
   "compare_page_text",
+  "csv_select",
+  "csv_group",
+  "json_select",
+  "json_flatten",
+  "compare_lists",
+  "text_find",
+  "text_replace",
+  "markdown_table",
+  "convert_units",
+  "date_interval",
 ];
 const fieldClass =
   "min-h-11 w-full rounded-xl border border-border bg-background p-3 text-base focus-visible:ring-2 focus-visible:ring-primary";

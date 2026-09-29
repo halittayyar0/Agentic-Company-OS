@@ -1,3 +1,9 @@
+import {
+  advancedSchemas,
+  advancedDescriptions,
+  isAdvancedTool,
+  runAdvancedTool,
+} from "./advanced-tools";
 import { z } from "zod/v4";
 import type OpenAI from "openai";
 import { parseBoundedCsv, runUtility } from "./utility-tools";
@@ -14,6 +20,7 @@ const key = z
   );
 const csv = { text, delimiter: z.enum([",", ";", "\t"]).default(",") };
 export const packSchemas = {
+  ...advancedSchemas,
   csv_filter: z
     .object({
       ...csv,
@@ -64,6 +71,7 @@ export function isPackTool(name: string): name is PackToolName {
   return Object.hasOwn(packSchemas, name);
 }
 const descriptions: Record<PackToolName, string> = {
+  ...advancedDescriptions,
   csv_filter:
     "Filter supplied CSV by exact text, substring, or nonempty column. Strings remain strings.",
   csv_sort:
@@ -168,6 +176,7 @@ export function runPackTool(
   args: unknown,
 ): Record<string, unknown> {
   if (!isPackTool(name)) return reject();
+  if (isAdvancedTool(name)) return runAdvancedTool(name, args);
   // Each dispatch is parsed by its own strict schema below.
   let result: Record<string, unknown>;
   switch (name) {
