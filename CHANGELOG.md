@@ -17,7 +17,7 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 See [release verification](docs/verification/2026-09-29-efficient-autonomy.md) for the acceptance scope and remaining limits.
 
-## Unreleased
+## [0.3.0] - 2026-09-29
 
 ### Added
 
