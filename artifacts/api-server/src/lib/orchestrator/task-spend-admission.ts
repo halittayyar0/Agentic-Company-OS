@@ -1,5 +1,11 @@
 import { and, eq, gte, sql } from "drizzle-orm";
-import { db, tasksTable, usageEventsTable, type Task } from "@workspace/db";
+import {
+  db,
+  taskAttemptsTable,
+  tasksTable,
+  usageEventsTable,
+  type Task,
+} from "@workspace/db";
 import {
   taskBudgetBlockReason,
   type TaskBudgetLimits,
@@ -131,9 +137,22 @@ export async function readTaskSpendAdmission(
         usage?.allUnknown,
         task.estimatedCostUsd,
       );
+  const [{ setupRetries }] =
+    !recurring && limits.maxSteps !== null
+      ? await db
+          .select({ setupRetries: sql<number>`count(*)::int` })
+          .from(taskAttemptsTable)
+          .where(
+            and(
+              eq(taskAttemptsTable.taskId, task.id),
+              eq(taskAttemptsTable.failureKind, "provider_setup_required"),
+              eq(taskAttemptsTable.state, "retrying"),
+            ),
+          )
+      : [{ setupRetries: 0 }];
   const snapshot = {
     autonomyMode: "finite",
-    stepAttempts: recurring ? 0 : task.stepAttempts,
+    stepAttempts: recurring ? 0 : Math.max(0, task.stepAttempts - setupRetries),
     tokensUsed: recurring
       ? Number(usage?.tokens ?? 0)
       : Math.max(task.tokensUsed, Number(usage?.allTokens ?? 0)),

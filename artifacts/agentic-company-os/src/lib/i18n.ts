@@ -93,6 +93,8 @@ export type ShellMessages = {
   expertsLoading: string;
   expertsRetry: string;
   projectStartBlocked: string;
+  providerSetupMessage: string;
+  providerSetupAction: string;
   notifications: string;
   openSearch: string;
   search: string;

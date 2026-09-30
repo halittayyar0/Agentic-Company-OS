@@ -49,6 +49,17 @@ export interface ModelSelectionPlan {
   freeOnly: boolean;
 }
 
+export class ModelProviderSetupRequiredError extends Error {
+  readonly code = "MODEL_PROVIDER_SETUP_REQUIRED";
+
+  constructor() {
+    super(
+      "No model provider is configured with a tool-capable model. Set OPENROUTER_API_KEY, OPENAI_API_KEY, OLLAMA_BASE_URL with a tool-capable local model, or both AI_INTEGRATIONS_OPENAI_* variables.",
+    );
+    this.name = "ModelProviderSetupRequiredError";
+  }
+}
+
 function providerAvailable(provider: string): boolean {
   if (provider === "replit") {
     return Boolean(
@@ -177,9 +188,7 @@ export function selectModel(params: {
     }
   }
 
-  throw new Error(
-    "No model provider is configured with a tool-capable model. Set OPENROUTER_API_KEY, OPENAI_API_KEY, OLLAMA_BASE_URL with a tool-capable local model, or both AI_INTEGRATIONS_OPENAI_* variables.",
-  );
+  throw new ModelProviderSetupRequiredError();
 }
 
 const TIER_RANK: Record<ModelTier, number> = {

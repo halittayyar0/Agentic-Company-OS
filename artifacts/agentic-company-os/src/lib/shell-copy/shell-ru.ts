@@ -69,6 +69,9 @@ export default {
   expertsLoading: "Загружаем специалистов…",
   expertsRetry: "Не удалось загрузить специалистов · повторить",
   projectStartBlocked: "Новый проект · защитная остановка включена",
+  providerSetupMessage:
+    "Модель не подключена. Проект сохранится и начнётся после подключения.",
+  providerSetupAction: "Подключить",
   notifications: "Уведомления",
   openSearch: "Открыть поиск и команды",
   search: "Поиск",

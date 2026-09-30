@@ -33,6 +33,7 @@ import {
   EmergencyStopError,
 } from "../lib/orchestrator/runtime-emergency-stop";
 import { createRateLimiter } from "../lib/rate-limit";
+import { wakeProviderWaitingTasks } from "../lib/orchestrator/wake-provider-waiting-tasks";
 import {
   readExecutionPolicy,
   updateExecutionPolicy,
@@ -84,6 +85,7 @@ export function createSettingsRouter(
     complete?: typeof createChatCompletion;
     assertAllowed?: typeof assertExecutionAllowed;
     environment?: NodeJS.ProcessEnv;
+    wakeProviderTasks?: typeof wakeProviderWaitingTasks;
   } = {},
 ): IRouter {
   const router = Router();
@@ -119,6 +121,8 @@ export function createSettingsRouter(
     (() => readProviderRuntimeConfigSnapshot(environment));
   const catalog = dependencies.catalog ?? getFullModelCatalog;
   const refresh = dependencies.refreshCatalog ?? refreshModelCatalog;
+  const wakeProviderTasks =
+    dependencies.wakeProviderTasks ?? wakeProviderWaitingTasks;
   const writeState =
     dependencies.writeState ??
     ((patch, expectedRevision) =>
@@ -267,6 +271,26 @@ export function createSettingsRouter(
         },
         "Provider settings saved",
       );
+      if (
+        result.catalog.models.some(
+          (model) =>
+            model.supportsTools &&
+            result.catalog.providers.some(
+              (provider) =>
+                provider.id === model.provider && provider.available,
+            ),
+        )
+      ) {
+        try {
+          const count = await wakeProviderTasks();
+          if (count > 0)
+            logger.info({ count }, "Provider-waiting tasks made due");
+        } catch {
+          // The credential is already committed. A wake failure must not
+          // turn a confirmed save into an ambiguous client response.
+          logger.warn("Provider-waiting tasks could not be woken early");
+        }
+      }
       res.json(result);
     } catch (error) {
       if (error instanceof ProviderConfigConflict) {

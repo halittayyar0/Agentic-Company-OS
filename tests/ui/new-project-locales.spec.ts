@@ -28,6 +28,9 @@ test("English new-project form validates in place and keeps the draft after a fa
       name: "Bring in your idea. Build it together with your team.",
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Connect a model" }),
+  ).toBeVisible();
   const name = page.getByRole("textbox", { name: "Project name" });
   const brief = page.getByRole("textbox", { name: "Goal and scope" });
   await page.getByRole("button", { name: "Start project" }).click();

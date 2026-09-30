@@ -3,6 +3,16 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.2] - 2026-09-30
+
+### Fixed
+
+- Projects created before a model is connected now remain in the retry queue instead of becoming permanently blocked after repeated setup failures. Setup-only retries do not consume an optional project step budget. The current attempt records a distinct provider-setup reason and shows a localized explanation.
+- Saving a usable, tool-capable model connection wakes only unleased projects whose current attempt was waiting for setup. Split worker runtimes refresh their provider revision before retrying model selection.
+- The home composer and detailed project form explain the waiting state in all seven languages and link directly to model settings. Creating a project still preserves the brief while setup is deferred.
+
+Configured credentials are not a connection test. The explicit model test in Settings remains available; projects can still retry after authentication, billing, or network failures.
+
 ## [0.3.1] - 2026-09-30
 
 ### Added

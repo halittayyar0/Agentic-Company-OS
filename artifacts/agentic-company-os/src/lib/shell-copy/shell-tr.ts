@@ -69,6 +69,9 @@ export default {
   expertsLoading: "Uzmanlar yükleniyor…",
   expertsRetry: "Uzmanlar yüklenemedi · yeniden dene",
   projectStartBlocked: "Yeni proje · güvenlik freni etkin",
+  providerSetupMessage:
+    "Henüz kullanılabilir bir model bağlı değil. Proje kaydedilir; model bağlayana kadar ekip çalışmaya başlamaz.",
+  providerSetupAction: "Model bağla",
   notifications: "Bildirimler",
   openSearch: "Arama ve komut paletini aç",
   search: "Ara",

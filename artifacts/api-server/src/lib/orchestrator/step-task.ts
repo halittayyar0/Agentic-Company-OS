@@ -23,13 +23,18 @@ import {
   taskAttemptsTable,
 } from "@workspace/db";
 import { logger } from "../logger";
+import { syncProviderRuntimeConfig } from "../provider-runtime-config";
 import { redactAuditText } from "../audit-redaction";
 import type { RuntimeOperationsConfig } from "../runtime-operations-config";
 import { getToolsForAgent } from "./tools";
 import { executeTool, type DurableTaskLifecycleIntent } from "./execute-tool";
 import { buildTaskStepSystemPrompt } from "./system-prompt";
 import { readWorkspaceLocale, type WorkspaceLocale } from "../workspace-locale";
-import { selectModelPlan, type ModelRouteCandidate } from "./model-select";
+import {
+  ModelProviderSetupRequiredError,
+  selectModelPlan,
+  type ModelRouteCandidate,
+} from "./model-select";
 import {
   modelCompatibilityExhaustedError,
   ModelRoutesExhaustedError,
@@ -108,6 +113,16 @@ const EXCLUSIVE_TASK_LIFECYCLE_TOOLS = [
   "complete_task",
   "request_user_input",
 ] as const;
+
+const PROVIDER_SETUP_MESSAGE: Record<WorkspaceLocale, string> = {
+  tr: "Kullanılabilir bir model bağlı değil. Ayarlar'dan model bağlayın; görev otomatik olarak yeniden denenecek.",
+  en: "No usable model is connected. Connect one in Settings; this task will retry automatically.",
+  de: "Kein nutzbares Modell ist verbunden. Verbinde eines in den Einstellungen; diese Aufgabe wird automatisch erneut versucht.",
+  ru: "Подходящая модель не подключена. Подключите её в настройках; задача будет повторена автоматически.",
+  "zh-CN": "尚未连接可用模型。请在设置中连接模型；此任务会自动重试。",
+  "zh-TW": "尚未連接可用模型。請在設定中連接模型；此任務會自動重試。",
+  ar: "لا يوجد نموذج قابل للاستخدام متصل. اربط نموذجًا في الإعدادات؛ ستُعاد محاولة هذه المهمة تلقائيًا.",
+};
 
 export interface StepTaskDependencies {
   runtimeOperationsConfig: RuntimeOperationsConfig;
@@ -630,13 +645,21 @@ export async function stepTask(
         content: statusCopy.taskAdvanceInstruction,
       },
     ];
-    const modelPlan = createModelPlan({
+    const modelInput = {
       purpose: "execution_step",
       agentDepth: agent.depth,
       complexityHint: executionComplexity(task),
       agent: { modelMode: agent.modelMode, modelId: agent.modelId },
       taskExecutionModelId: task.executionModelId,
-    });
+    } as const;
+    let modelPlan: ReturnType<typeof createModelPlan>;
+    try {
+      modelPlan = createModelPlan(modelInput);
+    } catch (error) {
+      if (!(error instanceof ModelProviderSetupRequiredError)) throw error;
+      await syncProviderRuntimeConfig();
+      modelPlan = createModelPlan(modelInput);
+    }
     let activeRoutes = [...modelPlan.routes];
     let passiveResponsesForRoute = 0;
     let lifecycleRejectionsForRoute = 0;
@@ -1173,6 +1196,9 @@ export async function stepTask(
     } else if (error instanceof TaskSpendBudgetError) {
       spendBudgetExceeded = true;
       stepError = error.message;
+    } else if (error instanceof ModelProviderSetupRequiredError) {
+      stepFailureKind = "provider_setup_required";
+      stepError = PROVIDER_SETUP_MESSAGE[locale];
     } else if (error instanceof ModelRoutesExhaustedError) {
       stepFailureKind = "model_routes_exhausted";
       exhaustedModelFailures = error.failures;
@@ -1196,7 +1222,8 @@ export async function stepTask(
         const finishedAt = new Date();
         const failureCount = stepError ? task.consecutiveFailures + 1 : 0;
         const persistentProviderFailure =
-          stepFailureKind === "model_routes_exhausted";
+          stepFailureKind === "model_routes_exhausted" ||
+          stepFailureKind === "provider_setup_required";
         const retryDecision = stepError
           ? taskRetryDecision({
               autonomyMode: task.autonomyMode,

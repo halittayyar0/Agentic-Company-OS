@@ -10,7 +10,11 @@ import {
   refreshOllamaCatalog,
   resolveModelProvider,
 } from "@workspace/ai-server";
-import { selectModel, selectModelPlan } from "./model-select";
+import {
+  ModelProviderSetupRequiredError,
+  selectModel,
+  selectModelPlan,
+} from "./model-select";
 
 const original = {
   key: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -449,6 +453,8 @@ test("routing fails explicitly when no provider is configured", () => {
         agentDepth: 1,
         agent: { modelMode: "auto", modelId: null },
       }),
-    /No model provider is configured/,
+    (error) =>
+      error instanceof ModelProviderSetupRequiredError &&
+      error.code === "MODEL_PROVIDER_SETUP_REQUIRED",
   );
 });

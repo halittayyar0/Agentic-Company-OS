@@ -66,6 +66,9 @@ export default {
   expertsLoading: "جارٍ تحميل الخبراء…",
   expertsRetry: "تعذر تحميل الخبراء · حاول مجددًا",
   projectStartBlocked: "مشروع جديد · إيقاف الأمان مفعّل",
+  providerSetupMessage:
+    "لم يتم ربط نموذج قابل للاستخدام بعد. سيُحفظ المشروع وينتظر الفريق حتى تربط نموذجًا.",
+  providerSetupAction: "اربط نموذجًا",
   notifications: "الإشعارات",
   openSearch: "افتح البحث ولوحة الأوامر",
   search: "بحث",
