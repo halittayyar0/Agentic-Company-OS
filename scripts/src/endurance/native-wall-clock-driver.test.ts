@@ -21,6 +21,9 @@ test("native wall-clock driver lazily wires portable PostgreSQL into the shared 
     captureEvidence: async () => {
       calls.push("capture");
     },
+    inspectIncompleteResponsibilities: async () => [
+      { agentId: 10, attemptState: "lost", attemptNumber: 2 },
+    ],
     createBrowserSession: async () => ({
       sample: async () => ({
         runtimeLabel: "Canlı",
@@ -147,6 +150,9 @@ test("native wall-clock driver lazily wires portable PostgreSQL into the shared 
     (await driver.provenance()).configuration.runtime,
     "native-postgres",
   );
+  assert.deepEqual(await driver.inspectIncompleteResponsibilities?.(), [
+    { agentId: 10, attemptState: "lost", attemptNumber: 2 },
+  ]);
 
   await driver.killWorker("worker-1");
   await driver.restartWorker("worker-1");

@@ -15,6 +15,7 @@ import {
 } from "./native-postgres-harness";
 import type { SoakEvidenceObserver } from "./soak-observer";
 import type {
+  IncompleteResponsibilityDiagnostic,
   WallClockCaptureContext,
   WallClockRuntimeDriver,
 } from "./run-wall-clock-soak";
@@ -199,6 +200,18 @@ export class NativeWallClockDriver implements WallClockRuntimeDriver {
     context: WallClockCaptureContext,
   ): Promise<void> {
     return this.requireInner().captureEvidence(observer, context);
+  }
+
+  inspectIncompleteResponsibilities(): Promise<
+    IncompleteResponsibilityDiagnostic[]
+  > {
+    const inner = this.requireInner();
+    if (!inner.inspectIncompleteResponsibilities) {
+      return Promise.reject(
+        new Error("Native responsibility diagnostics are unavailable"),
+      );
+    }
+    return inner.inspectIncompleteResponsibilities();
   }
 
   createBrowserSession() {

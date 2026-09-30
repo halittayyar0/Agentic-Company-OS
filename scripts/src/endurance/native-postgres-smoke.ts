@@ -5,7 +5,10 @@ import {
   NativeWallClockDriver,
   type NativeWallClockDiagnostics,
 } from "./native-wall-clock-driver";
-import type { WallClockRuntimeDriver } from "./run-wall-clock-soak";
+import type {
+  IncompleteResponsibilityDiagnostic,
+  WallClockRuntimeDriver,
+} from "./run-wall-clock-soak";
 
 export interface NativePostgresSmokeDriver extends WallClockRuntimeDriver {
   nativeServices(): Promise<string[]>;
@@ -39,6 +42,7 @@ export interface NativePostgresSmokeReport {
   servicesBefore: string[];
   completedResponsibilities: number;
   expectedResponsibilities: number;
+  incompleteResponsibilities: IncompleteResponsibilityDiagnostic[] | null;
   healthSampleBuckets: number;
   healthTruthMismatches: string[];
   workerFault: {
@@ -148,6 +152,8 @@ export async function runNativePostgresSmoke(
   let postgresVersion: string | null = null;
   let servicesBefore: string[] = [];
   let completedResponsibilities = 0;
+  let incompleteResponsibilities: IncompleteResponsibilityDiagnostic[] | null =
+    null;
   let healthSampleBuckets = 0;
   let healthTruthMismatches: string[] = [];
   let oldPid: number | null = null;
@@ -206,6 +212,18 @@ export async function runNativePostgresSmoke(
     }
   } catch (error) {
     failure = sanitizedFailure(error);
+    if (
+      expectedResponsibilities > 0 &&
+      completedResponsibilities < expectedResponsibilities &&
+      driver.inspectIncompleteResponsibilities
+    ) {
+      try {
+        incompleteResponsibilities =
+          await driver.inspectIncompleteResponsibilities();
+      } catch {
+        // Preserve the original smoke failure if the read model is unavailable.
+      }
+    }
   } finally {
     try {
       await driver.stop({ keepData: false });
@@ -255,6 +273,7 @@ export async function runNativePostgresSmoke(
     servicesBefore,
     completedResponsibilities,
     expectedResponsibilities,
+    incompleteResponsibilities,
     healthSampleBuckets,
     healthTruthMismatches,
     workerFault: {

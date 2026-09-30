@@ -30,6 +30,20 @@ export type WallClockCaptureContext =
       scheduledAt: string;
     };
 
+export interface IncompleteResponsibilityDiagnostic {
+  agentId: number;
+  attemptState:
+    | "not_started"
+    | "claimed"
+    | "running"
+    | "succeeded"
+    | "retrying"
+    | "blocked"
+    | "lost"
+    | "unknown";
+  attemptNumber: number | null;
+}
+
 export interface WallClockRuntimeDriver extends FaultInjectionControls {
   start(): Promise<{ projectId: number; expectedResponsibilities: number }>;
   captureEvidence(
@@ -41,6 +55,9 @@ export interface WallClockRuntimeDriver extends FaultInjectionControls {
     cleanupTimeoutMs?: number,
   ): Promise<BrowserMonitorSession>;
   provenance(): Promise<Omit<EnduranceProvenance, "automatedSignOff">>;
+  inspectIncompleteResponsibilities?(): Promise<
+    IncompleteResponsibilityDiagnostic[]
+  >;
   stop(options: { keepData: boolean }): Promise<void>;
   now(): Date;
 }

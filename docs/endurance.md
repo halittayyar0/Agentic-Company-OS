@@ -138,6 +138,15 @@ separately reachable checksum/signature for that archive when this pin was
 recorded, so the in-repository SHA-256 detects later byte drift but does not
 establish independent publisher authenticity.
 
+If the native process smoke misses its strict ten-responsibility deadline,
+`incompleteResponsibilities` in its JSON report lists only unfinished agent
+IDs, their latest first-cycle attempt state and attempt number. `not_started`
+means no first-cycle attempt was visible in the bounded operations snapshot;
+`unknown` means an unrecognized state was withheld. A `null` value means the
+snapshot could not be obtained or the smoke did not need a failure diagnosis.
+The field omits names, task text, raw errors and credentials. It is diagnostic
+evidence, not permission to count a missing responsibility as complete.
+
 Instead of `--postgres-root`, set `ENDURANCE_POSTGRES_ROOT`. No existing
 PostgreSQL service or database is reused. The generated database password,
 operator token, and runtime-control key are per-run values and are not written

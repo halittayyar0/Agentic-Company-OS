@@ -121,6 +121,150 @@ function operationsSnapshot(input: {
   };
 }
 
+test("first-cycle diagnosis identifies unclaimed and lost agents without copying unsafe attempt states", async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "agentic-incomplete-responsibility-"),
+  );
+  const snapshot = operationsSnapshot({
+    cursor: "1",
+    attempts: [
+      {
+        id: "completed-attempt",
+        taskId: 72,
+        agentId: 1,
+        attemptNumber: 1,
+        cycleNumber: 0,
+        state: "succeeded",
+        finishedAt: "2026-09-01T00:00:30.000Z",
+      },
+      {
+        id: "first-attempt",
+        taskId: 70,
+        agentId: 10,
+        attemptNumber: 1,
+        cycleNumber: 0,
+        state: "running",
+        finishedAt: null,
+      },
+      {
+        id: "replacement-attempt",
+        taskId: 70,
+        agentId: 10,
+        attemptNumber: 2,
+        cycleNumber: 0,
+        state: "lost",
+        finishedAt: "2026-09-01T00:00:20.000Z",
+      },
+      {
+        id: "unsafe-attempt-state",
+        taskId: 71,
+        agentId: 9,
+        attemptNumber: 1,
+        cycleNumber: 0,
+        state: "SECRET_FROM_UPSTREAM",
+        finishedAt: null,
+      },
+    ],
+    receipts: [
+      {
+        id: "completed-receipt",
+        operationKey: `op:v1:${"a".repeat(64)}`,
+        originAttemptId: "completed-attempt",
+        state: "succeeded",
+        toolName: "synthetic_fixture_write",
+        sideEffectClass: "idempotent",
+        reservedAt: "2026-09-01T00:00:29.000Z",
+        finishedAt: "2026-09-01T00:00:30.000Z",
+        invocations: [
+          {
+            id: "completed-invocation",
+            state: "succeeded",
+            effectStartedAt: "2026-09-01T00:00:29.500Z",
+            finishedAt: "2026-09-01T00:00:30.000Z",
+          },
+        ],
+      },
+    ],
+  });
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const pathname = new URL(String(input)).pathname;
+    if (pathname === "/api/readyz") return Response.json({ status: "ready" });
+    if (pathname === "/api/ops/instances") {
+      return Response.json({
+        instances: [
+          {
+            id: "api-1",
+            role: "api",
+            effectiveState: "healthy",
+            schedulerEnabled: false,
+          },
+          {
+            id: "worker-1",
+            role: "worker",
+            effectiveState: "healthy",
+            schedulerEnabled: true,
+          },
+          {
+            id: "worker-2",
+            role: "worker",
+            effectiveState: "healthy",
+            schedulerEnabled: true,
+          },
+        ],
+      });
+    }
+    if (pathname === "/api/tasks" && init?.method === "POST") {
+      return Response.json({ id: 7 }, { status: 201 });
+    }
+    if (pathname === "/api/tasks/7/operations") return Response.json(snapshot);
+    return Response.json({ error: "not found" }, { status: 404 });
+  };
+  const driver = new DockerWallClockDriver({
+    runId: "incomplete-responsibility-test",
+    seed: 240_901,
+    durationHours: 1 / 60,
+    workspaceRoot: process.cwd(),
+    controlDirectory: directory,
+    baseUrl: "http://127.0.0.1:5000",
+    operatorToken: "local-operator-secret",
+    harness: harness([]),
+    fetchImpl,
+  });
+  try {
+    await driver.start();
+    await driver.captureEvidence(
+      new SoakEvidenceObserver({ expectedResponsibilities: 10 }),
+      { kind: "minute", minute: 1 },
+    );
+    const diagnostics = await driver.inspectIncompleteResponsibilities?.();
+    assert.equal(diagnostics?.length, 9);
+    assert.deepEqual(diagnostics?.[0], {
+      agentId: 2,
+      attemptState: "not_started",
+      attemptNumber: null,
+    });
+    assert.deepEqual(diagnostics?.[7], {
+      agentId: 9,
+      attemptState: "unknown",
+      attemptNumber: 1,
+    });
+    assert.deepEqual(diagnostics?.[8], {
+      agentId: 10,
+      attemptState: "lost",
+      attemptNumber: 2,
+    });
+    assert.doesNotMatch(JSON.stringify(diagnostics), /SECRET_FROM_UPSTREAM/u);
+    snapshot.truncation.attempts = true;
+    await assert.rejects(
+      driver.inspectIncompleteResponsibilities(),
+      /attempt evidence was truncated/iu,
+    );
+  } finally {
+    await driver.stop({ keepData: false });
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("runtime truth accepts historical stale rows but not an unhealthy active fleet", () => {
   assert.equal(
     hasHealthyRuntimeTruth({
