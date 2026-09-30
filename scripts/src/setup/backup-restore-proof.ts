@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, readFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import fs from "node:fs/promises";
 
 const fingerprintSql = `SELECT count(*)::text || ':' || coalesce(max(id), 0)::text || ':' ||
   md5(coalesce(jsonb_agg(jsonb_build_array(id, name, role) ORDER BY id)::text, '[]')) || ':' ||
@@ -8,6 +9,60 @@ const fingerprintSql = `SELECT count(*)::text || ':' || coalesce(max(id), 0)::te
 const probeNameHex = Buffer.from("Backup Ω اختبار 备份", "utf8").toString(
   "hex",
 );
+
+/** Check and read one descriptor, with no path-based reopen or unbounded read. */
+export async function readBackupArchive(
+  filePath: string,
+  maxBytes = 64 * 1024 * 1024,
+) {
+  if (
+    !Number.isSafeInteger(maxBytes) ||
+    maxBytes < 1 ||
+    maxBytes > 64 * 1024 * 1024
+  )
+    throw new RangeError("Invalid archive read limit");
+  const flags =
+    constants.O_RDONLY |
+    (process.platform === "win32"
+      ? 0
+      : constants.O_NONBLOCK | constants.O_NOFOLLOW);
+  const handle = await fs.open(filePath, flags);
+  try {
+    const metadata = await handle.stat();
+    if (!metadata.isFile())
+      throw new Error("Backup archive must be a regular file");
+    if (metadata.size > maxBytes)
+      throw new Error("Archive exceeds its read limit");
+    if (process.platform === "win32") {
+      const linked = await fs.lstat(filePath);
+      if (
+        linked.isSymbolicLink() ||
+        linked.dev !== metadata.dev ||
+        linked.ino !== metadata.ino
+      )
+        throw new Error("Linked or replaced archive is not allowed");
+    }
+    const buffer = Buffer.alloc(Math.min(metadata.size + 1, maxBytes + 1));
+    let length = 0;
+    while (length < buffer.length) {
+      const { bytesRead } = await handle.read(
+        buffer,
+        length,
+        buffer.length - length,
+        length,
+      );
+      if (!bytesRead) break;
+      length += bytesRead;
+    }
+    if (length > maxBytes || length !== metadata.size)
+      throw new Error(
+        "Archive exceeded its read limit or changed during the read",
+      );
+    return buffer.subarray(0, length);
+  } finally {
+    await handle.close();
+  }
+}
 
 /** Test-only drill for a fresh installation fixture, never an operator database.
  * The callback owns its local PostgreSQL cluster or UUID-scoped Compose project.
@@ -55,12 +110,11 @@ export async function proveDatabaseBackup(input: {
   const archivePath = input.copyArchive
     ? await input.copyArchive()
     : input.dumpPath;
-  const info = await lstat(archivePath);
+  const archive = await readBackupArchive(archivePath);
   assert.ok(
-    info.isFile() && info.size > 5 && info.size <= 64 * 1024 * 1024,
-    "Backup fixture archive must be a bounded regular file",
+    archive.length > 5,
+    "Backup fixture archive must contain more than its header",
   );
-  const archive = await readFile(archivePath);
   assert.equal(
     archive.subarray(0, 5).toString("ascii"),
     "PGDMP",

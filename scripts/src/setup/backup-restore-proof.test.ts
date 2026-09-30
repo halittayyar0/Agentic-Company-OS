@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
+import fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { proveDatabaseBackup } from "./backup-restore-proof";
+import { proveDatabaseBackup, readBackupArchive } from "./backup-restore-proof";
 
 async function fixture(
   options: {
@@ -152,4 +153,67 @@ test("a failed restore cleans its disposable database without marking the backup
     created,
   );
   assert.equal(f.calls.filter((call) => call.command === "psql").length, 1);
+});
+
+test("archive reads preserve binary bytes and reject oversized or non-regular files", async () => {
+  const f = await fixture();
+  const binary = Buffer.from([80, 71, 68, 77, 80, 0, 255, 128, 10]);
+  await writeFile(f.archive, binary);
+  assert.deepEqual(await readBackupArchive(f.archive, 9), binary);
+  await assert.rejects(readBackupArchive(f.archive, 8), /read limit/u);
+  await assert.rejects(readBackupArchive(path.dirname(f.archive), 9));
+});
+
+test("archive inspection reads the original descriptor when the path is replaced", async (t) => {
+  const f = await fixture();
+  const replacement = path.join(path.dirname(f.archive), "replacement.dump");
+  await writeFile(f.archive, "PGDMP-original");
+  await writeFile(replacement, "PGDMP-replacement");
+  const originalOpen = fs.open.bind(fs);
+  let replaced = false;
+  const opened = t.mock.method(
+    fs,
+    "open",
+    async (...args: Parameters<typeof fs.open>) => {
+      const handle = await originalOpen(...args);
+      try {
+        await fs.rename(replacement, f.archive);
+        replaced = true;
+      } catch (error) {
+        if (
+          process.platform !== "win32" ||
+          (error as NodeJS.ErrnoException).code !== "EPERM"
+        ) {
+          await handle.close();
+          throw error;
+        }
+      }
+      return handle;
+    },
+  );
+  if (process.platform === "win32" && replaced)
+    await assert.rejects(readBackupArchive(f.archive), /Linked or replaced/u);
+  else
+    assert.equal(
+      (await readBackupArchive(f.archive)).toString("ascii"),
+      "PGDMP-original",
+    );
+  assert.equal(opened.mock.callCount(), 1);
+});
+
+test("archive growth after metadata inspection cannot escape the allocation and read bound", async (t) => {
+  const f = await fixture();
+  await writeFile(f.archive, "PGDMP");
+  const originalOpen = fs.open.bind(fs);
+  t.mock.method(fs, "open", async (...args: Parameters<typeof fs.open>) => {
+    const handle = await originalOpen(...args);
+    const originalStat = handle.stat.bind(handle);
+    t.mock.method(handle, "stat", async () => {
+      const metadata = await originalStat();
+      await fs.appendFile(f.archive, "grew-beyond-the-limit");
+      return metadata;
+    });
+    return handle;
+  });
+  await assert.rejects(readBackupArchive(f.archive, 9), /read limit/u);
 });

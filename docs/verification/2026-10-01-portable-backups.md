@@ -14,11 +14,18 @@ after its creation was confirmed. No operator database is used by these drills.
 
 ## Local evidence
 
-- Five contract scenarios passed: success, corrupt archive, restored-data mismatch, failed database creation and failed restore.
+- Eight contract scenarios passed: success, corrupt archive, restored-data mismatch, failed database creation, failed restore, binary/size checks, path replacement and growth during the read.
 - Scripts typecheck passed.
 - Real Windows PostgreSQL 17.10 installation and resume passed after correcting the command wrapper to retain bounded `psql` output. Its old blanket `ignoreInheritedStdio` setting discarded the fingerprint; the first failing run is not counted as passing evidence.
-- The final helper, including its ASCII transport of the UTF-8 probe, was run against that disposable installation and passed an actual dump/restore/read/write drill: 14 agents, 30 migration journal entries and a 165,544-byte archive. The test PostgreSQL process was stopped afterward.
+- The latest helper, including its ASCII transport of the UTF-8 probe and descriptor-based archive read, was run against that disposable installation and passed an actual dump/restore/read/write drill: 14 agents, 30 migration journal entries and a 165,506-byte archive. The test PostgreSQL process was stopped afterward.
 - No model/provider call or paid service was used.
+
+The first PR security scan identified a path-based `lstat`/`readFile` race.
+Archive inspection now opens once, checks and reads that descriptor with a hard
+allocation/read bound, rejects non-regular/linked inputs and detects growth or
+truncation encountered during the read.
+Regression tests replace the pathname and grow the file after inspection. The
+security re-scan is still required before merge; the alert was not dismissed.
 
 ## Pending gates and limits
 

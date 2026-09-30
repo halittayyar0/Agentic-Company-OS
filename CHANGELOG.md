@@ -10,6 +10,7 @@ All notable changes to Agentic Company OS are documented here. The project uses
 - Made the documented PostgreSQL backup flow preserve binary archives on older Windows PowerShell by writing with `pg_dump --file` and copying the file from the container.
 - Native and container installation acceptance now restore a real custom-format backup into a fresh disposable database. The drill checks the agent roster, migration journal entry count, UTF-8 application writes and sequence state; the container drill restores the copy transferred through the host filesystem.
 - Native acceptance captures bounded `psql` results while keeping inherited process handles disabled for server-control commands. Operator backups and workspace volumes still require their own restore tests.
+- Backup archive inspection checks and reads a single descriptor with bounded memory and reads. It preserves the opened file's identity across path replacement and rejects linked inputs and growth encountered during the read.
 
 ## [0.3.7] - 2026-10-01
 
