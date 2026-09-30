@@ -31,7 +31,8 @@
   "pnpm": {
     "overrides": {
       "qs": "6.16.0",
-      "fast-uri": "3.1.7",
+      "fast-uri": "3.1.8",
+      "brace-expansion": "5.0.12",
       "js-yaml": "4.3.2",
       "markdown-it": "14.3.2",
       "@esbuild-kit/core-utils>esbuild": "0.25.12"
