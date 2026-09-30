@@ -33,10 +33,12 @@ export default function ProviderSetupNotice() {
       className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-control border border-attention/30 bg-attention/5 px-4 py-3 text-sm text-attention-foreground"
     >
       <PlugZap className="size-4 shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1">{t("providerSetupMessage")}</span>
+      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+        {t("providerSetupMessage")}
+      </span>
       <Link
         href="/settings"
-        className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="inline-flex min-h-11 min-w-0 max-w-full items-center font-semibold underline underline-offset-4 [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {t("providerSetupAction")}
       </Link>
