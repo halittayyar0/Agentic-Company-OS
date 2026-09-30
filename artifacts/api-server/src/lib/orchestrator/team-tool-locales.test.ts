@@ -72,6 +72,7 @@ const {
   runtimeInstancesTable,
   activityEventsTable,
   approvalRequestsTable,
+  operationReceiptsTable,
   companyChannelsTable,
   companyChannelMembersTable,
   companyMessagesTable,
@@ -83,6 +84,7 @@ const { getToolCopy, toolMessage } = await import("./tool-localization");
 const { WORKSPACE_LOCALES } = await import("../workspace-locale");
 const browser = await import("../vm/browser");
 const { runJudge } = await import("./judge");
+const { loadCompletionEvidence } = await import("./completion-evidence");
 const { ModelRoutesExhaustedError } = await import("./model-fallback");
 const { TaskSpendBudgetError } = await import("./task-spend-admission");
 const { canonicalArgumentHash } = await import("./operation-receipts");
@@ -190,6 +192,45 @@ const call = (
   name: string,
   args: Record<string, unknown>,
 ) => executeTool(ctx, name, JSON.stringify(args));
+
+async function evidenceReceipt(
+  ctx: ToolRuntimeContext,
+  overrides: Partial<typeof operationReceiptsTable.$inferInsert> = {},
+) {
+  const id = randomUUID();
+  const [receipt] = await db
+    .insert(operationReceiptsTable)
+    .values({
+      id,
+      operationKey: `evidence-${id}`,
+      replayKey: `evidence-${id}`,
+      executionKind: "task_step",
+      logicalExecutionId: ctx.operationIdentity!.logicalExecutionId,
+      taskId: ctx.taskId!,
+      agentId: ctx.agent.id,
+      originAttemptId: ctx.runtimeAttemptId!,
+      sideEffectClass: "at_most_once",
+      state: "failed",
+      toolName: "vm_run_command",
+      argumentHash: "0".repeat(64),
+      startedAt: new Date(),
+      finishedAt: new Date(),
+      failureKind: "command_failed",
+      sanitizedError: "Command exited with code 1",
+      resultData: { ok: false, exitCode: 1 },
+      ...overrides,
+    })
+    .returning();
+  return receipt;
+}
+
+async function taskEvidence(ctx: ToolRuntimeContext) {
+  const [task] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, ctx.taskId!));
+  return loadCompletionEvidence(task);
+}
 
 async function retireFixtureAgent(agentId: number) {
   // Keep completed fixture evidence, but do not consume another scenario's
@@ -569,6 +610,239 @@ test("question and completion lifecycle intents retain source and localize prepa
       .at(-1)
       ?.messages.some((message) => /English/.test(message.content)),
   );
+});
+
+test("completion review receives persisted failed command evidence, not only the agent report", async () => {
+  for (const locale of WORKSPACE_LOCALES) {
+    const ctx = await context(locale, true);
+    const { id } = await evidenceReceipt(ctx);
+    const before = judgeRequests.length;
+    await call(ctx, "complete_task", {
+      resultSummary: "I ran the checks and everything passed.",
+    });
+    assert.equal(
+      judgeRequests.length,
+      before + 1,
+      "one existing judge call is sufficient",
+    );
+    const prompt = judgeRequests
+      .at(-1)!
+      .messages.map((message) => message.content)
+      .join("\n");
+    assert.ok(
+      prompt.includes(id),
+      "the judge never received the persisted receipt",
+    );
+    assert.match(prompt, /"state"\s*:\s*"failed"/u);
+    assert.match(prompt, /"exitCode"\s*:\s*1/u);
+    const [review] = await db
+      .select()
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.taskId, ctx.taskId!),
+          eq(activityEventsTable.type, "judge_review"),
+        ),
+      )
+      .orderBy(activityEventsTable.id);
+    assert.equal(
+      (review.detail!.completionEvidence as { receiptTotal: number })
+        .receiptTotal,
+      1,
+    );
+    await retireFixtureAgent(ctx.agent.id);
+  }
+});
+
+test("completion evidence isolates task cycles and approved effects and excludes raw contents", async () => {
+  const ctx = await context("en", true);
+  const other = await context("en", true);
+  const cycleStart = new Date(Date.now() - 1000);
+  await db
+    .update(tasksTable)
+    .set({ cycleCount: 1, lastCycleCompletedAt: cycleStart })
+    .where(eq(tasksTable.id, ctx.taskId!));
+  // This task's original attempt belongs to the previous cycle.
+  const old = await evidenceReceipt(ctx);
+  const foreign = await evidenceReceipt(other);
+  const [attempt] = await db
+    .select()
+    .from(taskAttemptsTable)
+    .where(eq(taskAttemptsTable.id, ctx.runtimeAttemptId!));
+  const currentAttemptId = randomUUID();
+  await db.insert(taskAttemptsTable).values({
+    ...attempt,
+    id: currentAttemptId,
+    cycleNumber: 1,
+    logicalExecutionId: randomUUID(),
+  });
+  const latest = await evidenceReceipt(ctx, {
+    originAttemptId: currentAttemptId,
+    state: "succeeded",
+    failureKind: null,
+    sanitizedError: "PRIVATE_ERROR_TEXT",
+    resultSummary: "PRIVATE_COMMAND_OUTPUT",
+    resultData: {
+      ok: true,
+      exitCode: 0,
+      stdout: "PRIVATE_STDOUT",
+      command: "PRIVATE_COMMAND",
+      apiKey: "PRIVATE_KEY",
+      artifactId: "INVALID_PRIVATE_ARTIFACT",
+    },
+  });
+  const [approval] = await db
+    .insert(approvalRequestsTable)
+    .values({
+      agentId: ctx.agent.id,
+      taskId: ctx.taskId!,
+      category: "other",
+      title: "PRIVATE_TITLE",
+      description: "PRIVATE_DESCRIPTION",
+    })
+    .returning();
+  const approved = await evidenceReceipt(ctx, {
+    executionKind: "approved_action",
+    originAttemptId: null,
+    approvalId: approval.id,
+    reservedAt: new Date(),
+    logicalExecutionId: `approval:${approval.id}`,
+  });
+  const oldApproved = await evidenceReceipt(ctx, {
+    executionKind: "approved_action",
+    originAttemptId: null,
+    approvalId: approval.id,
+    reservedAt: new Date(cycleStart.getTime() - 1000),
+    logicalExecutionId: `approval:${approval.id}`,
+  });
+  const snapshot = await taskEvidence(ctx);
+  assert.equal(snapshot.cycleNumber, 1);
+  assert.equal(snapshot.receiptTotal, 2);
+  assert.deepEqual(
+    new Set(snapshot.receipts.map((row) => row.id)),
+    new Set([latest.id, approved.id]),
+  );
+  const serialized = JSON.stringify(snapshot);
+  for (const excluded of [old.id, foreign.id, oldApproved.id, "PRIVATE_"])
+    assert.ok(!serialized.includes(excluded), excluded);
+  await retireFixtureAgent(ctx.agent.id);
+  await retireFixtureAgent(other.agent.id);
+});
+
+test("completion evidence keeps full state counts when receipt and child samples are truncated", async () => {
+  const ctx = await context("en", true);
+  for (let index = 0; index < 15; index++)
+    await evidenceReceipt(ctx, {
+      reservedAt: new Date(Date.now() + index),
+      state: index < 2 ? "failed" : "succeeded",
+      resultData: { ok: index >= 2, exitCode: index < 2 ? 1 : 0 },
+    });
+  for (let index = 0; index < 11; index++)
+    await db.insert(tasksTable).values({
+      title: "PRIVATE_CHILD_TITLE",
+      brief: "PRIVATE_CHILD_BRIEF",
+      resultSummary: "PRIVATE_CHILD_SUMMARY",
+      ownerAgentId: ctx.agent.id,
+      parentTaskId: ctx.taskId!,
+      status: index < 2 ? "failed" : "completed",
+    });
+  const snapshot = await taskEvidence(ctx);
+  assert.equal(snapshot.receiptTotal, 15);
+  assert.equal(snapshot.receipts.length, 12);
+  assert.equal(snapshot.receiptsTruncated, true);
+  assert.equal(
+    snapshot.receiptCounts.find((row) => row.state === "failed")!.count,
+    2,
+  );
+  assert.equal(snapshot.childTotal, 11);
+  assert.equal(snapshot.children.length, 8);
+  assert.equal(snapshot.childrenTruncated, true);
+  assert.equal(
+    snapshot.childCounts.find((row) => row.status === "failed")!.count,
+    2,
+  );
+  assert.ok(!JSON.stringify(snapshot).includes("PRIVATE_"));
+  assert.ok(JSON.stringify(snapshot).length < 8000);
+  await retireFixtureAgent(ctx.agent.id);
+});
+
+test("completion evidence allows answer-only tasks and ignores earlier continuous-cycle children", async () => {
+  const ctx = await context("en", true);
+  assert.equal((await taskEvidence(ctx)).receiptTotal, 0);
+  const [child] = await db
+    .insert(tasksTable)
+    .values({
+      title: "Previous child",
+      brief: "Old cycle",
+      ownerAgentId: ctx.agent.id,
+      parentTaskId: ctx.taskId!,
+      status: "completed",
+    })
+    .returning();
+  await db
+    .update(tasksTable)
+    .set({
+      cycleCount: 1,
+      lastCycleCompletedAt: new Date(child.createdAt.getTime() + 1),
+    })
+    .where(eq(tasksTable.id, ctx.taskId!));
+  assert.equal((await taskEvidence(ctx)).childTotal, 0);
+  await retireFixtureAgent(ctx.agent.id);
+});
+
+test("completion evidence rejects invalid typed result fields without turning truncated text into an artifact ID", async () => {
+  const ctx = await context("en", true);
+  const validPrefix = randomUUID();
+  await evidenceReceipt(ctx, {
+    resultData: {
+      ok: "true",
+      exitCode: "0",
+      byteCount: -1,
+      artifactId: `${validPrefix}PRIVATE_SUFFIX`,
+    },
+  });
+  const snapshot = await taskEvidence(ctx);
+  assert.ok(!("ok" in snapshot.receipts[0]));
+  assert.ok(!("exitCode" in snapshot.receipts[0]));
+  assert.ok(!("byteCount" in snapshot.receipts[0]));
+  assert.ok(!("artifactId" in snapshot.receipts[0]));
+  await retireFixtureAgent(ctx.agent.id);
+});
+
+test("a blocking evidence review retains the task and its review snapshot without preparing completion", async () => {
+  const ctx = await context("en", true);
+  const receipt = await evidenceReceipt(ctx);
+  judgeVerdict = "block";
+  try {
+    const result = await call(ctx, "complete_task", {
+      resultSummary: "All checks passed.",
+    });
+    assert.equal(result.toolOutcome, "rejected");
+    assert.equal(result.durableTaskLifecycleIntent, undefined);
+    const [task] = await db
+      .select()
+      .from(tasksTable)
+      .where(eq(tasksTable.id, ctx.taskId!));
+    assert.equal(task.status, "in_progress");
+    const [review] = await db
+      .select()
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.taskId, ctx.taskId!),
+          eq(activityEventsTable.type, "judge_review"),
+        ),
+      );
+    assert.equal(review.detail!.verdict, "block");
+    assert.equal(
+      (review.detail!.completionEvidence as { receipts: { id: string }[] })
+        .receipts[0].id,
+      receipt.id,
+    );
+  } finally {
+    judgeVerdict = "pass";
+    await retireFixtureAgent(ctx.agent.id);
+  }
 });
 
 test("approval records preserve explicit text and localize authored receipt and judge activity", async () => {

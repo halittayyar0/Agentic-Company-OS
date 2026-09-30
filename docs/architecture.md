@@ -282,6 +282,17 @@ Chat, task-step, and judge completions pass through the usage ledger. Each row i
 
 ## Tool and computer model
 
+Task completion passes a bounded runtime snapshot to the existing judge: up to
+12 recent non-completion operation receipts and eight current-cycle children,
+with full scoped state counts and explicit sample truncation. Task-step scope
+uses the durable attempt cycle; approved effects and children use the last cycle
+completion boundary (or task creation). A read-only repeatable-read transaction
+supplies counts and samples. Selected typed result fields are allowed; commands,
+raw output, errors, arguments and child reports are not selected. The activity
+review retains this same metadata. It is execution context for a model-dependent
+review, not an artifact correctness certificate or a replacement for terminal
+ownership fences. See [completion review](./completion-review.md).
+
 Tool exposure depends on the agent permission object and whether a task is active:
 
 | Capability                                      | Runtime gate                                                       |
