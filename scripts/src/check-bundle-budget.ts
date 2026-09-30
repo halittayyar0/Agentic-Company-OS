@@ -79,14 +79,18 @@ const budgets = {
   // Give this new scope 30 KB raw / 10 KB gzip; retain the original base limit.
   customizationRawBytes: 30_000,
   customizationGzipBytes: 10_000,
-  totalCodeRawBytes: 1_345_000 + 30_000,
+  // Browser-only checks are a separate lazy Skills-page chunk. Bound their
+  // transfer cost without increasing the budget for existing routes.
+  localUtilityRawBytes: 29_000,
+  localUtilityGzipBytes: 13_000,
+  totalCodeRawBytes: 1_345_000 + 30_000 + 29_000,
   // The separately requested 30-skill library adds a lazy route and a small
   // draft helper. Preserve the previous 396 KB ceiling for all other code;
   // bound this new feature independently to 2.5 KB gzip / 8 KB raw below.
   baseCodeGzipBytes: 396_000,
   skillLibraryRawBytes: 8_000,
   skillLibraryGzipBytes: 2_500,
-  totalCodeGzipBytes: 398_500 + 10_000,
+  totalCodeGzipBytes: 398_500 + 10_000 + 13_000,
   allHomeLocaleRawBytes: 60_000,
   allHomeLocaleGzipBytes: 25_000,
   allProjectLocaleRawBytes: 25_000,
@@ -562,8 +566,31 @@ if (
   violations.push(
     "Workspace customization exceeds its 30 KB raw / 10 KB gzip feature budget.",
   );
+const localUtilityAssets = codeAssets.filter((asset) =>
+  /^local-utility-workbench-[^/]+\.js$/u.test(asset.fileName),
+);
+if (localUtilityAssets.length !== 1) {
+  violations.push("Expected one lazy local utility workbench asset.");
+}
+const localUtilityRawBytes = localUtilityAssets.reduce(
+  (sum, asset) => sum + asset.rawBytes,
+  0,
+);
+const localUtilityGzipBytes = localUtilityAssets.reduce(
+  (sum, asset) => sum + asset.gzipBytes,
+  0,
+);
 if (
-  totalCodeGzipBytes - skillLibraryGzipBytes - customizationGzipBytes >
+  localUtilityRawBytes > budgets.localUtilityRawBytes ||
+  localUtilityGzipBytes > budgets.localUtilityGzipBytes
+) {
+  violations.push("Local utility workbench exceeds its lazy-route budget.");
+}
+if (
+  totalCodeGzipBytes -
+    skillLibraryGzipBytes -
+    customizationGzipBytes -
+    localUtilityGzipBytes >
   budgets.baseCodeGzipBytes
 ) {
   violations.push(

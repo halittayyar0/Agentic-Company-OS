@@ -169,7 +169,89 @@ export const quickToolTranslations = Object.fromEntries(
   ]),
 );
 
-if (typeof document !== "undefined") {
+export const quickToolExamples = {
+  csv: 'name,city,score\nAda,London,10\nLin,,8\nAda,London,10\n"Sam, Jr",Berlin,9',
+  json: '{"project":"Example","tasks":[{"done":true},{"done":false}],"owner":null}',
+  lists: ["alpha\nbeta\ngamma", "beta\ngamma\ndelta"],
+};
+
+export function formatQuickReport(mode, result, locale = "en") {
+  const words = quickToolTranslations[locale] || quickToolTranslations.en;
+  const word = (key) => words[key] || quickToolTranslations.en[key];
+  const format = (key, ...values) =>
+    values.reduce(
+      (text, value, index) => text.replace(`{${index}}`, value),
+      word(key),
+    );
+  if (mode === "csv") {
+    const lines = [
+      ["csvRows", result.rows],
+      ["csvColumns", result.columns],
+      ["csvWidth", result.widthErrors],
+      ["csvDuplicates", result.duplicates],
+      ["csvEmptyHeaders", result.emptyHeaders],
+      ["csvDuplicateHeaders", result.duplicateHeaders],
+    ];
+    return {
+      summary: format(
+        "summaryCsv",
+        result.rows,
+        result.columns,
+        result.duplicates,
+      ),
+      report: [
+        ...lines.map(([key, value]) => `${word(key)}: ${value}`),
+        "",
+        word("csvMissing"),
+        ...result.headers.map(
+          (header, index) =>
+            `${index + 1}. ${header || "(empty)"}: ${result.missing[index]}`,
+        ),
+      ].join("\n"),
+    };
+  }
+  if (mode === "json") {
+    return {
+      summary: format("summaryJson", result.nodes, result.maxDepth),
+      report: [
+        `${word("jsonRoot")}: ${result.rootType}`,
+        `${word("jsonNodes")}: ${result.nodes}`,
+        `${word("jsonDepth")}: ${result.maxDepth}`,
+        `${word("jsonKeys")}: ${result.keys.join(", ") || "—"}`,
+        "",
+        word("jsonTypes"),
+        ...Object.entries(result.types).map(
+          ([key, value]) => `${key}: ${value}`,
+        ),
+      ].join("\n"),
+    };
+  }
+  if (mode === "lists") {
+    return {
+      summary: format(
+        "summaryLists",
+        result.onlyA.length,
+        result.onlyB.length,
+        result.common.length,
+      ),
+      report: [
+        `${word("onlyA")} (${result.onlyA.length})`,
+        ...result.onlyA,
+        "",
+        `${word("onlyB")} (${result.onlyB.length})`,
+        ...result.onlyB,
+        "",
+        `${word("common")} (${result.common.length})`,
+        ...result.common,
+        "",
+        word("listSemantics"),
+      ].join("\n"),
+    };
+  }
+  throw new Error("unknownMode");
+}
+
+if (typeof document !== "undefined" && document.getElementById("quick-form")) {
   const $ = (id) => document.getElementById(id);
   const picker = $("language");
   let locale = quickToolTranslations[picker.value] ? picker.value : "en";
@@ -178,11 +260,6 @@ if (typeof document !== "undefined") {
   let summary = "";
   const word = (key) =>
     quickToolTranslations[locale][key] || quickToolTranslations.en[key];
-  const format = (key, ...values) =>
-    values.reduce(
-      (text, value, index) => text.replace(`{${index}}`, value),
-      word(key),
-    );
   const clearResult = () => {
     $("quick-result").hidden = true;
     $("quick-error").hidden = true;
@@ -214,63 +291,7 @@ if (typeof document !== "undefined") {
     if (report) $("quick-summary").textContent = summary;
   }
   function makeReport(result) {
-    if (mode === "csv") {
-      const lines = [
-        ["csvRows", result.rows],
-        ["csvColumns", result.columns],
-        ["csvWidth", result.widthErrors],
-        ["csvDuplicates", result.duplicates],
-        ["csvEmptyHeaders", result.emptyHeaders],
-        ["csvDuplicateHeaders", result.duplicateHeaders],
-      ];
-      report = [
-        ...lines.map(([key, value]) => `${word(key)}: ${value}`),
-        "",
-        word("csvMissing"),
-        ...result.headers.map(
-          (header, index) =>
-            `${index + 1}. ${header || "(empty)"}: ${result.missing[index]}`,
-        ),
-      ].join("\n");
-      summary = format(
-        "summaryCsv",
-        result.rows,
-        result.columns,
-        result.duplicates,
-      );
-    } else if (mode === "json") {
-      report = [
-        `${word("jsonRoot")}: ${result.rootType}`,
-        `${word("jsonNodes")}: ${result.nodes}`,
-        `${word("jsonDepth")}: ${result.maxDepth}`,
-        `${word("jsonKeys")}: ${result.keys.join(", ") || "—"}`,
-        "",
-        word("jsonTypes"),
-        ...Object.entries(result.types).map(
-          ([key, value]) => `${key}: ${value}`,
-        ),
-      ].join("\n");
-      summary = format("summaryJson", result.nodes, result.maxDepth);
-    } else {
-      report = [
-        `${word("onlyA")} (${result.onlyA.length})`,
-        ...result.onlyA,
-        "",
-        `${word("onlyB")} (${result.onlyB.length})`,
-        ...result.onlyB,
-        "",
-        `${word("common")} (${result.common.length})`,
-        ...result.common,
-        "",
-        word("listSemantics"),
-      ].join("\n");
-      summary = format(
-        "summaryLists",
-        result.onlyA.length,
-        result.onlyB.length,
-        result.common.length,
-      );
-    }
+    ({ summary, report } = formatQuickReport(mode, result, locale));
     $("quick-summary").textContent = summary;
     $("quick-report").textContent =
       report.length > 12000 ? `${report.slice(0, 12000)}\n…` : report;
@@ -283,15 +304,11 @@ if (typeof document !== "undefined") {
       button.addEventListener("click", () => setMode(button.dataset.tool)),
     );
   $("quick-sample").addEventListener("click", () => {
-    if (mode === "csv")
-      $("quick-csv").value =
-        'name,city,score\nAda,London,10\nLin,,8\nAda,London,10\n"Sam, Jr",Berlin,9';
-    if (mode === "json")
-      $("quick-json").value =
-        '{"project":"Example","tasks":[{"done":true},{"done":false}],"owner":null}';
+    if (mode === "csv") $("quick-csv").value = quickToolExamples.csv;
+    if (mode === "json") $("quick-json").value = quickToolExamples.json;
     if (mode === "lists") {
-      $("quick-list-a").value = "alpha\nbeta\ngamma";
-      $("quick-list-b").value = "beta\ngamma\ndelta";
+      $("quick-list-a").value = quickToolExamples.lists[0];
+      $("quick-list-b").value = quickToolExamples.lists[1];
     }
     clearResult();
   });

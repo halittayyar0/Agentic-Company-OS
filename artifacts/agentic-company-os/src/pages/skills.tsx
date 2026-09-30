@@ -14,6 +14,11 @@ const ExtensionLibrary = lazy(() =>
     default: module.ExtensionLibrary,
   })),
 );
+const LocalUtilityWorkbench = lazy(() =>
+  import("@/components/local-utility-workbench").then((module) => ({
+    default: module.LocalUtilityWorkbench,
+  })),
+);
 
 export default function SkillsPage() {
   const { locale, t } = useLocale();
@@ -54,6 +59,9 @@ export default function SkillsPage() {
           </p>
         )}
       </header>
+      <Suspense fallback={<LanguagePackStatus error={false} />}>
+        <LocalUtilityWorkbench />
+      </Suspense>
       <Suspense fallback={<LanguagePackStatus error={false} />}>
         <ExtensionLibrary />
       </Suspense>

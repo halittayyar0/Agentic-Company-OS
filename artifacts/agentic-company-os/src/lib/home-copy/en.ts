@@ -5,6 +5,9 @@ const copy = {
   heroTitle: "What should we accomplish together today?",
   heroDescription:
     "Describe your goal. Let your team plan the work and assign the right experts. Follow progress and results in one place.",
+  quickToolsTitle: "Try a useful check without a model",
+  quickToolsDescription:
+    "Inspect a CSV or JSON file, or compare two lists in this browser.",
   guideLabel: "Getting started",
   guideTitle: "How it works",
   guideSteps: [

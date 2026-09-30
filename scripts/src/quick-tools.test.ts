@@ -4,6 +4,7 @@ import {
   auditCsv,
   auditJson,
   compareLists,
+  formatQuickReport,
   quickToolTranslations,
 } from "../../site/quick-tools.mjs";
 
@@ -47,4 +48,15 @@ test("list comparison trims boundaries, keeps case and deduplicates", () => {
   assert.deepEqual(result.onlyA, ["Ada"]);
   assert.deepEqual(result.onlyB, ["ada", "gamma"]);
   assert.deepEqual(result.common, ["beta"]);
+});
+
+test("the shared browser report translates findings without adding input values to its summary", () => {
+  const audit = auditJson('{"secret":"private-marker","items":[1,2]}');
+  const english = formatQuickReport("json", audit, "en");
+  const turkish = formatQuickReport("json", audit, "tr");
+  assert.match(english.summary, /nodes/);
+  assert.match(turkish.summary, /düğüm/);
+  assert.equal(english.summary.includes("private-marker"), false);
+  assert.equal(english.report.includes("private-marker"), false);
+  assert.match(english.report, /Top-level keys: secret, items/);
 });

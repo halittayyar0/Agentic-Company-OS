@@ -2,6 +2,8 @@
 
 The [public start page](https://halittayyar0.github.io/Agentic-Company-OS/#try) has three small, free checks that run entirely in your browser. They do not create an agent task, use a model, require an account or send your input to a server. You can inspect the code in [`site/quick-tools.mjs`](../site/quick-tools.mjs).
 
+After installation, the same checks appear on **Skills & tools** inside your private workspace. They still run in the browser tab without a model call or server upload, even if you chose “Set up later” for the provider. Agent tasks need a connected provider.
+
 | Tool            | Result                                                                                                                                        | Important limit                                                                            |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | CSV check       | Data and column counts, rows with a different number of fields, exact duplicate rows, empty or duplicate headers, and blank values per column | Comma delimiter, first row treated as headers; no type inference or automatic cleaning     |

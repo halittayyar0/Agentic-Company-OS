@@ -3,19 +3,15 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
-## [0.2.0] - 2026-09-29
+## [0.3.1] - 2026-09-30
 
 ### Added
 
-- Public seven-language start page with runnable finite and recurring task examples.
-- Portable installer that pulls an immutable Linux amd64/arm64 image; no Git, pnpm or source build required on the container path. Native source installation remains available.
-- Economy-first execution, on-demand authorized tool schemas, bounded recursive delegation and automatic hiring.
-- Durable current-cycle and rolling-day usage admission before execution and review calls; explicit unknown and partial reported-cost coverage.
-- Model-free waiting for finite children, provider-outage backoff for unavailable completion review, and room for reasoning models to return a review verdict.
-- Real container installation/resume acceptance and opt-in free-only live finite/recurring task proof.
-- Updated fast-uri to 3.1.7 for GHSA-58mr-gqgx-xq4g; verified the upstream malformed-host regression cases.
+- Three model-free local utilities inside the installed workspace: CSV inspection, JSON structure mapping and list comparison. The same deterministic checks run on the public start page and in the private app, with seven-language reports and downloadable text results.
+- A direct Home link to the utility workbench so a fresh installation can produce a useful result before a model provider is configured.
+- A dedicated lazy-route transfer budget and browser acceptance across all seven languages, narrow screens, local file input, report download and the no-upload boundary.
 
-See [release verification](docs/verification/2026-09-29-efficient-autonomy.md) for the acceptance scope and remaining limits.
+Agent work still requires a connected model provider. Local checks do not start or simulate an agent task.
 
 ## [0.3.0] - 2026-09-29
 
@@ -80,6 +76,20 @@ See [release verification](docs/verification/2026-09-29-efficient-autonomy.md) f
 ### Security
 
 - Serialize approval decisions with emergency stop, check the live scope and expiry after acquiring decision locks, and reject changes to the optional reviewed digest. The inbox blocks incomplete previews and stale confirmation dialogs; uncertain results require a successful refresh before retry.
+
+## [0.2.0] - 2026-09-29
+
+### Added
+
+- Public seven-language start page with runnable finite and recurring task examples.
+- Portable installer that pulls an immutable Linux amd64/arm64 image; no Git, pnpm or source build required on the container path. Native source installation remains available.
+- Economy-first execution, on-demand authorized tool schemas, bounded recursive delegation and automatic hiring.
+- Durable current-cycle and rolling-day usage admission before execution and review calls; explicit unknown and partial reported-cost coverage.
+- Model-free waiting for finite children, provider-outage backoff for unavailable completion review, and room for reasoning models to return a review verdict.
+- Real container installation/resume acceptance and opt-in free-only live finite/recurring task proof.
+- Updated fast-uri to 3.1.7 for GHSA-58mr-gqgx-xq4g; verified the upstream malformed-host regression cases.
+
+See [release verification](docs/verification/2026-09-29-efficient-autonomy.md) for the acceptance scope and remaining limits.
 
 ## [0.1.0-alpha.1] - 2026-08-29
 

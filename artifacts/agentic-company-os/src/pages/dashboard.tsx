@@ -151,6 +151,23 @@ function DashboardContent({
               />
             )}
           </div>
+          <Link
+            href="/skills"
+            className="mt-4 flex min-h-14 min-w-0 items-center justify-between gap-4 rounded-panel border border-border bg-card px-5 py-3 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-foreground">
+                {copy.quickToolsTitle}
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                {copy.quickToolsDescription}
+              </span>
+            </span>
+            <ArrowRight
+              className="size-4 shrink-0 text-primary rtl:rotate-180"
+              aria-hidden
+            />
+          </Link>
         </div>
         <aside
           className="flex min-w-0 flex-col border-t border-border pt-6 lg:border-s lg:border-t-0 lg:ps-7 lg:pt-0"

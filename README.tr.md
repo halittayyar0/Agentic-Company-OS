@@ -24,6 +24,8 @@ Her kurulum, bilgisayarında veya sunucunda çalışan **tek kullanıcıya ait �
 
 Kurulumdan önce [üç tarayıcı aracını dene](https://halittayyar0.github.io/Agentic-Company-OS/#try): CSV'de eksik değerleri ve tekrarları bul, JSON yapısını özetle veya iki listeyi karşılaştır. Hesap, model veya yükleme gerekmez; işlem bu sekmede yapılır. Raporu indirebilir, daha ayrıntılı inceleme için özel çalışma alanına bir devam görevi kopyalayabilirsin. [Sınırlar ve gizlilik →](./docs/quick-tools.md)
 
+Aynı kontroller kurulumdan sonra **Beceriler ve araçlar** ekranında da bulunur. Modeli daha sonra bağlamayı seçsen bile yerel bir sonuç alabilirsin; ajan görevleri için çalışan bir model sağlayıcısı gerekir.
+
 Ürünü düzenli olarak geliştirmek için [uzun soluklu Goal metni →](./docs/continuous-development-goal.tr.md)
 
 | Tek seferlik bir işle başla                              | Ya da düzenli bir sorumluluk ver                                  |
@@ -120,16 +122,11 @@ Kurulumda veya Ayarlar’da **salt okunur, onaylı, tam erişim ya da özel poli
 
 ## Neler doğrulandı?
 
-**0.2.0 sürümü**, hazır Linux amd64/arm64 imajı ve yönlendirmeli kurulumla yayımlandı. Kaydedilen kabul sonuçları:
+Her taşınabilir sürüm sabit bir Linux amd64/arm64 imajına bağlanır; kurulum paketi dosya özetiyle yayımlanır. [En son sürüm](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) kendi kaynak kodunu, otomatik kontrollerini ve paketleme çalışmasını belirtir. [0.2.0 kabul kaydı](./docs/verification/2026-09-29-efficient-autonomy.md) önceki kaynak, tarayıcı, platform, konteyner ve sınırlı gerçek model denemelerini belgeler; oradaki test sayıları sonraki değişiklikleri kapsamaz.
 
-- **1.479 başarılı kaynak testi**, sıfır hata ve ortama bağlı altı atlama; PostgreSQL eşzamanlılık kontrolleri ayrıca çalıştırıldı.
-- **922 başarılı tarayıcı testi**; Windows, Intel Mac ve Apple Silicon Mac kontrolleri.
-- Gerçek konteyner kurulumu ve yeniden açma; kısa kurtarma/dayanıklılık kontrolleri; gerçek modelle tek görev ve düzenli işin iki turuna ait sınırlı doğrulama.
-- Hesap açmadan paket indirme, dosya özeti eşleşmesi ve açık başlangıç sayfasının telefon genişliğinde yedi dil kontrolü.
+24 saatlik kesintisiz test, fiziksel telefon/mobil şebeke denemesi ve ana dili konuşan kişilerin çeviri incelemesi henüz tamamlanmadı. Açık uçlu işler senin bilgine veya kararına ihtiyaç duyabilir; her işin mutlaka tamamlanacağı garantisi verilmez.
 
-Bunlar belirtilen sürümün sonuçlarıdır. 24 saatlik kesintisiz test, fiziksel telefon/mobil şebeke denemesi ve ana dili konuşan kişilerin çeviri incelemesi henüz tamamlanmadı. Açık uçlu işler senin bilgine veya kararına ihtiyaç duyabilir; her işin mutlaka tamamlanacağı garantisi verilmez.
-
-[Sürüm ve kanıtlar](https://github.com/halittayyar0/Agentic-Company-OS/releases/tag/v0.2.0) · [Güncel otomatik kontroller](https://github.com/halittayyar0/Agentic-Company-OS/actions) · [Doğrulama kapsamı](./docs/verification/2026-09-29-efficient-autonomy.md)
+[En son sürüm](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) · [Güncel otomatik kontroller](https://github.com/halittayyar0/Agentic-Company-OS/actions) · [Doğrulama kapsamı](./docs/verification/2026-09-29-efficient-autonomy.md)
 
 ## İhtiyacın olan belgeye git
 

@@ -5,6 +5,9 @@ const copy = {
   heroTitle: "Bugün neyi birlikte başarmalıyız?",
   heroDescription:
     "Hedefini anlat. Ekibin işi planlasın, uygun uzmanlar üretsin. Sen ilerlemeyi ve ortaya çıkan sonucu tek yerden takip et.",
+  quickToolsTitle: "Model olmadan faydalı bir kontrol dene",
+  quickToolsDescription:
+    "CSV veya JSON dosyasını incele ya da iki listeyi bu tarayıcıda karşılaştır.",
   guideLabel: "Başlangıç rehberi",
   guideTitle: "Nasıl çalışır?",
   guideSteps: [
