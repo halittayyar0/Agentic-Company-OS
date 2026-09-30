@@ -26,7 +26,7 @@ export async function runSetupProbe(
   args: string[],
 ): Promise<string> {
   const { stdout } = await promisify(execFile)(command, args, {
-    timeout: 8000,
+    timeout: 20000,
     maxBuffer: 65536,
     windowsHide: true,
     encoding: "utf8",

@@ -38,6 +38,9 @@ for (const locale of ["en", "ar"] as const)
           .getByRole("button", { name: shell.switchToLight, exact: true })
           .click();
         await page.keyboard.press("Escape");
+        await expect(
+          page.getByRole("button", { name: shell.openMenu, exact: true }),
+        ).toBeFocused();
       }
       const language = page.getByRole("combobox", {
         name: shell.language,
