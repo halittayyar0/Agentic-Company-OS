@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { chromium } from "@playwright/test";
+import { chromium, type Browser } from "@playwright/test";
 
 test("public start page supports seven languages, phone width and real task copy", async (t) => {
   const directory = fileURLToPath(new URL("../../site/", import.meta.url));
@@ -35,17 +35,23 @@ test("public start page supports seven languages, phone width and real task copy
     res.end(await readFile(`${directory}/${file}`));
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  t.after(
-    () =>
-      new Promise<void>((resolve, reject) =>
+  let browser: Browser | undefined;
+  t.after(async () => {
+    // Close the browser before waiting for the HTTP server's open connections.
+    // Windows Chromium may otherwise keep the server.close callback pending.
+    try {
+      await browser?.close();
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
-      ),
-  );
-  const browser = await chromium.launch({
+      );
+    }
+  });
+  browser = await chromium.launch({
     headless: true,
     chromiumSandbox: true,
   });
-  t.after(() => browser.close());
   const context = await browser.newContext({
     viewport: { width: 320, height: 900 },
     permissions: ["clipboard-read", "clipboard-write"],

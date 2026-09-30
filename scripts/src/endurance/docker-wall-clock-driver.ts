@@ -56,6 +56,7 @@ export interface DockerWallClockDriverOptions {
   seed: number;
   durationHours: number;
   faultProfile?: FaultScheduleProfile;
+  commandedFaultHealthWindowsOnly?: boolean;
   workspaceRoot: string;
   controlDirectory: string;
   baseUrl: string;
@@ -168,6 +169,7 @@ const IRREVERSIBLE_SIDE_EFFECTS = new Set([
 ]);
 const MAX_RESPONSIBILITY_CYCLE_LAG = 2;
 const HEALTH_RECOVERY_GRACE_MS = 5_000;
+const DATABASE_HEALTH_RECOVERY_GRACE_MS = 120_000;
 const HEALTH_DISRUPTIVE_FAULTS = new Set<InjectedFaultKind>([
   "worker_loss",
   "database_unavailable",
@@ -191,7 +193,7 @@ export function isScheduledDisruptiveHealthWindow(
           // the independent verifier still requires actual durable recovery and
           // rejects degraded samples after that recovery's five-second window.
           (fault.kind === "database_unavailable"
-            ? 120_000
+            ? DATABASE_HEALTH_RECOVERY_GRACE_MS
             : HEALTH_RECOVERY_GRACE_MS),
   );
 }
@@ -675,6 +677,13 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   >;
   private readonly requiredHealthBuckets: number;
   private readonly faultSchedule: readonly ScheduledInjectedFault[];
+  private readonly commandedFaultHealthWindowsOnly: boolean;
+  private readonly commandedFaultHealthWindows: Array<{
+    kind: "worker_loss" | "database_unavailable";
+    target: string;
+    startedAtMs: number;
+    recoveredAtMs: number | null;
+  }> = [];
   private readonly memberAgentIds = new Set<number>();
   private readonly attemptsById = new Map<string, OperationsAttemptEvidence>();
   private readonly taskByAgentId = new Map<number, number>();
@@ -730,6 +739,8 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       durationMs: Math.round(options.durationHours * 60 * 60 * 1_000),
       profile: this.faultProfile,
     });
+    this.commandedFaultHealthWindowsOnly =
+      options.commandedFaultHealthWindowsOnly ?? false;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.topologyTimeoutMs = options.topologyTimeoutMs ?? 180_000;
     this.requestTimeoutMs = options.requestTimeoutMs ?? 10_000;
@@ -1133,13 +1144,22 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       ) {
         continue;
       }
-      if (
-        !hasHealthyRuntimeTruth(sample) &&
-        !isScheduledDisruptiveHealthWindow(
-          this.faultSchedule,
-          sampledAtMs - runStartedMs,
-        )
-      ) {
+      const inExpectedFaultWindow = this.commandedFaultHealthWindowsOnly
+        ? this.commandedFaultHealthWindows.some(
+            (window) =>
+              window.recoveredAtMs !== null &&
+              sampledAtMs >= window.startedAtMs &&
+              sampledAtMs <=
+                window.recoveredAtMs +
+                  (window.kind === "database_unavailable"
+                    ? DATABASE_HEALTH_RECOVERY_GRACE_MS
+                    : HEALTH_RECOVERY_GRACE_MS),
+          )
+        : isScheduledDisruptiveHealthWindow(
+            this.faultSchedule,
+            sampledAtMs - runStartedMs,
+          );
+      if (!hasHealthyRuntimeTruth(sample) && !inExpectedFaultWindow) {
         throw new Error(
           `Unplanned degraded runtime truth at ${sample.sampledAt ?? sample.bucketAt}`,
         );
@@ -1797,12 +1817,28 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
     );
   }
 
-  killWorker(worker: "worker-1" | "worker-2"): Promise<void> {
-    return this.harness.killWorker(worker);
+  async killWorker(worker: "worker-1" | "worker-2"): Promise<void> {
+    const startedAtMs = this.nowImpl().getTime();
+    await this.harness.killWorker(worker);
+    if (this.commandedFaultHealthWindowsOnly) {
+      this.commandedFaultHealthWindows.push({
+        kind: "worker_loss",
+        target: worker,
+        startedAtMs,
+        recoveredAtMs: null,
+      });
+    }
   }
 
-  restartWorker(worker: "worker-1" | "worker-2"): Promise<void> {
-    return this.harness.restartWorker(worker);
+  async restartWorker(worker: "worker-1" | "worker-2"): Promise<void> {
+    await this.harness.restartWorker(worker);
+    const openWindow = this.commandedFaultHealthWindows.find(
+      (window) =>
+        window.kind === "worker_loss" &&
+        window.target === worker &&
+        window.recoveredAtMs === null,
+    );
+    if (openWindow) openWindow.recoveredAtMs = this.nowImpl().getTime();
   }
 
   async setProviderFault(
@@ -1886,10 +1922,19 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   }
 
   pauseDatabase(): Promise<void> {
+    const startedAtMs = this.nowImpl().getTime();
     return this.databaseReadGate.pause(async () => {
       this.databasePaused = true;
       try {
         await this.harness.pauseDatabase();
+        if (this.commandedFaultHealthWindowsOnly) {
+          this.commandedFaultHealthWindows.push({
+            kind: "database_unavailable",
+            target: "db",
+            startedAtMs,
+            recoveredAtMs: null,
+          });
+        }
       } catch (error) {
         this.databasePaused = false;
         throw error;
@@ -1899,6 +1944,11 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
 
   async resumeDatabase(): Promise<void> {
     await this.databaseReadGate.resume(() => this.harness.resumeDatabase());
+    const openWindow = this.commandedFaultHealthWindows.find(
+      (window) =>
+        window.kind === "database_unavailable" && window.recoveredAtMs === null,
+    );
+    if (openWindow) openWindow.recoveredAtMs = this.nowImpl().getTime();
     this.databasePaused = false;
     // Responses already in flight may arrive just after the database resumes.
     this.databaseFailureDrainUntil =

@@ -24,6 +24,7 @@ export interface NativeWallClockDriverOptions {
   seed: number;
   durationHours: number;
   faultProfile?: FaultScheduleProfile;
+  commandedFaultHealthWindowsOnly?: boolean;
   workspaceRoot: string;
   postgresRoot: string;
   runDirectory: string;
@@ -175,6 +176,8 @@ export class NativeWallClockDriver implements WallClockRuntimeDriver {
       seed: this.options.seed,
       durationHours: this.options.durationHours,
       faultProfile: this.options.faultProfile,
+      commandedFaultHealthWindowsOnly:
+        this.options.commandedFaultHealthWindowsOnly,
       workspaceRoot: this.options.workspaceRoot,
       controlDirectory: this.options.runDirectory,
       baseUrl: this.baseUrl,

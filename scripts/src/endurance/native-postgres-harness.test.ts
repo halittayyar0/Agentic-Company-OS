@@ -809,3 +809,96 @@ test("native startup aggregates cleanup failures and a later stop retries owned 
     await rm(stateDirectory, { recursive: true, force: true });
   }
 });
+
+test("native database restart failure records bounded process state without exposing command output", async () => {
+  const fixture = await fakePostgresTree();
+  const persistentDirectory = await import("node:fs/promises").then(
+    ({ mkdtemp }) => mkdtemp(path.join(tmpdir(), "agentic-native-run-")),
+  );
+  const stateDirectory = await import("node:fs/promises").then(({ mkdtemp }) =>
+    mkdtemp(path.join(tmpdir(), "agentic-native-native-restart-diagnostic-")),
+  );
+  const commands: NativeCommandExecution[] = [];
+  let starts = 0;
+  const harness = new NativePostgresEnduranceHarness({
+    runId: "native-restart-diagnostic",
+    workspaceRoot: process.cwd(),
+    postgresRoot: fixture.root,
+    runDirectory: persistentDirectory,
+    apiPort: 55142,
+    databasePort: 55451,
+    operatorToken: "o".repeat(48),
+    runtimeControlKey: "r".repeat(48),
+    seed: 240_901,
+    binaries: fixture.binaries,
+    supervisor: new FakeSupervisor([]),
+    createStateDirectory: async () => stateDirectory,
+    execute: async (execution) => {
+      commands.push(structuredClone(execution));
+      const command = path.basename(execution.command).toLowerCase();
+      if (path.resolve(execution.command) === path.resolve(process.execPath)) {
+        return { stdout: "v24.19.0\n", stderr: "", exitCode: 0 };
+      }
+      if (command.startsWith("postgres")) {
+        return {
+          stdout: "postgres (PostgreSQL) 17.10\n",
+          stderr: "",
+          exitCode: 0,
+        };
+      }
+      if (command.startsWith("pg_ctl") && execution.args.includes("start")) {
+        starts += 1;
+        if (starts === 2)
+          throw new Error("pg_ctl.exe failed: exit code 1 SECRET_OUTPUT");
+      }
+      if (command.startsWith("pg_ctl") && execution.args.includes("status")) {
+        throw new Error("pg_ctl.exe failed: exit code 3 SECRET_STATUS");
+      }
+      if (command.startsWith("pg_isready")) {
+        throw new Error("pg_isready.exe failed: exit code 2 SECRET_ENDPOINT");
+      }
+      return { stdout: "", stderr: "", exitCode: 0 };
+    },
+    waitForApiReady: async () => undefined,
+    waitForTopology: async () => undefined,
+  });
+
+  try {
+    await harness.start();
+    await harness.pauseDatabase();
+    await assert.rejects(harness.resumeDatabase(), (error: unknown) => {
+      const message = String(error);
+      assert.match(message, /pg_ctl_exit=1/iu);
+      assert.match(message, /owned_process=absent/iu);
+      assert.match(message, /endpoint=unavailable/iu);
+      assert.match(message, /pid_file=absent/iu);
+      assert.doesNotMatch(message, /SECRET_/u);
+      return true;
+    });
+    assert.equal(
+      commands.some(
+        (command) =>
+          path.basename(command.command).startsWith("pg_ctl") &&
+          command.args.includes("status") &&
+          command.ignoreInheritedStdio === true &&
+          command.timeoutMs <= 5_000,
+      ),
+      true,
+    );
+    assert.equal(
+      commands.some(
+        (command) =>
+          path.basename(command.command).startsWith("pg_isready") &&
+          command.ignoreInheritedStdio === true &&
+          command.timeoutMs <= 5_000 &&
+          command.environment.PGPASSWORD === undefined,
+      ),
+      true,
+    );
+  } finally {
+    await harness.stop().catch(() => undefined);
+    await rm(fixture.root, { recursive: true, force: true });
+    await rm(persistentDirectory, { recursive: true, force: true });
+    await rm(stateDirectory, { recursive: true, force: true });
+  }
+});
