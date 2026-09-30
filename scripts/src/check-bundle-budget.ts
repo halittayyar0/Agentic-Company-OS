@@ -88,6 +88,10 @@ const budgets = {
   // Both existing project routes add lazy-import and Suspense wiring. Keep
   // that small integration allowance separate from the old-route ceiling.
   providerSetupIntegrationGzipBytes: 250,
+  // The first-project model check changes only the Settings route and its
+  // selected language pack. Measure their growth against the v0.3.2 build
+  // instead of raising the allowance for unrelated code.
+  firstTaskModelCheckGzipBytes: 450,
   totalCodeRawBytes: 1_345_000 + 30_000 + 29_000,
   // The separately requested 30-skill library adds a lazy route and a small
   // draft helper. Preserve the previous 396 KB ceiling for all other code;
@@ -95,7 +99,7 @@ const budgets = {
   baseCodeGzipBytes: 396_000,
   skillLibraryRawBytes: 8_000,
   skillLibraryGzipBytes: 2_500,
-  totalCodeGzipBytes: 398_500 + 10_000 + 13_000,
+  totalCodeGzipBytes: 398_500 + 10_000 + 13_000 + 450,
   allHomeLocaleRawBytes: 60_000,
   allHomeLocaleGzipBytes: 25_000,
   allProjectLocaleRawBytes: 25_000,
@@ -186,6 +190,25 @@ const newAgentLocaleAssets = languagePackAssets("new-expert-", "new expert");
 const shellLocaleAssets = languagePackAssets("shell-", "shell");
 const approvalLocaleAssets = languagePackAssets("approval-", "approvals");
 const settingsLocaleAssets = languagePackAssets("settings-", "settings");
+const settingsRouteAssets = codeAssets.filter(
+  (asset) =>
+    asset.fileName.startsWith("settings-") &&
+    !settingsLocaleAssets.includes(asset),
+);
+if (settingsRouteAssets.length !== 1) {
+  throw new Error("Expected one Settings route asset.");
+}
+const firstTaskModelCheckGzipBytes =
+  Math.max(0, settingsRouteAssets[0].gzipBytes - 4_698) +
+  Math.max(
+    0,
+    Math.max(...settingsLocaleAssets.map((asset) => asset.gzipBytes)) - 2_624,
+  );
+if (firstTaskModelCheckGzipBytes > budgets.firstTaskModelCheckGzipBytes) {
+  throw new Error(
+    "First-project model check exceeds its Settings-only budget.",
+  );
+}
 const customizationLocaleAssets = languagePackAssets(
   "customization-",
   "workspace customization",
@@ -618,7 +641,8 @@ if (
     customizationGzipBytes -
     localUtilityGzipBytes -
     providerSetupGzipBytes -
-    budgets.providerSetupIntegrationGzipBytes >
+    budgets.providerSetupIntegrationGzipBytes -
+    firstTaskModelCheckGzipBytes >
   budgets.baseCodeGzipBytes
 ) {
   violations.push(

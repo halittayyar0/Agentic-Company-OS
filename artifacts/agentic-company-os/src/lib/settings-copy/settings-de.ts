@@ -53,6 +53,13 @@ const copy: SettingsCopy = {
   testFailed:
     "Der Test konnte nicht bestätigt werden. Der Anbieter kann die Anfrage verarbeitet oder berechnet haben. Es wurde keine automatische Wiederholung gesendet.",
   testPassed: "Dieses Modell hat auf den Test geantwortet.",
+  chatOnlyProjectWarning:
+    "Agentenprojekte benötigen ein Modell mit Werkzeugunterstützung.",
+  chatTestOnly:
+    "Diese Antwort bestätigt nur den Chat, nicht die Bereitschaft für Agentenaufgaben.",
+  toolTestNext:
+    "Dieses Modell ist als werkzeugfähig gelistet und hat geantwortet. Prüfe dein Projekt auf den nächsten Versuch.",
+  viewProjects: "Projekte anzeigen",
   testHistorical:
     "Das Ergebnis gilt für die angezeigte Einstellungsversion. Es ist keine laufende Überwachung oder Garantie für andere Modelle.",
   testBlocked:

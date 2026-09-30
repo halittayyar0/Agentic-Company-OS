@@ -46,6 +46,10 @@ const copy: SettingsCopy = {
   testFailed:
     "无法确认测试结果。提供商可能已处理请求或收取费用。未发送自动重试请求。",
   testPassed: "此模型已响应测试请求。",
+  chatOnlyProjectWarning: "智能体项目需要支持工具的模型。",
+  chatTestOnly: "此回复仅确认聊天可用，不代表智能体任务已就绪。",
+  toolTestNext: "该模型在目录中标为支持工具且已回复。请查看项目的下一次尝试。",
+  viewProjects: "查看项目",
   testHistorical:
     "此结果仅对应显示的设置版本，不表示持续监控，也不保证其他模型可用。",
   testBlocked: "紧急停止已启用或其状态未知时，无法测试。",

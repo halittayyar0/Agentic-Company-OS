@@ -53,7 +53,7 @@ async function setup(page: Page, locale: Locale = "en") {
         label: "Source model 原文 " + index,
         description: "Original 原文: $-1/M, punctuation — unchanged.",
         provider: index === 0 ? "openrouter" : "openai",
-        tier: "economy",
+        tier: index === 2 ? "premium" : "economy",
         supportsTools: index % 2 === 0,
         isDefault: index === 1,
       })),
@@ -235,6 +235,7 @@ for (const locale of LOCALES) {
       page.getByRole("heading", { name: c.title, exact: true }),
     ).toBeVisible();
     const openai = page.locator('[data-provider="openai"]');
+    await expect(page.locator("#openai-model")).toHaveValue("openai:fixture-4");
     const draft = page.locator("#openai-key");
     await draft.fill("new-key-1234");
     await openai.getByRole("button", { name: c.save, exact: true }).click();
@@ -247,6 +248,9 @@ for (const locale of LOCALES) {
       openai.getByText(c.sourceRuntime, { exact: true }),
     ).toBeVisible();
     await page.locator("#openai-model").selectOption("openai:fixture-3");
+    await expect(
+      openai.getByText(c.chatOnlyProjectWarning, { exact: true }),
+    ).toBeVisible();
     const trigger = openai.getByRole("button", { name: c.test, exact: true });
     await trigger.click();
     const dialog = page.getByRole("dialog");
@@ -266,6 +270,7 @@ for (const locale of LOCALES) {
       .getByRole("button", { name: c.confirmTest, exact: true })
       .click();
     await expect(page.getByText(c.testPassed, { exact: true })).toBeVisible();
+    await expect(page.getByText(c.chatTestOnly, { exact: true })).toBeVisible();
     expect(state.tests).toEqual([
       { model: "openai:fixture-3", expectedRevision: 1 },
     ]);
@@ -359,6 +364,50 @@ for (const locale of LOCALES) {
     expect([...unexpected]).toEqual([]);
   });
 }
+
+test("a chat-only connection check does not imply a project can run", async ({
+  page,
+}) => {
+  const { state, c } = await setup(page, "en");
+  await page.goto("/settings");
+  const openai = page.locator('[data-provider="openai"]');
+  const model = page.locator("#openai-model");
+  await model.selectOption("openai:fixture-3");
+  await expect(
+    openai.getByText("Agent projects need a model with tool support."),
+  ).toBeVisible();
+  await openai.getByRole("button", { name: c.test, exact: true }).click();
+  expect(state.tests).toHaveLength(0);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: c.confirmTest, exact: true })
+    .click();
+  await expect(
+    page.getByText("This reply confirms chat only, not agent task readiness."),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "View projects" })).toHaveCount(
+    0,
+  );
+
+  await model.selectOption("openai:fixture-2");
+  await openai.getByRole("button", { name: c.test, exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: c.confirmTest, exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "This model is listed as tool-capable and replied. Check your project for its next attempt.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "View projects" }),
+  ).toHaveAttribute("href", "/projects");
+  expect(state.tests).toEqual([
+    { model: "openai:fixture-3", expectedRevision: 0 },
+    { model: "openai:fixture-2", expectedRevision: 0 },
+  ]);
+});
 
 test("settings distinguish unknown reads, uncertain committed saves, conflicts and safe retries", async ({
   page,
