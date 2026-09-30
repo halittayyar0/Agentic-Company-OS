@@ -5,6 +5,12 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [0.3.8] - 2026-10-01
 
+### Improved
+
+- Completion review now receives a bounded snapshot of current-cycle operation states, selected typed results and child-task states, with full state counts when samples are truncated. The existing review call and activity record carry the same metadata; no extra review call is added.
+- Review metadata excludes commands, raw output, file contents, arguments, task text and saved error messages. Existing free/local model boundaries, approval rules and completion ownership checks remain in force. The snapshot supports review but does not certify output quality.
+- Approved-browser acceptance records action/receipt/page diagnostics on missing effects and explicitly tests one tool dispatch and no consumed-approval replay. An intermittent Windows observation failure is tracked in issue #34; its cause is not yet established.
+
 ### Fixed
 
 - Made the documented PostgreSQL backup flow preserve binary archives on older Windows PowerShell by writing with `pg_dump --file` and copying the file from the container.

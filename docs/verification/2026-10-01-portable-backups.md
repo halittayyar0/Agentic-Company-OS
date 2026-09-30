@@ -54,6 +54,10 @@ diagnostics and the actual dispatch/replay contract, all 42 approved-browser
 cases passed locally on the CI Chromium channel. A new full CI run is required
 before merge.
 
+The final 0.3.8 candidate also includes the separately tested
+[completion evidence review](./2026-10-01-completion-evidence.md). Required CI
+must cover the combined source, not an earlier backup-only head.
+
 Latest-head Linux container transfer/restore and macOS native acceptance await
 CI. Full source/UI checks will be enforced by the PR; they were not repeated
 locally for this test-and-documentation change. Production UI, API and agent

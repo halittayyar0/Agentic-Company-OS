@@ -11,6 +11,10 @@ State counts cover all matching records even when the samples are truncated.
 The same snapshot is retained in the existing review activity. No task API,
 permission gate or frontend flow was added.
 
+The change is included with the portable backup work in the 0.3.8 release
+candidate on PR [#33](https://github.com/halittayyar0/Agentic-Company-OS/pull/33).
+The final required CI run must cover that combined source before publication.
+
 ## Local evidence
 
 - Six focused scenarios passed for evidence delivery and persisted review in all seven languages with one existing review call; current-cycle/task/approved-effect isolation and raw-data exclusion; full counts with truncated samples; answer-only tasks and old child-task exclusion; invalid typed fields; a blocking review that retains the task and snapshot without preparing completion. The first invalid-artifact test caught a truncation that turned an invalid value into a valid-looking UUID; the query now rejects incorrect types and lengths before selecting it.
