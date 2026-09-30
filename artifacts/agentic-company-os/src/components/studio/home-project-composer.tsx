@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod/v4-mini";
@@ -29,6 +29,8 @@ import { cn } from "@/lib/utils";
 import type { HomeCopy, HomeMode } from "@/lib/home-copy";
 import type { Locale } from "@/lib/i18n";
 import { composeProjectBrief } from "@/lib/project-brief";
+
+const ProviderSetupNotice = lazy(() => import("./provider-setup-notice"));
 
 const MODE_ICONS = {
   team: Blocks,
@@ -216,6 +218,9 @@ export function HomeProjectComposer({
           </Button>
         </div>
       </ValidatedForm>
+      <Suspense fallback={null}>
+        <ProviderSetupNotice />
+      </Suspense>
       {failure ? (
         <p
           role="alert"

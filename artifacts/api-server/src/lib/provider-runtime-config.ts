@@ -229,6 +229,13 @@ export async function readEffectiveProviderRuntimeConfig(
   return (await ensureDesiredProviderConfig(environment)).config;
 }
 
+/** Refresh local routing before retrying a task that had no usable provider. */
+export async function syncProviderRuntimeConfig(
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<void> {
+  if (isSplitRole(environment)) await ensureProviderConfigCurrent(environment);
+}
+
 export async function readProviderRuntimeConfigSnapshot(
   environment: NodeJS.ProcessEnv = process.env,
 ): Promise<DesiredProviderConfig & { storage: "database" | "local-file" }> {

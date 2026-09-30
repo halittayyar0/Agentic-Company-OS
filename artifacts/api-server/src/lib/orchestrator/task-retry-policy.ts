@@ -1,4 +1,5 @@
-export type TaskStepFailureKind = "model_routes_exhausted" | "runtime";
+export type TaskStepFailureKind =
+  "model_routes_exhausted" | "provider_setup_required" | "runtime";
 
 export interface TaskRetryDecision {
   shouldBlock: boolean;
@@ -20,6 +21,7 @@ export function taskRetryDecision(params: {
   const failureCount = Math.max(1, Math.floor(params.consecutiveFailures));
   const shouldBlock =
     params.failureKind !== "model_routes_exhausted" &&
+    params.failureKind !== "provider_setup_required" &&
     params.autonomyMode !== "continuous" &&
     failureCount >= Math.max(1, params.maxConsecutiveRuntimeFailures);
   return {

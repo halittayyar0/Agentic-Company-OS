@@ -73,6 +73,9 @@ export default {
   expertsLoading: "Fachkräfte werden geladen…",
   expertsRetry: "Fachkräfte konnten nicht geladen werden · erneut versuchen",
   projectStartBlocked: "Neues Projekt · Sicherheitsstopp aktiv",
+  providerSetupMessage:
+    "Noch ist kein nutzbares Modell verbunden. Dein Projekt wird gespeichert; das Team wartet, bis du eines verbindest.",
+  providerSetupAction: "Modell verbinden",
   notifications: "Benachrichtigungen",
   openSearch: "Suche und Befehle öffnen",
   search: "Suchen",

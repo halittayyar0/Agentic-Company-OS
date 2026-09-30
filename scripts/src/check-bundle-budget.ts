@@ -83,6 +83,11 @@ const budgets = {
   // transfer cost without increasing the budget for existing routes.
   localUtilityRawBytes: 29_000,
   localUtilityGzipBytes: 13_000,
+  providerSetupRawBytes: 1_300,
+  providerSetupGzipBytes: 800,
+  // Both existing project routes add lazy-import and Suspense wiring. Keep
+  // that small integration allowance separate from the old-route ceiling.
+  providerSetupIntegrationGzipBytes: 250,
   totalCodeRawBytes: 1_345_000 + 30_000 + 29_000,
   // The separately requested 30-skill library adds a lazy route and a small
   // draft helper. Preserve the previous 396 KB ceiling for all other code;
@@ -580,6 +585,27 @@ const localUtilityGzipBytes = localUtilityAssets.reduce(
   (sum, asset) => sum + asset.gzipBytes,
   0,
 );
+
+const providerSetupAssets = codeAssets.filter((asset) =>
+  /^provider-setup-notice-[^/]+\.js$/u.test(asset.fileName),
+);
+if (providerSetupAssets.length !== 1) {
+  violations.push("Expected one lazy provider setup notice asset.");
+}
+const providerSetupRawBytes = providerSetupAssets.reduce(
+  (sum, asset) => sum + asset.rawBytes,
+  0,
+);
+const providerSetupGzipBytes = providerSetupAssets.reduce(
+  (sum, asset) => sum + asset.gzipBytes,
+  0,
+);
+if (
+  providerSetupRawBytes > budgets.providerSetupRawBytes ||
+  providerSetupGzipBytes > budgets.providerSetupGzipBytes
+) {
+  violations.push("Provider setup notice exceeds its lazy-asset budget.");
+}
 if (
   localUtilityRawBytes > budgets.localUtilityRawBytes ||
   localUtilityGzipBytes > budgets.localUtilityGzipBytes
@@ -590,7 +616,9 @@ if (
   totalCodeGzipBytes -
     skillLibraryGzipBytes -
     customizationGzipBytes -
-    localUtilityGzipBytes >
+    localUtilityGzipBytes -
+    providerSetupGzipBytes -
+    budgets.providerSetupIntegrationGzipBytes >
   budgets.baseCodeGzipBytes
 ) {
   violations.push(

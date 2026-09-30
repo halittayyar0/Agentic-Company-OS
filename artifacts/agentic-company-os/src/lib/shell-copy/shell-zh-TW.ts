@@ -65,6 +65,9 @@ export default {
   expertsLoading: "正在載入專家…",
   expertsRetry: "無法載入專家 · 重試",
   projectStartBlocked: "新增專案 · 安全停止已啟用",
+  providerSetupMessage:
+    "尚未連接可用模型。專案會儲存，團隊將在連接模型後開始工作。",
+  providerSetupAction: "連接模型",
   notifications: "通知",
   openSearch: "開啟搜尋與命令面板",
   search: "搜尋",

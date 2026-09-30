@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,6 +21,10 @@ import {
 } from "lucide-react";
 
 import { AgentAvatar } from "@/components/agent/agent-avatar";
+
+const ProviderSetupNotice = lazy(
+  () => import("@/components/studio/provider-setup-notice"),
+);
 import { useLocale } from "@/components/i18n/locale-provider";
 import { useOpsControl } from "@/components/ops/ops-control-provider";
 import { Button } from "@/components/ui/button";
@@ -265,6 +269,12 @@ function NewTaskForm({
           {copy.noTeamDescription}
         </p>
       ) : null}
+
+      <div className="mx-auto max-w-3xl">
+        <Suspense fallback={null}>
+          <ProviderSetupNotice />
+        </Suspense>
+      </div>
 
       <form
         onSubmit={handleSubmit}

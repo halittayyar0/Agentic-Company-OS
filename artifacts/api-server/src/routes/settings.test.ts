@@ -36,6 +36,7 @@ test("settings saves fence old revisions, preserve unknown commits and keep conn
   let refreshFails = false;
   let mode: "good" | "empty" | "failure" | "change" = "good";
   let calls = 0;
+  let wakeCalls = 0;
   const catalog: ReturnType<typeof getFullModelCatalog> = {
     providers: [{ id: "openai", label: "OpenAI", available: true }],
     liveSyncedAt: null,
@@ -58,6 +59,10 @@ test("settings saves fence old revisions, preserve unknown commits and keep conn
       storage: "local-file" as const,
     }),
     writeState: writeRuntimeConfigSnapshot,
+    wakeProviderTasks: async () => {
+      wakeCalls++;
+      return 0;
+    },
     refreshCatalog: async () => {
       if (refreshFails) throw new Error("credential-bearing upstream details");
     },
@@ -143,6 +148,7 @@ test("settings saves fence old revisions, preserve unknown commits and keep conn
   });
   assert.equal(first.status, 200);
   assert.equal(first.data.revision, 1);
+  assert.equal(wakeCalls, 1);
   const stored = await request("/api/settings/llm");
   assert.equal(stored.data.openai.keyPreview, "***********");
   assert.equal(stored.data.openai.keySource, "runtime");
@@ -157,6 +163,7 @@ test("settings saves fence old revisions, preserve unknown commits and keep conn
     }),
   ]);
   assert.deepEqual(racing.map((result) => result.status).sort(), [200, 409]);
+  assert.equal(wakeCalls, 2);
   assert.equal((await readRuntimeConfigSnapshot()).revision, 2);
   for (const patch of [
     {},
@@ -174,6 +181,7 @@ test("settings saves fence old revisions, preserve unknown commits and keep conn
   });
   assert.equal(unknown.status, 503);
   assert.equal(unknown.data.code, "LLM_SETTINGS_UNCONFIRMED");
+  assert.equal(wakeCalls, 2);
   assert.equal((await readRuntimeConfigSnapshot()).revision, 3);
   refreshFails = false;
   const removed = await request("/api/settings/llm", "PUT", {
@@ -181,6 +189,7 @@ test("settings saves fence old revisions, preserve unknown commits and keep conn
     expectedRevision: 3,
   });
   assert.equal(removed.data.revision, 4);
+  assert.equal(wakeCalls, 3);
   const fallback = await request("/api/settings/llm");
   assert.equal(fallback.data.openai.configured, true);
   assert.equal(fallback.data.openai.keySource, "environment");

@@ -67,6 +67,9 @@ export default {
   expertsLoading: "Loading experts…",
   expertsRetry: "Could not load experts · try again",
   projectStartBlocked: "New project · safety stop active",
+  providerSetupMessage:
+    "No usable model is connected yet. Your project is saved, and the team waits until you connect one.",
+  providerSetupAction: "Connect a model",
   notifications: "Notifications",
   openSearch: "Open search and command palette",
   search: "Search",

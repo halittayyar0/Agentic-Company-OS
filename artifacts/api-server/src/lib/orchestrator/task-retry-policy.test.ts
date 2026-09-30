@@ -13,6 +13,17 @@ test("finite work remains queued through repeated provider/model outages", () =>
   assert.equal(decision.retryDelayMs, 15 * 60_000);
 });
 
+test("a missing provider never permanently blocks a finite project", () => {
+  const decision = taskRetryDecision({
+    autonomyMode: "finite",
+    failureKind: "provider_setup_required",
+    consecutiveFailures: 500,
+    maxConsecutiveRuntimeFailures: 5,
+  });
+  assert.equal(decision.shouldBlock, false);
+  assert.equal(decision.retryDelayMs, 15 * 60_000);
+});
+
 test("finite runtime bugs retain a bounded circuit breaker", () => {
   assert.equal(
     taskRetryDecision({

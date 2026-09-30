@@ -34,6 +34,7 @@ import {
 } from "./runtime-instance-registry";
 import * as schedulerModule from "./scheduler";
 import { stepTask } from "./step-task";
+import { ModelProviderSetupRequiredError } from "./model-select";
 import {
   TaskLeaseOwnershipLostError,
   type TaskLeaseHeartbeatRuntime,
@@ -188,6 +189,29 @@ async function createClaimedFixture(
   });
   return { runtime, agent, task, claimed };
 }
+
+test("a project without a model remains queued and records a recoverable setup attempt", async (t) => {
+  const fixture = await createClaimedFixture(t, "Provider setup wait");
+  await stepTask(fixture.claimed, {
+    runtimeOperationsConfig: workerConfig,
+    selectModelPlan: () => {
+      throw new ModelProviderSetupRequiredError();
+    },
+  });
+  const [[task], [attempt]] = await Promise.all([
+    db.select().from(tasksTable).where(eq(tasksTable.id, fixture.task.id)),
+    db
+      .select()
+      .from(taskAttemptsTable)
+      .where(eq(taskAttemptsTable.id, fixture.claimed.runtimeAttemptId)),
+  ]);
+  assert.equal(task.status, "in_progress");
+  assert.equal(task.blockedReason, null);
+  assert.equal(task.leaseOwner, null);
+  assert.ok(task.nextAttemptAt);
+  assert.equal(attempt.state, "retrying");
+  assert.equal(attempt.failureKind, "provider_setup_required");
+});
 
 function toolCompletion(
   model: string,
