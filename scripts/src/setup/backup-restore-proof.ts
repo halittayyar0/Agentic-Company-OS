@@ -26,7 +26,9 @@ export async function readBackupArchive(
     (process.platform === "win32"
       ? 0
       : constants.O_NONBLOCK | constants.O_NOFOLLOW);
-  const handle = await fs.open(filePath, flags);
+  // Explicit private mode also protects a future change that enables creation.
+  // With O_RDONLY it does not create a file or change an existing file's mode.
+  const handle = await fs.open(filePath, flags, 0o600);
   try {
     const metadata = await handle.stat();
     if (!metadata.isFile())

@@ -25,7 +25,10 @@ Archive inspection now opens once, checks and reads that descriptor with a hard
 allocation/read bound, rejects non-regular/linked inputs and detects growth or
 truncation encountered during the read.
 Regression tests replace the pathname and grow the file after inspection. The
-security re-scan is still required before merge; the alert was not dismissed.
+The second scan cleared that race and reported an unspecified file mode on the
+read-only open call. The call now explicitly specifies private mode `0o600`,
+which does not create a file or change existing permissions with `O_RDONLY`.
+The next security scan is still required before merge; neither alert was dismissed.
 
 ## Pending gates and limits
 
