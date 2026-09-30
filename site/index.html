@@ -11,6 +11,7 @@
     <title>Agentic Company OS — Your work, under your control.</title>
     <link rel="stylesheet" href="style.css" />
     <script src="app.js" defer></script>
+    <script src="quick-tools.mjs" type="module"></script>
   </head>
   <body>
     <a class="skip" href="#start" data-i18n="skip">Skip to setup</a>
@@ -43,9 +44,9 @@
           their results, and ask at the boundaries you choose.
         </p>
         <div class="actions">
-          <a class="primary" href="#start" data-i18n="start"
-            >Set up your workspace</a
-          ><a href="#examples" data-i18n="examples">Find a first task ↓</a>
+          <a class="primary" href="#try" data-quick="heroTry"
+            >Try a useful tool</a
+          ><a href="#start" data-i18n="start">Set up your workspace</a>
         </div>
         <p class="small" data-i18n="ownership">
           Windows, macOS and Linux. Your files, your model account, your rules.
@@ -90,6 +91,166 @@
             approval, full-access or custom permissions.
           </p>
         </div>
+      </section>
+      <section id="try" class="quick-tools" aria-labelledby="quick-title">
+        <div class="quick-heading">
+          <div>
+            <p class="eyebrow" data-quick="eyebrow">USE IT NOW · NO ACCOUNT</p>
+            <h2 id="quick-title" data-quick="title">
+              Get a result before you install.
+            </h2>
+            <p data-quick="intro">
+              Check a small file or compare two lists in this browser. No model,
+              account or upload is needed.
+            </p>
+          </div>
+          <p class="quick-private" data-quick="privacy">
+            Your input stays in this browser tab. Nothing is sent to our server.
+          </p>
+        </div>
+        <div
+          class="quick-switch"
+          role="group"
+          aria-label="Choose a tool"
+          id="quick-switch"
+        >
+          <button
+            type="button"
+            data-tool="csv"
+            aria-pressed="true"
+            data-quick="csvTab"
+          >
+            CSV check
+          </button>
+          <button
+            type="button"
+            data-tool="json"
+            aria-pressed="false"
+            data-quick="jsonTab"
+          >
+            JSON map
+          </button>
+          <button
+            type="button"
+            data-tool="lists"
+            aria-pressed="false"
+            data-quick="listsTab"
+          >
+            List difference
+          </button>
+        </div>
+        <form id="quick-form" class="quick-form">
+          <div class="quick-inputs">
+            <div data-tool-panel="csv">
+              <label for="quick-csv" data-quick="csvLabel"
+                >Paste comma-separated data</label
+              >
+              <textarea
+                id="quick-csv"
+                rows="7"
+                spellcheck="false"
+                autocomplete="off"
+              ></textarea>
+            </div>
+            <div data-tool-panel="json" hidden>
+              <label for="quick-json" data-quick="jsonLabel">Paste JSON</label>
+              <textarea
+                id="quick-json"
+                rows="7"
+                spellcheck="false"
+                autocomplete="off"
+              ></textarea>
+            </div>
+            <div data-tool-panel="lists" hidden>
+              <div class="quick-list-grid">
+                <div>
+                  <label for="quick-list-a" data-quick="listALabel"
+                    >First list · one item per line</label
+                  >
+                  <textarea
+                    id="quick-list-a"
+                    rows="7"
+                    spellcheck="false"
+                    autocomplete="off"
+                  ></textarea>
+                </div>
+                <div>
+                  <label for="quick-list-b" data-quick="listBLabel"
+                    >Second list · one item per line</label
+                  >
+                  <textarea
+                    id="quick-list-b"
+                    rows="7"
+                    spellcheck="false"
+                    autocomplete="off"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="quick-controls">
+            <label class="quick-file" for="quick-file" id="quick-file-label">
+              <span data-quick="chooseFile">Or choose a local CSV file</span>
+              <input
+                id="quick-file"
+                type="file"
+                accept=".csv,text/csv,text/plain"
+              />
+            </label>
+            <button
+              type="button"
+              id="quick-sample"
+              class="quiet-button"
+              data-quick="sample"
+            >
+              Use an example
+            </button>
+            <button type="submit" id="quick-run" data-quick="run">
+              Check my data
+            </button>
+          </div>
+          <p class="quick-limit" data-quick="limit">
+            Up to 256 KB. CSV: 2,000 rows and 128 columns. Exact text matching;
+            no AI claims.
+          </p>
+        </form>
+        <p id="quick-error" class="quick-error" role="alert" hidden></p>
+        <section
+          id="quick-result"
+          class="quick-result"
+          aria-labelledby="quick-result-title"
+          hidden
+        >
+          <div class="quick-result-head">
+            <div>
+              <p class="eyebrow" data-quick="resultEyebrow">LOCAL RESULT</p>
+              <h3 id="quick-result-title" data-quick="resultTitle">
+                Your check is ready.
+              </h3>
+              <p id="quick-summary" role="status" aria-live="polite"></p>
+            </div>
+            <div class="quick-result-actions">
+              <button
+                type="button"
+                id="quick-download"
+                class="quiet-button"
+                data-quick="download"
+              >
+                Download report
+              </button>
+              <button
+                type="button"
+                id="quick-copy"
+                class="quiet-button"
+                data-quick="copyTask"
+              >
+                Copy follow-up task
+              </button>
+            </div>
+          </div>
+          <pre id="quick-report"></pre>
+          <p id="quick-status" role="status" aria-live="polite"></p>
+        </section>
       </section>
       <section id="start" class="start">
         <div>

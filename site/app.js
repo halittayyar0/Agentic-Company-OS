@@ -136,6 +136,7 @@ function render(locale) {
     recipes.append(row);
   }
   document.getElementById("copy-status").textContent = "";
+  document.dispatchEvent(new CustomEvent("site:language", { detail: locale }));
   try {
     localStorage.setItem("agentic-site-language", locale);
   } catch {}

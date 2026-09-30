@@ -12,6 +12,7 @@ test("public start page supports seven languages, phone width and real task copy
       {
         "/": "index.html",
         "/app.js": "app.js",
+        "/quick-tools.mjs": "quick-tools.mjs",
         "/style.css": "style.css",
         "/workspace.png": "workspace.png",
       } as Record<string, string>
@@ -23,7 +24,7 @@ test("public start page supports seven languages, phone width and real task copy
     }
     res.setHeader(
       "Content-Type",
-      file.endsWith(".js")
+      file.endsWith(".js") || file.endsWith(".mjs")
         ? "application/javascript"
         : file.endsWith(".css")
           ? "text/css"
@@ -51,7 +52,12 @@ test("public start page supports seven languages, phone width and real task copy
   });
   const page = await context.newPage();
   const errors: string[] = [];
+  const dataRequests: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("request", (request) => {
+    if (request.method() !== "GET")
+      dataRequests.push(`${request.method()} ${request.url()}`);
+  });
   await page.goto(
     `http://127.0.0.1:${(server.address() as { port: number }).port}/`,
   );
@@ -63,14 +69,27 @@ test("public start page supports seven languages, phone width and real task copy
       locale === "ar" ? "rtl" : "ltr",
     );
     assert.equal(await page.locator(".recipe button").count(), 3);
-    assert.equal(
-      await page.evaluate<boolean>(
-        "document.documentElement.scrollWidth <= innerWidth",
-      ),
-      true,
-      locale,
+    const overflow = await page.evaluate<{
+      viewport: number;
+      document: number;
+      elements: string[];
+    }>(`(() => ({
+      viewport: innerWidth,
+      document: document.documentElement.scrollWidth,
+      elements: [...document.querySelectorAll("body *")]
+        .filter(element => {
+          const rect = element.getBoundingClientRect();
+          return rect.width && (rect.right > innerWidth + 1 || rect.left < -1);
+        })
+        .slice(0, 8)
+        .map(element => element.tagName.toLowerCase() + "#" + element.id + "." + element.className),
+    }))()`);
+    assert.ok(
+      overflow.document <= overflow.viewport,
+      `${locale}: ${JSON.stringify(overflow)}`,
     );
     assert.ok((await page.locator("h1").innerText()).length > 5);
+    assert.ok((await page.locator("#quick-title").innerText()).length > 5);
     assert.equal(
       (await page.locator("body").innerText()).includes("undefined"),
       false,
@@ -81,5 +100,37 @@ test("public start page supports seven languages, phone width and real task copy
     );
     assert.equal(copied, await page.locator(".recipe p").first().innerText());
   }
+  await page.locator("#language").selectOption("en");
+  await page.locator("#quick-sample").click();
+  await page.locator("#quick-run").click();
+  assert.match(await page.locator("#quick-summary").innerText(), /4 rows/);
+  assert.match(
+    await page.locator("#quick-report").innerText(),
+    /Duplicate rows: 1/,
+  );
+  await page.locator('[data-tool="json"]').click();
+  await page.locator("#quick-sample").click();
+  await page.locator("#quick-run").click();
+  assert.match(await page.locator("#quick-summary").innerText(), /nodes/);
+  await page.locator('[data-tool="lists"]').click();
+  assert.equal(await page.locator("#quick-file-label").isVisible(), false);
+  await page.locator("#quick-sample").click();
+  await page.locator("#quick-run").click();
+  assert.match(
+    await page.locator("#quick-summary").innerText(),
+    /1 only in first/,
+  );
+  await page.locator("#quick-copy").click();
+  assert.doesNotMatch(
+    await page.evaluate("navigator.clipboard.readText()"),
+    /alpha|beta|gamma|delta/,
+  );
+  const download = page.waitForEvent("download");
+  await page.locator("#quick-download").click();
+  assert.match(
+    (await download).suggestedFilename(),
+    /agentic-lists-report.txt/,
+  );
+  assert.deepEqual(dataRequests, []);
   assert.deepEqual(errors, []);
 });
