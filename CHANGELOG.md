@@ -3,6 +3,14 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.7] - 2026-10-01
+
+### Changed
+
+- Replaced the stock employee portrait atlas with ten original Keeper mascots for the built-in agent roles, plus a matching application mark. The new atlas is smaller than the old one and stays within the frontend media budget.
+- Specialist templates reuse a related role mascot, while uploaded custom images still take precedence and can be reset. The profile's built-in image labels now say "mascot" in all seven interface languages.
+- Updated the README screenshot and documented the asset's generation prompt, role mapping, provenance, and visual rules for open-source contributors.
+
 ## [0.3.6] - 2026-09-30
 
 ### Improved
