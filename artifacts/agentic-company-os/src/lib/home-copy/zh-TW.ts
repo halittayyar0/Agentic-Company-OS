@@ -5,6 +5,8 @@ const copy = {
   heroTitle: "今天我們一起完成什麼？",
   heroDescription:
     "描述你的目標。團隊會規劃工作並分配合適的專家。你可以在同一處查看進度與成果。",
+  quickToolsTitle: "無需模型，立即試用實用檢查",
+  quickToolsDescription: "直接在瀏覽器中檢查 CSV 或 JSON，或比較兩個清單。",
   guideLabel: "入門指南",
   guideTitle: "運作方式",
   guideSteps: [

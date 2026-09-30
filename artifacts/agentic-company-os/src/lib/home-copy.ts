@@ -18,6 +18,8 @@ export type HomeCopy = {
   deskKicker: string;
   heroTitle: string;
   heroDescription: string;
+  quickToolsTitle: string;
+  quickToolsDescription: string;
   guideLabel: string;
   guideTitle: string;
   guideSteps: readonly [

@@ -5,6 +5,9 @@ const copy = {
   heroTitle: "Was wollen wir heute gemeinsam erreichen?",
   heroDescription:
     "Beschreibe dein Ziel. Dein Team plant die Arbeit und weist passende Fachkräfte zu. Fortschritt und Ergebnisse verfolgst du an einem Ort.",
+  quickToolsTitle: "Nützliche Prüfung ohne Modell ausprobieren",
+  quickToolsDescription:
+    "Prüfe CSV oder JSON oder vergleiche zwei Listen direkt im Browser.",
   guideLabel: "Erste Schritte",
   guideTitle: "So funktioniert es",
   guideSteps: [

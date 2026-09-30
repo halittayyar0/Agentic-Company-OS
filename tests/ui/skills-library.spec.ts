@@ -2,6 +2,84 @@ import { expect, test } from "@playwright/test";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
 import { getCapabilityCatalog } from "../../artifacts/api-server/src/lib/capabilities/catalog";
 import { WORKSPACE_LOCALES } from "../../artifacts/api-server/src/lib/workspace-locale";
+import { quickToolTranslations } from "../../site/quick-tools.mjs";
+
+for (const locale of WORKSPACE_LOCALES) {
+  test(`${locale} installed utility workbench gives a result without a model`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.addInitScript(
+      (language) => localStorage.setItem("acos.locale.v1", language),
+      locale,
+    );
+    const harness = await installStudioFixtures(page);
+    await page.route("**/api/skills?*", (route) =>
+      route.fulfill({ json: getCapabilityCatalog(locale) }),
+    );
+    await page.goto("/skills");
+    const workbench = page.locator("#utility-workbench");
+    const words = quickToolTranslations[locale];
+    await expect(
+      workbench.getByRole("button", { name: words.csvTab }),
+    ).toBeVisible();
+    await workbench.getByRole("button", { name: words.sample }).click();
+    await workbench.getByRole("button", { name: words.run }).click();
+    await expect(
+      workbench.getByRole("heading", { name: words.resultTitle }),
+    ).toBeVisible();
+    await expect(workbench.getByRole("status").first()).not.toBeEmpty();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    expect(harness.requests).toHaveLength(0);
+    expect([...harness.unexpected]).toEqual([]);
+  });
+}
+
+test("installed utility workbench keeps private file content in the tab and downloads a report", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  const harness = await installStudioFixtures(page);
+  await page.route("**/api/skills?*", (route) =>
+    route.fulfill({ json: getCapabilityCatalog("en") }),
+  );
+  const leaked: string[] = [];
+  page.on("request", (request) => {
+    if (request.postData()?.includes("private-marker"))
+      leaked.push(request.url());
+  });
+  await page.goto("/skills");
+  const workbench = page.locator("#utility-workbench");
+  await workbench.getByRole("button", { name: "JSON map" }).click();
+  await workbench
+    .getByLabel("Paste JSON")
+    .fill('{"secret":"private-marker","items":[1,2]}');
+  await workbench.getByRole("button", { name: "Check my data" }).click();
+  await expect(
+    workbench.getByText(/Top-level keys: secret, items/),
+  ).toBeVisible();
+  await expect(workbench.locator("pre")).not.toContainText("private-marker");
+  const download = page.waitForEvent("download");
+  await workbench.getByRole("button", { name: "Download report" }).click();
+  expect((await download).suggestedFilename()).toBe("agentic-json-report.txt");
+  await workbench.getByRole("button", { name: "CSV check" }).click();
+  await workbench.locator('input[type="file"]').setInputFiles({
+    name: "sample.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("name,value\nX,1\nX,1"),
+  });
+  await workbench.getByRole("button", { name: "Check my data" }).click();
+  await expect(workbench.getByRole("status").first()).toContainText(
+    "1 duplicate rows",
+  );
+  expect(leaked).toEqual([]);
+  expect(harness.requests).toHaveLength(0);
+});
 
 test("personal capability creates, edits, exports and persists disabled state on a phone", async ({
   page,

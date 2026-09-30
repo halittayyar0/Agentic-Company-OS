@@ -24,6 +24,8 @@ Each installation is a **private workspace for one operator**, running on your c
 
 Before installing, you can [try three browser tools](https://halittayyar0.github.io/Agentic-Company-OS/#try): check a CSV for missing values and duplicate rows, map a JSON file's structure, or compare two lists. They run locally in the tab with no account, model or upload. Download the report, then copy a follow-up task into your private workspace if you want an agent to investigate further. [What the checks do and their limits →](./docs/quick-tools.md)
 
+The same checks are available under **Skills & tools** after installation. They give you a local result even if you chose to connect a model later; agent tasks still require a working model provider.
+
 | Start with a job                                      | Or make it a responsibility                                  |
 | ----------------------------------------------------- | ------------------------------------------------------------ |
 | Compare three products using linked sources.          | Check a public page every day and record meaningful changes. |
@@ -120,16 +122,11 @@ Choose **read-only, approval-based, full access or a custom policy** during setu
 
 ## What has been verified
 
-The **0.2.0 release** includes a prebuilt Linux amd64/arm64 image and a guided installer. Its recorded acceptance covers:
+Each portable release pins a Linux amd64/arm64 image and publishes the setup bundle with a checksum. The [latest release](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) identifies its exact source, automated checks and distribution run. The [0.2.0 acceptance record](./docs/verification/2026-09-29-efficient-autonomy.md) documents the earlier source, browser, platform, container and bounded live-model checks; those counts do not describe later commits.
 
-- **1,479 passing source tests**, zero failures and six environment-dependent skips; PostgreSQL concurrency checks run separately.
-- **922 passing browser tests**, plus Windows, Intel Mac and Apple Silicon Mac checks.
-- Real container installation and resume, short recovery/endurance checks, and bounded live-model proof of a finite task and two recurring cycles.
-- Anonymous package downloads, matching checksums and seven-language checks of the public start page at phone width.
+A 24-hour soak, physical-phone/carrier acceptance and native-speaker review are still outstanding. Open-ended tasks may need your input; completion of every possible job is not guaranteed.
 
-These are release-specific results. A 24-hour soak, physical-phone/carrier acceptance and native-speaker review are still outstanding. Open-ended tasks may need your input; completion of every possible job is not guaranteed.
-
-[Release & evidence](https://github.com/halittayyar0/Agentic-Company-OS/releases/tag/v0.2.0) · [Current CI](https://github.com/halittayyar0/Agentic-Company-OS/actions) · [Verification scope](./docs/verification/2026-09-29-efficient-autonomy.md)
+[Latest release](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) · [Current CI](https://github.com/halittayyar0/Agentic-Company-OS/actions) · [Verification scope](./docs/verification/2026-09-29-efficient-autonomy.md)
 
 ## Go deeper
 

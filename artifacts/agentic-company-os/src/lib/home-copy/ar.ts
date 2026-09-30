@@ -5,6 +5,8 @@ const copy = {
   heroTitle: "ما الذي سننجزه معًا اليوم؟",
   heroDescription:
     "صف هدفك. سيخطط الفريق للعمل ويوزّعه على الخبراء المناسبين. تابع التقدم والنتائج من مكان واحد.",
+  quickToolsTitle: "جرّب فحصاً مفيداً بلا نموذج",
+  quickToolsDescription: "افحص CSV أو JSON أو قارن قائمتين داخل المتصفح.",
   guideLabel: "دليل البدء",
   guideTitle: "كيف يعمل؟",
   guideSteps: [
