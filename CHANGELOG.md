@@ -8,6 +8,7 @@ All notable changes to Agentic Company OS are documented here. The project uses
 ### Improved
 
 - When the native PostgreSQL endurance check cannot restart its database, its report now records bounded process, endpoint, and PID-file state. The probes preserve Windows process handling and never include command output, database logs, paths, or credentials.
+- The public landing page browser test now closes Chromium before its local HTTP server, preventing an open browser connection from holding Windows CI until its job timeout.
 
 The intermittent Windows CI failure is still under investigation in issue #29. Local native process and ten-minute recovery runs passed; this release adds evidence to distinguish a failed server start from a command reporting failure after the server is already running.
 
