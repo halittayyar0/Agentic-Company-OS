@@ -162,6 +162,132 @@ test("native smoke proves real topology, worker replacement, database outage, an
   ]);
 });
 
+test("native smoke preserves bounded unfinished-agent evidence when ten responsibilities miss the deadline", async () => {
+  let workerPid = 1001;
+  let databaseRunning = true;
+  let workerRunning = true;
+  const services = () =>
+    [
+      "app",
+      ...(databaseRunning ? ["db"] : []),
+      ...(workerRunning ? ["worker-1"] : []),
+      "worker-2",
+    ].sort();
+  const driver = {
+    start: async () => ({ projectId: 91, expectedResponsibilities: 10 }),
+    captureEvidence: async (observer: SoakEvidenceObserver) => {
+      observer.completeResponsibilities(9);
+      observer.observeHealth({
+        minute: 1,
+        reportedState: "healthy",
+        truthState: "healthy",
+      });
+    },
+    createBrowserSession: async () => {
+      throw new Error("browser is not part of native process smoke");
+    },
+    provenance: async () => ({
+      runner: {
+        os: "Windows",
+        node: process.version,
+        postgres: "PostgreSQL 17.10",
+        browser: "not-run",
+      },
+      workflowRunId: null,
+      configuration: {},
+    }),
+    stop: async () => undefined,
+    now: () => new Date("2026-09-01T00:00:00.000Z"),
+    listActiveWorkers: async () =>
+      workerRunning
+        ? (["worker-1", "worker-2"] as const)
+        : (["worker-2"] as const),
+    killWorker: async () => {
+      workerRunning = false;
+    },
+    restartWorker: async () => {
+      workerPid = 2001;
+      workerRunning = true;
+    },
+    setProviderFault: async () => undefined,
+    clearProviderFault: async () => undefined,
+    pauseDatabase: async () => {
+      databaseRunning = false;
+    },
+    resumeDatabase: async () => {
+      databaseRunning = true;
+    },
+    disconnectObserverStream: async () => undefined,
+    reconnectObserverStream: async () => undefined,
+    enableEmergencyStop: async () => undefined,
+    disableEmergencyStop: async () => undefined,
+    sleep: async () => undefined,
+    nativeServices: async () => services(),
+    nativePostgresVersion: async () => "PostgreSQL 17.10",
+    inspectIncompleteResponsibilities: async () => [
+      { agentId: 10, attemptState: "lost" as const, attemptNumber: 1 },
+    ],
+    diagnostics: () => ({
+      runDirectory: path.resolve("D:/evidence/runtime"),
+      baseUrl: "http://127.0.0.1:55126/",
+      apiPort: 55126,
+      databasePort: 55435,
+      harness: {
+        runDirectory: path.resolve("D:/evidence/runtime"),
+        logDirectory: path.resolve("D:/evidence/runtime/logs"),
+        apiPort: 55126,
+        databasePort: 55435,
+        processes: [
+          {
+            name: "app",
+            pid: 1000,
+            running: true,
+            exitCode: null,
+            signal: null,
+          },
+          {
+            name: "worker-1",
+            pid: workerPid,
+            running: workerRunning,
+            exitCode: null,
+            signal: null,
+          },
+          {
+            name: "worker-2",
+            pid: 1002,
+            running: true,
+            exitCode: null,
+            signal: null,
+          },
+        ],
+      },
+    }),
+  };
+
+  const report = await runNativePostgresSmoke(
+    {
+      runId: "native-smoke-deadline",
+      seed: 240_901,
+      workspaceRoot: path.resolve("D:/workspace"),
+      postgresRoot: path.resolve("D:/postgres"),
+      runDirectory: path.resolve("D:/evidence/runtime"),
+      workerOutageMs: 0,
+      databaseOutageMs: 0,
+      responsibilityTimeoutMs: 0,
+    },
+    { driver, sleep: async () => undefined },
+  );
+
+  assert.equal(report.pass, false);
+  assert.equal(report.completedResponsibilities, 9);
+  assert.match(report.failure ?? "", /did not reach 10/iu);
+  assert.deepEqual(
+    (report as unknown as { incompleteResponsibilities: unknown })
+      .incompleteResponsibilities,
+    [{ agentId: 10, attemptState: "lost", attemptNumber: 1 }],
+  );
+});
+
 test("native smoke retains cleanup authority after partial startup and reports cleanup failure", async () => {
   let stopCalls = 0;
   const driver = {

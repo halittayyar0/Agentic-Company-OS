@@ -3,6 +3,15 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.6] - 2026-09-30
+
+### Improved
+
+- If the native PostgreSQL process smoke misses its ten synthetic responsibilities, its failure report now identifies the unfinished agent IDs and their latest first-cycle attempt states and numbers. The diagnostic uses the existing bounded operations read model, excludes names, task text, raw errors, paths and credentials, and never turns a 9/10 run into a pass.
+- A failed diagnostic lookup leaves the original smoke failure intact. Truncated attempt history is not reported as if no attempt had started.
+
+The intermittent Windows PostgreSQL restart failure in issue #29 remains open. A local ten-minute native run completed 100/100 responsibilities, seven injected faults, and independent evidence verification on v0.3.5; one passing run does not establish the root cause of an earlier failure.
+
 ## [0.3.5] - 2026-09-30
 
 ### Improved

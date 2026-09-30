@@ -29,9 +29,19 @@ import type {
 } from "./report-schema";
 import type { SoakEvidenceObserver } from "./soak-observer";
 import type {
+  IncompleteResponsibilityDiagnostic,
   WallClockCaptureContext,
   WallClockRuntimeDriver,
 } from "./run-wall-clock-soak";
+
+const SAFE_ATTEMPT_STATES = new Set([
+  "claimed",
+  "running",
+  "succeeded",
+  "retrying",
+  "blocked",
+  "lost",
+]);
 
 export interface DockerWallClockHarness {
   start(): Promise<void>;
@@ -140,7 +150,7 @@ interface ProjectOperationsEvidence {
   incidents: OperationsIncidentEvidence[];
   milestones: OperationsIncidentEvidence[];
   fleetHealthSamples: OperationsHealthEvidence[];
-  truncation: { receipts: boolean };
+  truncation: { attempts: boolean; receipts: boolean };
 }
 
 interface EmergencyControlEvidence {
@@ -608,7 +618,10 @@ function parseProjectOperations(value: unknown): ProjectOperationsEvidence {
         };
       },
     ),
-    truncation: { receipts: truncation.receipts === true },
+    truncation: {
+      attempts: truncation.attempts === true,
+      receipts: truncation.receipts === true,
+    },
   };
 }
 
@@ -864,6 +877,43 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
         ),
       ),
     );
+  }
+
+  async inspectIncompleteResponsibilities(): Promise<
+    IncompleteResponsibilityDiagnostic[]
+  > {
+    if (!this.runStarted || this.memberAgentIds.size !== 10) {
+      throw new Error(
+        "Endurance responsibilities are not ready for inspection",
+      );
+    }
+    const snapshot = await this.readProjectOperations();
+    if (snapshot.truncation.attempts) {
+      throw new Error("Endurance attempt evidence was truncated");
+    }
+    return [...this.memberAgentIds]
+      .sort((left, right) => left - right)
+      .filter(
+        (agentId) =>
+          (this.completedResponsibilityCyclesByAgent.get(agentId) ?? 0) < 1,
+      )
+      .map((agentId) => {
+        const latest = snapshot.attempts
+          .filter(
+            (attempt) =>
+              attempt.agentId === agentId && attempt.cycleNumber === 0,
+          )
+          .sort((left, right) => right.attemptNumber - left.attemptNumber)[0];
+        return {
+          agentId,
+          attemptState: latest
+            ? SAFE_ATTEMPT_STATES.has(latest.state)
+              ? (latest.state as IncompleteResponsibilityDiagnostic["attemptState"])
+              : "unknown"
+            : "not_started",
+          attemptNumber: latest?.attemptNumber ?? null,
+        };
+      });
   }
 
   async start(): Promise<{
