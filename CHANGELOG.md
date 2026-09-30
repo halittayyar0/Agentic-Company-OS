@@ -3,6 +3,15 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.3] - 2026-09-30
+
+### Improved
+
+- Model Settings now prefers an available tool-capable test model, starting with a free identifier and then an economy-tier option when the catalog offers one. A manual selection is never replaced.
+- All seven languages distinguish a successful chat-only connection test from agent-task readiness. A current, tool-capable model test links back to Projects so an operator can inspect the next attempt. Every test still requires separate confirmation and may incur a provider charge.
+
+The test proves only that the selected model replied at that settings revision. It does not exercise tools, guarantee later access, or verify every worker has applied the configuration.
+
 ## [0.3.2] - 2026-09-30
 
 ### Fixed

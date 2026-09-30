@@ -1,6 +1,7 @@
 import { LanguagePackStatus } from "../components/i18n/language-pack-status";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import {
   getLlmSettings,
   updateLlmSettings,
@@ -135,6 +136,12 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
       locale,
     ),
   );
+  const testedModel = result
+    ? data?.catalog.models.find(
+        (model) =>
+          model.id === result.model && model.provider === result.provider,
+      )
+    : undefined;
   const confirmationChanged =
     !!confirmation &&
     (!data ||
@@ -414,11 +421,18 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                 const models = data.catalog.models.filter(
                   (model) => model.provider === provider,
                 );
-                const chosen =
-                  models.find((model) => model.id === selection[provider])
-                    ?.id ??
-                  models[0]?.id ??
-                  "";
+                const chosenModel =
+                  models.find((model) => model.id === selection[provider]) ??
+                  models.find(
+                    (model) =>
+                      model.supportsTools && model.id.endsWith(":free"),
+                  ) ??
+                  models.find(
+                    (model) => model.supportsTools && model.tier === "economy",
+                  ) ??
+                  models.find((model) => model.supportsTools) ??
+                  models[0];
+                const chosen = chosenModel?.id ?? "";
                 const available = data.catalog.providers.some(
                   (item) => item.id === provider && item.available,
                 );
@@ -568,6 +582,14 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                             {c.test}
                           </Button>
                         </div>
+                        {!chosenModel?.supportsTools && (
+                          <p
+                            role="status"
+                            className="text-sm text-attention-foreground"
+                          >
+                            {c.chatOnlyProjectWarning}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">
@@ -596,6 +618,21 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                   </bdi>
                 </p>
                 <p className="text-muted-foreground">{c.testHistorical}</p>
+                {data.revision === result.revision &&
+                  testedModel &&
+                  (testedModel.supportsTools ? (
+                    <div className="space-y-2">
+                      <p>{c.toolTestNext}</p>
+                      <Link
+                        href="/projects"
+                        className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        {c.viewProjects}
+                      </Link>
+                    </div>
+                  ) : (
+                    <p>{c.chatTestOnly}</p>
+                  ))}
                 {data.revision !== result.revision && <p>{c.currentChanged}</p>}
               </div>
             ) : (

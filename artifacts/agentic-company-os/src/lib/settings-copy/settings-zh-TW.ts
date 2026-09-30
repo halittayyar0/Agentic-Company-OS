@@ -46,6 +46,10 @@ const copy: SettingsCopy = {
   testFailed:
     "無法確認測試結果。供應商可能已處理請求或收取費用。未傳送自動重試請求。",
   testPassed: "此模型已回應測試請求。",
+  chatOnlyProjectWarning: "代理專案需要支援工具的模型。",
+  chatTestOnly: "此回覆僅確認聊天可用，不代表代理任務已就緒。",
+  toolTestNext: "此模型在目錄中標為支援工具且已回覆。請查看專案的下一次嘗試。",
+  viewProjects: "查看專案",
   testHistorical:
     "此結果僅對應顯示的設定版本，不表示持續監控，也不保證其他模型可用。",
   testBlocked: "緊急停止已啟用或其狀態未知時，無法測試。",

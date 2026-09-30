@@ -52,6 +52,12 @@ const copy: SettingsCopy = {
   testFailed:
     "Test doğrulanamadı. Sağlayıcı isteği işlemiş veya ücretlendirmiş olabilir. Otomatik yeniden deneme gönderilmedi.",
   testPassed: "Bu model test isteğine yanıt verdi.",
+  chatOnlyProjectWarning: "Projeler için araç desteği olan bir model gerekir.",
+  chatTestOnly:
+    "Bu yanıt yalnızca sohbeti doğrular; ajan görevinin hazır olduğunu göstermez.",
+  toolTestNext:
+    "Bu model katalogda araç destekli görünüyor ve yanıt verdi. Sonraki deneme için projeni kontrol et.",
+  viewProjects: "Projeleri gör",
   testHistorical:
     "Bu sonuç gösterilen ayar sürümüne aittir; sürekli izleme veya başka modeller için garanti değildir.",
   testBlocked:

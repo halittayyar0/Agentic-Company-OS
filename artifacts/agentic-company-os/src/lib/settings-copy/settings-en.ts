@@ -53,6 +53,11 @@ const copy: SettingsCopy = {
   testFailed:
     "The test could not be confirmed. The provider may have processed or charged for the request. No automatic retry was sent.",
   testPassed: "This model responded to the test.",
+  chatOnlyProjectWarning: "Agent projects need a model with tool support.",
+  chatTestOnly: "This reply confirms chat only, not agent task readiness.",
+  toolTestNext:
+    "This model is listed as tool-capable and replied. Check your project for its next attempt.",
+  viewProjects: "View projects",
   testHistorical:
     "This is a result for the displayed settings revision, not continuous monitoring or a guarantee for other models.",
   testBlocked:

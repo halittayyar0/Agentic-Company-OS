@@ -38,6 +38,10 @@ export type SettingsCopy = {
   rateLimited: string;
   testFailed: string;
   testPassed: string;
+  chatOnlyProjectWarning: string;
+  chatTestOnly: string;
+  toolTestNext: string;
+  viewProjects: string;
   testHistorical: string;
   testBlocked: string;
   revision: string;
