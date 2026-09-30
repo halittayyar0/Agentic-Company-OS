@@ -11,6 +11,7 @@ import { planInstallation } from "./plan";
 import { detectInstallCapabilities } from "./preflight";
 import { applyInstallationPreferences } from "./preferences";
 import { readInstallation } from "./resume";
+import { proveDatabaseBackup } from "./backup-restore-proof";
 
 // Opt-in real native installation proof. Owns a fresh PostgreSQL cluster and
 // keeps its evidence directory; it never attaches to the operator's database.
@@ -45,7 +46,9 @@ export async function runNativeInstallSmoke(
       environment: { ...process.env, PGPASSWORD: password },
       timeoutMs: 60000,
       maxBufferBytes: 1024 * 1024,
-      ignoreInheritedStdio: true,
+      // pg_ctl may keep inherited handles open; the backup drill needs psql's
+      // bounded result instead of discarding every command's output.
+      ignoreInheritedStdio: name !== "psql",
     });
   let started = false;
   let executor: ReturnType<typeof createInstallationExecutor> | undefined;
@@ -172,6 +175,22 @@ export async function runNativeInstallSmoke(
       "complete",
     );
     checks.push("restart preserved operator identity and capability");
+    const backup = await proveDatabaseBackup({
+      database: "setup_proof",
+      dumpPath: path.join(directory, "agentic-os.dump"),
+      connectionArgs: [
+        "-h",
+        "127.0.0.1",
+        "-p",
+        String(dbPort),
+        "-U",
+        "setup_proof",
+      ],
+      command,
+    });
+    checks.push(
+      "binary backup restored roster, migration journal entry count, application writes and sequence state",
+    );
     if (acceptance) {
       await acceptance.run({
         baseUrl: result.url,
@@ -187,6 +206,7 @@ export async function runNativeInstallSmoke(
           passed: true,
           platform: process.platform,
           architecture: process.arch,
+          backup,
           checks,
         },
         null,
@@ -204,7 +224,8 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
 ) {
-  const [postgresBin, pnpmPath] = process.argv.slice(2);
+  const [postgresBin, explicitPnpmPath] = process.argv.slice(2);
+  const pnpmPath = explicitPnpmPath ?? process.env.npm_execpath;
   if (!postgresBin || !pnpmPath)
     throw new Error("Supply PostgreSQL bin and pnpm JS paths");
   runNativeInstallSmoke(postgresBin, pnpmPath)

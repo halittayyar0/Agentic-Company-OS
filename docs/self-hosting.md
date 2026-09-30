@@ -508,13 +508,42 @@ only smoke evidence and must remain `verified24h: false`; it does not satisfy a
 
 The `data/` and `agent-sandboxes/` directories are gitignored, not encrypted. Gitignore is not a data-protection control.
 
-For the Compose profile, take a logical backup without stopping the application:
+For the Compose profile, take a logical backup without stopping the application.
+Run each step only after the preceding command succeeds and choose a new local
+filename for each backup. Use the same Compose files, project name and env file
+as your installation (the examples below use the default profile):
 
 ```bash
-docker compose exec -T db pg_dump -U agentic -d agentic_os -Fc > agentic-os.dump
+docker compose exec -T db pg_dump -U agentic -d agentic_os -Fc -f /tmp/agentic-os.dump
+docker compose cp db:/tmp/agentic-os.dump ./agentic-os.dump
+docker compose exec -T db rm /tmp/agentic-os.dump
 ```
 
-Restore into a new empty database/container first, run the target application migrations against that copy, and execute a real read/write smoke test before calling the backup verified. Encrypt backup files, keep them outside the host/container failure domain, apply retention, and record restore-test dates. A database dump does not include `agent-data` or `agent-sandboxes`; back those volumes separately if policy requires them.
+`pg_dump` writes the binary file itself; `docker compose cp` transfers it without
+shell text conversion. Do not replace this with `>`, `Out-File` or a text pipeline
+on Windows PowerShell or PowerShell before 7.4. Those versions can corrupt binary
+output. See [PowerShell binary redirection](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_Redirection).
+For native PostgreSQL, likewise use `pg_dump --format=custom --file=agentic-os.dump`
+with your normal connection options, instead of redirecting its output.
+
+Restore into a new empty database/container first, using `pg_restore
+--exit-on-error --no-owner --no-privileges --dbname=<staging-database>
+agentic-os.dump`. Keep that staging runtime disconnected from workers, providers
+and external destinations. Run the target application migrations against that
+copy, then verify application records, sequence-backed inserts and a real
+read/write smoke test before calling your backup verified. A successful archive
+listing alone does not prove restoration. Only restore dumps from a trusted
+source: [PostgreSQL explains that restoring a dump executes its SQL](https://www.postgresql.org/docs/17/app-pgrestore.html).
+
+The native and container installation acceptance tests now perform this drill
+on their disposable fixtures. They compare the restored agent roster and
+migration journal entry count and insert a multilingual agent row in a rolled-back
+transaction to check writes and sequence state. The container test restores the
+archive copied through the host filesystem. These tests validate the supplied
+installation workflow; they do not validate your own backup or establish that
+all tables, secret files or workspace volumes were preserved.
+
+Encrypt backup files, keep them outside the host/container failure domain, apply retention, and record restore-test dates. A database dump does not include `agent-data` or `agent-sandboxes`; back those volumes separately if policy requires them.
 
 ## Upgrades
 

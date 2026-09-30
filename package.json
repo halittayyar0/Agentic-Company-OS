@@ -1,6 +1,6 @@
 {
   "name": "agentic-company-os",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "Local-first, human-governed operating system for autonomous AI agent teams.",
   "license": "MIT",
   "packageManager": "pnpm@10.17.1",
@@ -22,6 +22,7 @@
     "format:check": "prettier --check .",
     "security:audit": "pnpm audit --prod",
     "test": "tsx ./scripts/src/run-tests.ts",
+    "test:installation:native": "tsx ./scripts/src/setup/native-install-smoke.ts",
     "test:ui": "node ./artifacts/agentic-company-os/node_modules/vite/bin/vite.js build --config ./artifacts/agentic-company-os/vite.config.ts && playwright test --config playwright.config.ts",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
