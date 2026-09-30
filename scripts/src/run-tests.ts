@@ -36,6 +36,12 @@ const concurrency = process.env.TEST_CONCURRENCY ?? "2";
 if (!/^[1-8]$/u.test(concurrency)) {
   throw new Error("TEST_CONCURRENCY must be an integer from 1 through 8.");
 }
+if (
+  process.env.TEST_DISABLE_WASM_CODE_GC !== undefined &&
+  process.env.TEST_DISABLE_WASM_CODE_GC !== "1"
+) {
+  throw new Error("TEST_DISABLE_WASM_CODE_GC must be 1 when set.");
+}
 
 async function discoverTests(directory: string): Promise<string[]> {
   const discovered: string[] = [];
@@ -78,6 +84,11 @@ console.log(
 const child = spawn(
   process.execPath,
   [
+    // Node 24's V8 can abort while freeing PGlite WASM code on Windows.
+    // Keep the workaround inside test child processes until the fix lands.
+    ...(process.env.TEST_DISABLE_WASM_CODE_GC === "1"
+      ? ["--no-wasm-code-gc"]
+      : []),
     "--import",
     testLoaderUrl,
     "--test",
