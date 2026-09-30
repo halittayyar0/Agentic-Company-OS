@@ -156,6 +156,142 @@ test("runtime truth accepts historical stale rows but not an unhealthy active fl
   );
 });
 
+test("commanded native smoke faults admit only bounded degraded health samples", async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "agentic-commanded-health-"),
+  );
+  let now = new Date("2026-09-01T00:00:00.000Z");
+  let snapshot = operationsSnapshot({ cursor: "1" });
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const pathname = new URL(String(input)).pathname;
+    if (pathname === "/api/readyz") return Response.json({ status: "ready" });
+    if (pathname === "/api/ops/instances") {
+      return Response.json({
+        instances: [
+          {
+            id: "api-1",
+            role: "api",
+            effectiveState: "healthy",
+            schedulerEnabled: false,
+          },
+          {
+            id: "worker-1",
+            role: "worker",
+            effectiveState: "healthy",
+            schedulerEnabled: true,
+          },
+          {
+            id: "worker-2",
+            role: "worker",
+            effectiveState: "healthy",
+            schedulerEnabled: true,
+          },
+        ],
+      });
+    }
+    if (pathname === "/api/tasks" && init?.method === "POST") {
+      return Response.json({ id: 7 }, { status: 201 });
+    }
+    if (pathname === "/api/tasks/7/operations") return Response.json(snapshot);
+    return Response.json({ error: "not found" }, { status: 404 });
+  };
+  const driver = new DockerWallClockDriver({
+    runId: "commanded-health-test",
+    seed: 240_901,
+    durationHours: 1 / 60,
+    workspaceRoot: process.cwd(),
+    controlDirectory: directory,
+    baseUrl: "http://127.0.0.1:5000",
+    operatorToken: "local-operator-secret",
+    harness: harness([]),
+    fetchImpl,
+    now: () => now,
+    commandedFaultHealthWindowsOnly: true,
+  });
+  try {
+    await driver.start();
+    now = new Date("2026-09-01T00:00:10.000Z");
+    await driver.killWorker("worker-1");
+    now = new Date("2026-09-01T00:00:12.000Z");
+    await driver.restartWorker("worker-1");
+    now = new Date("2026-09-01T00:01:20.000Z");
+    await driver.pauseDatabase();
+    now = new Date("2026-09-01T00:01:22.000Z");
+    await driver.resumeDatabase();
+    snapshot = operationsSnapshot({
+      cursor: "2",
+      generatedAt: "2026-09-01T00:01:24.000Z",
+      healthSamples: [
+        {
+          bucketAt: "2026-09-01T00:00:00.000Z",
+          sampledAt: "2026-09-01T00:00:19.000Z",
+          runtimeTruthState: "degraded",
+          healthyWorkerCount: 1,
+          staleWorkerCount: 1,
+          schedulerTickAgeMs: 20_000,
+        },
+      ],
+    });
+    await assert.rejects(
+      driver.captureEvidence(
+        new RecordingSoakEvidenceObserver({ expectedResponsibilities: 10 }),
+        { kind: "minute", minute: 1 },
+      ),
+      /unplanned degraded runtime truth/iu,
+    );
+    snapshot = operationsSnapshot({
+      cursor: "3",
+      generatedAt: "2026-09-01T00:01:25.000Z",
+      healthSamples: [
+        {
+          bucketAt: "2026-09-01T00:00:00.000Z",
+          sampledAt: "2026-09-01T00:00:11.000Z",
+          runtimeTruthState: "degraded",
+          healthyWorkerCount: 1,
+          staleWorkerCount: 1,
+          schedulerTickAgeMs: 20_000,
+        },
+        {
+          bucketAt: "2026-09-01T00:01:00.000Z",
+          sampledAt: "2026-09-01T00:01:21.000Z",
+          runtimeTruthState: "degraded",
+          healthyWorkerCount: 2,
+          staleWorkerCount: 0,
+          schedulerTickAgeMs: 20_000,
+        },
+      ],
+    });
+    const observer = new RecordingSoakEvidenceObserver({
+      expectedResponsibilities: 10,
+    });
+    await driver.captureEvidence(observer, { kind: "minute", minute: 1 });
+    assert.equal(observer.finalize().metrics.healthSampleBuckets, 2);
+    assert.deepEqual(observer.finalize().metrics.healthTruthMismatches, []);
+
+    snapshot = operationsSnapshot({
+      cursor: "4",
+      generatedAt: "2026-09-01T00:04:00.000Z",
+      healthSamples: [
+        {
+          bucketAt: "2026-09-01T00:04:00.000Z",
+          sampledAt: "2026-09-01T00:04:00.000Z",
+          runtimeTruthState: "degraded",
+          healthyWorkerCount: 1,
+          staleWorkerCount: 1,
+          schedulerTickAgeMs: 20_000,
+        },
+      ],
+    });
+    await assert.rejects(
+      driver.captureEvidence(observer, { kind: "minute", minute: 1 }),
+      /unplanned degraded runtime truth/iu,
+    );
+  } finally {
+    await driver.stop({ keepData: false });
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("only scheduled disruptive faults allow bounded degraded health", () => {
   const durationMs = 24 * 60 * 60 * 1_000;
   const schedule = createSeededFaultSchedule({

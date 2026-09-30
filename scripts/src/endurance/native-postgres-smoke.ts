@@ -134,6 +134,9 @@ export async function runNativePostgresSmoke(
       runId: options.runId,
       seed: options.seed,
       durationHours: 1 / 60,
+      // This short test commands faults directly, outside the seeded soak
+      // schedule. Admit only health samples from those actual bounded faults.
+      commandedFaultHealthWindowsOnly: true,
       workspaceRoot: options.workspaceRoot,
       postgresRoot: options.postgresRoot,
       runDirectory: options.runDirectory,
