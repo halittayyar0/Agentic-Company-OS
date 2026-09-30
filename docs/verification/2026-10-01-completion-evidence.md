@@ -19,6 +19,19 @@ permission gate or frontend flow was added.
 - A fresh disposable database on native Windows PostgreSQL 17.10 passed the read-only repeatable-read query, returning a failed command and exit code 1 while excluding its stored raw output. That database was dropped and the owned PostgreSQL fixture was stopped afterward.
 - The first native probe failed because its temporary Windows runner used a path string for a dynamic ESM import. Correcting the runner to a file URL fixed it; the earlier failed probe is not passing evidence.
 
+## Local full-suite limitation
+
+Two full Windows source-test attempts were interrupted after child processes
+aborted with `Fatal process out of memory: Zone`. The initial two-file run had
+about 904 MiB available physical memory and 157 MiB available virtual memory at
+the observed failure. The second used the CI settings `TEST_CONCURRENCY=1` and
+`TEST_DISABLE_WASM_CODE_GC=1`, but also encountered fatal memory allocation
+failures in unchanged suites. Only the owned test runs were stopped; no user
+application was closed. Neither attempt counts as a passing full-suite result.
+The narrower 51-test and 74-test runs and native PostgreSQL proof above remain
+separate evidence. Full acceptance still requires a clean CI run of this branch.
+This does not establish a cause for the unrelated native restart issue #29.
+
 ## Remaining gates and limits
 
 The local API production build passed. Full source/UI, security and native/container platform checks
