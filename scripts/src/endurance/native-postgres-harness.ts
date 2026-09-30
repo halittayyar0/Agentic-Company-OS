@@ -748,22 +748,95 @@ export class NativePostgresEnduranceHarness {
     // pg_ctl can fail after PostgreSQL has crossed its process-start boundary.
     // Retain cleanup authority until a matching stop is confirmed.
     this.databaseRunning = true;
-    await this.runCommand(
-      binaries.pgCtl,
-      [
-        "-D",
-        this.requireDataDirectory(),
-        "-l",
-        logFile,
-        "-w",
-        "-t",
-        "60",
-        "start",
-        "-o",
-        `-h 127.0.0.1 -p ${this.databasePort} -c listen_addresses=127.0.0.1 -c fsync=on -c synchronous_commit=on`,
-      ],
-      { ignoreInheritedStdio: true },
-    );
+    try {
+      await this.runCommand(
+        binaries.pgCtl,
+        [
+          "-D",
+          this.requireDataDirectory(),
+          "-l",
+          logFile,
+          "-w",
+          "-t",
+          "60",
+          "start",
+          "-o",
+          `-h 127.0.0.1 -p ${this.databasePort} -c listen_addresses=127.0.0.1 -c fsync=on -c synchronous_commit=on`,
+        ],
+        { ignoreInheritedStdio: true },
+      );
+    } catch (error) {
+      throw new Error(await this.databaseStartFailureDiagnostic(error));
+    }
+  }
+
+  private async databaseStartFailureDiagnostic(
+    error: unknown,
+  ): Promise<string> {
+    const binaries = this.requireBinaries();
+    const dataDirectory = this.requireDataDirectory();
+    // Never include pg_ctl output or a PostgreSQL log line in a public report.
+    // A server started by pg_ctl can outlive the command and hold captured pipes
+    // open on Windows, so probe bounded state with discarded stdio instead.
+    const [processStatus, endpointStatus, pidFile] = await Promise.allSettled([
+      this.runCommand(binaries.pgCtl, ["-D", dataDirectory, "status"], {
+        ignoreInheritedStdio: true,
+        timeoutMs: 5_000,
+      }),
+      this.runCommand(
+        binaries.pgIsReady,
+        [
+          "-h",
+          "127.0.0.1",
+          "-p",
+          String(this.databasePort),
+          "-U",
+          "agentic_endurance",
+          "-d",
+          "postgres",
+        ],
+        { ignoreInheritedStdio: true, timeoutMs: 5_000 },
+      ),
+      lstat(path.join(dataDirectory, "postmaster.pid")),
+    ]);
+    const exitCode =
+      error instanceof Error
+        ? /^pg_ctl(?:\.exe)? failed: exit code (\d{1,3})\b/iu.exec(
+            error.message,
+          )?.[1]
+        : undefined;
+    const command = exitCode
+      ? `pg_ctl_exit=${exitCode}`
+      : error instanceof Error &&
+          /\btimed out after \d+ms\b/iu.test(error.message)
+        ? "pg_ctl_timeout"
+        : "pg_ctl_error";
+    const ownedProcess =
+      processStatus.status === "fulfilled"
+        ? "running"
+        : processStatus.reason instanceof Error &&
+            /\bexit code 3\b/iu.test(processStatus.reason.message)
+          ? "absent"
+          : "unknown";
+    const endpoint =
+      endpointStatus.status === "fulfilled"
+        ? "ready"
+        : endpointStatus.reason instanceof Error &&
+            /\bexit code 1\b/iu.test(endpointStatus.reason.message)
+          ? "rejecting"
+          : endpointStatus.reason instanceof Error &&
+              /\bexit code 2\b/iu.test(endpointStatus.reason.message)
+            ? "unavailable"
+            : "unknown";
+    const pid =
+      pidFile.status === "fulfilled"
+        ? "present"
+        : pidFile.reason instanceof Error &&
+            "code" in pidFile.reason &&
+            pidFile.reason.code === "ENOENT"
+          ? "absent"
+          : "unknown";
+    return `PostgreSQL start failed: ${command}; owned_process=${ownedProcess}; endpoint=${endpoint}; pid_file=${pid}`;
   }
 
   private async stopDatabase(): Promise<void> {
