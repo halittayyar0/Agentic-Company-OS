@@ -32,7 +32,29 @@ The next security scan is still required before merge; neither alert was dismiss
 
 ## Pending gates and limits
 
-Linux container transfer/restore and macOS native acceptance await this branch's
+For head `778fe47`, Linux source/build/UI, container installation/transfer/restore,
+both macOS native installation/restore jobs and security checks passed.
+The Windows source suite instead failed an existing approved-browser locale
+fixture: `tr browser_type live` observed no HTTP effect within its three-second
+window. The failure occurred before native installation acceptance. Its receipt
+state and action result were absent from the original assertion, so the cause is
+not established. The six Turkish approved-browser cases passed locally; this
+does not disprove the CI failure. The fixture now retains its original deadline,
+adds failure diagnostics (result, effect-boundary count, receipt, page and DOM
+input-event sequences), and retains one dispatch/boundary plus no replay effects.
+The test name now describes that actual contract. A standalone Playwright probe,
+without application code or its proxy, produced six full-value input callbacks
+from one fill on local Chrome 154 and Chromium 151. An attempted single-HTTP-effect
+assertion therefore measured a different contract and was removed. The original
+source-value, dispatch, effect-boundary and consumed-approval assertions remain.
+Product browser timeouts and approval rules were not changed. The original
+missing-effect CI failure is still unproven and is tracked in
+[#34](https://github.com/halittayyar0/Agentic-Company-OS/issues/34). With the added
+diagnostics and the actual dispatch/replay contract, all 42 approved-browser
+cases passed locally on the CI Chromium channel. A new full CI run is required
+before merge.
+
+Latest-head Linux container transfer/restore and macOS native acceptance await
 CI. Full source/UI checks will be enforced by the PR; they were not repeated
 locally for this test-and-documentation change. Production UI, API and agent
 permissions were not modified. No new phone or language-flow acceptance is
