@@ -381,13 +381,14 @@ function Sidebar({
           aria-label={t("home")}
           className="flex min-w-0 items-center gap-[12px] rounded-[14px] border border-border/80 bg-background/45 p-[10px] transition-colors hover:border-foreground/15 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:gap-3 sm:p-2.5"
         >
-          <span className="relative grid size-[36px] shrink-0 place-items-center overflow-hidden rounded-[11px] bg-foreground text-[12px] font-semibold tracking-[-0.05em] text-background">
-            A/
-            <span
-              aria-hidden
-              className="absolute -bottom-2 -right-2 size-5 rounded-full border border-background/45"
-            />
-          </span>
+          <img
+            src="/favicon.svg"
+            alt=""
+            aria-hidden="true"
+            width="36"
+            height="36"
+            className="size-[36px] shrink-0 rounded-[11px]"
+          />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-semibold tracking-[-0.02em] text-foreground">
               AgenticOS

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Agent } from "@workspace/api-client-react";
-import rosterAtlasUrl from "@/assets/company-roster-atlas.webp";
+import rosterAtlasUrl from "@/assets/company-keeper-atlas.webp";
 import { cn } from "@/lib/utils";
 
-const TEMPLATE_PORTRAIT_INDEX: Record<string, number> = {
+const TEMPLATE_MASCOT_INDEX: Record<string, number> = {
   ceo: 0,
   marketing_director: 1,
   sales_director: 2,
@@ -14,6 +14,11 @@ const TEMPLATE_PORTRAIT_INDEX: Record<string, number> = {
   research_director: 7,
   support_director: 8,
   content_director: 9,
+  specialist: 7,
+  ux_designer: 5,
+  quality_engineer: 3,
+  data_analyst: 7,
+  automation_specialist: 6,
 };
 
 const SIZE_CLASS = {
@@ -24,9 +29,9 @@ const SIZE_CLASS = {
   xl: "h-[7.5rem] w-24 rounded-[1.4rem]",
 } as const;
 
-function portraitIndex(agent: Agent): number {
-  if (agent.templateKey && TEMPLATE_PORTRAIT_INDEX[agent.templateKey] != null) {
-    return TEMPLATE_PORTRAIT_INDEX[agent.templateKey];
+function mascotIndex(agent: Agent): number {
+  if (agent.templateKey && TEMPLATE_MASCOT_INDEX[agent.templateKey] != null) {
+    return TEMPLATE_MASCOT_INDEX[agent.templateKey];
   }
   return Math.abs(agent.id - 1) % 10;
 }
@@ -39,14 +44,14 @@ export function AgentAvatar({
   className,
 }: {
   agent: Agent;
-  /** undefined uses the persisted endpoint, null forces the built-in portrait. */
+  /** undefined uses the persisted endpoint, null forces the built-in mascot. */
   imageSrc?: string | null;
   size?: keyof typeof SIZE_CLASS;
   showStatus?: boolean;
   className?: string;
 }) {
   const [customImageFailed, setCustomImageFailed] = useState(false);
-  const index = portraitIndex(agent);
+  const index = mascotIndex(agent);
   const column = index % 5;
   const row = Math.floor(index / 5);
   const persistedImage = agent.avatarVersion
@@ -89,10 +94,6 @@ export function AgentAvatar({
           }}
         />
       )}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-t from-black/20 via-transparent to-white/10"
-      />
       {showStatus ? (
         <span
           aria-hidden="true"

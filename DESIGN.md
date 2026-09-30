@@ -108,6 +108,16 @@ Cool neutral layers, an ink-colored dark canvas, one blue command signal, semant
 
 The default mode follows the operating system. Light and dark modes share the same information structure and are checked independently.
 
+### Agent identity
+
+The built-in Keeper mascots are a quiet, original identity family for the agent
+roster. Their navy shell and blue signal follow the existing palette, and their
+role-specific silhouettes distinguish teammates at compact sizes. They appear
+only where an agent identity is useful. Custom images remain an operator choice.
+Mascots are static: activity, recovery, and failure must be conveyed by the
+backend-backed status UI and readable text, never by character expression or
+decorative motion. See [the asset notes](docs/assets/keeper-mascots.md).
+
 ### Anti-references
 
 - No neon cyber/NOC treatment, purple fog, glass stacks, decorative grid overload, or fake scanners.

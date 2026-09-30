@@ -88,14 +88,14 @@ const copy: ExpertDetailCopy = {
   oldest: "أقدم حدث في العينة",
   records: "أحداث النشاط في العينة",
   avatar: "الصورة الشخصية",
-  avatarBuiltin: "صورة مدمجة",
+  avatarBuiltin: "التميمة المدمجة",
   avatarCustom: "صورة مخصصة",
   avatarHelp:
     "PNG أو JPEG أو WebP حتى 5 ميغابايت. يقص المتصفح الصورة ويضغطها محليًا ثم يحفظ نسخة لا تتجاوز 64 كيلوبايت على خادمك. لا يُرسل الملف الأصلي إلى خدمة صور.",
   chooseImage: "اختيار صورة",
   processing: "جارٍ التحضير…",
   preview: "معاينة غير محفوظة",
-  resetAvatar: "استخدام الصورة المدمجة",
+  resetAvatar: "استخدام التميمة المدمجة",
   saveAvatar: "حفظ الصورة",
   avatarFileError:
     "اختر ملف PNG أو JPEG أو WebP غير فارغ لا يتجاوز 5 ميغابايت.",

@@ -1,3 +1,9 @@
 <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+  <rect width="180" height="180" rx="36" fill="#F5F7FA"/>
+  <path d="M90 15 105 38c30 7 52 32 52 64v26c-19 23-41 35-67 35s-48-12-67-35v-26c0-32 22-57 52-64L90 15Z" fill="#192334"/>
+  <path d="M90 40c-28 0-48 22-48 51v21c11 15 27 23 48 23s37-8 48-23V91c0-29-20-51-48-51Z" fill="#F5F7FA"/>
+  <path d="M90 19 99 33 90 47 81 33 90 19Z" fill="#E0AD67"/>
+  <ellipse cx="69" cy="89" rx="6" ry="8" fill="#192334"/>
+  <ellipse cx="111" cy="89" rx="6" ry="8" fill="#192334"/>
+  <rect x="69" y="108" width="42" height="11" rx="5.5" fill="#1A5BBC"/>
 </svg>
