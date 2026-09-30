@@ -3,6 +3,15 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.4] - 2026-09-30
+
+### Improved
+
+- The setup wizard now names the requirement blocking the selected installation mode, with a short action and guide link in all seven languages. It distinguishes a missing Docker command, a stopped engine, Windows containers, missing Compose v2, and unsupported Node, operating system or processor.
+- Operators can recheck the computer without losing setup choices. An uncertain recheck disables Continue until a fresh result arrives; the setup guide opens separately so the private session remains available.
+
+The readiness check covers local prerequisites only. The reviewed installation rechecks them and verifies its database and runtime. Provider access needs a separate explicit test.
+
 ## [0.3.3] - 2026-09-30
 
 ### Improved

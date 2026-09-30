@@ -7,6 +7,7 @@ export type PreflightIssue =
   | "unsupported_architecture"
   | "node_24_required"
   | "docker_unavailable"
+  | "docker_engine_unavailable"
   | "docker_linux_engine_required"
   | "compose_v2_required";
 
@@ -55,8 +56,9 @@ export async function detectInstallCapabilities(
   const containerIssues = [...common];
   if (!/^v24\.\d+\.\d+$/u.test(nodeVersion))
     nativeIssues.push("node_24_required");
-  const [postgres, compose, engine, phone] = await Promise.allSettled([
+  const [postgres, docker, compose, engine, phone] = await Promise.allSettled([
     run("psql", ["--version"]),
+    run("docker", ["--version"]),
     run("docker", ["compose", "version", "--short"]),
     run("docker", ["info", "--format", "{{.OSType}}"]),
     run("tailscale", ["status", "--json"]),
@@ -66,10 +68,12 @@ export async function detectInstallCapabilities(
     /^v?2\.\d+\.\d+(?:[-+][\w.-]+)?$/u.test(compose.value.trim())
       ? compose.value.trim()
       : null;
-  if (engine.status === "rejected" || compose.status === "rejected") {
+  if (docker.status === "rejected") {
     containerIssues.push("docker_unavailable");
   } else {
-    if (engine.value.trim() !== "linux")
+    if (engine.status === "rejected")
+      containerIssues.push("docker_engine_unavailable");
+    else if (engine.value.trim() !== "linux")
       containerIssues.push("docker_linux_engine_required");
     if (!composeVersion) containerIssues.push("compose_v2_required");
   }
