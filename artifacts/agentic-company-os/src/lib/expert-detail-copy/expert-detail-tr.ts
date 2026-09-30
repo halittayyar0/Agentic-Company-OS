@@ -90,14 +90,14 @@ const copy: ExpertDetailCopy = {
   oldest: "Örneklemdeki en eski olay",
   records: "İncelenen etkinlikler",
   avatar: "Portre",
-  avatarBuiltin: "Yerleşik portre",
-  avatarCustom: "Özel portre",
+  avatarBuiltin: "Yerleşik maskot",
+  avatarCustom: "Özel görsel",
   avatarHelp:
     "PNG, JPEG veya WebP, en fazla 5 MB. Tarayıcı yerelde kırpıp sıkıştırır, ardından en fazla 64 KB kopyayı kendi sunucuna kaydeder. Özgün dosya bir görsel servisine gönderilmez.",
   chooseImage: "Görsel seç",
   processing: "Hazırlanıyor…",
   preview: "Kaydedilmemiş önizleme",
-  resetAvatar: "Yerleşik portreyi kullan",
+  resetAvatar: "Yerleşik maskotu kullan",
   saveAvatar: "Portreyi kaydet",
   avatarFileError:
     "En fazla 5 MB olan, boş olmayan bir PNG, JPEG veya WebP dosyası seç.",

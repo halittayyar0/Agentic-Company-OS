@@ -91,14 +91,14 @@ const copy: ExpertDetailCopy = {
   oldest: "Oldest sampled event",
   records: "Sampled activity events",
   avatar: "Portrait",
-  avatarBuiltin: "Built-in portrait",
-  avatarCustom: "Custom portrait",
+  avatarBuiltin: "Built-in mascot",
+  avatarCustom: "Custom image",
   avatarHelp:
     "PNG, JPEG or WebP, up to 5 MB. The browser crops and compresses locally, then saves a copy of at most 64 KB on your own server. The original file is not sent to an image service.",
   chooseImage: "Choose image",
   processing: "Preparing…",
   preview: "Unsaved preview",
-  resetAvatar: "Use built-in portrait",
+  resetAvatar: "Use built-in mascot",
   saveAvatar: "Save portrait",
   avatarFileError:
     "Choose a nonempty PNG, JPEG or WebP file no larger than 5 MB.",

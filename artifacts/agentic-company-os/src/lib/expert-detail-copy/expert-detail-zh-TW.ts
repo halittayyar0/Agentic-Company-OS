@@ -80,14 +80,14 @@ const copy: ExpertDetailCopy = {
   oldest: "樣本中最早的事件",
   records: "活動事件樣本數",
   avatar: "頭像",
-  avatarBuiltin: "內建頭像",
+  avatarBuiltin: "內建吉祥物",
   avatarCustom: "自訂頭像",
   avatarHelp:
     "支援 PNG、JPEG 或 WebP，最大 5 MB。瀏覽器在本機裁剪和壓縮，再將不超過 64 KB 的副本儲存到你自己的伺服器。原檔案不會傳送到影像服務。",
   chooseImage: "選擇影像",
   processing: "正在準備…",
   preview: "未儲存的預覽",
-  resetAvatar: "使用內建頭像",
+  resetAvatar: "使用內建吉祥物",
   saveAvatar: "儲存頭像",
   avatarFileError: "請選擇不超過 5 MB 的非空 PNG、JPEG 或 WebP 檔案。",
   avatarPrepareError:
