@@ -36,6 +36,139 @@ test("portable setup selects its supported container mode and explains native so
     true,
   );
   assert.equal(await page.locator("#native-source").isVisible(), true);
+  assert.equal(
+    await page.locator("#requirements-list").getByRole("listitem").count(),
+    0,
+  );
+  assert.equal(
+    await page.locator("#native-source").getAttribute("target"),
+    "_blank",
+  );
+});
+
+test("setup names blocked requirements in seven languages and rechecks without losing the chosen mode", async (t) => {
+  const browser = await chromium.launch({
+    headless: true,
+    chromiumSandbox: true,
+  });
+  t.after(() => browser.close());
+  let ready = false;
+  const session = await createSetupSession({
+    capabilities: async () => ({
+      platform: "win32",
+      architecture: "x64",
+      nodeVersion: "v24.20.0",
+      postgresClientVersion: null,
+      composeVersion: ready ? "2.40.0" : null,
+      native: { ready: true, issues: [] },
+      container: {
+        ready,
+        issues: ready
+          ? []
+          : ["docker_engine_unavailable", "compose_v2_required"],
+      },
+    }),
+    execute: async () => ({ url: "http://127.0.0.1:5000" }),
+  });
+  t.after(() => session.close());
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.goto(session.url);
+  await page.locator("#next:not([disabled])").waitFor();
+  await page.locator('[name="mode"][value="container"]').check();
+  const issueFragments: Record<string, string> = {
+    tr: "Docker motoru",
+    en: "Docker's engine",
+    de: "Docker-Engine",
+    ru: "Движок Docker",
+    "zh-CN": "Docker 引擎",
+    "zh-TW": "Docker 引擎",
+    ar: "محرك Docker",
+  };
+  for (const locale of ["tr", "en", "de", "ru", "zh-CN", "zh-TW", "ar"]) {
+    await page.locator("#language").selectOption(locale);
+    assert.equal(
+      await page.locator("#requirements-list").getByRole("listitem").count(),
+      2,
+    );
+    assert.ok(
+      (await page.locator("#requirements-list").innerText()).includes(
+        issueFragments[locale],
+      ),
+    );
+    assert.equal(await page.locator("#next").isDisabled(), true);
+    assert.equal(
+      await page.evaluate(
+        "document.documentElement.scrollWidth <= window.innerWidth",
+      ),
+      true,
+    );
+  }
+  await page.locator("#language").selectOption("en");
+  assert.match(
+    await page.locator("#requirements-list").innerText(),
+    /Docker.*engine.*start/i,
+  );
+  assert.match(
+    await page.locator("#requirements-list").innerText(),
+    /Compose v2/i,
+  );
+  assert.equal(
+    await page.locator("#requirements-guide").getAttribute("target"),
+    "_blank",
+  );
+  ready = true;
+  await page.locator("#recheck").click();
+  await page.locator("#next:not([disabled])").waitFor();
+  assert.equal(
+    await page.locator('[name="mode"][value="container"]').isChecked(),
+    true,
+  );
+  assert.equal(
+    await page.locator("#requirements-list").getByRole("listitem").count(),
+    0,
+  );
+});
+
+test("a failed readiness recheck remains retryable and never keeps a stale result", async (t) => {
+  const browser = await chromium.launch({
+    headless: true,
+    chromiumSandbox: true,
+  });
+  t.after(() => browser.close());
+  let probes = 0;
+  const session = await createSetupSession({
+    capabilities: async () => {
+      probes++;
+      if (probes === 2) throw Error("fixture probe failure");
+      return {
+        platform: "linux",
+        architecture: "x64",
+        nodeVersion: "v24.20.0",
+        postgresClientVersion: null,
+        composeVersion: "2.40.0",
+        native: { ready: true, issues: [] },
+        container: { ready: true, issues: [] },
+      };
+    },
+    execute: async () => ({ url: "http://127.0.0.1:5000" }),
+  });
+  t.after(() => session.close());
+  const page = await browser.newPage();
+  await page.goto(session.url);
+  await page.locator("#next:not([disabled])").waitFor();
+  await page.locator('[name="mode"][value="container"]').check();
+  assert.equal(await page.locator("#next").isDisabled(), false);
+  await page.locator("#recheck").click();
+  await page.locator("#error:not(:empty)").waitFor();
+  assert.equal(await page.locator("#next").isDisabled(), true);
+  assert.equal(await page.locator("#recheck").isVisible(), true);
+  assert.equal(
+    await page.locator("#requirements-status").innerText(),
+    await page.locator("#error").innerText(),
+  );
+  await page.locator("#recheck").click();
+  await page.locator("#next:not([disabled])").waitFor();
+  assert.equal(await page.locator("#error").innerText(), "");
 });
 
 test("container setup blocks a missing engine and submits container settings when available", async (t) => {

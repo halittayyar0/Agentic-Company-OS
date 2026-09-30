@@ -20,6 +20,8 @@ Read [security-model.md](./security-model.md) before choosing a topology.
 
 Install Node.js 24 and start a Docker Linux engine with Compose v2. Extract the setup ZIP from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest), then run `START.cmd` (Windows) or `sh START.command` (macOS/Linux). Open the printed private link. The wizard pulls a pinned image and provisions PostgreSQL; Git, pnpm and a local source build are unnecessary. Keep both the extracted bundle and the private installation directory to resume. Advanced container budget overrides belong in the installation directory’s `compose.env`; see [efficient work](efficient-work.md).
 
+The wizard checks the selected installation mode and names missing local requirements. It distinguishes Docker missing from an installed but stopped engine, Windows containers, and missing Compose v2. Follow the indicated step and choose **Check again** without losing your choices. The guide opens in a separate tab so the private setup session stays open. This check does not test provider credentials or guarantee the later installation; the reviewed plan rechecks prerequisites before it runs.
+
 ## Source installation prerequisites
 
 - 64-bit host supported by Node.js 24 and the repository's native dependencies
@@ -44,6 +46,8 @@ pnpm run setup
 ```
 
 Open the private setup link printed in that terminal. The wizard offers Turkish, English, German, Russian, Simplified Chinese, Traditional Chinese and Arabic (right-to-left). Choose **This computer** or **Container**, a provider (or configure it later), execution permissions and tool packs. Docker is offered only when a running Linux engine and Compose v2 are detected. Native installation requires an existing dedicated PostgreSQL database; container installation creates its own database volume.
+
+If the selected mode is blocked, the wizard shows the specific detected requirement and an installation guide. You can fix the host and choose **Check again** in the same session. A failed check disables Continue until a fresh result is available. The ready indicator does not validate the PostgreSQL connection string or model credentials. Installation checks the database and runtime; model access needs a separate explicit test in Settings.
 
 The installer builds the application, starts one API and two workers, persists your choices, and checks runtime readiness. Provider credentials and independent operator/control keys are stored outside the checkout under your private installation directory. The native launcher must remain running; Ctrl+C stops its child processes. Container services continue under Compose. A failed container installation retains its services and database for diagnosis and resumption; no volumes are deleted automatically.
 

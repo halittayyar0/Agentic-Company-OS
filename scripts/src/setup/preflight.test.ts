@@ -33,6 +33,18 @@ test("Docker client alone does not prove a working daemon", async () => {
     },
   });
   assert.equal(state.container.ready, false);
+  assert.deepEqual(state.container.issues, ["docker_engine_unavailable"]);
+});
+
+test("a working engine without Compose reports only the missing Compose requirement", async () => {
+  const state = await detectInstallCapabilities({
+    run: async (command, args) => {
+      if (command === "docker" && args[0] === "compose")
+        throw Error("compose plugin unavailable");
+      return available(command, args);
+    },
+  });
+  assert.deepEqual(state.container.issues, ["compose_v2_required"]);
 });
 
 test("Docker Windows containers cannot run the Linux application image", async () => {

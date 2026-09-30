@@ -25,6 +25,144 @@
     "zh-TW": "此預先建置的套件使用 Docker。直接安裝到電腦請開啟本機安裝指南。",
     ar: "تستخدم هذه الحزمة الجاهزة Docker. للتثبيت مباشرة على الكمبيوتر، افتح دليل التثبيت المحلي.",
   };
+  const issueWords = {
+    en: {
+      heading: "These requirements need attention:",
+      recheck: "Check again",
+      guide: "Open installation guide",
+      native_source_required:
+        "This package installs with Docker. For a direct installation, use the source guide.",
+      unsupported_platform:
+        "This operating system is unsupported. Use Windows, macOS, or Linux.",
+      unsupported_architecture:
+        "This processor is unsupported. Use x64 or ARM64.",
+      node_24_required: "Node.js 24 is required for direct installation.",
+      docker_unavailable:
+        "Docker is missing. Install Docker Desktop or Docker Engine.",
+      docker_engine_unavailable:
+        "Docker's engine is not running. Start Docker Desktop or the Docker service.",
+      docker_linux_engine_required:
+        "Docker is using Windows containers. Switch to Linux containers.",
+      compose_v2_required:
+        "Docker Compose v2 is missing. Install or enable Compose v2.",
+    },
+    tr: {
+      heading: "Devam etmek için bunları düzelt:",
+      recheck: "Yeniden kontrol et",
+      guide: "Kurulum rehberini aç",
+      native_source_required:
+        "Bu paket Docker ile kurulur. Doğrudan kurulum için kaynak kodu rehberini kullan.",
+      unsupported_platform:
+        "Bu işletim sistemi desteklenmiyor. Windows, macOS veya Linux kullan.",
+      unsupported_architecture:
+        "Bu işlemci desteklenmiyor. x64 veya ARM64 kullan.",
+      node_24_required: "Doğrudan kurulum için Node.js 24 gerekli.",
+      docker_unavailable:
+        "Docker bulunamadı. Docker Desktop veya Docker Engine kur.",
+      docker_engine_unavailable:
+        "Docker motoru çalışmıyor. Docker Desktop'ı veya Docker hizmetini başlat.",
+      docker_linux_engine_required:
+        "Docker Windows container'larını kullanıyor. Linux container'larına geç.",
+      compose_v2_required:
+        "Docker Compose v2 eksik. Compose v2'yi kur veya etkinleştir.",
+    },
+    de: {
+      heading: "Diese Voraussetzungen fehlen:",
+      recheck: "Erneut prüfen",
+      guide: "Installationsanleitung öffnen",
+      native_source_required:
+        "Dieses Paket installiert mit Docker. Für die direkte Installation nutze die Quellanleitung.",
+      unsupported_platform:
+        "Dieses Betriebssystem wird nicht unterstützt. Nutze Windows, macOS oder Linux.",
+      unsupported_architecture:
+        "Dieser Prozessor wird nicht unterstützt. Nutze x64 oder ARM64.",
+      node_24_required:
+        "Für die direkte Installation ist Node.js 24 erforderlich.",
+      docker_unavailable:
+        "Docker fehlt. Installiere Docker Desktop oder Docker Engine.",
+      docker_engine_unavailable:
+        "Die Docker-Engine läuft nicht. Starte Docker Desktop oder den Docker-Dienst.",
+      docker_linux_engine_required:
+        "Docker nutzt Windows-Container. Wechsle zu Linux-Containern.",
+      compose_v2_required:
+        "Docker Compose v2 fehlt. Installiere oder aktiviere Compose v2.",
+    },
+    ru: {
+      heading: "Перед продолжением устраните проблемы:",
+      recheck: "Проверить снова",
+      guide: "Открыть руководство по установке",
+      native_source_required:
+        "Этот пакет устанавливается через Docker. Для прямой установки используйте руководство по исходному коду.",
+      unsupported_platform:
+        "Эта система не поддерживается. Используйте Windows, macOS или Linux.",
+      unsupported_architecture:
+        "Этот процессор не поддерживается. Используйте x64 или ARM64.",
+      node_24_required: "Для прямой установки нужен Node.js 24.",
+      docker_unavailable:
+        "Docker не найден. Установите Docker Desktop или Docker Engine.",
+      docker_engine_unavailable:
+        "Движок Docker не работает. Запустите Docker Desktop или службу Docker.",
+      docker_linux_engine_required:
+        "Docker использует контейнеры Windows. Переключитесь на контейнеры Linux.",
+      compose_v2_required:
+        "Docker Compose v2 отсутствует. Установите или включите Compose v2.",
+    },
+    "zh-CN": {
+      heading: "继续之前请解决以下问题：",
+      recheck: "重新检查",
+      guide: "打开安装指南",
+      native_source_required:
+        "此安装包使用 Docker。直接安装请参阅源码安装指南。",
+      unsupported_platform:
+        "不支持此操作系统。请使用 Windows、macOS 或 Linux。",
+      unsupported_architecture: "不支持此处理器。请使用 x64 或 ARM64。",
+      node_24_required: "直接安装需要 Node.js 24。",
+      docker_unavailable:
+        "未找到 Docker。请安装 Docker Desktop 或 Docker Engine。",
+      docker_engine_unavailable:
+        "Docker 引擎未运行。请启动 Docker Desktop 或 Docker 服务。",
+      docker_linux_engine_required:
+        "Docker 正在使用 Windows 容器。请切换到 Linux 容器。",
+      compose_v2_required: "缺少 Docker Compose v2。请安装或启用 Compose v2。",
+    },
+    "zh-TW": {
+      heading: "繼續之前請解決以下問題：",
+      recheck: "重新檢查",
+      guide: "開啟安裝指南",
+      native_source_required:
+        "此安裝套件使用 Docker。直接安裝請參閱原始碼安裝指南。",
+      unsupported_platform:
+        "不支援此作業系統。請使用 Windows、macOS 或 Linux。",
+      unsupported_architecture: "不支援此處理器。請使用 x64 或 ARM64。",
+      node_24_required: "直接安裝需要 Node.js 24。",
+      docker_unavailable:
+        "找不到 Docker。請安裝 Docker Desktop 或 Docker Engine。",
+      docker_engine_unavailable:
+        "Docker 引擎未執行。請啟動 Docker Desktop 或 Docker 服務。",
+      docker_linux_engine_required:
+        "Docker 正在使用 Windows 容器。請切換至 Linux 容器。",
+      compose_v2_required: "缺少 Docker Compose v2。請安裝或啟用 Compose v2。",
+    },
+    ar: {
+      heading: "عالج هذه المتطلبات قبل المتابعة:",
+      recheck: "تحقق مجددًا",
+      guide: "افتح دليل التثبيت",
+      native_source_required:
+        "تُثبَّت هذه الحزمة عبر Docker. للتثبيت المباشر استخدم دليل الشيفرة المصدرية.",
+      unsupported_platform:
+        "نظام التشغيل هذا غير مدعوم. استخدم Windows أو macOS أو Linux.",
+      unsupported_architecture: "هذا المعالج غير مدعوم. استخدم x64 أو ARM64.",
+      node_24_required: "يتطلب التثبيت المباشر Node.js 24.",
+      docker_unavailable:
+        "لم يُعثر على Docker. ثبّت Docker Desktop أو Docker Engine.",
+      docker_engine_unavailable:
+        "محرك Docker لا يعمل. شغّل Docker Desktop أو خدمة Docker.",
+      docker_linux_engine_required:
+        "يستخدم Docker حاويات Windows. انتقل إلى حاويات Linux.",
+      compose_v2_required:
+        "Docker Compose v2 غير متوفر. ثبّت Compose v2 أو فعّله.",
+    },
+  };
   const permissionWords = {
     tr: [
       "Dosya değişiklikleri",
@@ -84,7 +222,9 @@
   let stage = 0,
     capabilities = null,
     plan = null,
-    busy = false;
+    busy = false,
+    checking = false,
+    checkFailed = false;
   let copy = {};
   const value = (name) => new FormData(form).get(name);
   function translate() {
@@ -155,6 +295,8 @@
     draw();
   }
   function draw() {
+    const selected = capabilities?.[value("mode")];
+    const issues = issueWords[$("language").value] || issueWords.en;
     form.elements
       .namedItem("phoneAccess")
       .querySelector('[value="private_network"]').disabled =
@@ -171,13 +313,33 @@
     $("language").disabled = busy || stage === 3;
     $("next").hidden = stage === 3;
     $("next").textContent = stage === 2 ? copy.install : copy.next;
-    $("next").disabled =
-      busy || !capabilities || !capabilities[value("mode")].ready;
-    $("requirements").textContent = !capabilities
+    $("next").disabled = busy || checking || !selected?.ready;
+    $("requirements-status").textContent = checking
       ? copy.checking
-      : capabilities[value("mode")].ready
-        ? copy.ready
-        : copy.unavailable;
+      : checkFailed
+        ? copy.error
+        : !selected
+          ? copy.checking
+          : selected.ready
+            ? copy.ready
+            : issues.heading;
+    $("requirements-list").replaceChildren();
+    for (const issue of selected?.issues || []) {
+      const item = document.createElement("li");
+      item.textContent = issues[issue] || copy.unavailable;
+      $("requirements-list").append(item);
+    }
+    $("requirements-list").hidden = !selected || selected.ready || checking;
+    $("recheck").hidden = !capabilities && !checkFailed;
+    $("recheck").disabled = busy || checking;
+    $("recheck").textContent = issues.recheck;
+    $("requirements-guide").hidden = !selected || selected.ready || checking;
+    $("requirements-guide").textContent = issues.guide;
+    $("requirements-guide").href =
+      "https://github.com/halittayyar0/Agentic-Company-OS/blob/main/docs/self-hosting.md#" +
+      (value("mode") === "native"
+        ? "source-installation-prerequisites"
+        : "portable-container-installer");
     const portable = capabilities?.native?.issues?.includes(
       "native_source_required",
     );
@@ -314,6 +476,30 @@
       $("error").textContent = copy.error;
     }
   });
+  async function refreshCapabilities() {
+    if (busy || checking) return;
+    checkFailed = false;
+    checking = true;
+    draw();
+    try {
+      const result = await api("capabilities");
+      capabilities = result;
+      if (result.native.issues.includes("native_source_required")) {
+        document.querySelector('[name="mode"][value="native"]').disabled = true;
+        document.querySelector('[name="mode"][value="container"]').checked =
+          true;
+      }
+      $("error").textContent = "";
+    } catch (error) {
+      capabilities = null;
+      checkFailed = true;
+      $("error").textContent = copy[error.message] || copy.error;
+    } finally {
+      checking = false;
+      draw();
+    }
+  }
+  $("recheck").addEventListener("click", refreshCapabilities);
   form.addEventListener("change", draw);
   $("back").addEventListener("click", () => {
     stage--;
@@ -368,17 +554,5 @@
     $("error").textContent = copy.session;
     return;
   }
-  api("capabilities")
-    .then((result) => {
-      capabilities = result;
-      if (result.native.issues.includes("native_source_required")) {
-        document.querySelector('[name="mode"][value="native"]').disabled = true;
-        document.querySelector('[name="mode"][value="container"]').checked =
-          true;
-      }
-      draw();
-    })
-    .catch((error) => {
-      $("error").textContent = copy[error.message] || copy.error;
-    });
+  void refreshCapabilities();
 })();
