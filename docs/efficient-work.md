@@ -41,6 +41,40 @@ Environment overrides: `MAX_TASK_FAMILY_ACTIVE`, `MAX_TASK_FAMILY_TOTAL`,
 `MAX_TASK_FAMILY_TOKENS`, `MAX_TASK_FAMILY_REPORTED_COST_USD`,
 `MAX_RECURRING_FAMILY_DAILY_TOKENS`, `MAX_RECURRING_FAMILY_DAILY_REPORTED_COST_USD`.
 
+## Resume after a usage pause
+
+Open the paused project's page and choose **Check allowance and resume**. The
+check makes no model request and does not increase an allowance or reset usage.
+It queues eligible budget-paused tasks in that project family together; tasks
+with exhausted individual limits, inactive owners, leases or unfinished actions
+stay paused. Completed/cancelled tasks and other block reasons are not reopened.
+The result reports how many tasks were queued and how many budget-paused tasks
+remain. This action supports families of up to 1,000 stored tasks; larger
+families are rejected as a whole, with no partial transition.
+
+If the allowance is still exhausted:
+
+1. Read the recorded reason to identify the task, family or rolling daily limit.
+2. Wait for a rolling daily window to renew, or deliberately raise the named
+   limit. For portable containers, use the installation directory's private
+   `compose.env`; source installations use their environment configuration.
+3. Restart the API and workers using the existing installation launcher so the
+   changed environment is read. For a source Compose installation, run
+   `docker compose up -d app worker-1 worker-2` from the checkout. Keep the existing database.
+4. Choose **Check allowance and resume** again. Finite lifetime usage and current
+   recurring-cycle usage are retained. Waiting alone does not reset a finite cap.
+
+If the connection drops, choose **Inspect receipt**. Reloading keeps the pending
+request in that browser tab. Inspection never sends it again. A missing receipt
+does not prove that an in-flight request cannot finish; the offered **Retry the
+same request** reuses its identity safely. After a confirmed rejection, another
+explicit allowance check creates a fresh identity. If browser storage is
+unavailable, nothing is sent until recovery details can be saved.
+
+The control does not grant permission for paid tools or other approved actions.
+Resumed work can make the model calls already allowed by the installation, so
+keep provider-side spend limits as well as these recorded-usage controls.
+
 ## Installation choices
 
 The portable setup bundle requires Node.js 24 and a running Docker engine. It pulls

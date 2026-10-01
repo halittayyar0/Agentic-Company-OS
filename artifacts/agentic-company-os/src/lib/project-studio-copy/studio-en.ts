@@ -1,5 +1,35 @@
 import type { ProjectStudioCopy } from "../project-studio-copy";
 const copy: ProjectStudioCopy = {
+  budgetHeading: "Paused at the usage limit",
+  budgetHelp:
+    "Checking uses no model tokens and does not reset usage. Resumed work uses your existing allowance. If it is exhausted, raise the configured limits or wait for the rolling daily window to renew.",
+  budgetGuide: "Usage limits guide",
+  budgetCheck: "Check allowance and resume",
+  budgetChecking: "Checking…",
+  budgetAccepted: "{count} tasks queued to continue.",
+  budgetStillPaused: "{count} tasks remain paused.",
+  budgetUnknown:
+    "The result is unconfirmed. Inspect the saved receipt before sending a new request.",
+  budgetInspect: "Inspect receipt",
+  budgetMissing:
+    "No committed receipt was found yet. The request may still be in progress; you can safely retry the same request.",
+  budgetRetry: "Retry the same request",
+  budgetStorage:
+    "Recovery details could not be stored in this tab. Nothing was sent, or details for a confirmed action could not be cleared. Enable browser storage and inspect the receipt.",
+  budgetSnapshotError: "Could not read the current task scope. Check again.",
+  budgetLoadError:
+    "The resume control could not load. Reload the page; the saved request is retained.",
+  budgetReasonEmergency:
+    "Emergency stop is active. Check again after it is lifted.",
+  budgetReasonChanged:
+    "The task or root scope changed. Review its current state.",
+  budgetReasonInvalid:
+    "This task has no valid rooted scope. No work was resumed.",
+  budgetReasonLarge: "This family exceeds 1,000 tasks. No work was resumed.",
+  budgetReasonExhausted:
+    "The allowance is still exhausted. Check again after raising the limit or the rolling daily window renews.",
+  budgetReasonIneligible:
+    "No work can safely resume right now. Review owners, approvals and unfinished operations.",
   answerHeading: "{name} is waiting for your answer",
   answerHelp:
     "Review the question. Sending your answer queues this task to continue.",

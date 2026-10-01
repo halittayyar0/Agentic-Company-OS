@@ -50,11 +50,52 @@ summary; the final browser run requires the full explanation in the viewport.
 
 ## Required follow-through before publication
 
-The existing UI can answer an operator question but cannot resume a budget
-block. Complete an authenticated, receipt-backed check-and-resume control for
-budget-paused work, with seven-language recovery and uncertain-response tests.
-It must retain recorded spend, preserve emergency-stop/ownership boundaries,
-and never reopen approval, input, cancelled or completed work.
+The authenticated budget control is now implemented locally. A scope-bound UUID
+receipt commits atomically with eligible queue transitions. Duplicate sends and
+later replay return the same result; usage is retained. The runtime control and
+canonical workforce/approval/task locks preserve emergency-stop, cancellation,
+ownership and unfinished-operation boundaries. Invalid or oversized families
+fail closed before any transition. The browser saves its request before sending,
+inspects after uncertain delivery/reload, and offers only an explicit same-ID
+retry. A confirmed rejection permits a fresh explicit check.
+
+Additional acceptance evidence:
+
+- The transaction-client regression failed when injected reads were ignored;
+  its final spend-reader run passed 12 checks. API typecheck passed.
+- Ten route checks passed, including concurrent replay, immutable rejection,
+  individual/shared/daily allowance, retained usage, inactive and leased work,
+  mixed block reasons, unfinished operations, emergency stop, forced rollback,
+  corrupt cycles, the 1,000-member bound and a cancellation race.
+- The complete spend/route flow passed 20 tests on a fresh native PostgreSQL 17
+  fixture on Windows. The owned database was stopped and its PID file was absent.
+  The CI now includes the same flow in a separate disposable PostgreSQL database.
+- Five browser-recovery unit checks passed. New regression cases first exposed
+  cross-root marker clearing, invalid identities writing damaged markers and
+  non-ISO receipt timestamps; all were corrected and rerun successfully.
+- The final Chromium task/resume run passed 28/28: seven selected-language phone
+  views and keyboard actions, lost acknowledgement/reload/GET recovery, explicit
+  same-ID retry, storage denial, rejected allowance then a fresh check, failed
+  lazy-asset reload with the request retained, and Arabic 320px at 200% text.
+- Frontend typecheck and production build passed. The budget recovery chunk is
+  conditional. Its chunk, selected studio-pack growth and bounded route/API
+  wiring measure 11.5 KiB raw / 4.1 KiB gzip against a dedicated 13 KB / 4.5 KB
+  feature cap; previous route, media and base ceilings remain unchanged. Total
+  selected-language code is 1379.1 KiB raw / 415.0 KiB gzip.
+- Production dependency audit found no known vulnerabilities; the dependency
+  license policy passed. API regeneration produced no remaining generated diff.
+  Touched formatting and diff checks passed; full integration review remains
+  before publication.
+
+The new operator flow exposed an installation gap: container resume rewrote
+`compose.env`, discarding custom allowance limits. A failing executor regression
+confirmed this. Resume now preserves only recognized positive budget settings
+in both the saved config and launch environment; arbitrary secrets or execution
+settings are not inherited. Invalid/duplicate settings and unsafe private files
+fail closed without overwriting them. The completed-preference boundary remains
+unchanged. All 12 installer/parser/resume/deployment checks and scripts typecheck
+passed, including preserving approved limits, rejecting duplicate/invalid limits,
+and refusing oversized or linked private configuration without overwriting it.
 
 Then synchronize with PR #35 after its required checks pass, regenerate the API,
 verify the complete candidate, push a PR, inspect all required platform/security

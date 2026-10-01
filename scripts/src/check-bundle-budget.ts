@@ -92,6 +92,10 @@ const budgets = {
   // selected language pack. Measure their growth against the v0.3.2 build
   // instead of raising the allowance for unrelated code.
   firstTaskModelCheckGzipBytes: 450,
+  // Budget resume is one conditional recovery chunk plus selected studio-copy
+  // growth and bounded route/API wiring. Existing route ceilings stay fixed.
+  budgetResumeRawBytes: 13_000,
+  budgetResumeGzipBytes: 4_500,
   totalCodeRawBytes: 1_345_000 + 30_000 + 29_000,
   // The separately requested 30-skill library adds a lazy route and a small
   // draft helper. Preserve the previous 396 KB ceiling for all other code;
@@ -635,8 +639,39 @@ if (
 ) {
   violations.push("Local utility workbench exceeds its lazy-route budget.");
 }
+const budgetResumeAssets = codeAssets.filter((asset) =>
+  /^budget-task-resume-[^/]+\.js$/u.test(asset.fileName),
+);
+if (budgetResumeAssets.length !== 1)
+  violations.push("Expected one conditional budget resume recovery asset.");
+// Existing passing 0.3.9 local build (0ee2e67): largest studio pack is
+// 8557 raw / 2826 gzip bytes. Its studio sources match released c408141.
+// Scope/root bindings and lazy loading remain in existing generated/route code;
+// bound that integration to 2 KB raw / 900 bytes gzip within the feature cap.
+const budgetResumeRawBytes =
+  2_000 +
+  budgetResumeAssets.reduce((sum, asset) => sum + asset.rawBytes, 0) +
+  Math.max(
+    0,
+    Math.max(...studioLocaleAssets.map((asset) => asset.rawBytes)) - 8_557,
+  );
+const budgetResumeGzipBytes =
+  900 +
+  budgetResumeAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0) +
+  Math.max(
+    0,
+    Math.max(...studioLocaleAssets.map((asset) => asset.gzipBytes)) - 2_826,
+  );
+if (
+  budgetResumeRawBytes > budgets.budgetResumeRawBytes ||
+  budgetResumeGzipBytes > budgets.budgetResumeGzipBytes
+)
+  violations.push(
+    "Budget resume exceeds its recovery, selected-language and integration feature cap.",
+  );
 if (
   totalCodeGzipBytes -
+    budgetResumeGzipBytes -
     skillLibraryGzipBytes -
     customizationGzipBytes -
     localUtilityGzipBytes -
@@ -650,13 +685,13 @@ if (
   );
 }
 
-if (totalCodeRawBytes > budgets.totalCodeRawBytes) {
+if (totalCodeRawBytes - budgetResumeRawBytes > budgets.totalCodeRawBytes) {
   violations.push(
     `total raw code ${formatBytes(totalCodeRawBytes)} exceeds ${formatBytes(budgets.totalCodeRawBytes)}`,
   );
 }
 
-if (totalCodeGzipBytes > budgets.totalCodeGzipBytes) {
+if (totalCodeGzipBytes - budgetResumeGzipBytes > budgets.totalCodeGzipBytes) {
   violations.push(
     `total gzip code ${formatBytes(totalCodeGzipBytes)} exceeds ${formatBytes(budgets.totalCodeGzipBytes)}`,
   );
@@ -770,6 +805,9 @@ console.table(
     raw: formatBytes(asset.rawBytes),
     gzip: formatBytes(asset.gzipBytes),
   })),
+);
+console.log(
+  `Budget resume recovery, selected studio-pack growth and bounded route wiring: ${formatBytes(budgetResumeRawBytes)} raw / ${formatBytes(budgetResumeGzipBytes)} gzip (13 KB / 4.5 KB feature cap).`,
 );
 console.log(
   `Code with one language per localized surface: ${formatBytes(totalCodeRawBytes)} raw / ${formatBytes(totalCodeGzipBytes)} gzip. All home packs: ${formatBytes(allHomeLocaleRawBytes)} raw / ${formatBytes(allHomeLocaleGzipBytes)} gzip. All projects packs: ${formatBytes(allProjectLocaleRawBytes)} raw / ${formatBytes(allProjectLocaleGzipBytes)} gzip. All new-project packs: ${formatBytes(allNewProjectLocaleRawBytes)} raw / ${formatBytes(allNewProjectLocaleGzipBytes)} gzip. All emergency packs: ${formatBytes(allEmergencyLocaleRawBytes)} raw / ${formatBytes(allEmergencyLocaleGzipBytes)} gzip. Media total: ${formatBytes(totalMediaRawBytes)} raw.`,

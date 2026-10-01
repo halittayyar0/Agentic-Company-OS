@@ -105,6 +105,8 @@ Routine tasks start on the economical route. Additional tool definitions load on
 
 A parent waiting for active children makes no model calls. Recurring work waits between scheduled cycles. Usage checks include execution and review calls, using per-task limits, a shared allowance for the parent and its subtasks, and rolling daily allowances for recurring work.
 
+If a usage limit pauses work, the project page can check the allowance and resume eligible tasks together. Checking uses no model tokens, retains usage and provides a saved receipt if the connection drops. [Usage limits and safe resumption →](./docs/efficient-work.md#resume-after-a-usage-pause)
+
 Before finishing, the existing reviewer compares the agent's report with a short record of tool results and child-task states. This adds no extra review call; recorded execution still does not guarantee output quality. [Completion review and privacy →](./docs/completion-review.md)
 
 **You control model costs.** Cloud providers bill your own account; local models use your hardware. Explicit free or local selections do not silently fall back to paid models. Reported usage limits can overshoot by an in-flight request, and missing cost remains unknown. Use provider-side limits for a billing ceiling.

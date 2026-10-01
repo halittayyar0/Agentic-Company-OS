@@ -6,6 +6,7 @@ import test from "node:test";
 import { executeBoundedCommand } from "../endurance/process-supervisor";
 import { createInstallationExecutor } from "./installer";
 import { planInstallation } from "./plan";
+import { readInstallation } from "./resume";
 import type { InstallCapabilities } from "./preflight";
 
 const capabilities: InstallCapabilities = {
@@ -37,6 +38,64 @@ const makePlan = (mode: string) =>
     },
     capabilities,
   );
+
+test("completed container resume retains operator budget limits in both config and launch", async (t) => {
+  const parent = await mkdtemp(
+    path.join(await realpath(tmpdir()), "acos-budget-resume-installer-"),
+  );
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const base = {
+    workspaceRoot: process.cwd(),
+    installationParent: parent,
+    pnpmPath: process.execPath,
+    capabilities: async () => capabilities,
+    verify: async () => topology,
+    applyPreferences: async () => {},
+    run: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
+  };
+  const first = createInstallationExecutor(base),
+    plan = makePlan("container");
+  t.after(() => first.stopNative());
+  await first.execute(plan, {}, () => {});
+  const directory = first.installationDirectory()!;
+  await first.stopNative();
+  const file = path.join(directory, "compose.env");
+  const original = await readFile(file, "utf8");
+  await writeFile(
+    file,
+    original +
+      "MAX_TASK_FAMILY_TOKENS=987654\nMAX_TASK_FAMILY_REPORTED_COST_USD=4.5\nOPERATOR_AUTH_TOKEN=do-not-inherit\n",
+  );
+  const restored = await readInstallation(
+    directory,
+    process.cwd(),
+    async () => capabilities,
+  );
+  let observed: NodeJS.ProcessEnv | undefined;
+  const next = createInstallationExecutor({
+    ...base,
+    resume: {
+      resources: restored.resources,
+      planId: restored.plan.id,
+      complete: restored.complete,
+    },
+    run: async (command) => {
+      observed = command.environment;
+      return { stdout: "", stderr: "", exitCode: 0 };
+    },
+    applyPreferences: async () => {
+      assert.fail("completed preferences must not be reapplied");
+    },
+  });
+  t.after(() => next.stopNative());
+  await next.execute(restored.plan, {}, () => {});
+  assert.equal(observed?.MAX_TASK_FAMILY_TOKENS, "987654");
+  assert.equal(observed?.MAX_TASK_FAMILY_REPORTED_COST_USD, "4.5");
+  const saved = await readFile(file, "utf8");
+  assert.match(saved, /MAX_TASK_FAMILY_TOKENS=987654/);
+  assert.match(saved, /MAX_TASK_FAMILY_REPORTED_COST_USD=4.5/);
+  assert.doesNotMatch(saved, /do-not-inherit/);
+});
 
 test("container installation finishes only after preferences and both topology checks", async (t) => {
   const parent = await mkdtemp(

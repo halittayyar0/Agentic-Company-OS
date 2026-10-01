@@ -1,5 +1,36 @@
 import type { ProjectStudioCopy } from "../project-studio-copy";
 const copy: ProjectStudioCopy = {
+  budgetHeading: "Kullanım sınırı nedeniyle duraklatıldı",
+  budgetHelp:
+    "Bu kontrol model kullanmaz ve kullanımı sıfırlamaz. Devam eden işler mevcut kullanım sınırına tabidir. Sınır doluysa yapılandırmadaki sınırı artırın veya günlük pencerenin yenilenmesini bekleyin.",
+  budgetGuide: "Kullanım sınırları rehberi",
+  budgetCheck: "Kullanım sınırını kontrol et ve devam ettir",
+  budgetChecking: "Kontrol ediliyor…",
+  budgetAccepted: "{count} iş devam etmek üzere sıraya alındı.",
+  budgetStillPaused: "{count} iş duraklatılmış olarak kaldı.",
+  budgetUnknown:
+    "İşlemin sonucu doğrulanamadı. Yeni bir istek göndermeden önce kaydedilen işlem kaydını kontrol edin.",
+  budgetInspect: "İşlem kaydını kontrol et",
+  budgetMissing:
+    "Henüz kaydedilmiş bir işlem bulunamadı. İstek hâlâ işleniyor olabilir; aynı isteği güvenle yeniden gönderebilirsiniz.",
+  budgetRetry: "Aynı isteği yeniden gönder",
+  budgetStorage:
+    "Kurtarma bilgileri bu sekmede saklanamadı. Hiçbir istek gönderilmedi veya doğrulanmış işlemin bilgileri silinemedi. Tarayıcı depolamasını açıp işlem kaydını kontrol edin.",
+  budgetSnapshotError: "Güncel iş kapsamı alınamadı. Tekrar kontrol edin.",
+  budgetLoadError:
+    "Devam ettirme kontrolü yüklenemedi. Sayfayı yenileyin; kaydedilmiş istek korunur.",
+  budgetReasonEmergency:
+    "Acil durdurma etkin. Kaldırıldıktan sonra tekrar kontrol edin.",
+  budgetReasonChanged:
+    "İş veya ana iş kapsamı değişti. Güncel durumu kontrol edin.",
+  budgetReasonInvalid:
+    "Bu işin geçerli bir ana iş kapsamı yok. Devam ettirilmedi.",
+  budgetReasonLarge:
+    "Bu iş ailesi 1.000 iş sınırını aşıyor. Hiçbir iş devam ettirilmedi.",
+  budgetReasonExhausted:
+    "Kullanım sınırı hâlâ dolu. Sınırı artırdıktan veya günlük pencere yenilendikten sonra tekrar kontrol edin.",
+  budgetReasonIneligible:
+    "Şu anda güvenle devam ettirilebilecek bir iş yok. İşlerin sorumlularını, izinlerini ve devam eden işlemleri kontrol edin.",
   answerHeading: "{name} senden yanıt bekliyor",
   answerHelp:
     "Soruyu gözden geçir. Yanıtını gönderdiğinde görev devam etmek üzere sıraya alınır.",

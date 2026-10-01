@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { lazy, Suspense, useRef } from "react";
 import { Link, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -47,6 +47,21 @@ import {
 } from "@/lib/format";
 import { splitProjectBrief } from "@/lib/project-brief";
 import { cn } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/error-boundary";
+
+const BudgetTaskResume = lazy(
+  () => import("@/components/tasks/budget-task-resume"),
+);
+
+function hasBudgetResumeRecovery(taskId: number) {
+  try {
+    return (
+      sessionStorage.getItem(`acos.task-budget-resume.v1:${taskId}`) !== null
+    );
+  } catch {
+    return false;
+  }
+}
 
 export default function TaskDetail() {
   const { locale, t } = useLocale();
@@ -83,6 +98,7 @@ export default function TaskDetail() {
 }
 
 function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
+  const budgetSeenFor = useRef<number | null>(null);
   const { locale, t } = useLocale();
   const [, projectParams] = useRoute("/projects/:projectId");
   const [, legacyParams] = useRoute("/tasks/:taskId");
@@ -339,7 +355,46 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
             >
               {projectBrief.outcome}
             </p>
-            {project.blockedReason === "budget" ? warning : null}
+            {project.blockedReason === "budget" ||
+            budgetSeenFor.current === taskId ||
+            hasBudgetResumeRecovery(taskId) ? (
+              <ErrorBoundary
+                resetKey={taskId}
+                FallbackComponent={() => (
+                  <section
+                    role="alert"
+                    className="mt-4 rounded-control border bg-card p-4 text-sm"
+                  >
+                    <p>{c.budgetLoadError}</p>
+                    <Button
+                      className="mt-3 min-h-11"
+                      onClick={() => window.location.reload()}
+                    >
+                      {c.retry}
+                    </Button>
+                  </section>
+                )}
+              >
+                <Suspense
+                  fallback={
+                    <p role="status" className="mt-4 text-sm">
+                      {c.budgetChecking}
+                    </p>
+                  }
+                >
+                  <BudgetTaskResume
+                    key={taskId}
+                    taskId={taskId}
+                    reason={project.lastError}
+                    c={c}
+                    onResumed={() => {
+                      budgetSeenFor.current = taskId;
+                      void refetch();
+                    }}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            ) : null}
           </div>
 
           <ProjectTeamSummary

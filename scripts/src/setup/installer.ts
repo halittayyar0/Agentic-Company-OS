@@ -27,6 +27,7 @@ import {
   type PhoneConnection,
 } from "./phone-access";
 import { acquireInstallationLock } from "./installation-lock";
+import { readInstallationBudgetOverrides } from "./budget-overrides";
 
 const DATABASE_PROBE = `
 import { createRequire } from 'node:module';
@@ -252,6 +253,11 @@ export function createInstallationExecutor(options: {
             phone?.url,
             options.prebuiltImage,
           );
+          if (options.resume)
+            Object.assign(
+              deployment.environment,
+              await readInstallationBudgetOverrides(owned.directory),
+            );
           await writeExactOutputBundle({
             outputDirectory: owned.directory,
             overwrite: Boolean(options.resume),
