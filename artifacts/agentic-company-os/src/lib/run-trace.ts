@@ -1,5 +1,9 @@
 import type { ActivityEvent, Task } from "@workspace/api-client-react";
 import {
+  completionReviewView,
+  type CompletionReviewView,
+} from "./completion-review-view";
+import {
   activityOperationsEventKind,
   type OperationsEventKind,
 } from "./activity-summary";
@@ -46,6 +50,7 @@ export interface RunTraceEvent extends Pick<
   categories: Exclude<RunTraceCategory, "all">[];
   detail: RunTraceDetailItem[];
   operationsEventKind?: OperationsEventKind;
+  completionReview?: CompletionReviewView;
 }
 
 export interface RunTraceStats {
@@ -302,8 +307,13 @@ function eventCategories(
 
 function projectEvent(event: ActivityEvent): RunTraceEvent {
   const operationsEventKind = activityOperationsEventKind(event);
+  const completionReview =
+    event.type === "judge_review"
+      ? completionReviewView(event.detail?.completionEvidence, event.taskId)
+      : null;
   return {
     ...(operationsEventKind ? { operationsEventKind } : {}),
+    ...(completionReview ? { completionReview } : {}),
     id: event.id,
     agentId: event.agentId,
     taskId: event.taskId,

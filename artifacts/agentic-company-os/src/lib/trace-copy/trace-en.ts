@@ -1,5 +1,41 @@
 import type { TraceCopy } from "../trace-copy";
 const copy: TraceCopy = {
+  reviewEvidence: {
+    loadError: "Review details could not be loaded. Reload to retry.",
+    title: "Review basis",
+    help: "Recorded at review time, not live status or a guarantee of output quality. Commands, raw output and child reports are excluded.",
+    cycle: "Reviewed cycle",
+    operations: "Operation records",
+    children: "Child tasks",
+    counts: "Counts across the review snapshot",
+    countsHelp:
+      "Counts include records outside the short samples below. Earlier task cycles are excluded.",
+    receipts: "Sampled operations",
+    childSample: "Sampled child tasks",
+    limited:
+      "Showing {shown} of {total}. Additional or unreadable records are not shown.",
+    empty:
+      "No operations or child tasks were recorded for this review. Text-only work can be valid without tool use.",
+    taskStep: "Task operation",
+    approvedAction: "Approved action",
+    resultFlag: "Reported success flag",
+    confirmedApplied: "Operator confirmed applied",
+    confirmedNotApplied: "Operator confirmed not applied",
+    states: {
+      reserved: "Reserved",
+      running: "Running",
+      succeeded: "Succeeded",
+      failed: "Failed",
+      unknown: "Unknown outcome",
+      pending: "Pending",
+      planning: "Planning",
+      in_progress: "In progress",
+      awaiting_approval: "Awaiting approval",
+      blocked: "Blocked",
+      completed: "Completed",
+      cancelled: "Cancelled",
+    },
+  },
   title: "Activity records",
   help: "Stored task facts and the selected activity page. A record does not establish that a stage passed or an operation succeeded.",
   loading: "Loading records…",

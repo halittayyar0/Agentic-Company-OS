@@ -1,5 +1,7 @@
 import type { Locale } from "./i18n";
+import type { CompletionReviewCopy } from "./completion-review-copy";
 export type TraceCopy = {
+  reviewEvidence: CompletionReviewCopy;
   title: string;
   help: string;
   loading: string;

@@ -85,7 +85,11 @@ const activity = [
     detail: { status: "failed" },
   },
 ];
-async function setup(page: Page, locale: Locale, suppliedActivity = activity) {
+async function setup(
+  page: Page,
+  locale: Locale,
+  suppliedActivity: readonly unknown[] = activity,
+) {
   await page.addInitScript(
     (lang) => localStorage.setItem("acos.locale.v1", lang),
     locale,
@@ -124,6 +128,139 @@ async function setup(page: Page, locale: Locale, suppliedActivity = activity) {
   return { ...base, state };
 }
 for (const locale of LOCALES) {
+  test(`${locale} completion review shows bounded recorded evidence on mobile`, async ({
+    page,
+  }, info) => {
+    const c = await loadTraceCopy(locale),
+      r = c.reviewEvidence;
+    const panelRequests: string[] = [];
+    page.on("request", (request) => {
+      const pathname = new URL(request.url()).pathname;
+      if (/completion-review-panel-[^/]+\.js$/u.test(pathname))
+        panelRequests.push(pathname);
+    });
+    await setup(page, locale, [
+      {
+        id: 44,
+        agentId: 1,
+        taskId: 101,
+        type: "judge_review",
+        summary: "Original blocked review",
+        severity: "warning",
+        createdAt: date,
+        detail: {
+          verdict: "block",
+          completionEvidence: {
+            source: "persisted_runtime_metadata",
+            taskId: 101,
+            cycleNumber: 0,
+            receiptTotal: 14,
+            receiptCounts: [
+              {
+                state: "failed",
+                reconciliationDecision: "confirmed_not_applied",
+                count: 1,
+              },
+              { state: "failed", reconciliationDecision: null, count: 2 },
+              { state: "succeeded", reconciliationDecision: null, count: 10 },
+              { state: "unknown", reconciliationDecision: null, count: 1 },
+            ],
+            receiptsTruncated: true,
+            receipts: [
+              {
+                id: "receipt-1",
+                tool: "vm_run_command",
+                state: "failed",
+                executionKind: "approved_action",
+                reconciliationDecision: "confirmed_not_applied",
+                ok: false,
+                exitCode: 1,
+                stdout: "RAW_REVIEW_SECRET",
+              },
+            ],
+            childTotal: 10,
+            childCounts: [
+              { status: "failed", count: 1 },
+              { status: "completed", count: 9 },
+            ],
+            childrenTruncated: true,
+            children: [
+              { id: 102, status: "failed", report: "RAW_CHILD_SECRET" },
+            ],
+          },
+        },
+      },
+    ]);
+    await page.setViewportSize({
+      width: locale === "ar" ? 320 : 390,
+      height: 844,
+    });
+    await page.emulateMedia({
+      colorScheme: ["ar", "de", "zh-TW"].includes(locale) ? "light" : "dark",
+    });
+    await page.goto("/projects/101?view=plan");
+    const trace = page.getByRole("region", { name: c.title, exact: true });
+    const row = trace.getByRole("button", { name: /Original blocked review/ });
+    await expect(row).toBeVisible();
+    expect(panelRequests).toHaveLength(0);
+    await row.focus();
+    await row.press("Enter");
+    await expect(row).toHaveAttribute("aria-expanded", "true");
+    const panel = trace.getByRole("region", {
+      name: `${r.title} #44`,
+      exact: true,
+    });
+    await expect(panel.getByText(r.help, { exact: true })).toBeVisible();
+    expect(panelRequests).toHaveLength(1);
+    await expect(panel.getByText(r.countsHelp, { exact: true })).toBeVisible();
+    await expect(
+      panel.getByText(r.approvedAction, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      panel.getByText(r.confirmedNotApplied, { exact: true }),
+    ).toBeVisible();
+    const number = (value: number) =>
+      new Intl.NumberFormat(locale).format(value);
+    const limit = (shown: number, total: number) =>
+      r.limited
+        .replace("{shown}", number(shown))
+        .replace("{total}", number(total));
+    await expect(panel.getByText(limit(1, 14), { exact: true })).toBeVisible();
+    await expect(panel.getByText(limit(1, 10), { exact: true })).toBeVisible();
+    expect(await panel.textContent()).not.toMatch(
+      /RAW_REVIEW_SECRET|RAW_CHILD_SECRET/,
+    );
+    expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+      true,
+    );
+    const download = page.waitForEvent("download");
+    await trace.getByRole("button", { name: c.export, exact: true }).click();
+    const file = await download;
+    const payload = JSON.parse(await readFile((await file.path())!, "utf8"));
+    expect(payload.events[0].completionReview).toMatchObject({
+      cycleNumber: 0,
+      receiptTotal: 14,
+      childTotal: 10,
+      receiptsTruncated: true,
+    });
+    expect(JSON.stringify(payload)).not.toMatch(
+      /RAW_REVIEW_SECRET|RAW_CHILD_SECRET/,
+    );
+    if (locale === "en" || locale === "ar") {
+      await panel.scrollIntoViewIfNeeded();
+      await panel.screenshot({ path: info.outputPath(`review-${locale}.png`) });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await expect(panel).toBeVisible();
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = "32px";
+      });
+      expect(
+        await panel.evaluate((el) => el.scrollWidth <= el.clientWidth),
+      ).toBe(true);
+    }
+    await row.press("Enter");
+    await expect(row).toHaveAttribute("aria-expanded", "false");
+  });
   test(
     locale + " activity and delegation records preserve evidence on mobile",
     async ({ page }, info) => {
@@ -271,6 +408,58 @@ for (const locale of LOCALES) {
     },
   );
 }
+test("review asset failures retain activity controls and reload cleanly", async ({
+  page,
+}) => {
+  const c = await loadTraceCopy("en");
+  await setup(page, "en", [
+    {
+      id: 44,
+      agentId: 1,
+      taskId: 101,
+      type: "judge_review",
+      summary: "Original blocked review",
+      severity: "warning",
+      createdAt: date,
+      detail: {
+        completionEvidence: {
+          source: "persisted_runtime_metadata",
+          taskId: 101,
+          cycleNumber: 0,
+          receiptTotal: 0,
+          receiptCounts: [],
+          receiptsTruncated: false,
+          receipts: [],
+          childTotal: 0,
+          childCounts: [],
+          childrenTruncated: false,
+          children: [],
+        },
+      },
+    },
+  ]);
+  await page.route("**/assets/completion-review-panel-*.js", (route) =>
+    route.abort("failed"),
+  );
+  await page.goto("/projects/101?view=plan");
+  const trace = page.getByRole("region", { name: c.title, exact: true });
+  await trace.getByRole("button", { name: /Original blocked review/ }).click();
+  await expect(
+    trace.getByText("Review details could not be loaded. Reload to retry.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    trace.getByRole("button", { name: c.export, exact: true }),
+  ).toBeEnabled();
+  await page.unroute("**/assets/completion-review-panel-*.js");
+  await trace.getByRole("button", { name: c.retry, exact: true }).click();
+  await trace.getByRole("button", { name: /Original blocked review/ }).click();
+  await expect(
+    trace.getByText(c.reviewEvidence.empty, { exact: true }),
+  ).toBeVisible();
+});
+
 test("stale activity and delegation snapshots remain usable and explicitly recover", async ({
   page,
 }) => {

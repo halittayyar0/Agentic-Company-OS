@@ -1,5 +1,42 @@
 import type { TraceCopy } from "../trace-copy";
 const copy: TraceCopy = {
+  reviewEvidence: {
+    loadError:
+      "Die Prüfungsdetails konnten nicht geladen werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
+    title: "Grundlage der Prüfung",
+    help: "Aufzeichnungen zum Prüfzeitpunkt, kein Live-Status und keine Garantie für die Ergebnisqualität. Befehle, Rohausgaben und Unteraufgabenberichte sind ausgeschlossen.",
+    cycle: "Geprüfter Zyklus",
+    operations: "Vorgangsaufzeichnungen",
+    children: "Unteraufgaben",
+    counts: "Anzahl im Prüfungssnapshot",
+    countsHelp:
+      "Die Zahlen umfassen auch Aufzeichnungen außerhalb der kurzen Auszüge. Frühere Aufgabenzyklen sind ausgeschlossen.",
+    receipts: "Ausgewählte Vorgänge",
+    childSample: "Ausgewählte Unteraufgaben",
+    limited:
+      "{shown} von {total} werden angezeigt. Weitere oder nicht lesbare Aufzeichnungen werden nicht angezeigt.",
+    empty:
+      "Für diese Prüfung wurden keine Vorgänge oder Unteraufgaben aufgezeichnet. Reine Textaufgaben können ohne Werkzeuge gültig sein.",
+    taskStep: "Aufgabenvorgang",
+    approvedAction: "Genehmigte Aktion",
+    resultFlag: "Gemeldetes Erfolgskennzeichen",
+    confirmedApplied: "Bediener hat Ausführung bestätigt",
+    confirmedNotApplied: "Bediener hat Nichtausführung bestätigt",
+    states: {
+      reserved: "Reserviert",
+      running: "Läuft",
+      succeeded: "Erfolgreich",
+      failed: "Fehlgeschlagen",
+      unknown: "Ergebnis ungewiss",
+      pending: "Ausstehend",
+      planning: "In Planung",
+      in_progress: "In Bearbeitung",
+      awaiting_approval: "Wartet auf Genehmigung",
+      blocked: "Blockiert",
+      completed: "Abgeschlossen",
+      cancelled: "Abgebrochen",
+    },
+  },
   title: "Aktivitätsaufzeichnungen",
   help: "Gespeicherte Aufgabendaten und die ausgewählte Aktivitätsseite. Ein Eintrag belegt weder eine bestandene Phase noch eine erfolgreiche Ausführung.",
   loading: "Aufzeichnungen werden geladen…",
