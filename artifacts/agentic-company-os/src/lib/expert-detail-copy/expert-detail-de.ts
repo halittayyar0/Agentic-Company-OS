@@ -1,5 +1,19 @@
 import type { ExpertDetailCopy } from "../expert-detail-copy";
 const copy: ExpertDetailCopy = {
+  keeper: {
+    title: "Gemeinsam, Schritt für Schritt.",
+    talk: "Lass uns sprechen",
+    idle: "Sag mir, wo du anfangen möchtest. Wir können die Aufgabe in überschaubare Schritte aufteilen.",
+    working:
+      "Der letzte Datensatz zeigt laufende Arbeit. Wir können den nächsten Schritt besprechen.",
+    blocked:
+      "Der letzte Datensatz zeigt einen blockierten Schritt. Klären wir gemeinsam, was gebraucht wird.",
+    archived:
+      "Dieser Experte ist archiviert. Stelle ihn bei Bedarf in den Einstellungen wieder her.",
+    unknown:
+      "Der aktuelle Zustand konnte nicht bestätigt werden. Aktualisiere den Datensatz, bevor du dich darauf verlässt.",
+    ai: "KI-Experte · Nachrichten werden erst beim Senden übermittelt.",
+  },
   managedPrompt:
     "Diese verwaltete Rolle folgt der Sprache des Arbeitsbereichs. Durch Bearbeiten und Speichern entstehen eigene Anweisungen; spätere Sprachänderungen behalten Ihren Text bei.",
   promptRequired: "Gib vor dem Speichern Arbeitsanweisungen ein.",

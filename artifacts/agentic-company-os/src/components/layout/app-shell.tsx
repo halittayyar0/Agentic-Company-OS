@@ -40,6 +40,7 @@ import {
   EmergencyStopBanner,
 } from "@/components/ops/emergency-control";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { KeeperMotionToggle } from "@/components/agent/keeper-motion-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -590,6 +591,7 @@ function TopBar({
           </kbd>
         </button>
 
+        <KeeperMotionToggle compact />
         <NewMenu t={t} />
 
         <div className="max-sm:[&_button]:!size-[44px] max-sm:[&_button]:!min-h-[44px] max-sm:[&_button]:!min-w-[44px] max-sm:[&_button]:!p-0 [&_button]:!h-10 [&_button]:!rounded-[11px] [&_button]:!border-border [&_button]:!bg-card [&_button]:!text-foreground [&_button]:!shadow-none [&_button:hover]:!border-foreground/20">

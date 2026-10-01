@@ -3,6 +3,15 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.10] - 2026-10-01
+
+### Improved
+
+- Ten original Keeper mascots now have distinct colorful shells and gentle movement that follows the recorded agent status. Working, blocked and idle agents have different motion; archived agents and uncertain reads stay still. Uploaded portraits remain static.
+- A friendly profile companion in all seven application languages explains the next step. Selecting the mascot or its conversation button opens and focuses the existing chat while preserving the draft; it never sends a message automatically. The companion is interface guidance, not a generated reply.
+- A global motion control persists locally and synchronizes across tabs. System reduced-motion preferences take precedence, and animations pause in hidden tabs or outside the viewport. The new image is about 75 KiB; motion requires no service or model calls.
+- Profile guidance uses the existing selected-language lazy packs. Measured feature code growth has a separate 10 KB raw / 4 KB gzip cap against a clean v0.3.9 build; earlier bundle and media ceilings remain fixed.
+
 ## [0.3.9] - 2026-10-01
 
 ### Improved

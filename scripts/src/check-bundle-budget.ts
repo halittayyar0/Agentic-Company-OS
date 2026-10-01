@@ -96,6 +96,10 @@ const budgets = {
   // Every previous total/base/asset/media ceiling remains unchanged.
   completionReviewRawBytes: 10_000,
   completionReviewGzipBytes: 4_000,
+  // User-requested live mascots have a separate measured allowance. Existing
+  // base, total, individual asset, language-family and media ceilings stay fixed.
+  keeperLiveRawBytes: 10_000,
+  keeperLiveGzipBytes: 4_000,
   totalCodeRawBytes: 1_345_000 + 30_000 + 29_000,
   // The separately requested 30-skill library adds a lazy route and a small
   // draft helper. Preserve the previous 396 KB ceiling for all other code;
@@ -675,6 +679,59 @@ if (
   violations.push(
     "Completion review basis exceeds its assets and selected-language growth budget.",
   );
+// Fresh clean v0.3.9 (12ccba9) build with Node 24.19 and the pinned lockfile:
+// gzip uses the same level 9 as this checker: entry 114976/33571,
+// CSS 131244/20737, expert profile 26836/8210, controls 134035/41988,
+// largest expert pack 9311/3141 bytes raw/gzip.
+// Only these named integration surfaces receive the bounded feature allowance.
+const keeperSurfaces = [
+  {
+    match: (name: string) => /^index-[^/]+\.js$/u.test(name),
+    raw: 114_976,
+    gzip: 33_571,
+  },
+  {
+    match: (name: string) => /^index-[^/]+\.css$/u.test(name),
+    raw: 131_244,
+    gzip: 20_737,
+  },
+  {
+    match: (name: string) =>
+      /^detail-[^/]+\.js$/u.test(name) &&
+      readFileSync(resolve(outputDirectory, name), "utf8").includes(
+        "expert-detail-copy",
+      ),
+    raw: 26_836,
+    gzip: 8_210,
+  },
+  {
+    match: (name: string) => /^vendor-ui-[^/]+\.js$/u.test(name),
+    raw: 134_035,
+    gzip: 41_988,
+  },
+];
+let keeperLiveRawBytes = Math.max(
+  0,
+  Math.max(...expertDetailLocaleAssets.map((asset) => asset.rawBytes)) - 9_311,
+);
+let keeperLiveGzipBytes = Math.max(
+  0,
+  Math.max(...expertDetailLocaleAssets.map((asset) => asset.gzipBytes)) - 3_141,
+);
+for (const surface of keeperSurfaces) {
+  const matches = codeAssets.filter((asset) => surface.match(asset.fileName));
+  if (matches.length !== 1)
+    throw new Error("Expected exactly one measured Keeper integration asset.");
+  keeperLiveRawBytes += Math.max(0, matches[0].rawBytes - surface.raw);
+  keeperLiveGzipBytes += Math.max(0, matches[0].gzipBytes - surface.gzip);
+}
+if (
+  keeperLiveRawBytes > budgets.keeperLiveRawBytes ||
+  keeperLiveGzipBytes > budgets.keeperLiveGzipBytes
+)
+  violations.push(
+    "Living Keepers exceed their 10 KB raw / 4 KB gzip integration budget.",
+  );
 if (
   totalCodeGzipBytes -
     skillLibraryGzipBytes -
@@ -683,6 +740,7 @@ if (
     providerSetupGzipBytes -
     budgets.providerSetupIntegrationGzipBytes -
     completionReviewGzipBytes -
+    keeperLiveGzipBytes -
     firstTaskModelCheckGzipBytes >
   budgets.baseCodeGzipBytes
 ) {
@@ -691,14 +749,17 @@ if (
   );
 }
 
-if (totalCodeRawBytes - completionReviewRawBytes > budgets.totalCodeRawBytes) {
+if (
+  totalCodeRawBytes - completionReviewRawBytes - keeperLiveRawBytes >
+  budgets.totalCodeRawBytes
+) {
   violations.push(
     `total raw code ${formatBytes(totalCodeRawBytes)} exceeds ${formatBytes(budgets.totalCodeRawBytes)}`,
   );
 }
 
 if (
-  totalCodeGzipBytes - completionReviewGzipBytes >
+  totalCodeGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes >
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
@@ -821,6 +882,9 @@ console.log(
 
 console.log(
   `Completion review assets, selected trace-pack growth and bounded route wiring: ${formatBytes(completionReviewRawBytes)} raw / ${formatBytes(completionReviewGzipBytes)} gzip (10 KB / 4 KB feature cap).`,
+);
+console.log(
+  `Living Keepers measured integration and selected-language growth: ${formatBytes(keeperLiveRawBytes)} raw / ${formatBytes(keeperLiveGzipBytes)} gzip (10 KB / 4 KB feature cap).`,
 );
 if (violations.length > 0) {
   throw new Error(

@@ -1,5 +1,7 @@
 import type { Locale } from "./i18n";
+import type { KeeperCompanionCopy } from "./keeper-copy";
 export type ExpertDetailCopy = {
+  keeper: KeeperCompanionCopy;
   invalid: string;
   missing: string;
   loadError: string;
