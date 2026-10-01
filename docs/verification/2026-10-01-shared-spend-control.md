@@ -139,6 +139,23 @@ coverage regressions. The owned disposable cluster stopped and its PID file was
 absent. Full source/UI and platform publication gates remain before this
 candidate can be called released.
 
+## Complete-suite fixture correction
+
+The full Linux UI gate on `6f56ef7` failed seven runtime-status language cases
+and passed 963 cases. Each failure identified the same newly valid scope read,
+`GET /api/tasks/101/budget-resume`, missing from that test's strict fixture. The
+Turkish case reproduced the failure locally before the correction.
+
+The fixture now serves only that exact read and checks the localized budget
+action is visible for budget-paused work and absent for the emergency-paused
+view. Other methods still reach the strict unexpected-request handler; no
+resume mutation is allowed by opening the screen. The unexpected-request and
+write assertions remain intact. Independent read-only review reported no
+actionable findings. Integrated local UI acceptance then passed 62/62 across
+the seven runtime-status cases, task recovery and completion-review traces.
+No production code or admission behavior changed in this correction. The
+updated candidate still requires a fresh complete exact-head gate result.
+
 Verify the complete 0.3.10 candidate, push a PR, inspect all required
 platform/security checks, merge and prove the exact public installer/image.
 No new release claim is supported by these local checks. Physical-phone,

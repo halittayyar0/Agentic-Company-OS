@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
 import { LOCALES } from "../../artifacts/agentic-company-os/src/lib/i18n";
 import { loadTraceCopy } from "../../artifacts/agentic-company-os/src/lib/trace-copy";
+import { loadProjectStudioCopy } from "../../artifacts/agentic-company-os/src/lib/project-studio-copy";
 import {
   getToolCopy,
   toolMessage,
@@ -15,6 +16,7 @@ for (const locale of LOCALES) {
   }, info) => {
     const copy = getToolCopy(locale);
     const trace = await loadTraceCopy(locale);
+    const studio = await loadProjectStudioCopy(locale);
     await page.setViewportSize({ width: 320, height: 844 });
     await page.addInitScript(
       (language) => localStorage.setItem("acos.locale.v1", language),
@@ -25,6 +27,7 @@ for (const locale of LOCALES) {
     });
     const harness = await installStudioFixtures(page);
     let paused = false;
+    let budgetReads = 0;
     const reason = toolMessage(locale, "schedulerCostBudget", {
       used: "1.250000",
       limit: 1,
@@ -63,6 +66,15 @@ for (const locale of LOCALES) {
     await page.route("**/api/tasks/101", (route) =>
       route.fulfill({ json: project() }),
     );
+    await page.route("**/api/tasks/101/budget-resume", (route) => {
+      // Only the scope read is expected. A mutation still reaches the strict
+      // fixture fallback and fails the unexpected-request assertion below.
+      if (route.request().method() !== "GET") return route.fallback();
+      budgetReads++;
+      return route.fulfill({
+        json: { taskId: 101, rootTaskId: 101, budgetPaused: !paused },
+      });
+    });
     await page.route("**/api/tasks/101/members", (route) =>
       route.fulfill({ json: [] }),
     );
@@ -124,6 +136,16 @@ for (const locale of LOCALES) {
         { exact: true },
       );
       await expect(notice).toBeVisible();
+      if (state === "budget") {
+        await expect.poll(() => budgetReads).toBeGreaterThan(0);
+        await expect(
+          page.getByRole("button", { name: studio.budgetCheck, exact: true }),
+        ).toBeVisible();
+      } else {
+        await expect(
+          page.getByRole("button", { name: studio.budgetCheck, exact: true }),
+        ).toHaveCount(0);
+      }
       await notice.scrollIntoViewIfNeeded();
       expect(
         await notice.evaluate(
