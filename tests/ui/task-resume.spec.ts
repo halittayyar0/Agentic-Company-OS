@@ -1,4 +1,7 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { WORKSPACE_LOCALES } from "../../artifacts/api-server/src/lib/workspace-locale";
+import { toolMessage } from "../../artifacts/api-server/src/lib/orchestrator/tool-localization";
+import { loadProjectStudioCopy } from "../../artifacts/agentic-company-os/src/lib/project-studio-copy";
 
 const QUESTION_ID = "11111111-1111-4111-8111-111111111111";
 const NOW = "2026-08-29T09:00:00.000Z";
@@ -150,12 +153,14 @@ async function installResumeMocks(
   {
     failResume,
     blockedReason = "user_input",
+    lastError = blockedTask.lastError,
   }: {
     failResume: boolean;
-    blockedReason?: "user_input" | "runtime_failure";
+    blockedReason?: "user_input" | "runtime_failure" | "budget";
+    lastError?: string;
   },
 ) {
-  let currentTask = { ...blockedTask, blockedReason };
+  let currentTask = { ...blockedTask, blockedReason, lastError };
   let resumeAttempts = 0;
   const receipts = new Map<string, unknown>();
   let loseAck = false;
@@ -658,3 +663,51 @@ test.describe("blocked task operator handoff", () => {
     expect([...harness.unexpected]).toEqual([]);
   });
 });
+
+for (const locale of WORKSPACE_LOCALES) {
+  test(`${locale} shared budget reason fits a phone and does not offer an answer form`, async ({
+    page,
+  }, info) => {
+    await page.addInitScript(
+      (value) => localStorage.setItem("acos.locale.v1", value),
+      locale,
+    );
+    await page.setViewportSize({
+      width: locale === "ar" ? 320 : 390,
+      height: 844,
+    });
+    await page.emulateMedia({
+      colorScheme: locale === "ar" ? "light" : "dark",
+    });
+    const reason = toolMessage(locale, "schedulerFamilyDailyCostBudget", {
+      rootTaskId: 501,
+      used: "8.10",
+      limit: 8,
+    });
+    const harness = await installResumeMocks(page, {
+      failResume: false,
+      blockedReason: "budget",
+      lastError: reason,
+    });
+    await page.goto("/tasks/501");
+    await expect(page.getByText(reason, { exact: true })).toBeVisible();
+    await expect(page.getByText(reason, { exact: true })).toBeInViewport({
+      ratio: 1,
+    });
+    const copy = await loadProjectStudioCopy(locale);
+    await expect(
+      page.getByRole("textbox", { name: copy.answerLabel, exact: true }),
+    ).toHaveCount(0);
+    expect(harness.task().status).toBe("blocked");
+    expect(harness.attempts()).toBe(0);
+    expect([...harness.unexpected]).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: info.outputPath(`family-budget-${locale}.png`),
+    });
+  });
+}

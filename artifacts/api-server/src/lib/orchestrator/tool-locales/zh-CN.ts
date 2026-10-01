@@ -12,6 +12,14 @@ export const toolZhCN: ToolCopy = {
   schedulerStepBudget: "已达到操作员设置的步骤上限（{used}/{limit}）。",
   schedulerTokenBudget: "已达到令牌预算上限（{used}/{limit}）。",
   schedulerCostBudget: "已达到提供商报告的费用预算上限（${used}/{limit}）。",
+  schedulerFamilyTokenBudget:
+    "任务 #{rootTaskId} 及其子任务已达到共享令牌预算上限（{used}/{limit}）。",
+  schedulerFamilyCostBudget:
+    "任务 #{rootTaskId} 及其子任务已达到供应商报告的共享费用预算上限（${used}/{limit}）。",
+  schedulerFamilyDailyTokenBudget:
+    "任务 #{rootTaskId} 及其子任务已达到最近 24 小时的共享令牌预算上限（{used}/{limit}）。",
+  schedulerFamilyDailyCostBudget:
+    "任务 #{rootTaskId} 及其子任务已达到最近 24 小时供应商报告的共享费用预算上限（${used}/{limit}）。",
   schedulerBudgetStopped: "任务因安全预算限制而停止：{reason}",
   pathInvalid: "错误：path 必须是字符串。",
   pathNoncanonical:

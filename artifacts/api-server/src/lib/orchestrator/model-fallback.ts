@@ -108,9 +108,14 @@ function errorText(error: ProviderErrorShape): string {
  * for model failover. Application bugs and lifecycle errors are deliberately
  * rethrown so a fallback cannot hide them.
  */
+/** An application admission gate must never become a provider retry because
+ * its operator-facing explanation happens to contain provider error words. */
+export class ModelAdmissionDeniedError extends Error {}
+
 export function classifyRecoverableModelError(
   error: unknown,
 ): ModelFailureKind | null {
+  if (error instanceof ModelAdmissionDeniedError) return null;
   if (!(error instanceof Error) && (typeof error !== "object" || !error)) {
     return null;
   }

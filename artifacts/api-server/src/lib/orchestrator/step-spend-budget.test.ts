@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 import { eq } from "drizzle-orm";
 import {
   agentsTable,
@@ -8,20 +8,23 @@ import {
   dbReady,
   taskAttemptsTable,
   tasksTable,
+  usageEventsTable,
 } from "@workspace/db";
 import { readRuntimeOperationsConfig } from "../runtime-operations-config";
 import { registerRuntimeInstance } from "./runtime-instance-registry";
 import { stepTask } from "./step-task";
 
-test("a recurring task stops inside its tool loop when reported token budget is consumed", async (t) => {
+async function probeBudget(t: TestContext, shared: boolean) {
   await dbReady;
   const names = [
     "MAX_TASK_TOKENS",
+    "MAX_TASK_FAMILY_TOKENS",
     "AI_INTEGRATIONS_OPENAI_API_KEY",
     "AI_INTEGRATIONS_OPENAI_BASE_URL",
   ] as const;
   const before = names.map((n) => process.env[n]);
-  process.env.MAX_TASK_TOKENS = "2";
+  process.env.MAX_TASK_TOKENS = shared ? "100000" : "2";
+  process.env.MAX_TASK_FAMILY_TOKENS = shared ? "2" : "250000";
   process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test";
   process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
   t.after(() =>
@@ -49,14 +52,38 @@ test("a recurring task stops inside its tool loop when reported token budget is 
       runLeaseExpiresAt: leaseExpiresAt,
     })
     .returning();
+  const root = shared
+    ? (
+        await db
+          .insert(tasksTable)
+          .values({
+            title: "Recurring shared budget",
+            brief: "Test",
+            ownerAgentId: agent.id,
+            autonomyMode: "continuous",
+            cadenceSeconds: 3600,
+          })
+          .returning()
+      )[0]
+    : null;
+  if (root)
+    await db.insert(usageEventsTable).values({
+      agentId: agent.id,
+      taskId: root.id,
+      kind: "judge",
+      modelId: "fixture",
+      provider: "fixture",
+      totalTokens: 2,
+    });
   const [task] = await db
     .insert(tasksTable)
     .values({
       title: "Recurring budget",
       brief: "Test",
       ownerAgentId: agent.id,
-      autonomyMode: "continuous",
-      cadenceSeconds: 3600,
+      autonomyMode: shared ? "finite" : "continuous",
+      cadenceSeconds: shared ? null : 3600,
+      parentTaskId: root?.id ?? null,
       status: "in_progress",
       leaseOwner,
       leaseExpiresAt,
@@ -128,8 +155,13 @@ test("a recurring task stops inside its tool loop when reported token budget is 
     .select()
     .from(tasksTable)
     .where(eq(tasksTable.id, task.id));
-  assert.equal(calls, 1);
+  assert.equal(calls, shared ? 0 : 1);
   assert.equal(saved.status, "blocked");
   assert.equal(saved.blockedReason, "budget");
   assert.equal(saved.leaseOwner, null);
-});
+}
+
+test("a recurring task stops inside its tool loop when reported token budget is consumed", (t) =>
+  probeBudget(t, false));
+test("a child makes no model call after its recurring parent's shared review budget is consumed", (t) =>
+  probeBudget(t, true));

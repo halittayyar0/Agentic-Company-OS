@@ -103,7 +103,7 @@ The built-in library covers **research, software, data, documents and operations
 
 Routine tasks start on the economical route. Additional tool definitions load on demand. Existing agents can be reused, and delegation is checked by the server: the default limit is **four active tasks per task family**, including the parent.
 
-A parent waiting for active children makes no model calls. Recurring work waits between scheduled cycles. Usage checks include execution and review calls, using per-task/cycle limits and a rolling daily allowance for recurring work.
+A parent waiting for active children makes no model calls. Recurring work waits between scheduled cycles. Usage checks include execution and review calls, using per-task limits, a shared allowance for the parent and its subtasks, and rolling daily allowances for recurring work.
 
 Before finishing, the existing reviewer compares the agent's report with a short record of tool results and child-task states. This adds no extra review call; recorded execution still does not guarantee output quality. [Completion review and privacy →](./docs/completion-review.md)
 

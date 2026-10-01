@@ -182,6 +182,10 @@ RUNTIME_CONTROL_KEY=<different-at-least-32-random-characters>
 MAX_TASK_STEPS=0
 MAX_TASK_TOKENS=100000
 MAX_TASK_REPORTED_COST_USD=1
+MAX_TASK_FAMILY_TOKENS=250000
+MAX_TASK_FAMILY_REPORTED_COST_USD=3
+MAX_RECURRING_FAMILY_DAILY_TOKENS=500000
+MAX_RECURRING_FAMILY_DAILY_REPORTED_COST_USD=8
 MAX_CONSECUTIVE_TASK_FAILURES=5
 MODEL_FALLBACK_MAX_ROUTES=3
 MODEL_RETRY_ATTEMPTS_PER_ROUTE=2
@@ -236,23 +240,27 @@ Prefer a same-host proxy with the API still on `127.0.0.1`. Use non-loopback mod
 
 ### Circuit-breaker and browser limits
 
-| Variable                               | Baseline | Operational meaning                                                                                                                                            |
-| -------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MAX_TASK_STEPS`                       | `0`      | Optional lifetime step cap; `0` keeps finite work alive until an outcome or another circuit breaker. Waiting for initial model setup does not use this budget. |
-| `MAX_TASK_TOKENS`                      | `100000` | Finite-task token circuit breaker; continuous lifetime usage remains ledgered.                                                                                 |
-| `MAX_TASK_REPORTED_COST_USD`           | `1`      | Finite-task reported-cost breaker; recurring work needs provider/account budgets.                                                                              |
-| `MAX_CONSECUTIVE_TASK_FAILURES`        | `5`      | Blocks finite work after repeated runtime bugs; provider/model exhaustion stays queued.                                                                        |
-| `MODEL_FALLBACK_MAX_ROUTES`            | `3`      | Maximum cost-compatible model routes tried in one logical scheduler step; clamped to 1-4.                                                                      |
-| `MODEL_RETRY_ATTEMPTS_PER_ROUTE`       | `2`      | Attempts per route for transient timeout/rate-limit/provider errors; clamped to 1-3.                                                                           |
-| `MODEL_RETRY_BASE_DELAY_MS`            | `750`    | Exponential in-step retry base; each delay is capped at 5000 ms.                                                                                               |
-| `AGENT_BROWSER_ALLOW_PRIVATE_NETWORKS` | `false`  | Dangerous compatibility opt-in for local/private/special destinations; leave false.                                                                            |
-| `AGENT_BROWSER_ALLOW_WEBSOCKETS`       | `false`  | WebSockets stay off by default; enabled targets still pass the public-target URL policy.                                                                       |
-| `MAX_BROWSER_SESSIONS`                 | `4`      | Per-runtime-process live browser-session cap, not a fleet-wide quota.                                                                                          |
-| `BROWSER_SESSION_IDLE_MS`              | `900000` | Closes idle sessions after 15 minutes; runtime minimum is 60000 ms.                                                                                            |
-| `BROWSER_CONTROL_LEASE_MS`             | `30000`  | Exact operator take-over lease TTL; runtime bounds it to 5 seconds-5 minutes.                                                                                  |
-| `MAX_AGENT_TOOL_ROUNDS`                | adaptive | Optional hard override for model tool rounds; clamped to 4-16.                                                                                                 |
+| Variable                                       | Baseline | Operational meaning                                                                                                                                            |
+| ---------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MAX_TASK_STEPS`                               | `0`      | Optional lifetime step cap; `0` keeps finite work alive until an outcome or another circuit breaker. Waiting for initial model setup does not use this budget. |
+| `MAX_TASK_TOKENS`                              | `100000` | Finite-task token circuit breaker; continuous lifetime usage remains ledgered.                                                                                 |
+| `MAX_TASK_REPORTED_COST_USD`                   | `1`      | Finite-task reported-cost breaker; recurring work needs provider/account budgets.                                                                              |
+| `MAX_TASK_FAMILY_TOKENS`                       | `250000` | Shared parent/descendant token admission limit for a finite job or recurring root cycle.                                                                       |
+| `MAX_TASK_FAMILY_REPORTED_COST_USD`            | `3`      | Shared reported-cost admission limit; includes execution and reviews.                                                                                          |
+| `MAX_RECURRING_FAMILY_DAILY_TOKENS`            | `500000` | Shared recurring-family tokens in a rolling 24-hour window, including previous cycles.                                                                         |
+| `MAX_RECURRING_FAMILY_DAILY_REPORTED_COST_USD` | `8`      | Shared recurring-family reported cost in a rolling 24-hour window. Unknown cost is not zero.                                                                   |
+| `MAX_CONSECUTIVE_TASK_FAILURES`                | `5`      | Blocks finite work after repeated runtime bugs; provider/model exhaustion stays queued.                                                                        |
+| `MODEL_FALLBACK_MAX_ROUTES`                    | `3`      | Maximum cost-compatible model routes tried in one logical scheduler step; clamped to 1-4.                                                                      |
+| `MODEL_RETRY_ATTEMPTS_PER_ROUTE`               | `2`      | Attempts per route for transient timeout/rate-limit/provider errors; clamped to 1-3.                                                                           |
+| `MODEL_RETRY_BASE_DELAY_MS`                    | `750`    | Exponential in-step retry base; each delay is capped at 5000 ms.                                                                                               |
+| `AGENT_BROWSER_ALLOW_PRIVATE_NETWORKS`         | `false`  | Dangerous compatibility opt-in for local/private/special destinations; leave false.                                                                            |
+| `AGENT_BROWSER_ALLOW_WEBSOCKETS`               | `false`  | WebSockets stay off by default; enabled targets still pass the public-target URL policy.                                                                       |
+| `MAX_BROWSER_SESSIONS`                         | `4`      | Per-runtime-process live browser-session cap, not a fleet-wide quota.                                                                                          |
+| `BROWSER_SESSION_IDLE_MS`                      | `900000` | Closes idle sessions after 15 minutes; runtime minimum is 60000 ms.                                                                                            |
+| `BROWSER_CONTROL_LEASE_MS`                     | `30000`  | Exact operator take-over lease TTL; runtime bounds it to 5 seconds-5 minutes.                                                                                  |
+| `MAX_AGENT_TOOL_ROUNDS`                        | adaptive | Optional hard override for model tool rounds; clamped to 4-16.                                                                                                 |
 
-Task limits are evaluated between scheduler steps and may overshoot within a multi-round step. Keep provider-side spend limits and alerts. Browser URL/DNS checks are application-layer defense in depth, not a replacement for firewall or outbound-proxy policy.
+Task and family spend limits are checked before execution, fallback and review requests. Recorded usage may be incomplete, and concurrent or in-flight calls can overshoot. Limits do not reserve funds or cancel a call already sent. Keep provider-side spend limits and alerts; see [efficient work](efficient-work.md) for reset and resume behavior. Browser URL/DNS checks are application-layer defense in depth, not a replacement for firewall or outbound-proxy policy.
 
 ## 5. Build and run
 

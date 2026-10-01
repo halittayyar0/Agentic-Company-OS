@@ -216,6 +216,26 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
   const terminable = !["completed", "failed", "cancelled"].includes(
     project.status,
   );
+  const warning =
+    project.lastError && project.blockedReason !== "user_input" ? (
+      <div
+        className="mx-auto mt-4 max-w-[1680px] rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 text-xs text-amber-800 dark:text-amber-200"
+        role="status"
+      >
+        <span className="inline-flex items-center gap-2 font-semibold">
+          <AlertTriangle size={13} aria-hidden /> {c.warning}:
+        </span>{" "}
+        <span className="block text-muted-foreground">{c.source}</span>
+        <p dir="auto" className="whitespace-pre-wrap break-words">
+          {project.lastError}
+        </p>
+        {project.nextAttemptAt
+          ? studioText(c.nextAttempt, {
+              time: timeFromNow(project.nextAttemptAt),
+            })
+          : ""}
+      </div>
+    ) : null;
 
   return (
     <div className="project-studio min-h-full bg-background px-[12px] py-3 [overflow-wrap:anywhere] sm:px-5 sm:py-5">
@@ -319,6 +339,7 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
             >
               {projectBrief.outcome}
             </p>
+            {project.blockedReason === "budget" ? warning : null}
           </div>
 
           <ProjectTeamSummary
@@ -365,25 +386,7 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
           </Button>
         </div>
       )}
-      {project.lastError && project.blockedReason !== "user_input" ? (
-        <div
-          className="mx-auto mt-4 max-w-[1680px] rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 text-xs text-amber-800 dark:text-amber-200"
-          role="status"
-        >
-          <span className="inline-flex items-center gap-2 font-semibold">
-            <AlertTriangle size={13} aria-hidden /> {c.warning}:
-          </span>{" "}
-          <span className="block text-muted-foreground">{c.source}</span>
-          <p dir="auto" className="whitespace-pre-wrap break-words">
-            {project.lastError}
-          </p>
-          {project.nextAttemptAt
-            ? studioText(c.nextAttempt, {
-                time: timeFromNow(project.nextAttemptAt),
-              })
-            : ""}
-        </div>
-      ) : null}
+      {project.blockedReason !== "budget" ? warning : null}
 
       <BlockedTaskResume
         task={project}

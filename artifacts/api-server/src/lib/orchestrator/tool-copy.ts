@@ -412,6 +412,14 @@ export const toolTr = {
   schedulerTokenBudget: "Token bütçesi aşıldı ({used}/{limit}).",
   schedulerCostBudget:
     "Sağlayıcı-raporlu maliyet bütçesi aşıldı (${used}/{limit}).",
+  schedulerFamilyTokenBudget:
+    "Ana iş #{rootTaskId} ve alt görevleri için ortak token bütçesine ulaşıldı ({used}/{limit}).",
+  schedulerFamilyCostBudget:
+    "Ana iş #{rootTaskId} ve alt görevleri için sağlayıcı-raporlu ortak maliyet bütçesine ulaşıldı (${used}/{limit}).",
+  schedulerFamilyDailyTokenBudget:
+    "Ana iş #{rootTaskId} ve alt görevleri için son 24 saatin ortak token bütçesine ulaşıldı ({used}/{limit}).",
+  schedulerFamilyDailyCostBudget:
+    "Ana iş #{rootTaskId} ve alt görevleri için son 24 saatin sağlayıcı-raporlu ortak maliyet bütçesine ulaşıldı (${used}/{limit}).",
   schedulerBudgetStopped:
     "Görev güvenlik bütçesi nedeniyle durduruldu: {reason}",
 } as const;

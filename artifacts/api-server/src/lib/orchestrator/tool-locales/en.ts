@@ -15,6 +15,14 @@ export const toolEn: ToolCopy = {
   schedulerTokenBudget: "Token budget reached ({used}/{limit}).",
   schedulerCostBudget:
     "Provider-reported cost budget reached (${used}/{limit}).",
+  schedulerFamilyTokenBudget:
+    "Shared token budget for task #{rootTaskId} and its subtasks reached ({used}/{limit}).",
+  schedulerFamilyCostBudget:
+    "Shared provider-reported cost budget for task #{rootTaskId} and its subtasks reached (${used}/{limit}).",
+  schedulerFamilyDailyTokenBudget:
+    "Shared 24-hour token budget for task #{rootTaskId} and its subtasks reached ({used}/{limit}).",
+  schedulerFamilyDailyCostBudget:
+    "Shared 24-hour provider-reported cost budget for task #{rootTaskId} and its subtasks reached (${used}/{limit}).",
   schedulerBudgetStopped: "Task stopped at its safety budget: {reason}",
   pathInvalid: "Error: path must be a string.",
   pathNoncanonical:

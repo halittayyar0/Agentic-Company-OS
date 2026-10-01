@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ModelRoutesExhaustedError,
+  ModelAdmissionDeniedError,
   classifyRecoverableModelError,
   modelCompatibilityExhaustedError,
   modelRetryDelayMs,
@@ -26,6 +27,42 @@ function route(
 function providerError(message: string, status: number): Error {
   return Object.assign(new Error(message), { status });
 }
+
+test("owned admission denials preserve identity without provider retries, waits or failure telemetry", async () => {
+  for (const message of [
+    "Provider-reported budget reached",
+    "Token quota reached",
+    "Admission deadline reached",
+  ]) {
+    const denied = new ModelAdmissionDeniedError(message);
+    assert.equal(classifyRecoverableModelError(denied), null);
+    let attempts = 0,
+      waits = 0,
+      failures = 0;
+    await assert.rejects(
+      runWithModelFallback({
+        routes: [
+          route("primary", "provider-a"),
+          route("fallback", "provider-b", true),
+        ],
+        execute: async () => {
+          attempts++;
+          throw denied;
+        },
+        sleep: async () => {
+          waits++;
+        },
+        onFailure: () => {
+          failures++;
+        },
+      }),
+      (error) => error === denied,
+    );
+    assert.equal(attempts, 1);
+    assert.equal(waits, 0);
+    assert.equal(failures, 0);
+  }
+});
 
 test("transient provider errors retry the same route with bounded backoff", async () => {
   const primary = route("primary", "provider-a");

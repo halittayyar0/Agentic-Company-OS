@@ -17,6 +17,14 @@ export const toolRu: ToolCopy = {
   schedulerTokenBudget: "Достигнут бюджет токенов ({used}/{limit}).",
   schedulerCostBudget:
     "Достигнут бюджет расходов по данным провайдера (${used}/{limit}).",
+  schedulerFamilyTokenBudget:
+    "Достигнут общий бюджет токенов задачи #{rootTaskId} и её подзадач ({used}/{limit}).",
+  schedulerFamilyCostBudget:
+    "Достигнут общий бюджет расходов задачи #{rootTaskId} и её подзадач по данным провайдера (${used}/{limit}).",
+  schedulerFamilyDailyTokenBudget:
+    "Достигнут общий бюджет токенов задачи #{rootTaskId} и её подзадач за последние 24 часа ({used}/{limit}).",
+  schedulerFamilyDailyCostBudget:
+    "Достигнут общий бюджет расходов задачи #{rootTaskId} и её подзадач за последние 24 часа по данным провайдера (${used}/{limit}).",
   schedulerBudgetStopped:
     "Задача остановлена из-за ограничения бюджета: {reason}",
   pathInvalid: "Ошибка: path должен быть строкой.",

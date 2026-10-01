@@ -428,6 +428,8 @@ export async function enforceTaskBudgets(): Promise<void> {
           materializedTokensUsed: task.tokensUsed,
           materializedReportedCostUsd: task.estimatedCostUsd,
           usageSource: admission.usageSource,
+          budgetScope: admission.budgetScope,
+          rootTaskId: admission.rootTaskId,
         },
         severity: "critical",
       });
