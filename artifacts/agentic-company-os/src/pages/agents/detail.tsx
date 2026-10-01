@@ -36,6 +36,7 @@ import { LanguageSelect } from "@/components/i18n/language-select";
 import { AgentModelPicker } from "@/components/agent/agent-model-picker";
 import { AgentAvatar } from "@/components/agent/agent-avatar";
 import { AgentAvatarEditor } from "@/components/agent/agent-avatar-editor";
+import { KeeperCompanion } from "@/components/agent/keeper-companion";
 import { AgentStats } from "@/components/agent/agent-stats";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { ComputerWorkspace } from "@/components/computer/computer-workspace";
@@ -166,6 +167,32 @@ function Detail({
   const client = useQueryClient();
   const visible = useDocumentVisible();
   const [active, setActive] = useState<Tab>(initialTab);
+  const [greeting, setGreeting] = useState(false);
+  const [focusChat, setFocusChat] = useState(false);
+  useEffect(() => {
+    if (!greeting) return;
+    const timer = window.setTimeout(() => setGreeting(false), 950);
+    return () => window.clearTimeout(timer);
+  }, [greeting]);
+  useEffect(() => {
+    if (!focusChat || active !== "chat") return;
+    let observer: MutationObserver | undefined;
+    const focus = () => {
+      const composer = document.querySelector<HTMLTextAreaElement>(
+        "[data-keeper-chat-focus]",
+      );
+      if (!composer) return false;
+      composer.focus();
+      setFocusChat(false);
+      observer?.disconnect();
+      return true;
+    };
+    if (!focus()) {
+      observer = new MutationObserver(focus);
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+    return () => observer?.disconnect();
+  }, [focusChat, active]);
   const [visited, setVisited] = useState(() => new Set<Tab>([initialTab()]));
   const busyRef = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -398,7 +425,32 @@ function Detail({
       </div>
       <header className={panel}>
         <div className="flex flex-wrap items-start gap-4">
-          <AgentAvatar agent={agent} size="lg" />
+          <button
+            type="button"
+            aria-label={`${c.keeper.talk} · ${agent.name}`}
+            disabled={
+              !languageReady ||
+              query.isError ||
+              needsReview ||
+              !agent.isActive ||
+              agent.status === "archived"
+            }
+            className={cn(
+              "rounded-2xl p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              greeting && "keeper-greet",
+            )}
+            onClick={() => {
+              setGreeting(true);
+              changeTab("chat");
+              setFocusChat(true);
+            }}
+          >
+            <AgentAvatar
+              agent={agent}
+              size="lg"
+              statusKnown={languageReady && !query.isError && !needsReview}
+            />
+          </button>
           <div className="min-w-0 flex-1 basis-[160px] space-y-2">
             <h1 className="break-words text-2xl font-semibold tracking-tight">
               <bdi>{agent.name}</bdi>
@@ -413,6 +465,16 @@ function Detail({
             </div>
           </div>
         </div>
+        <KeeperCompanion
+          c={c.keeper}
+          agent={agent}
+          known={languageReady && !query.isError && !needsReview}
+          onTalk={() => {
+            setGreeting(true);
+            changeTab("chat");
+            setFocusChat(true);
+          }}
+        />
         <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">{c.created}</dt>

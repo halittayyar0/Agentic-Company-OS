@@ -1,0 +1,101 @@
+.keeper-body {
+  transform-origin: 50% 88%;
+  animation: keeper-breathe 4.8s ease-in-out infinite;
+}
+.keeper-frame {
+  background: #f5f7fa;
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--keeper-accent) 26%, transparent);
+}
+.keeper-frame[data-keeper-mood="working"] .keeper-body {
+  animation: keeper-work 1.8s ease-in-out infinite;
+}
+.keeper-frame[data-keeper-mood="blocked"] .keeper-body {
+  animation: keeper-listen 4.2s ease-in-out infinite;
+}
+.keeper-frame[data-keeper-mood="archived"] .keeper-body,
+.keeper-frame[data-keeper-mood="unknown"] .keeper-body {
+  animation: none;
+}
+.keeper-frame[data-keeper-mood="archived"] .keeper-body {
+  filter: saturate(0.3);
+}
+.keeper-companion {
+  background: linear-gradient(
+    125deg,
+    hsl(var(--primary) / 0.09),
+    hsl(var(--card)) 65%
+  );
+  border-inline-start: 3px solid hsl(var(--primary));
+}
+.keeper-greet [data-keeper] .keeper-body {
+  animation: keeper-greet 0.9s ease-in-out 1;
+}
+[data-keeper-document="hidden"] .keeper-body,
+[data-keeper-visible="false"] .keeper-body {
+  animation-play-state: paused !important;
+}
+[data-keeper-motion="off"] .keeper-body,
+[data-keeper-motion="off"] .keeper-status {
+  animation: none !important;
+}
+@keyframes keeper-breathe {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-2%) rotate(1deg);
+  }
+}
+@keyframes keeper-work {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  40% {
+    transform: translateY(-3%) rotate(2deg);
+  }
+  70% {
+    transform: translateY(-1%) rotate(0);
+  }
+}
+@keyframes keeper-listen {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  35%,
+  65% {
+    transform: rotate(-3deg);
+  }
+}
+@keyframes keeper-greet {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25%,
+  65% {
+    transform: rotate(-7deg) translateY(-3%);
+  }
+  45%,
+  85% {
+    transform: rotate(6deg) translateY(-3%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .keeper-body,
+  .keeper-status {
+    animation: none !important;
+  }
+}
+@media (forced-colors: active) {
+  .keeper-companion {
+    border-inline-start: 3px solid CanvasText;
+  }
+  .keeper-frame {
+    outline: 1px solid CanvasText;
+    box-shadow: none;
+  }
+}
