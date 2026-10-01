@@ -82,6 +82,7 @@ interface ReceiptProof {
     state: string;
     finishedAt: string | null;
   } | null;
+  winningAttempt: ReceiptProof["originAttempt"];
 }
 
 interface ResponsibilityProof {
@@ -170,6 +171,10 @@ export function validateAndRecomputePrimaryEvidence(input: {
   const startedAtMs = new Date(input.report.startedAt).getTime();
   const completedAtMs = new Date(input.report.completedAt).getTime();
   const receipts = new Map<string, ReceiptProof>();
+  const attemptSnapshots = new Map<
+    string,
+    NonNullable<ReceiptProof["originAttempt"]>
+  >();
   const responsibilities: ResponsibilityProof[] = [];
   const coverage = new Set<string>();
   const responsibilityReceiptIds = new Set<string>();
@@ -285,6 +290,17 @@ export function validateAndRecomputePrimaryEvidence(input: {
               ),
             }
           : null;
+        if (
+          originAttempt &&
+          (!originAttempt.finishedAt ||
+            !["succeeded", "retrying", "blocked", "lost"].includes(
+              originAttempt.state,
+            ))
+        ) {
+          throw new Error(
+            `Primary evidence receipt ${receiptId} origin attempt is not durably finalized`,
+          );
+        }
         if (originAttempt?.finishedAt) {
           const originFinishedAtMs = new Date(
             originAttempt.finishedAt,
@@ -297,6 +313,70 @@ export function validateAndRecomputePrimaryEvidence(input: {
               `Primary evidence receipt ${receiptId} origin attempt escaped the run`,
             );
           }
+        }
+        const physical =
+          data.winningAttempt === null
+            ? null
+            : object(
+                data.winningAttempt,
+                `receipt ${receiptId} winning attempt`,
+              );
+        const winningAttempt = physical
+          ? {
+              id: text(physical.id, `receipt ${receiptId} winning id`),
+              taskId: integer(
+                physical.taskId,
+                `receipt ${receiptId} winning taskId`,
+                1,
+              ),
+              agentId: integer(
+                physical.agentId,
+                `receipt ${receiptId} winning agentId`,
+                1,
+              ),
+              cycleNumber: integer(
+                physical.cycleNumber,
+                `receipt ${receiptId} winning cycleNumber`,
+              ),
+              state: text(physical.state, `receipt ${receiptId} winning state`),
+              finishedAt: nullableIso(
+                physical.finishedAt,
+                `receipt ${receiptId} winning finishedAt`,
+              ),
+            }
+          : null;
+        if (
+          winningAttempt &&
+          (!winningAttempt.finishedAt ||
+            !["succeeded", "retrying", "blocked", "lost"].includes(
+              winningAttempt.state,
+            ) ||
+            new Date(winningAttempt.finishedAt).getTime() < startedAtMs ||
+            new Date(winningAttempt.finishedAt).getTime() > occurredAtMs)
+        ) {
+          throw new Error(
+            `Primary evidence receipt ${receiptId} winning attempt is not durably finalized within the run`,
+          );
+        }
+        if (
+          originAttempt &&
+          winningAttempt &&
+          originAttempt.id === winningAttempt.id &&
+          !same(originAttempt, winningAttempt)
+        ) {
+          throw new Error(
+            `Primary evidence receipt ${receiptId} contains contradictory snapshots of the same attempt`,
+          );
+        }
+        for (const attempt of [originAttempt, winningAttempt]) {
+          if (!attempt) continue;
+          const previous = attemptSnapshots.get(attempt.id);
+          if (previous && !same(previous, attempt)) {
+            throw new Error(
+              `Primary evidence contains a contradictory attempt identity for ${attempt.id}`,
+            );
+          }
+          attemptSnapshots.set(attempt.id, attempt);
         }
         if (
           !Array.isArray(data.invocations) ||
@@ -354,6 +434,13 @@ export function validateAndRecomputePrimaryEvidence(input: {
           }
           return {
             id,
+            attemptId:
+              invocation.attemptId === null
+                ? null
+                : text(
+                    invocation.attemptId,
+                    `receipt ${receiptId} invocation ${invocationIndex} attemptId`,
+                  ),
             state: text(
               invocation.state,
               `receipt ${receiptId} invocation ${invocationIndex} state`,
@@ -366,6 +453,20 @@ export function validateAndRecomputePrimaryEvidence(input: {
           const winners = invocations.filter(
             (invocation) => invocation.state === "succeeded",
           );
+          if (
+            winners.length === 1 &&
+            (originAttempt
+              ? !winningAttempt ||
+                winners[0].attemptId !== winningAttempt.id ||
+                winningAttempt.taskId !== originAttempt.taskId ||
+                winningAttempt.agentId !== originAttempt.agentId ||
+                winningAttempt.cycleNumber !== originAttempt.cycleNumber
+              : winningAttempt !== null || winners[0].attemptId !== null)
+          ) {
+            throw new Error(
+              `Primary evidence receipt ${receiptId} winning invocation is not bound to its exact task, agent and cycle owner`,
+            );
+          }
           if (
             winners.length !== 1 ||
             !winners[0].effectStartedAt ||
@@ -413,6 +514,7 @@ export function validateAndRecomputePrimaryEvidence(input: {
           toolName: text(data.toolName, `receipt ${receiptId} toolName`),
           finishedAt,
           originAttempt,
+          winningAttempt,
         });
         break;
       }
@@ -1006,10 +1108,10 @@ export function validateAndRecomputePrimaryEvidence(input: {
     const staleCandidate =
       receipt.succeeded &&
       receipt.finishedAt !== null &&
-      receipt.originAttempt?.state === "lost" &&
-      receipt.originAttempt.finishedAt !== null &&
+      receipt.winningAttempt?.state === "lost" &&
+      receipt.winningAttempt.finishedAt !== null &&
       new Date(receipt.finishedAt).getTime() >
-        new Date(receipt.originAttempt.finishedAt).getTime();
+        new Date(receipt.winningAttempt.finishedAt).getTime();
     if (
       receipt.irreversible &&
       receipt.succeeded &&
@@ -1036,10 +1138,10 @@ export function validateAndRecomputePrimaryEvidence(input: {
     if (
       receipt.succeeded &&
       receipt.finishedAt &&
-      receipt.originAttempt?.state === "lost" &&
-      receipt.originAttempt.finishedAt &&
+      receipt.winningAttempt?.state === "lost" &&
+      receipt.winningAttempt.finishedAt &&
       new Date(receipt.finishedAt).getTime() >
-        new Date(receipt.originAttempt.finishedAt).getTime()
+        new Date(receipt.winningAttempt.finishedAt).getTime()
     ) {
       staleOwnerCommits += 1;
     }

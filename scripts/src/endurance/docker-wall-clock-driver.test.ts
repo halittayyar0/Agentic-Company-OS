@@ -178,6 +178,7 @@ test("first-cycle diagnosis identifies unclaimed and lost agents without copying
         invocations: [
           {
             id: "completed-invocation",
+            attemptId: "completed-attempt",
             state: "succeeded",
             effectStartedAt: "2026-09-01T00:00:29.500Z",
             finishedAt: "2026-09-01T00:00:30.000Z",
@@ -568,6 +569,7 @@ test("Docker driver starts the exact topology and derives minute evidence from d
           invocations: [
             {
               id: "invocation-1",
+              attemptId: "attempt-1",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:30.500Z",
               finishedAt: "2026-09-01T00:00:31.000Z",
@@ -586,6 +588,7 @@ test("Docker driver starts the exact topology and derives minute evidence from d
           invocations: [
             {
               id: "invocation-duplicate-cycle",
+              attemptId: "attempt-1",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:32.500Z",
               finishedAt: "2026-09-01T00:00:33.000Z",
@@ -1280,6 +1283,7 @@ test("Docker driver fails closed when irreversible receipts lack a normalized ef
           invocations: [
             {
               id: "invocation-risk",
+              attemptId: "attempt-risk",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:08.000Z",
               finishedAt: "2026-09-01T00:00:09.000Z",
@@ -1357,6 +1361,7 @@ test("Docker driver ingests each succeeded irreversible receipt once and detects
         ? [
             {
               id: `invocation-${input.id}`,
+              attemptId: "attempt-risk",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:08.000Z",
               finishedAt: "2026-09-01T00:00:09.000Z",
@@ -1453,6 +1458,116 @@ test("Docker driver ingests each succeeded irreversible receipt once and detects
       duplicateKey,
     ]);
 
+    snapshot.attempts.push({
+      ...(snapshot.attempts[0] as Record<string, unknown>),
+      id: "replacement-risk-owner",
+      state: "succeeded",
+      finishedAt: "2026-09-01T00:01:01.000Z",
+    });
+    snapshot.receipts.push(
+      receipt({
+        id: "receipt-recovered-owner",
+        state: "succeeded",
+        sideEffectClass: "at_most_once",
+        invocations: [
+          {
+            id: "recovered-invocation",
+            attemptId: "replacement-risk-owner",
+            state: "succeeded",
+            effectStartedAt: "2026-09-01T00:00:08.750Z",
+            finishedAt: "2026-09-01T00:00:09.000Z",
+          },
+        ],
+      }),
+    );
+    await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
+    assert.equal(
+      observer
+        .finalize()
+        .primaryEvidence.some(
+          (row) =>
+            row.kind === "receipt_observed" &&
+            row.data.receiptId === "receipt-recovered-owner",
+        ),
+      false,
+    );
+    snapshot.generatedAt = "2026-09-01T00:01:02.000Z";
+    await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
+    const recoveredEvidence = observer.finalize();
+    assert.equal(recoveredEvidence.metrics.staleOwnerCommits, 3);
+    const recoveredRow = recoveredEvidence.primaryEvidence.find(
+      (row) =>
+        row.kind === "receipt_observed" &&
+        row.data.receiptId === "receipt-recovered-owner",
+    );
+    assert.equal(
+      (recoveredRow?.data.winningAttempt as { id: string }).id,
+      "replacement-risk-owner",
+    );
+
+    snapshot.receipts.push({
+      ...receipt({
+        id: "future-recovered-receipt",
+        state: "succeeded",
+        sideEffectClass: "at_most_once",
+        invocations: [
+          {
+            id: "future-recovered-invocation",
+            attemptId: "new-future-owner",
+            state: "succeeded",
+            effectStartedAt: "2026-09-01T00:01:02.500Z",
+            finishedAt: "2026-09-01T00:01:03.000Z",
+          },
+        ],
+      }),
+      finishedAt: "2026-09-01T00:01:03.000Z",
+    });
+    await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
+    assert.equal(
+      observer
+        .finalize()
+        .primaryEvidence.some(
+          (row) => row.data.receiptId === "future-recovered-receipt",
+        ),
+      false,
+    );
+    snapshot.attempts.push({
+      ...(snapshot.attempts[0] as Record<string, unknown>),
+      id: "new-future-owner",
+      state: "succeeded",
+      finishedAt: "2026-09-01T00:01:03.500Z",
+    });
+    snapshot.generatedAt = "2026-09-01T00:01:04.000Z";
+    await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
+    assert.equal(
+      observer
+        .finalize()
+        .primaryEvidence.some(
+          (row) => row.data.receiptId === "future-recovered-receipt",
+        ),
+      true,
+    );
+    snapshot.receipts.push(
+      receipt({
+        id: "historical-missing-owner",
+        state: "succeeded",
+        sideEffectClass: "at_most_once",
+        invocations: [
+          {
+            id: "historical-unbound-invocation",
+            attemptId: "unavailable-historical-owner",
+            state: "succeeded",
+            effectStartedAt: "2026-09-01T00:00:08.000Z",
+            finishedAt: "2026-09-01T00:00:09.000Z",
+          },
+        ],
+      }),
+    );
+    await assert.rejects(
+      driver.captureEvidence(observer, { kind: "minute", minute: 2 }),
+      /matching physical invocation owner/,
+    );
+
     snapshot = operationsSnapshot({
       cursor: "3",
       receipts: [
@@ -1463,12 +1578,14 @@ test("Docker driver ingests each succeeded irreversible receipt once and detects
           invocations: [
             {
               id: "invocation-double-effect-1",
+              attemptId: "attempt-risk",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:07.000Z",
               finishedAt: "2026-09-01T00:00:08.000Z",
             },
             {
               id: "invocation-double-effect-2",
+              attemptId: "attempt-risk",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:08.000Z",
               finishedAt: "2026-09-01T00:00:09.000Z",

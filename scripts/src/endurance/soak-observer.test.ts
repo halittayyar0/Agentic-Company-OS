@@ -127,6 +127,7 @@ test("observer preserves bounded primary receipt, agent-cycle, lag, health, and 
     invocations: [
       {
         id: "invocation-1",
+        attemptId: "attempt-1",
         state: "succeeded",
         effectStartedAt: "2026-09-01T00:00:59.000Z",
         finishedAt: "2026-09-01T00:01:00.000Z",
