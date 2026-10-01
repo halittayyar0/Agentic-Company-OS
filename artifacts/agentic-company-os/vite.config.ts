@@ -65,6 +65,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           const moduleId = id.replaceAll("\\", "/");
+          if (moduleId.endsWith("/src/lib/completion-review-view.ts"))
+            return "completion-review-view";
           if (!moduleId.includes("/node_modules/")) return undefined;
           if (
             moduleId.includes("/recharts/") ||

@@ -66,6 +66,54 @@ function stage(trace: ReturnType<typeof buildRunTrace>, id: string) {
   return value;
 }
 
+test("completion reviews expose their recorded evidence without raw result contents", () => {
+  const trace = buildRunTrace({
+    task: task(),
+    activities: [
+      activity({
+        id: 99,
+        type: "judge_review",
+        summary: "Completion rejected",
+        detail: {
+          verdict: "block",
+          completionEvidence: {
+            source: "persisted_runtime_metadata",
+            taskId: 77,
+            cycleNumber: 0,
+            receiptTotal: 1,
+            receiptCounts: [
+              { state: "failed", reconciliationDecision: null, count: 1 },
+            ],
+            receiptsTruncated: false,
+            receipts: [
+              {
+                id: "receipt-1",
+                tool: "vm_run_command",
+                state: "failed",
+                executionKind: "task_step",
+                sideEffectClass: "at_most_once",
+                reconciliationDecision: null,
+                finishedAt: null,
+                ok: false,
+                exitCode: 1,
+                stdout: "RAW_SECRET",
+              },
+            ],
+            childTotal: 0,
+            childCounts: [],
+            childrenTruncated: false,
+            children: [],
+            command: "RAW_SECRET",
+          },
+        },
+      }),
+    ],
+  });
+  assert.equal(trace.events[0].completionReview?.receiptTotal, 1);
+  assert.equal(trace.events[0].completionReview?.receipts[0].exitCode, 1);
+  assert.ok(!JSON.stringify(trace.events).includes("RAW_SECRET"));
+});
+
 test("completed status does not invent planning, execution, review, or a delivered result", () => {
   const trace = buildRunTrace({
     task: task({ status: "completed" }),

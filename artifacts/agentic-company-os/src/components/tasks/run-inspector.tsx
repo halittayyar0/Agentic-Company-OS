@@ -1,5 +1,6 @@
 import { ActivitySummary } from "@/components/activity-summary";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import type { ActivityEvent, Agent, Task } from "@workspace/api-client-react";
 import { ChevronDown, Download, FileText } from "lucide-react";
@@ -35,6 +36,36 @@ const FILTERS: RunTraceCategory[] = [
   "gates",
   "issues",
 ];
+
+function CompletionReviewPanel(
+  props: Parameters<
+    (typeof import("./completion-review-panel"))["CompletionReviewPanel"]
+  >[0],
+) {
+  const panel = useQuery({
+    queryKey: ["completion-review-panel"],
+    queryFn: () => import("./completion-review-panel"),
+    staleTime: Infinity,
+    retry: false,
+  });
+  if (panel.isError)
+    return (
+      <div role="alert" className="space-y-3">
+        <p>{props.copy.reviewEvidence.loadError}</p>
+        <Button className="min-h-11" onClick={() => window.location.reload()}>
+          {props.copy.retry}
+        </Button>
+      </div>
+    );
+  if (!panel.data)
+    return (
+      <p role="status" className="text-muted-foreground">
+        {props.copy.loading}
+      </p>
+    );
+  const Panel = panel.data.CompletionReviewPanel;
+  return <Panel {...props} />;
+}
 
 export function RunInspector(props: Props) {
   return (
@@ -356,7 +387,7 @@ function Inspector({ task, subtasks, agents, c }: Props & { c: TraceCopy }) {
               hidden={selectedId !== event.id}
               className="border-t border-border p-3"
             >
-              <EventDetail c={c} event={event} />
+              {selectedId === event.id && <EventDetail c={c} event={event} />}
             </div>
           </li>
         ))}
@@ -376,6 +407,13 @@ function EventDetail({ c, event }: { c: TraceCopy; event: RunTraceEvent }) {
         {c.source}: {c.activitySource} <bdi>#{event.id}</bdi> ·{" "}
         <bdi>{event.type}</bdi>
       </p>
+      {event.completionReview && (
+        <CompletionReviewPanel
+          evidence={event.completionReview}
+          recordId={event.id}
+          copy={c}
+        />
+      )}
       {event.detail.length === 0 ? (
         <p className="text-muted-foreground">{c.noDetail}</p>
       ) : (
