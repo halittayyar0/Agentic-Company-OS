@@ -11,7 +11,10 @@ import {
   type TaskBudgetLimits,
 } from "./task-budget-policy";
 import type { WorkspaceLocale } from "../workspace-locale";
-import { readFamilySpendAdmission } from "./family-spend-admission";
+import {
+  readFamilySpendAdmission,
+  type SpendReaderClient,
+} from "./family-spend-admission";
 import { ModelAdmissionDeniedError } from "./model-fallback";
 
 export class TaskSpendBudgetError extends ModelAdmissionDeniedError {}
@@ -96,11 +99,12 @@ async function readIndividualTaskSpendAdmission(
   limits: TaskBudgetLimits = executionSpendLimits(),
   locale: WorkspaceLocale = "tr",
   now = new Date(),
+  client: SpendReaderClient = db,
 ) {
   const recurring = task.autonomyMode === "continuous";
   const cycleStart = task.lastCycleCompletedAt ?? task.createdAt;
   const dayStart = new Date(now.getTime() - 86_400_000);
-  const [usage] = await db
+  const [usage] = await client
     .select({
       tokens: sql<string>`coalesce(sum(case when ${usageEventsTable.createdAt} >= ${cycleStart} then ${usageEventsTable.totalTokens} else 0 end), 0)`,
       cost: sql<
@@ -141,7 +145,7 @@ async function readIndividualTaskSpendAdmission(
       );
   const [{ setupRetries }] =
     !recurring && limits.maxSteps !== null
-      ? await db
+      ? await client
           .select({ setupRetries: sql<number>`count(*)::int` })
           .from(taskAttemptsTable)
           .where(
@@ -211,6 +215,7 @@ export async function readTaskSpendAdmission(
     args[0].id,
     args[2] ?? "tr",
     args[3],
+    args[4],
   );
   return family.reason
     ? { ...family, budgetScope: "family" }

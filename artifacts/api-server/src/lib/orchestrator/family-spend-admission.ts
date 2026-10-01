@@ -3,6 +3,9 @@ import { db } from "@workspace/db";
 import type { WorkspaceLocale } from "../workspace-locale";
 import { toolMessage } from "./tool-localization";
 
+/** A transaction reader keeps admission and its queue transition in one scope. */
+export type SpendReaderClient = Pick<typeof db, "select" | "execute">;
+
 function positive(name: string, fallback: number): number {
   const value = Number(process.env[name]);
   return Number.isFinite(value) && value > 0 && value <= Number.MAX_SAFE_INTEGER
@@ -86,9 +89,10 @@ export async function readFamilySpendAdmission(
   taskId: number,
   locale: WorkspaceLocale,
   now = new Date(),
+  client: SpendReaderClient = db,
 ) {
   const dayStart = new Date(now.getTime() - 86_400_000);
-  const result = await db.execute(sql`
+  const result = await client.execute(sql`
     WITH RECURSIVE ancestors AS (
       SELECT id, parent_task_id FROM tasks WHERE id = ${taskId}
       UNION

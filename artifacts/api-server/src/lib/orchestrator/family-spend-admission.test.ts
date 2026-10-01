@@ -23,6 +23,48 @@ const localLimits = {
 };
 test.after(() => closeDatabase());
 
+test("spend admission uses the supplied reader for individual and family evidence", async () => {
+  await dbReady;
+  const [agent] = await db
+    .insert(agentsTable)
+    .values({ name: "Reader", role: "Test", systemPrompt: "Test" })
+    .returning();
+  const [task] = await db
+    .insert(tasksTable)
+    .values({ ownerAgentId: agent.id, title: "Reader scope", brief: "Test" })
+    .returning();
+  let selects = 0;
+  let executions = 0;
+  const client = {
+    select: (...args: Parameters<typeof db.select>) => {
+      selects++;
+      return db.select(...args);
+    },
+    execute: (...args: Parameters<typeof db.execute>) => {
+      executions++;
+      return db.execute(...args);
+    },
+  } as Pick<typeof db, "select" | "execute">;
+  const result = await readTaskSpendAdmission(
+    task,
+    localLimits,
+    "en",
+    new Date(),
+    client,
+  );
+  assert.equal(result.reason, null);
+  assert.equal(
+    selects,
+    1,
+    "individual evidence must use the transaction reader",
+  );
+  assert.equal(
+    executions,
+    1,
+    "family evidence must use the same transaction reader",
+  );
+});
+
 test("delegated inference shares one durable family budget", async (t) => {
   await dbReady;
   const names = [
