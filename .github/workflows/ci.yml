@@ -140,6 +140,15 @@ jobs:
           artifacts/api-server/src/lib/operations/operations-sampler.test.ts
           artifacts/api-server/src/lib/vm/file-editing.test.ts
 
+      - name: Prove PostgreSQL family spend and durable budget resume
+        env:
+          DATABASE_URL: postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_budget_resume_ci
+        run: |
+          psql postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_os_ci -v ON_ERROR_STOP=1 -c 'CREATE DATABASE agentic_budget_resume_ci;'
+          node --import tsx --test --test-concurrency=1 --test-timeout=300000 \
+            artifacts/api-server/src/lib/orchestrator/family-spend-admission.test.ts \
+            artifacts/api-server/src/routes/task-budget-resume.test.ts
+
       - name: Typecheck
         run: pnpm run typecheck
 

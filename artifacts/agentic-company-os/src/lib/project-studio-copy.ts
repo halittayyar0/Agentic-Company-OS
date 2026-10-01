@@ -1,5 +1,25 @@
 import type { Locale } from "./i18n";
 export type ProjectStudioCopy = {
+  budgetHeading: string;
+  budgetHelp: string;
+  budgetGuide: string;
+  budgetCheck: string;
+  budgetChecking: string;
+  budgetAccepted: string;
+  budgetStillPaused: string;
+  budgetUnknown: string;
+  budgetInspect: string;
+  budgetMissing: string;
+  budgetRetry: string;
+  budgetStorage: string;
+  budgetSnapshotError: string;
+  budgetLoadError: string;
+  budgetReasonEmergency: string;
+  budgetReasonChanged: string;
+  budgetReasonInvalid: string;
+  budgetReasonLarge: string;
+  budgetReasonExhausted: string;
+  budgetReasonIneligible: string;
   answerHeading: string;
   answerHelp: string;
   answerLabel: string;

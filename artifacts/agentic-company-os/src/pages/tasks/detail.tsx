@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { lazy, Suspense, useRef } from "react";
 import { Link, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -47,6 +47,21 @@ import {
 } from "@/lib/format";
 import { splitProjectBrief } from "@/lib/project-brief";
 import { cn } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/error-boundary";
+
+const BudgetTaskResume = lazy(
+  () => import("@/components/tasks/budget-task-resume"),
+);
+
+function hasBudgetResumeRecovery(taskId: number) {
+  try {
+    return (
+      sessionStorage.getItem(`acos.task-budget-resume.v1:${taskId}`) !== null
+    );
+  } catch {
+    return false;
+  }
+}
 
 export default function TaskDetail() {
   const { locale, t } = useLocale();
@@ -83,6 +98,7 @@ export default function TaskDetail() {
 }
 
 function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
+  const budgetSeenFor = useRef<number | null>(null);
   const { locale, t } = useLocale();
   const [, projectParams] = useRoute("/projects/:projectId");
   const [, legacyParams] = useRoute("/tasks/:taskId");
@@ -216,6 +232,26 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
   const terminable = !["completed", "failed", "cancelled"].includes(
     project.status,
   );
+  const warning =
+    project.lastError && project.blockedReason !== "user_input" ? (
+      <div
+        className="mx-auto mt-4 max-w-[1680px] rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 text-xs text-amber-800 dark:text-amber-200"
+        role="status"
+      >
+        <span className="inline-flex items-center gap-2 font-semibold">
+          <AlertTriangle size={13} aria-hidden /> {c.warning}:
+        </span>{" "}
+        <span className="block text-muted-foreground">{c.source}</span>
+        <p dir="auto" className="whitespace-pre-wrap break-words">
+          {project.lastError}
+        </p>
+        {project.nextAttemptAt
+          ? studioText(c.nextAttempt, {
+              time: timeFromNow(project.nextAttemptAt),
+            })
+          : ""}
+      </div>
+    ) : null;
 
   return (
     <div className="project-studio min-h-full bg-background px-[12px] py-3 [overflow-wrap:anywhere] sm:px-5 sm:py-5">
@@ -319,6 +355,50 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
             >
               {projectBrief.outcome}
             </p>
+            {project.blockedReason === "budget" ||
+            budgetSeenFor.current === taskId ||
+            hasBudgetResumeRecovery(taskId) ? (
+              <ErrorBoundary
+                resetKey={taskId}
+                FallbackComponent={() => (
+                  <section
+                    role="alert"
+                    className="mt-4 rounded-control border bg-card p-4 text-sm"
+                  >
+                    <p>{c.budgetLoadError}</p>
+                    <Button
+                      className="mt-3 min-h-11"
+                      onClick={() => window.location.reload()}
+                    >
+                      {c.retry}
+                    </Button>
+                  </section>
+                )}
+              >
+                <Suspense
+                  fallback={
+                    <p role="status" className="mt-4 text-sm">
+                      {c.budgetChecking}
+                    </p>
+                  }
+                >
+                  <BudgetTaskResume
+                    key={taskId}
+                    taskId={taskId}
+                    budgetPaused={
+                      project.status === "blocked" &&
+                      project.blockedReason === "budget"
+                    }
+                    reason={project.lastError}
+                    c={c}
+                    onResumed={() => {
+                      budgetSeenFor.current = taskId;
+                      void refetch();
+                    }}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            ) : null}
           </div>
 
           <ProjectTeamSummary
@@ -365,25 +445,7 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
           </Button>
         </div>
       )}
-      {project.lastError && project.blockedReason !== "user_input" ? (
-        <div
-          className="mx-auto mt-4 max-w-[1680px] rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 text-xs text-amber-800 dark:text-amber-200"
-          role="status"
-        >
-          <span className="inline-flex items-center gap-2 font-semibold">
-            <AlertTriangle size={13} aria-hidden /> {c.warning}:
-          </span>{" "}
-          <span className="block text-muted-foreground">{c.source}</span>
-          <p dir="auto" className="whitespace-pre-wrap break-words">
-            {project.lastError}
-          </p>
-          {project.nextAttemptAt
-            ? studioText(c.nextAttempt, {
-                time: timeFromNow(project.nextAttemptAt),
-              })
-            : ""}
-        </div>
-      ) : null}
+      {project.blockedReason !== "budget" ? warning : null}
 
       <BlockedTaskResume
         task={project}

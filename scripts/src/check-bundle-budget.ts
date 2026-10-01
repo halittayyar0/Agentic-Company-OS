@@ -92,6 +92,10 @@ const budgets = {
   // selected language pack. Measure their growth against the v0.3.2 build
   // instead of raising the allowance for unrelated code.
   firstTaskModelCheckGzipBytes: 450,
+  // Budget resume is one conditional recovery chunk plus selected studio-copy
+  // growth and bounded route/API wiring. Existing route ceilings stay fixed.
+  budgetResumeRawBytes: 13_000,
+  budgetResumeGzipBytes: 4_500,
   // Two review assets and selected trace-pack growth have a separate cap.
   // Every previous total/base/asset/media ceiling remains unchanged.
   completionReviewRawBytes: 10_000,
@@ -643,6 +647,36 @@ if (
 ) {
   violations.push("Local utility workbench exceeds its lazy-route budget.");
 }
+const budgetResumeAssets = codeAssets.filter((asset) =>
+  /^budget-task-resume-[^/]+\.js$/u.test(asset.fileName),
+);
+if (budgetResumeAssets.length !== 1)
+  violations.push("Expected one conditional budget resume recovery asset.");
+// Existing passing 0.3.9 local build (0ee2e67): largest studio pack is
+// 8557 raw / 2826 gzip bytes. Its studio sources match released c408141.
+// Scope/root bindings and lazy loading remain in existing generated/route code;
+// bound that integration to 2 KB raw / 900 bytes gzip within the feature cap.
+const budgetResumeRawBytes =
+  2_000 +
+  budgetResumeAssets.reduce((sum, asset) => sum + asset.rawBytes, 0) +
+  Math.max(
+    0,
+    Math.max(...studioLocaleAssets.map((asset) => asset.rawBytes)) - 8_557,
+  );
+const budgetResumeGzipBytes =
+  900 +
+  budgetResumeAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0) +
+  Math.max(
+    0,
+    Math.max(...studioLocaleAssets.map((asset) => asset.gzipBytes)) - 2_826,
+  );
+if (
+  budgetResumeRawBytes > budgets.budgetResumeRawBytes ||
+  budgetResumeGzipBytes > budgets.budgetResumeGzipBytes
+)
+  violations.push(
+    "Budget resume exceeds its recovery, selected-language and integration feature cap.",
+  );
 const completionReviewAssets = codeAssets.filter((asset) =>
   /^completion-review-(?:view|panel)-[^/]+\.js$/u.test(asset.fileName),
 );
@@ -689,11 +723,15 @@ const keeperSurfaces = [
     match: (name: string) => /^index-[^/]+\.js$/u.test(name),
     raw: 114_976,
     gzip: 33_571,
+    keeperReleaseRaw: 118_907,
+    keeperReleaseGzip: 35_468,
   },
   {
     match: (name: string) => /^index-[^/]+\.css$/u.test(name),
     raw: 131_244,
     gzip: 20_737,
+    keeperReleaseRaw: 133_035,
+    keeperReleaseGzip: 21_205,
   },
   {
     match: (name: string) =>
@@ -703,11 +741,15 @@ const keeperSurfaces = [
       ),
     raw: 26_836,
     gzip: 8_210,
+    keeperReleaseRaw: 28_397,
+    keeperReleaseGzip: 8_710,
   },
   {
     match: (name: string) => /^vendor-ui-[^/]+\.js$/u.test(name),
     raw: 134_035,
     gzip: 41_988,
+    keeperReleaseRaw: 134_401,
+    keeperReleaseGzip: 42_109,
   },
 ];
 let keeperLiveRawBytes = Math.max(
@@ -718,12 +760,25 @@ let keeperLiveGzipBytes = Math.max(
   0,
   Math.max(...expertDetailLocaleAssets.map((asset) => asset.gzipBytes)) - 3_141,
 );
+// Clean v0.3.10 source tree 329ee774 (main f9de129) supplies the second
+// baseline above. Growth since that release in these same named surfaces is
+// already charged to the Keeper cap, so it cannot also receive resume credit.
+let sharedResumeRawBytes = 0;
+let sharedResumeGzipBytes = 0;
 for (const surface of keeperSurfaces) {
   const matches = codeAssets.filter((asset) => surface.match(asset.fileName));
   if (matches.length !== 1)
     throw new Error("Expected exactly one measured Keeper integration asset.");
   keeperLiveRawBytes += Math.max(0, matches[0].rawBytes - surface.raw);
   keeperLiveGzipBytes += Math.max(0, matches[0].gzipBytes - surface.gzip);
+  sharedResumeRawBytes += Math.max(
+    0,
+    matches[0].rawBytes - surface.keeperReleaseRaw,
+  );
+  sharedResumeGzipBytes += Math.max(
+    0,
+    matches[0].gzipBytes - surface.keeperReleaseGzip,
+  );
 }
 if (
   keeperLiveRawBytes > budgets.keeperLiveRawBytes ||
@@ -732,8 +787,16 @@ if (
   violations.push(
     "Living Keepers exceed their 10 KB raw / 4 KB gzip integration budget.",
   );
+// Resume's fixed allowance also covers generated API/project-route wiring
+// outside the Keeper surfaces. Remove only the measured overlap, bounded by
+// that allowance, before applying either feature credit to global totals.
+const budgetResumeGlobalRawBytes =
+  budgetResumeRawBytes - Math.min(2_000, sharedResumeRawBytes);
+const budgetResumeGlobalGzipBytes =
+  budgetResumeGzipBytes - Math.min(900, sharedResumeGzipBytes);
 if (
   totalCodeGzipBytes -
+    budgetResumeGlobalGzipBytes -
     skillLibraryGzipBytes -
     customizationGzipBytes -
     localUtilityGzipBytes -
@@ -750,7 +813,10 @@ if (
 }
 
 if (
-  totalCodeRawBytes - completionReviewRawBytes - keeperLiveRawBytes >
+  totalCodeRawBytes -
+    budgetResumeGlobalRawBytes -
+    completionReviewRawBytes -
+    keeperLiveRawBytes >
   budgets.totalCodeRawBytes
 ) {
   violations.push(
@@ -759,7 +825,10 @@ if (
 }
 
 if (
-  totalCodeGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes >
+  totalCodeGzipBytes -
+    budgetResumeGlobalGzipBytes -
+    completionReviewGzipBytes -
+    keeperLiveGzipBytes >
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
@@ -875,6 +944,9 @@ console.table(
     raw: formatBytes(asset.rawBytes),
     gzip: formatBytes(asset.gzipBytes),
   })),
+);
+console.log(
+  `Budget resume recovery, selected studio-pack growth and bounded route wiring: ${formatBytes(budgetResumeRawBytes)} raw / ${formatBytes(budgetResumeGzipBytes)} gzip (13 KB / 4.5 KB feature cap).`,
 );
 console.log(
   `Code with one language per localized surface: ${formatBytes(totalCodeRawBytes)} raw / ${formatBytes(totalCodeGzipBytes)} gzip. All home packs: ${formatBytes(allHomeLocaleRawBytes)} raw / ${formatBytes(allHomeLocaleGzipBytes)} gzip. All projects packs: ${formatBytes(allProjectLocaleRawBytes)} raw / ${formatBytes(allProjectLocaleGzipBytes)} gzip. All new-project packs: ${formatBytes(allNewProjectLocaleRawBytes)} raw / ${formatBytes(allNewProjectLocaleGzipBytes)} gzip. All emergency packs: ${formatBytes(allEmergencyLocaleRawBytes)} raw / ${formatBytes(allEmergencyLocaleGzipBytes)} gzip. Media total: ${formatBytes(totalMediaRawBytes)} raw.`,

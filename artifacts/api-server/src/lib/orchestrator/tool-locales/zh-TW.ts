@@ -1,6 +1,7 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolZhTW: ToolCopy = {
+  budgetFamilyResumed: "已檢查使用額度，重新排入佇列的任務數：{count}。",
   schedulerClaimed: "已領取任務",
   projectMeetingRunning: "正在準備專案會議回覆：{title}",
   schedulerAccepted: "已接受任務；工作已開始。",
@@ -12,6 +13,14 @@ export const toolZhTW: ToolCopy = {
   schedulerStepBudget: "已達到操作員設定的步驟上限（{used}/{limit}）。",
   schedulerTokenBudget: "已達到權杖預算上限（{used}/{limit}）。",
   schedulerCostBudget: "已達到供應商回報的費用預算上限（${used}/{limit}）。",
+  schedulerFamilyTokenBudget:
+    "任務 #{rootTaskId} 及其子任務已達到共享權杖預算上限（{used}/{limit}）。",
+  schedulerFamilyCostBudget:
+    "任務 #{rootTaskId} 及其子任務已達到供應商回報的共享費用預算上限（${used}/{limit}）。",
+  schedulerFamilyDailyTokenBudget:
+    "任務 #{rootTaskId} 及其子任務已達到最近 24 小時的共享權杖預算上限（{used}/{limit}）。",
+  schedulerFamilyDailyCostBudget:
+    "任務 #{rootTaskId} 及其子任務已達到最近 24 小時供應商回報的共享費用預算上限（${used}/{limit}）。",
   schedulerBudgetStopped: "任務因安全預算限制而停止：{reason}",
   pathInvalid: "錯誤：path 必須是字串。",
   pathNoncanonical:

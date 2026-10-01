@@ -1,5 +1,9 @@
 import os from "node:os";
 import path from "node:path";
+import {
+  createEnduranceSpendConfiguration,
+  type EnduranceSpendConfiguration,
+} from "./spend-configuration";
 
 import {
   createPlaywrightOperationsSession,
@@ -101,6 +105,7 @@ interface OperationsAttemptEvidence {
 
 interface OperationsInvocationEvidence {
   id: string;
+  attemptId: string | null;
   state: string;
   effectStartedAt: string | null;
   finishedAt: string | null;
@@ -258,6 +263,8 @@ export function createDockerWallClockEnvironment(input: {
   };
   return {
     ...input.environment,
+    ...createEnduranceSpendConfiguration(input.environment ?? process.env)
+      .environment,
     // Generated bind files belong to this process, not necessarily image UID 1000.
     AGENTIC_SECRET_GID: String(process.getgid?.() ?? 1000),
     ENDURANCE_RUN_ID: input.runId,
@@ -450,6 +457,10 @@ function parseReceipt(
         id: stringValue(
           parsed.id,
           `operations receipt ${index} invocation ${invocationIndex} id`,
+        ),
+        attemptId: nullableString(
+          parsed.attemptId,
+          `operations receipt ${index} invocation ${invocationIndex} attemptId`,
         ),
         state: stringValue(
           parsed.state,
@@ -674,6 +685,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   private readonly baseUrl: URL;
   private readonly operatorToken: string;
   private readonly harness: DockerWallClockHarness;
+  private readonly spend: EnduranceSpendConfiguration;
   private readonly fetchImpl: typeof fetch;
   private readonly topologyTimeoutMs: number;
   private readonly requestTimeoutMs: number;
@@ -728,6 +740,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   private emergencyStopRecovery: EmergencyControlEvidence | null = null;
 
   constructor(options: DockerWallClockDriverOptions) {
+    this.spend = createEnduranceSpendConfiguration(
+      options.environment ?? process.env,
+    );
     this.runId = options.runId;
     this.seed = options.seed;
     this.durationHours = options.durationHours;
@@ -786,7 +801,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
           seed: options.seed,
           workspaceRoot: options.workspaceRoot,
           controlDirectory,
-          environment: options.environment,
+          environment: { ...options.environment, ...this.spend.environment },
         }),
       });
   }
@@ -1039,31 +1054,83 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
           right.finishedAt ?? right.reservedAt,
         ) || left.id.localeCompare(right.id),
     )) {
+      // Parallel API reads may expose a just-created receipt before its owner
+      // enters the attempt query. Defer only rows newer than this snapshot;
+      // a historical missing/mismatched owner must still fail below.
+      if (
+        receipt.state === "succeeded" &&
+        receipt.finishedAt &&
+        new Date(receipt.finishedAt).getTime() >
+          new Date(snapshot.generatedAt).getTime()
+      )
+        continue;
       assertIrreversibleReceiptInvocationEvidence(receipt);
       const receiptAttempt = receipt.originAttemptId
         ? this.attemptsById.get(receipt.originAttemptId)
         : undefined;
+      const winningInvocation = receipt.invocations.find(
+        (invocation) => invocation.state === "succeeded",
+      );
+      const winningAttempt = winningInvocation?.attemptId
+        ? this.attemptsById.get(winningInvocation.attemptId)
+        : undefined;
+      if (
+        receipt.state === "succeeded" &&
+        receipt.originAttemptId &&
+        (!winningInvocation?.attemptId ||
+          !winningAttempt ||
+          !receiptAttempt ||
+          winningAttempt.taskId !== receiptAttempt.taskId ||
+          winningAttempt.agentId !== receiptAttempt.agentId ||
+          winningAttempt.cycleNumber !== receiptAttempt.cycleNumber)
+      ) {
+        throw new Error(
+          `Succeeded receipt ${receipt.id} has no matching physical invocation owner`,
+        );
+      }
+      const winnerFinalized =
+        !receipt.originAttemptId ||
+        Boolean(
+          winningAttempt?.finishedAt &&
+          new Date(winningAttempt.finishedAt).getTime() <=
+            new Date(snapshot.generatedAt).getTime() &&
+          ["succeeded", "retrying", "blocked", "lost"].includes(
+            winningAttempt.state,
+          ),
+        );
       const irreversible = IRREVERSIBLE_SIDE_EFFECTS.has(
         receipt.sideEffectClass,
       );
       // Receipt completion and attempt completion are separate commits. Freeze
-      // their joined primary evidence only after both are durable. In particular,
+      // logical origin and physical winner only after both are durable. A read
+      // model can include rows committed after its initial generatedAt; wait
+      // for the next snapshot instead of freezing future-dated evidence.
+      // In particular,
       // a running attempt may later become lost; retaining its running snapshot
       // would hide that state from the independent stale-owner verifier.
       const originFinalized =
         !receipt.originAttemptId ||
         Boolean(
           receiptAttempt?.finishedAt &&
+          new Date(receiptAttempt.finishedAt).getTime() <=
+            new Date(snapshot.generatedAt).getTime() &&
           ["succeeded", "retrying", "blocked", "lost"].includes(
             receiptAttempt.state,
           ),
         );
+      const completionObserved = Boolean(
+        receipt.finishedAt &&
+        new Date(receipt.finishedAt).getTime() <=
+          new Date(snapshot.generatedAt).getTime(),
+      );
       const primaryRelevant =
         receipt.state === "succeeded" &&
         originFinalized &&
+        winnerFinalized &&
+        completionObserved &&
         (receipt.toolName === "synthetic_fixture_write" ||
           irreversible ||
-          receiptAttempt?.state === "lost");
+          winningAttempt?.state === "lost");
       observer.observeReceipt({
         receiptId: receipt.id,
         key: receipt.operationKey,
@@ -1084,6 +1151,16 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
                     cycleNumber: receiptAttempt.cycleNumber,
                     state: receiptAttempt.state,
                     finishedAt: receiptAttempt.finishedAt,
+                  }
+                : null,
+              winningAttempt: winningAttempt
+                ? {
+                    id: winningAttempt.id,
+                    taskId: winningAttempt.taskId,
+                    agentId: winningAttempt.agentId,
+                    cycleNumber: winningAttempt.cycleNumber,
+                    state: winningAttempt.state,
+                    finishedAt: winningAttempt.finishedAt,
                   }
                 : null,
               invocations: receipt.invocations,
@@ -1119,6 +1196,8 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
         this.taskByAgentId.set(attempt.agentId, attempt.taskId);
         if (
           originFinalized &&
+          winnerFinalized &&
+          completionObserved &&
           attempt.cycleNumber < this.requiredHealthBuckets
         ) {
           const coverageKey = `${attempt.taskId}:${attempt.agentId}:${attempt.cycleNumber}`;
@@ -1151,11 +1230,12 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       }
       if (
         receipt.state === "succeeded" &&
-        receiptAttempt?.state === "lost" &&
+        completionObserved &&
+        winningAttempt?.state === "lost" &&
         receipt.finishedAt &&
-        receiptAttempt.finishedAt &&
+        winningAttempt.finishedAt &&
         new Date(receipt.finishedAt).getTime() >
-          new Date(receiptAttempt.finishedAt).getTime() &&
+          new Date(winningAttempt.finishedAt).getTime() &&
         !this.seenStaleCommits.has(receipt.id)
       ) {
         this.seenStaleCommits.add(receipt.id);
@@ -1778,6 +1858,10 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
     };
   }
 
+  spendConfiguration() {
+    return { ...this.spend.provenance };
+  }
+
   async provenance() {
     const runtimeAttestation = await this.harness.runtimeAttestation();
     return {
@@ -1789,6 +1873,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       },
       workflowRunId: process.env.GITHUB_RUN_ID?.trim() || null,
       configuration: {
+        ...this.spend.provenance,
         runtime: "docker-compose",
         workers: 2,
         agents: 10,

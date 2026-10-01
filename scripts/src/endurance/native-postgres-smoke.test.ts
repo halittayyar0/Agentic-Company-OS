@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
+import { createEnduranceSpendConfiguration } from "./spend-configuration";
 
 import type { SoakEvidenceObserver } from "./soak-observer";
 import {
@@ -22,6 +23,7 @@ test("native smoke proves real topology, worker replacement, database outage, an
       "worker-2",
     ].sort();
   const driver: NativePostgresSmokeDriver = {
+    spendConfiguration: () => createEnduranceSpendConfiguration({}).provenance,
     start: async () => {
       calls.push("start");
       return { projectId: 91, expectedResponsibilities: 10 };
@@ -174,6 +176,7 @@ test("native smoke preserves bounded unfinished-agent evidence when ten responsi
       "worker-2",
     ].sort();
   const driver = {
+    spendConfiguration: () => createEnduranceSpendConfiguration({}).provenance,
     start: async () => ({ projectId: 91, expectedResponsibilities: 10 }),
     captureEvidence: async (observer: SoakEvidenceObserver) => {
       observer.completeResponsibilities(9);

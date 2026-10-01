@@ -1,5 +1,30 @@
 import type { ProjectStudioCopy } from "../project-studio-copy";
 const copy: ProjectStudioCopy = {
+  budgetHeading: "已因使用限额暂停",
+  budgetHelp:
+    "检查不会消耗模型令牌，也不会重置用量。恢复的任务仍受现有限额约束。如果额度已用完，请提高配置中的限额，或等待滚动日窗口更新。",
+  budgetGuide: "使用限额指南",
+  budgetCheck: "检查额度并继续",
+  budgetChecking: "正在检查…",
+  budgetAccepted: "已将 {count} 个任务加入队列以继续执行。",
+  budgetStillPaused: "仍有 {count} 个任务处于暂停状态。",
+  budgetUnknown: "结果尚未确认。发送新请求前，请检查已保存的操作记录。",
+  budgetInspect: "检查操作记录",
+  budgetMissing:
+    "尚未找到已提交的操作记录。请求可能仍在处理中；您可以安全地重试同一请求。",
+  budgetRetry: "重试同一请求",
+  budgetStorage:
+    "无法在此标签页保存恢复信息。未发送请求，或无法清除已确认操作的信息。请启用浏览器存储并检查操作记录。",
+  budgetSnapshotError: "无法读取当前任务范围。请重新检查。",
+  budgetLoadError: "无法加载继续执行控件。请刷新页面；已保存的请求会保留。",
+  budgetReasonEmergency: "紧急停止已开启。解除后请重新检查。",
+  budgetReasonChanged: "任务或主任务范围已更改。请查看当前状态。",
+  budgetReasonInvalid: "此任务没有有效的主任务范围。未恢复任何任务。",
+  budgetReasonLarge: "此任务组超过 1,000 个任务。未恢复任何任务。",
+  budgetReasonExhausted:
+    "额度仍已用完。提高限额或滚动日窗口更新后，请重新检查。",
+  budgetReasonIneligible:
+    "目前没有可以安全恢复的任务。请检查负责人、审批和未完成的操作。",
   answerHeading: "{name} 正在等待你的回答",
   answerHelp: "请检查问题。发送回答后，任务将排队继续。",
   answerLabel: "你的回答",

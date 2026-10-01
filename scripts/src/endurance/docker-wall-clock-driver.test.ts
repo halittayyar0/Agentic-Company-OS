@@ -178,6 +178,7 @@ test("first-cycle diagnosis identifies unclaimed and lost agents without copying
         invocations: [
           {
             id: "completed-invocation",
+            attemptId: "completed-attempt",
             state: "succeeded",
             effectStartedAt: "2026-09-01T00:00:29.500Z",
             finishedAt: "2026-09-01T00:00:30.000Z",
@@ -568,6 +569,7 @@ test("Docker driver starts the exact topology and derives minute evidence from d
           invocations: [
             {
               id: "invocation-1",
+              attemptId: "attempt-1",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:30.500Z",
               finishedAt: "2026-09-01T00:00:31.000Z",
@@ -586,6 +588,7 @@ test("Docker driver starts the exact topology and derives minute evidence from d
           invocations: [
             {
               id: "invocation-duplicate-cycle",
+              attemptId: "attempt-1",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:32.500Z",
               finishedAt: "2026-09-01T00:00:33.000Z",
@@ -734,6 +737,12 @@ test("Docker driver starts the exact topology and derives minute evidence from d
     assert.equal(provenance.runner.postgres, "PostgreSQL 17.6");
     assert.equal(provenance.configuration.workers, 2);
     assert.equal(provenance.configuration.runtime, "docker-compose");
+    assert.equal(provenance.configuration.MAX_TASK_STEPS, 0);
+    assert.equal(
+      provenance.configuration.MAX_RECURRING_FAMILY_DAILY_TOKENS,
+      500000,
+    );
+    assert.equal(provenance.configuration.MAX_TASK_REPORTED_COST_USD, 1);
     assert.equal(
       requests.every(
         (request) => request.authorization === "Bearer local-operator-secret",
@@ -1123,6 +1132,38 @@ test("Docker driver retries cleanup authority retained by a partial harness star
   }
 });
 
+test("Docker provenance freezes the selected spend caps without including provider secrets", async () => {
+  const environment = {
+    MAX_RECURRING_FAMILY_DAILY_TOKENS: "2.5e6",
+    OPENAI_API_KEY: "private-provider-value",
+  };
+  const driver = new DockerWallClockDriver({
+    runId: "spend-provenance",
+    seed: 240901,
+    durationHours: 24,
+    workspaceRoot: process.cwd(),
+    controlDirectory: path.join(tmpdir(), "spend-provenance"),
+    baseUrl: "http://127.0.0.1:5000",
+    operatorToken: "private-operator-value",
+    environment,
+    harness: harness([]),
+  });
+  const pinned = createDockerWallClockEnvironment({
+    runId: "spend-provenance",
+    seed: 240901,
+    workspaceRoot: process.cwd(),
+    controlDirectory: tmpdir(),
+    environment,
+  });
+  environment.MAX_RECURRING_FAMILY_DAILY_TOKENS = "500000";
+  const { configuration } = await driver.provenance();
+  assert.equal(configuration.MAX_RECURRING_FAMILY_DAILY_TOKENS, 2500000);
+  for (const [key, value] of Object.entries(configuration)) {
+    if (key.startsWith("MAX_")) assert.equal(pinned[key], String(value));
+  }
+  assert.equal(JSON.stringify(configuration).includes("private-"), false);
+});
+
 test("Docker harness environment binds one control directory and four exact secret files", () => {
   const workspaceRoot = path.resolve("D:/agentic-os-test");
   const controlDirectory = path.resolve("D:/agentic-os-test-control");
@@ -1133,6 +1174,8 @@ test("Docker harness environment binds one control directory and four exact secr
     controlDirectory,
     environment: { KEEP_ME: "yes" },
   });
+  assert.equal(environment.MAX_TASK_STEPS, "0");
+  assert.equal(environment.MAX_RECURRING_FAMILY_DAILY_TOKENS, "500000");
   assert.equal(
     environment.AGENTIC_SECRET_GID,
     String(process.getgid?.() ?? 1000),
@@ -1240,6 +1283,7 @@ test("Docker driver fails closed when irreversible receipts lack a normalized ef
           invocations: [
             {
               id: "invocation-risk",
+              attemptId: "attempt-risk",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:08.000Z",
               finishedAt: "2026-09-01T00:00:09.000Z",
@@ -1317,6 +1361,7 @@ test("Docker driver ingests each succeeded irreversible receipt once and detects
         ? [
             {
               id: `invocation-${input.id}`,
+              attemptId: "attempt-risk",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:08.000Z",
               finishedAt: "2026-09-01T00:00:09.000Z",
@@ -1413,6 +1458,116 @@ test("Docker driver ingests each succeeded irreversible receipt once and detects
       duplicateKey,
     ]);
 
+    snapshot.attempts.push({
+      ...(snapshot.attempts[0] as Record<string, unknown>),
+      id: "replacement-risk-owner",
+      state: "succeeded",
+      finishedAt: "2026-09-01T00:01:01.000Z",
+    });
+    snapshot.receipts.push(
+      receipt({
+        id: "receipt-recovered-owner",
+        state: "succeeded",
+        sideEffectClass: "at_most_once",
+        invocations: [
+          {
+            id: "recovered-invocation",
+            attemptId: "replacement-risk-owner",
+            state: "succeeded",
+            effectStartedAt: "2026-09-01T00:00:08.750Z",
+            finishedAt: "2026-09-01T00:00:09.000Z",
+          },
+        ],
+      }),
+    );
+    await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
+    assert.equal(
+      observer
+        .finalize()
+        .primaryEvidence.some(
+          (row) =>
+            row.kind === "receipt_observed" &&
+            row.data.receiptId === "receipt-recovered-owner",
+        ),
+      false,
+    );
+    snapshot.generatedAt = "2026-09-01T00:01:02.000Z";
+    await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
+    const recoveredEvidence = observer.finalize();
+    assert.equal(recoveredEvidence.metrics.staleOwnerCommits, 3);
+    const recoveredRow = recoveredEvidence.primaryEvidence.find(
+      (row) =>
+        row.kind === "receipt_observed" &&
+        row.data.receiptId === "receipt-recovered-owner",
+    );
+    assert.equal(
+      (recoveredRow?.data.winningAttempt as { id: string }).id,
+      "replacement-risk-owner",
+    );
+
+    snapshot.receipts.push({
+      ...receipt({
+        id: "future-recovered-receipt",
+        state: "succeeded",
+        sideEffectClass: "at_most_once",
+        invocations: [
+          {
+            id: "future-recovered-invocation",
+            attemptId: "new-future-owner",
+            state: "succeeded",
+            effectStartedAt: "2026-09-01T00:01:02.500Z",
+            finishedAt: "2026-09-01T00:01:03.000Z",
+          },
+        ],
+      }),
+      finishedAt: "2026-09-01T00:01:03.000Z",
+    });
+    await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
+    assert.equal(
+      observer
+        .finalize()
+        .primaryEvidence.some(
+          (row) => row.data.receiptId === "future-recovered-receipt",
+        ),
+      false,
+    );
+    snapshot.attempts.push({
+      ...(snapshot.attempts[0] as Record<string, unknown>),
+      id: "new-future-owner",
+      state: "succeeded",
+      finishedAt: "2026-09-01T00:01:03.500Z",
+    });
+    snapshot.generatedAt = "2026-09-01T00:01:04.000Z";
+    await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
+    assert.equal(
+      observer
+        .finalize()
+        .primaryEvidence.some(
+          (row) => row.data.receiptId === "future-recovered-receipt",
+        ),
+      true,
+    );
+    snapshot.receipts.push(
+      receipt({
+        id: "historical-missing-owner",
+        state: "succeeded",
+        sideEffectClass: "at_most_once",
+        invocations: [
+          {
+            id: "historical-unbound-invocation",
+            attemptId: "unavailable-historical-owner",
+            state: "succeeded",
+            effectStartedAt: "2026-09-01T00:00:08.000Z",
+            finishedAt: "2026-09-01T00:00:09.000Z",
+          },
+        ],
+      }),
+    );
+    await assert.rejects(
+      driver.captureEvidence(observer, { kind: "minute", minute: 2 }),
+      /matching physical invocation owner/,
+    );
+
     snapshot = operationsSnapshot({
       cursor: "3",
       receipts: [
@@ -1423,12 +1578,14 @@ test("Docker driver ingests each succeeded irreversible receipt once and detects
           invocations: [
             {
               id: "invocation-double-effect-1",
+              attemptId: "attempt-risk",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:07.000Z",
               finishedAt: "2026-09-01T00:00:08.000Z",
             },
             {
               id: "invocation-double-effect-2",
+              attemptId: "attempt-risk",
               state: "succeeded",
               effectStartedAt: "2026-09-01T00:00:08.000Z",
               finishedAt: "2026-09-01T00:00:09.000Z",

@@ -1,5 +1,37 @@
 import type { ProjectStudioCopy } from "../project-studio-copy";
 const copy: ProjectStudioCopy = {
+  budgetHeading: "Am Nutzungslimit pausiert",
+  budgetHelp:
+    "Die Prüfung verbraucht keine Modell-Tokens und setzt die Nutzung nicht zurück. Fortgesetzte Arbeit nutzt das bestehende Kontingent. Ist es ausgeschöpft, erhöhen Sie die konfigurierten Limits oder warten Sie, bis das rollierende Tagesfenster erneuert wird.",
+  budgetGuide: "Leitfaden zu Nutzungslimits",
+  budgetCheck: "Kontingent prüfen und fortsetzen",
+  budgetChecking: "Wird geprüft…",
+  budgetAccepted: "{count} Aufgaben zur Fortsetzung eingereiht.",
+  budgetStillPaused: "{count} Aufgaben bleiben pausiert.",
+  budgetUnknown:
+    "Das Ergebnis ist unbestätigt. Prüfen Sie den gespeicherten Beleg, bevor Sie eine neue Anfrage senden.",
+  budgetInspect: "Beleg prüfen",
+  budgetMissing:
+    "Noch kein gespeicherter Beleg gefunden. Die Anfrage kann noch laufen; Sie können dieselbe Anfrage sicher erneut senden.",
+  budgetRetry: "Dieselbe Anfrage erneut senden",
+  budgetStorage:
+    "Wiederherstellungsdaten konnten in diesem Tab nicht gespeichert werden. Es wurde nichts gesendet oder die Daten einer bestätigten Aktion konnten nicht gelöscht werden. Aktivieren Sie den Browserspeicher und prüfen Sie den Beleg.",
+  budgetSnapshotError:
+    "Der aktuelle Aufgabenumfang konnte nicht gelesen werden. Erneut prüfen.",
+  budgetLoadError:
+    "Die Fortsetzungssteuerung konnte nicht geladen werden. Laden Sie die Seite neu; die gespeicherte Anfrage bleibt erhalten.",
+  budgetReasonEmergency:
+    "Der Notstopp ist aktiv. Prüfen Sie erneut, nachdem er aufgehoben wurde.",
+  budgetReasonChanged:
+    "Die Aufgabe oder der Umfang der Hauptaufgabe hat sich geändert. Prüfen Sie den aktuellen Zustand.",
+  budgetReasonInvalid:
+    "Diese Aufgabe hat keine gültige Hauptaufgabe. Es wurde keine Arbeit fortgesetzt.",
+  budgetReasonLarge:
+    "Diese Aufgabenfamilie überschreitet 1.000 Aufgaben. Es wurde keine Arbeit fortgesetzt.",
+  budgetReasonExhausted:
+    "Das Kontingent ist weiterhin ausgeschöpft. Prüfen Sie nach einer Limiterhöhung oder der Erneuerung des rollierenden Tagesfensters erneut.",
+  budgetReasonIneligible:
+    "Aktuell kann keine Arbeit sicher fortgesetzt werden. Prüfen Sie Verantwortliche, Freigaben und nicht abgeschlossene Vorgänge.",
   answerHeading: "{name} wartet auf deine Antwort",
   answerHelp:
     "Prüfe die Frage. Deine Antwort stellt die Aufgabe zur Fortsetzung in die Warteschlange.",

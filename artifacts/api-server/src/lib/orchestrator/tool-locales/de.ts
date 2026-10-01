@@ -1,6 +1,8 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolDe: ToolCopy = {
+  budgetFamilyResumed:
+    "Nutzungslimit geprüft; {count} Aufgaben erneut eingereiht.",
   schedulerClaimed: "Aufgabe übernommen",
   projectMeetingRunning:
     "Antwort für die Projektbesprechung wird vorbereitet: {title}",
@@ -17,6 +19,14 @@ export const toolDe: ToolCopy = {
   schedulerTokenBudget: "Tokenbudget erreicht ({used}/{limit}).",
   schedulerCostBudget:
     "Vom Anbieter gemeldetes Kostenbudget erreicht (${used}/{limit}).",
+  schedulerFamilyTokenBudget:
+    "Gemeinsames Tokenbudget für Aufgabe #{rootTaskId} und ihre Unteraufgaben erreicht ({used}/{limit}).",
+  schedulerFamilyCostBudget:
+    "Gemeinsames Kostenbudget laut Anbieter für Aufgabe #{rootTaskId} und ihre Unteraufgaben erreicht (${used}/{limit}).",
+  schedulerFamilyDailyTokenBudget:
+    "Gemeinsames Tokenbudget der letzten 24 Stunden für Aufgabe #{rootTaskId} und ihre Unteraufgaben erreicht ({used}/{limit}).",
+  schedulerFamilyDailyCostBudget:
+    "Gemeinsames Kostenbudget laut Anbieter der letzten 24 Stunden für Aufgabe #{rootTaskId} und ihre Unteraufgaben erreicht (${used}/{limit}).",
   schedulerBudgetStopped:
     "Aufgabe wegen ihres Sicherheitsbudgets angehalten: {reason}",
   pathInvalid: "Fehler: path muss eine Zeichenfolge sein.",

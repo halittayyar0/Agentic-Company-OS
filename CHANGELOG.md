@@ -3,6 +3,22 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.11] - 2026-10-01
+
+### Improved
+
+- Native endurance documentation uses a ten-minute preflight covering all seven fault kinds before a 24-hour launch. The independent verifier still rejects missing incidents, false health reports and shorter duration claims.
+- Synthetic endurance runs explicitly pin all nine selected token, step and reported-cost limits for both runtime types and record only those numerical limits in provenance. Malformed overrides stop before building or starting resources. The documented finite workload allowance is selected before both runs; production defaults and recorded usage remain unchanged.
+- Task families share recorded token and reported-cost limits across the root and delegated work. Finite work uses its current root cycle; recurring work also checks a rolling 24-hour allowance. Individual limits remain authoritative and unknown reported costs are not presented as zero.
+- Authenticated operators can check and resume eligible budget-paused family work in all seven interface languages. The check spends no model tokens, preserves recorded usage and does not change permissions, allowances or completed work. Emergency stop, pending approvals, leases and unresolved operations still prevent unsafe transitions.
+- An immutable request receipt lets the task page recover after a lost response or reload. The page saves the request identity before sending, inspects the same receipt after uncertainty and requires an explicit retry when no receipt exists.
+- Container setup preserves validated operator budget overrides when resuming an existing installation. Source and native PostgreSQL acceptance cover concurrent replay, cancellation, transaction rollback, corrupt families and allowance renewal; phone-width UI checks cover recovery, keyboard use and enlarged Arabic text.
+
+### Fixed
+
+- Endurance evidence records the physical attempt that completed each operation and verifies its invocation join. A replacement owner can complete a reused logical receipt; a lost owner cannot claim a successful effect. Both attempts must be final and their snapshots consistent across the evidence bundle.
+- Observer samples defer future-dated completed receipts before resolving their owners. A missing owner for an already completed historical receipt remains a verification failure.
+
 ## [0.3.10] - 2026-10-01
 
 ### Improved

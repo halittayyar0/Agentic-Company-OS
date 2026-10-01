@@ -1,5 +1,31 @@
 import type { ProjectStudioCopy } from "../project-studio-copy";
 const copy: ProjectStudioCopy = {
+  budgetHeading: "已因使用限額暫停",
+  budgetHelp:
+    "檢查不會消耗模型權杖，也不會重設用量。恢復的工作仍受現有限額約束。如果額度已用完，請提高設定中的限額，或等待滾動日窗口更新。",
+  budgetGuide: "使用限額指南",
+  budgetCheck: "檢查額度並繼續",
+  budgetChecking: "正在檢查…",
+  budgetAccepted: "已將 {count} 項工作加入佇列以繼續執行。",
+  budgetStillPaused: "仍有 {count} 項工作處於暫停狀態。",
+  budgetUnknown: "結果尚未確認。傳送新請求前，請檢查已儲存的操作記錄。",
+  budgetInspect: "檢查操作記錄",
+  budgetMissing:
+    "尚未找到已提交的操作記錄。請求可能仍在處理中；您可以安全地重試同一請求。",
+  budgetRetry: "重試同一請求",
+  budgetStorage:
+    "無法在此分頁儲存復原資訊。未傳送請求，或無法清除已確認操作的資訊。請啟用瀏覽器儲存空間並檢查操作記錄。",
+  budgetSnapshotError: "無法讀取目前的工作範圍。請重新檢查。",
+  budgetLoadError:
+    "無法載入繼續執行控制項。請重新整理頁面；已儲存的請求會保留。",
+  budgetReasonEmergency: "緊急停止已開啟。解除後請重新檢查。",
+  budgetReasonChanged: "工作或主工作範圍已變更。請查看目前狀態。",
+  budgetReasonInvalid: "此工作沒有有效的主工作範圍。未恢復任何工作。",
+  budgetReasonLarge: "此工作群組超過 1,000 項工作。未恢復任何工作。",
+  budgetReasonExhausted:
+    "額度仍已用完。提高限額或滾動日窗口更新後，請重新檢查。",
+  budgetReasonIneligible:
+    "目前沒有可以安全恢復的工作。請檢查負責人、核准與未完成的操作。",
   answerHeading: "{name} 正在等待你的回答",
   answerHelp: "請檢查問題。送出回答後，任務將排入佇列繼續。",
   answerLabel: "你的回答",

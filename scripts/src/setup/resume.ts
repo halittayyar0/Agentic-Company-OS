@@ -5,7 +5,7 @@ import { ensureExactOutputDirectory } from "../endurance/safe-output";
 import { detectInstallCapabilities } from "./preflight";
 import { planInstallation } from "./plan";
 import type { InstallationResources } from "./resources";
-async function readBoundedRegularFile(
+export async function readBoundedRegularFile(
   file: string,
   limit: number,
   _options: { rejectSymlinks: true },

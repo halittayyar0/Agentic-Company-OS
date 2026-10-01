@@ -11,8 +11,13 @@ import {
   type TaskBudgetLimits,
 } from "./task-budget-policy";
 import type { WorkspaceLocale } from "../workspace-locale";
+import {
+  readFamilySpendAdmission,
+  type SpendReaderClient,
+} from "./family-spend-admission";
+import { ModelAdmissionDeniedError } from "./model-fallback";
 
-export class TaskSpendBudgetError extends Error {}
+export class TaskSpendBudgetError extends ModelAdmissionDeniedError {}
 
 export async function assertTaskInferenceAdmission(
   taskId: number,
@@ -80,7 +85,7 @@ export function executionSpendLimits(): TaskBudgetLimits {
 /** Admission uses durable provider receipts, including judge calls. Continuous
  * counters span the installation's lifetime and must not stand in for a cycle.
  * This is a reported-usage breaker, not a provider-side hard spending cap. */
-export async function readTaskSpendAdmission(
+export async function readIndividualTaskSpendAdmission(
   task: Pick<
     Task,
     | "id"
@@ -94,11 +99,12 @@ export async function readTaskSpendAdmission(
   limits: TaskBudgetLimits = executionSpendLimits(),
   locale: WorkspaceLocale = "tr",
   now = new Date(),
+  client: SpendReaderClient = db,
 ) {
   const recurring = task.autonomyMode === "continuous";
   const cycleStart = task.lastCycleCompletedAt ?? task.createdAt;
   const dayStart = new Date(now.getTime() - 86_400_000);
-  const [usage] = await db
+  const [usage] = await client
     .select({
       tokens: sql<string>`coalesce(sum(case when ${usageEventsTable.createdAt} >= ${cycleStart} then ${usageEventsTable.totalTokens} else 0 end), 0)`,
       cost: sql<
@@ -139,7 +145,7 @@ export async function readTaskSpendAdmission(
       );
   const [{ setupRetries }] =
     !recurring && limits.maxSteps !== null
-      ? await db
+      ? await client
           .select({ setupRetries: sql<number>`count(*)::int` })
           .from(taskAttemptsTable)
           .where(
@@ -197,6 +203,23 @@ export async function readTaskSpendAdmission(
     ...dailyCost,
     usageSource: "rolling_24h_usage_ledger",
   };
+}
+
+export async function readTaskSpendAdmission(
+  ...args: Parameters<typeof readIndividualTaskSpendAdmission>
+) {
+  const individual = await readIndividualTaskSpendAdmission(...args);
+  if (individual.reason)
+    return { ...individual, budgetScope: "task", rootTaskId: null };
+  const family = await readFamilySpendAdmission(
+    args[0].id,
+    args[2] ?? "tr",
+    args[3],
+    args[4],
+  );
+  return family.reason
+    ? { ...family, budgetScope: "family" }
+    : { ...individual, budgetScope: "task", rootTaskId: family.rootTaskId };
 }
 
 export async function readTaskSpendBlockReason(

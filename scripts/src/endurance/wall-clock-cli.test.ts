@@ -119,6 +119,36 @@ test("wall-clock CLI validates duration, seed, output, and retention flags", () 
   );
 });
 
+test("invalid spend caps are rejected before build, runtime, or output directories", async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "endurance-invalid-spend-"),
+  );
+  const output = path.join(directory, "absent", "report.json");
+  let builds = 0;
+  let runtimes = 0;
+  try {
+    await assert.rejects(
+      writeWallClockSoakReport(parseWallClockArguments(["--output", output]), {
+        environment: { MAX_TASK_TOKENS: "private-invalid-value" },
+        prepareBuildAttestation: async () => {
+          builds++;
+          throw new Error("unexpected build");
+        },
+        driverFactory: () => {
+          runtimes++;
+          throw new Error("unexpected runtime");
+        },
+      }),
+      /Invalid endurance spend setting: MAX_TASK_TOKENS/,
+    );
+    assert.equal(builds, 0);
+    assert.equal(runtimes, 0);
+    assert.deepEqual(await readdir(directory), []);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("wall-clock cleanup guard rejects temp root, unrelated prefixes, and nested paths", async () => {
   const runId = "soak-cleanup-guard";
   const unrelated = await mkdtemp(path.join(tmpdir(), "not-endurance-run-"));

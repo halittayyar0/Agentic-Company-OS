@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { createEnduranceSpendConfiguration } from "./endurance/spend-configuration";
 import { execFileSync } from "node:child_process";
 import {
   access,
@@ -858,6 +859,11 @@ export async function writeWallClockSoakReport(
   options: WallClockCliArguments,
   dependencies: WallClockWriteDependencies = {},
 ): Promise<WallClockWriteResult> {
+  const baseEnvironment = dependencies.environment ?? process.env;
+  const environment = {
+    ...baseEnvironment,
+    ...createEnduranceSpendConfiguration(baseEnvironment).environment,
+  };
   const reportPath = path.resolve(options.output);
   const faultProfile = options.faultProfile ?? "standard";
   const journalPath = journalPathFor(reportPath);
@@ -886,7 +892,6 @@ export async function writeWallClockSoakReport(
   const workspaceRoot = path.resolve(
     dependencies.workspaceRoot ?? workspaceRootFromModule,
   );
-  const environment = dependencies.environment ?? process.env;
   const now = dependencies.now ?? (() => new Date());
   const startedAt = now();
   const runId = validatedRunId(

@@ -2520,6 +2520,109 @@ export const ResumeTaskResponse = zod.object({
 
 
 /**
+ * @summary Read budget resume scope without dispatching work
+ */
+
+
+
+export const GetTaskBudgetResumeStatusParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+export const GetTaskBudgetResumeStatusResponse = zod.object({
+  "taskId": zod.number().int().min(1),
+  "rootTaskId": zod.number().int().min(1).nullable(),
+  "budgetPaused": zod.boolean()
+})
+
+
+/**
+ * Does not reset usage or grant allowance. Queue transitions and an immutable scope-bound receipt commit together. Explicit replay returns the stored receipt without queueing again.
+ * @summary Check recorded allowance and resume eligible budget-paused family work
+ */
+
+
+
+export const ResumeTaskBudgetParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ResumeTaskBudgetBody = zod.object({
+  "requestId": zod.string().uuid(),
+  "rootTaskId": zod.number().int().min(1)
+})
+
+
+
+
+export const resumeTaskBudgetResponseQueuedTaskIdsMax = 1000;
+
+export const resumeTaskBudgetResponseQueuedCountMin = 0;
+export const resumeTaskBudgetResponseQueuedCountMax = 1000;
+
+export const resumeTaskBudgetResponseStillPausedCountMin = 0;
+export const resumeTaskBudgetResponseStillPausedCountMax = 1000;
+
+
+
+export const ResumeTaskBudgetResponse = zod.object({
+  "requestId": zod.string().uuid(),
+  "taskId": zod.number().int().min(1),
+  "rootTaskId": zod.number().int().min(1),
+  "outcome": zod.enum(['accepted', 'rejected']),
+  "reason": zod.enum(['emergency_stop', 'task_changed', 'family_invalid', 'family_too_large', 'allowance_exhausted', 'nothing_eligible']).nullable(),
+  "queuedTaskIds": zod.array(zod.number().int().min(1)).max(resumeTaskBudgetResponseQueuedTaskIdsMax),
+  "queuedCount": zod.number().int().min(resumeTaskBudgetResponseQueuedCountMin).max(resumeTaskBudgetResponseQueuedCountMax),
+  "stillPausedCount": zod.number().int().min(resumeTaskBudgetResponseStillPausedCountMin).max(resumeTaskBudgetResponseStillPausedCountMax),
+  "recordedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Inspect a budget resume receipt without dispatching work
+ */
+
+
+
+export const GetTaskBudgetResumeReceiptParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1),
+  "requestId": zod.coerce.string().uuid()
+})
+
+
+
+
+export const getTaskBudgetResumeReceiptResponseQueuedTaskIdsMax = 1000;
+
+export const getTaskBudgetResumeReceiptResponseQueuedCountMin = 0;
+export const getTaskBudgetResumeReceiptResponseQueuedCountMax = 1000;
+
+export const getTaskBudgetResumeReceiptResponseStillPausedCountMin = 0;
+export const getTaskBudgetResumeReceiptResponseStillPausedCountMax = 1000;
+
+
+
+export const GetTaskBudgetResumeReceiptResponse = zod.object({
+  "requestId": zod.string().uuid(),
+  "taskId": zod.number().int().min(1),
+  "rootTaskId": zod.number().int().min(1),
+  "outcome": zod.enum(['accepted', 'rejected']),
+  "reason": zod.enum(['emergency_stop', 'task_changed', 'family_invalid', 'family_too_large', 'allowance_exhausted', 'nothing_eligible']).nullable(),
+  "queuedTaskIds": zod.array(zod.number().int().min(1)).max(getTaskBudgetResumeReceiptResponseQueuedTaskIdsMax),
+  "queuedCount": zod.number().int().min(getTaskBudgetResumeReceiptResponseQueuedCountMin).max(getTaskBudgetResumeReceiptResponseQueuedCountMax),
+  "stillPausedCount": zod.number().int().min(getTaskBudgetResumeReceiptResponseStillPausedCountMin).max(getTaskBudgetResumeReceiptResponseStillPausedCountMax),
+  "recordedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Read the exact pending question and its current answerability
  */
 

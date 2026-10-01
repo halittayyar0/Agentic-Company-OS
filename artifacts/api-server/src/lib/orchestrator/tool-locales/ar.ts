@@ -1,6 +1,8 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolAr: ToolCopy = {
+  budgetFamilyResumed:
+    "تم التحقق من حد الاستخدام وإعادة {count} من المهام إلى قائمة الانتظار.",
   schedulerClaimed: "تم تولي المهمة",
   projectMeetingRunning: "جارٍ إعداد رد لاجتماع المشروع: {title}",
   schedulerAccepted: "تم قبول المهمة وبدأ العمل.",
@@ -15,6 +17,14 @@ export const toolAr: ToolCopy = {
   schedulerTokenBudget: "تم بلوغ ميزانية الرموز ({used}/{limit}).",
   schedulerCostBudget:
     "تم بلوغ ميزانية التكلفة التي أبلغ عنها المزوّد (${used}/{limit}).",
+  schedulerFamilyTokenBudget:
+    "تم بلوغ ميزانية الرموز المشتركة للمهمة #{rootTaskId} ومهامها الفرعية ({used}/{limit}).",
+  schedulerFamilyCostBudget:
+    "تم بلوغ ميزانية التكلفة المشتركة التي أبلغ عنها المزوّد للمهمة #{rootTaskId} ومهامها الفرعية (${used}/{limit}).",
+  schedulerFamilyDailyTokenBudget:
+    "تم بلوغ ميزانية الرموز المشتركة خلال آخر 24 ساعة للمهمة #{rootTaskId} ومهامها الفرعية ({used}/{limit}).",
+  schedulerFamilyDailyCostBudget:
+    "تم بلوغ ميزانية التكلفة المشتركة التي أبلغ عنها المزوّد خلال آخر 24 ساعة للمهمة #{rootTaskId} ومهامها الفرعية (${used}/{limit}).",
   schedulerBudgetStopped: "توقفت المهمة بسبب حد ميزانية الأمان: {reason}",
   pathInvalid: "خطأ: يجب أن تكون path نصًا.",
   pathNoncanonical:

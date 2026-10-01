@@ -1,4 +1,7 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { WORKSPACE_LOCALES } from "../../artifacts/api-server/src/lib/workspace-locale";
+import { toolMessage } from "../../artifacts/api-server/src/lib/orchestrator/tool-localization";
+import { loadProjectStudioCopy } from "../../artifacts/agentic-company-os/src/lib/project-studio-copy";
 
 const QUESTION_ID = "11111111-1111-4111-8111-111111111111";
 const NOW = "2026-08-29T09:00:00.000Z";
@@ -150,13 +153,22 @@ async function installResumeMocks(
   {
     failResume,
     blockedReason = "user_input",
+    lastError = blockedTask.lastError,
+    budgetDenied = false,
+    budgetPartial = false,
   }: {
     failResume: boolean;
-    blockedReason?: "user_input" | "runtime_failure";
+    blockedReason?: "user_input" | "runtime_failure" | "budget";
+    lastError?: string;
+    budgetDenied?: boolean;
+    budgetPartial?: boolean;
   },
 ) {
-  let currentTask = { ...blockedTask, blockedReason };
+  let currentTask = { ...blockedTask, blockedReason, lastError };
   let resumeAttempts = 0;
+  let budgetAttempts = 0;
+  const budgetRequests: Array<{ requestId: string; rootTaskId: number }> = [];
+  const budgetReceipts = new Map<string, unknown>();
   const receipts = new Map<string, unknown>();
   let loseAck = false;
   let questionId = QUESTION_ID;
@@ -273,6 +285,52 @@ async function installResumeMocks(
     if (path === "/api/tasks/501" && method === "GET") {
       return json(route, currentTask);
     }
+    if (path === "/api/tasks/501/budget-resume" && method === "GET")
+      return json(route, {
+        taskId: 501,
+        rootTaskId: 501,
+        budgetPaused:
+          currentTask.status === "blocked" &&
+          currentTask.blockedReason === "budget",
+      });
+    if (path.startsWith("/api/tasks/501/budget-resume/") && method === "GET") {
+      const receipt = budgetReceipts.get(path.split("/").at(-1)!);
+      return receipt
+        ? json(route, receipt)
+        : json(route, { error: "No committed receipt" }, 404);
+    }
+    if (path === "/api/tasks/501/budget-resume" && method === "POST") {
+      budgetAttempts++;
+      const body = request.postDataJSON() as {
+        requestId: string;
+        rootTaskId: number;
+      };
+      budgetRequests.push(body);
+      if (failResume) return json(route, { error: "Lost request" }, 503);
+      const receipt = {
+        requestId: body.requestId,
+        taskId: 501,
+        rootTaskId: body.rootTaskId,
+        outcome: budgetDenied ? "rejected" : "accepted",
+        reason: budgetDenied ? "allowance_exhausted" : null,
+        queuedTaskIds: budgetDenied ? [] : budgetPartial ? [502] : [501],
+        queuedCount: budgetDenied ? 0 : 1,
+        stillPausedCount: budgetDenied || budgetPartial ? 1 : 0,
+        recordedAt: NOW,
+      };
+      budgetReceipts.set(body.requestId, receipt);
+      if (!budgetDenied && !budgetPartial)
+        currentTask = {
+          ...currentTask,
+          status: "pending",
+          blockedReason: null,
+          lastError: null,
+          nextAttemptAt: NOW,
+        };
+      return loseAck
+        ? json(route, { error: "Lost acknowledgement" }, 503)
+        : json(route, receipt);
+    }
     if (path === "/api/tasks/501/question")
       return json(route, {
         taskId: 501,
@@ -357,6 +415,12 @@ async function installResumeMocks(
 
   return {
     unexpected,
+    budgetAttempts: () => budgetAttempts,
+    allowBudget: () => {
+      budgetDenied = false;
+      budgetPartial = false;
+    },
+    budgetRequests: () => [...budgetRequests],
     requests: () => requests,
     loseAcknowledgement: () => {
       loseAck = true;
@@ -368,6 +432,14 @@ async function installResumeMocks(
     attempts: () => resumeAttempts,
     answers: () => [...submittedAnswers],
     task: () => ({ ...currentTask }),
+    pauseBudgetAgain: () => {
+      currentTask = {
+        ...currentTask,
+        status: "blocked",
+        blockedReason: "budget",
+        lastError: "Later cycle allowance reached",
+      };
+    },
     messageScopes: () => [...messageScopes],
     activityScopes: () => [...activityScopes],
     vmStatusReads: () => vmStatusReads,
@@ -657,4 +729,331 @@ test.describe("blocked task operator handoff", () => {
     await expect.poll(harness.attempts).toBe(0);
     expect([...harness.unexpected]).toEqual([]);
   });
+});
+
+for (const locale of WORKSPACE_LOCALES) {
+  test(`${locale} shared budget reason fits a phone and does not offer an answer form`, async ({
+    page,
+  }, info) => {
+    await page.addInitScript(
+      (value) => localStorage.setItem("acos.locale.v1", value),
+      locale,
+    );
+    await page.setViewportSize({
+      width: locale === "ar" ? 320 : 390,
+      height: 844,
+    });
+    await page.emulateMedia({
+      colorScheme: locale === "ar" ? "light" : "dark",
+    });
+    const reason = toolMessage(locale, "schedulerFamilyDailyCostBudget", {
+      rootTaskId: 501,
+      used: "8.10",
+      limit: 8,
+    });
+    const harness = await installResumeMocks(page, {
+      failResume: false,
+      blockedReason: "budget",
+      lastError: reason,
+    });
+    await page.goto("/tasks/501");
+    await expect(page.getByText(reason, { exact: true })).toBeVisible();
+    await expect(page.getByText(reason, { exact: true })).toBeInViewport({
+      ratio: 1,
+    });
+    const copy = await loadProjectStudioCopy(locale);
+    await expect(
+      page.getByRole("textbox", { name: copy.answerLabel, exact: true }),
+    ).toHaveCount(0);
+    expect(harness.task().status).toBe("blocked");
+    expect(harness.attempts()).toBe(0);
+    expect([...harness.unexpected]).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: info.outputPath(`family-budget-${locale}.png`),
+    });
+    const action = page.getByRole("button", {
+      name: copy.budgetCheck,
+      exact: true,
+    });
+    await expect(action).toBeVisible();
+    await expect(
+      page.getByText(copy.budgetHelp, { exact: true }),
+    ).toBeVisible();
+    await action.focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByText(copy.budgetAccepted.replace("{count}", "1"), {
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(harness.budgetAttempts()).toBe(1);
+    expect(harness.task().tokensUsed).toBe(blockedTask.tokensUsed);
+  });
+}
+
+test("budget check queues work without changing displayed usage", async ({
+  page,
+}) => {
+  const harness = await installResumeMocks(page, {
+    failResume: false,
+    blockedReason: "budget",
+  });
+  await page.goto("/tasks/501");
+  await page
+    .getByRole("button", {
+      name: "Kullanım sınırını kontrol et ve devam ettir",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByText("1 iş devam etmek üzere sıraya alındı.", { exact: true }),
+  ).toBeVisible();
+  expect(harness.task().tokensUsed).toBe(blockedTask.tokensUsed);
+  expect(harness.budgetAttempts()).toBe(1);
+  expect(harness.attempts()).toBe(0);
+});
+
+test("partial budget acceptance keeps a fresh explicit check available without reload", async ({
+  page,
+}) => {
+  const harness = await installResumeMocks(page, {
+    failResume: false,
+    blockedReason: "budget",
+    budgetPartial: true,
+  });
+  await page.goto("/tasks/501");
+  const action = page.getByRole("button", {
+    name: "Kullanım sınırını kontrol et ve devam ettir",
+    exact: true,
+  });
+  await action.click();
+  await expect(
+    page.getByText("1 iş devam etmek üzere sıraya alındı.", { exact: true }),
+  ).toBeVisible();
+  expect(harness.task().status).toBe("blocked");
+  harness.allowBudget();
+  await expect(action).toBeVisible();
+  await action.click();
+  await expect.poll(harness.budgetAttempts).toBe(2);
+  expect(harness.budgetRequests()[0].requestId).not.toBe(
+    harness.budgetRequests()[1].requestId,
+  );
+  await expect.poll(() => harness.task().status).toBe("pending");
+});
+
+test("a later budget pause on the same page permits a fresh explicit check", async ({
+  page,
+}) => {
+  const harness = await installResumeMocks(page, {
+    failResume: false,
+    blockedReason: "budget",
+  });
+  await page.goto("/tasks/501");
+  const action = page.getByRole("button", {
+    name: "Kullanım sınırını kontrol et ve devam ettir",
+    exact: true,
+  });
+  await action.click();
+  await expect.poll(() => harness.task().status).toBe("pending");
+  await expect(action).toBeHidden();
+  harness.pauseBudgetAgain();
+  await expect(
+    page.getByText("Later cycle allowance reached", { exact: true }),
+  ).toBeVisible({ timeout: 10000 });
+  await expect(action).toBeVisible();
+  await action.click();
+  await expect.poll(harness.budgetAttempts).toBe(2);
+  expect(harness.budgetRequests()[0].requestId).not.toBe(
+    harness.budgetRequests()[1].requestId,
+  );
+});
+
+test("budget lost acknowledgement survives reload and only inspects its receipt", async ({
+  page,
+}) => {
+  const harness = await installResumeMocks(page, {
+    failResume: false,
+    blockedReason: "budget",
+  });
+  harness.loseAcknowledgement();
+  await page.goto("/tasks/501");
+  await page
+    .getByRole("button", {
+      name: "Kullanım sınırını kontrol et ve devam ettir",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "İşlem kaydını kontrol et", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await page
+    .getByRole("button", { name: "İşlem kaydını kontrol et", exact: true })
+    .click();
+  await expect(
+    page.getByText("1 iş devam etmek üzere sıraya alındı.", { exact: true }),
+  ).toBeVisible();
+  expect(harness.budgetAttempts()).toBe(1);
+  expect(
+    await page.evaluate(() =>
+      sessionStorage.getItem("acos.task-budget-resume.v1:501"),
+    ),
+  ).toBeNull();
+});
+
+test("budget missing receipt offers explicit same-identity retry", async ({
+  page,
+}) => {
+  const harness = await installResumeMocks(page, {
+    failResume: true,
+    blockedReason: "budget",
+  });
+  await page.goto("/tasks/501");
+  await page
+    .getByRole("button", {
+      name: "Kullanım sınırını kontrol et ve devam ettir",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", { name: "İşlem kaydını kontrol et", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Aynı isteği yeniden gönder", exact: true })
+    .click();
+  await expect.poll(harness.budgetAttempts).toBe(2);
+  expect(harness.budgetRequests()[0]).toEqual(harness.budgetRequests()[1]);
+});
+
+test("budget storage failure sends nothing", async ({ page }) => {
+  const harness = await installResumeMocks(page, {
+    failResume: false,
+    blockedReason: "budget",
+  });
+  await page.addInitScript(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key.startsWith("acos.task-budget-resume.v1:"))
+        throw new DOMException("Fixture denied", "QuotaExceededError");
+      return original.call(this, key, value);
+    };
+  });
+  await page.goto("/tasks/501");
+  await page
+    .getByRole("button", {
+      name: "Kullanım sınırını kontrol et ve devam ettir",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Hiçbir istek gönderilmedi" }),
+  ).toBeVisible();
+  expect(harness.budgetAttempts()).toBe(0);
+});
+
+test("budget denial retains usage and a later explicit check gets a new identity", async ({
+  page,
+}) => {
+  const harness = await installResumeMocks(page, {
+    failResume: false,
+    blockedReason: "budget",
+    budgetDenied: true,
+  });
+  const c = await loadProjectStudioCopy("tr");
+  await page.goto("/tasks/501");
+  const action = page.getByRole("button", { name: c.budgetCheck, exact: true });
+  await action.click();
+  await expect(
+    page.getByText(c.budgetReasonExhausted, { exact: true }),
+  ).toBeVisible();
+  expect(harness.task().status).toBe("blocked");
+  expect(harness.task().tokensUsed).toBe(blockedTask.tokensUsed);
+  harness.allowBudget();
+  await action.click();
+  await expect(
+    page.getByText(c.budgetAccepted.replace("{count}", "1"), { exact: true }),
+  ).toBeVisible();
+  expect(harness.budgetRequests()[0].requestId).not.toBe(
+    harness.budgetRequests()[1].requestId,
+  );
+});
+
+test("budget lazy load recovery retains an unconfirmed request", async ({
+  page,
+}) => {
+  const harness = await installResumeMocks(page, {
+    failResume: false,
+    blockedReason: "budget",
+  });
+  harness.loseAcknowledgement();
+  const c = await loadProjectStudioCopy("tr");
+  await page.goto("/tasks/501");
+  await page.getByRole("button", { name: c.budgetCheck, exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: c.budgetInspect, exact: true }),
+  ).toBeVisible();
+  let fail = true;
+  await page.route(/\/assets\/budget-task-resume-[^/]+\.js$/, async (route) => {
+    if (fail) {
+      fail = false;
+      await route.abort("failed");
+    } else await route.continue();
+  });
+  await page.reload();
+  await expect(
+    page.getByText(c.budgetLoadError, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: blockedTask.title, exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: c.budgetLoadError })
+    .getByRole("button", { name: c.retry, exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: c.budgetInspect, exact: true })
+    .click();
+  await expect(
+    page.getByText(c.budgetAccepted.replace("{count}", "1"), { exact: true }),
+  ).toBeVisible();
+  expect(harness.budgetAttempts()).toBe(1);
+});
+
+test("Arabic budget controls remain usable at 200 percent text on a 320px phone", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "ar"));
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.emulateMedia({ colorScheme: "light" });
+  const harness = await installResumeMocks(page, {
+    failResume: false,
+    blockedReason: "budget",
+  });
+  const c = await loadProjectStudioCopy("ar");
+  const session = await page.context().newCDPSession(page);
+  await session.send("Page.setFontSizes", {
+    fontSizes: { standard: 32, fixed: 26 },
+  });
+  await page.goto("/tasks/501");
+  await expect(
+    page.getByRole("heading", { name: c.budgetHeading, exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  const action = page.getByRole("button", { name: c.budgetCheck, exact: true });
+  await action.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByText(c.budgetAccepted.replace("{count}", "1"), { exact: true }),
+  ).toBeVisible();
+  expect(harness.budgetAttempts()).toBe(1);
 });

@@ -2747,6 +2747,66 @@ export interface TaskAutonomyInput {
   cadenceSeconds?: number;
 }
 
+export interface TaskBudgetResumeInput {
+  requestId: string;
+  /** @minimum 1 */
+  rootTaskId: number;
+}
+
+export interface TaskBudgetResumeStatus {
+  /** @minimum 1 */
+  taskId: number;
+  /** @minimum 1 */
+  rootTaskId: number | null;
+  budgetPaused: boolean;
+}
+
+export type TaskBudgetResumeReceiptOutcome = typeof TaskBudgetResumeReceiptOutcome[keyof typeof TaskBudgetResumeReceiptOutcome];
+
+
+export const TaskBudgetResumeReceiptOutcome = {
+  accepted: 'accepted',
+  rejected: 'rejected',
+} as const;
+
+export type TaskBudgetResumeReceiptReason = typeof TaskBudgetResumeReceiptReason[keyof typeof TaskBudgetResumeReceiptReason] | null;
+
+
+export const TaskBudgetResumeReceiptReason = {
+  emergency_stop: 'emergency_stop',
+  task_changed: 'task_changed',
+  family_invalid: 'family_invalid',
+  family_too_large: 'family_too_large',
+  allowance_exhausted: 'allowance_exhausted',
+  nothing_eligible: 'nothing_eligible',
+} as const;
+
+export interface TaskBudgetResumeReceipt {
+  requestId: string;
+  /** @minimum 1 */
+  taskId: number;
+  /** @minimum 1 */
+  rootTaskId: number;
+  outcome: TaskBudgetResumeReceiptOutcome;
+  reason: TaskBudgetResumeReceiptReason;
+  /**
+     * @maxItems 1000
+     * @items.minimum 1
+     */
+  queuedTaskIds: number[];
+  /**
+     * @minimum 0
+     * @maximum 1000
+     */
+  queuedCount: number;
+  /**
+     * @minimum 0
+     * @maximum 1000
+     */
+  stillPausedCount: number;
+  recordedAt: string;
+}
+
 export interface TaskResumeInput {
   requestId: string;
   questionId: string;

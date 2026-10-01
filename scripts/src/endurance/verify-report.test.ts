@@ -31,6 +31,17 @@ const TEST_NODE_EXECUTABLE_SHA = digest(readFileSync(process.execPath));
 const TEST_PNPM_LOCK_SHA = digest(readFileSync(path.resolve("pnpm-lock.yaml")));
 const TEST_POSTGRES_DISTRIBUTION_SHA = "6".repeat(64);
 const TEST_POSTGRES_ROOT = path.resolve("test-portable-postgres");
+const TEST_SPEND = {
+  MAX_TASK_STEPS: 0,
+  MAX_TASK_TOKENS: 100_000,
+  MAX_TASK_REPORTED_COST_USD: 1,
+  MAX_RECURRING_DAILY_TOKENS: 250_000,
+  MAX_RECURRING_DAILY_REPORTED_COST_USD: 5,
+  MAX_TASK_FAMILY_TOKENS: 250_000,
+  MAX_TASK_FAMILY_REPORTED_COST_USD: 3,
+  MAX_RECURRING_FAMILY_DAILY_TOKENS: 2_500_000,
+  MAX_RECURRING_FAMILY_DAILY_REPORTED_COST_USD: 8,
+};
 
 function verifyEnduranceReport(options: VerifyEnduranceReportOptions) {
   return verifyEnduranceReportImplementation(
@@ -143,9 +154,18 @@ function primaryEvidence(report: Record<string, any>) {
           state: "succeeded",
           finishedAt: completedAt,
         },
+        winningAttempt: {
+          id: attemptId,
+          taskId,
+          agentId,
+          cycleNumber,
+          state: "succeeded",
+          finishedAt: completedAt,
+        },
         invocations: [
           {
             id: `invocation-${cycleNumber}-${agentId}`,
+            attemptId,
             state: "succeeded",
             effectStartedAt: completedAt,
             finishedAt: completedAt,
@@ -274,6 +294,7 @@ function validWallClockReport() {
       },
       workflowRunId: "workflow-1",
       configuration: {
+        ...TEST_SPEND,
         runtime: "native-postgres",
         durationHours: 24,
         workers: 2,
@@ -373,6 +394,7 @@ function journal(
         seed,
         projectId: 1,
         faultProfile,
+        spendConfiguration: { ...TEST_SPEND },
       },
     },
     ...schedule.map((fault, index) => ({
@@ -605,6 +627,280 @@ test("verifier accepts only a complete wall-clock evidence bundle", async () => 
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("verifier accepts a recovered operation only when its winning invocation binds a fresh owner", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-owner-proof-"));
+  try {
+    const report = validWallClockReport() as any;
+    const reportPath = await writeFixture(directory, report);
+    const records = primaryEvidence(report) as any[];
+    const receipt = records.find((row) => row.kind === "receipt_observed");
+    receipt.data.originAttempt.state = "lost";
+    receipt.data.originAttempt.finishedAt = new Date(
+      new Date(receipt.data.finishedAt).getTime() - 1000,
+    ).toISOString();
+    receipt.data.winningAttempt.id = "replacement-owner";
+    receipt.data.invocations[0].attemptId = "replacement-owner";
+    await writeBoundPrimaryEvidence(reportPath, records);
+    const result = await verifyEnduranceReport({
+      reportPath,
+      expectedMode: "wall_clock",
+    });
+    assert.equal(result.pass, true);
+    assert.equal(result.report.metrics.staleOwnerCommits, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("verifier binds all nine selected spend limits to the starting journal", async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "agentic-os-spend-proof-"),
+  );
+  try {
+    const reportPath = await writeFixture(directory, validWallClockReport());
+    const result = await verifyEnduranceReport({
+      reportPath,
+      expectedMode: "wall_clock",
+    });
+    assert.equal(result.pass, true);
+    assert.equal(
+      result.report.provenance?.configuration
+        ?.MAX_RECURRING_FAMILY_DAILY_TOKENS,
+      2_500_000,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("verifier requires a finalized logical origin even with a finalized replacement winner", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-owner-proof-"));
+  try {
+    const report = validWallClockReport() as any;
+    const reportPath = await writeFixture(directory, report);
+    const records = primaryEvidence(report) as any[];
+    const data = records.find((row) => row.kind === "receipt_observed").data;
+    data.originAttempt.state = "running";
+    data.originAttempt.finishedAt = null;
+    data.winningAttempt.id = "replacement-owner";
+    data.invocations[0].attemptId = "replacement-owner";
+    await writeBoundPrimaryEvidence(reportPath, records);
+    await assert.rejects(
+      verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+      /origin.*finalized/iu,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("verifier rejects one physical attempt ID reused for different task and agent identities", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-owner-proof-"));
+  try {
+    const report = validWallClockReport() as any;
+    const reportPath = await writeFixture(directory, report);
+    const records = primaryEvidence(report) as any[];
+    const receipts = records.filter((row) => row.kind === "receipt_observed");
+    const identity = receipts[0].data.winningAttempt.id;
+    receipts[1].data.winningAttempt.id = identity;
+    receipts[1].data.invocations[0].attemptId = identity;
+    await writeBoundPrimaryEvidence(reportPath, records);
+    await assert.rejects(
+      verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+      /attempt.*identity|contradictory.*attempt/iu,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+for (const scenario of [
+  {
+    name: "missing winning snapshot",
+    change: (data: any) => {
+      delete data.winningAttempt;
+    },
+  },
+  {
+    name: "missing invocation attempt",
+    change: (data: any) => {
+      delete data.invocations[0].attemptId;
+    },
+  },
+  {
+    name: "detached invocation attempt",
+    change: (data: any) => {
+      data.invocations[0].attemptId = "unrelated-attempt";
+    },
+  },
+  {
+    name: "wrong task",
+    change: (data: any) => {
+      data.winningAttempt.id = "replacement-owner";
+      data.invocations[0].attemptId = "replacement-owner";
+      data.winningAttempt.taskId += 1;
+    },
+  },
+  {
+    name: "wrong agent",
+    change: (data: any) => {
+      data.winningAttempt.id = "replacement-owner";
+      data.invocations[0].attemptId = "replacement-owner";
+      data.winningAttempt.agentId += 1;
+    },
+  },
+  {
+    name: "wrong cycle",
+    change: (data: any) => {
+      data.winningAttempt.id = "replacement-owner";
+      data.invocations[0].attemptId = "replacement-owner";
+      data.winningAttempt.cycleNumber += 1;
+    },
+  },
+  {
+    name: "unfinalized owner",
+    change: (data: any) => {
+      data.winningAttempt.state = "running";
+      data.winningAttempt.finishedAt = null;
+    },
+  },
+  {
+    name: "contradictory same-attempt snapshots",
+    change: (data: any) => {
+      data.winningAttempt.state = "blocked";
+    },
+  },
+  {
+    name: "late physical owner",
+    change: (data: any) => {
+      data.winningAttempt.id = "lost-replacement-owner";
+      data.invocations[0].attemptId = "lost-replacement-owner";
+      data.winningAttempt.state = "lost";
+      data.winningAttempt.finishedAt = new Date(
+        new Date(data.finishedAt).getTime() - 1000,
+      ).toISOString();
+    },
+  },
+]) {
+  test(`verifier rejects a receipt with ${scenario.name} even after hash rebinding`, async () => {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "agentic-owner-proof-"),
+    );
+    try {
+      const reportPath = await writeFixture(directory, validWallClockReport());
+      const records = (
+        await readFile(`${reportPath}.primary-evidence.jsonl`, "utf8")
+      )
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      scenario.change(
+        records.find((row) => row.kind === "receipt_observed").data,
+      );
+      await writeBoundPrimaryEvidence(reportPath, records);
+      await assert.rejects(
+        verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+        /winning|invocation|contradictory|stale owner/iu,
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const key of Object.keys(TEST_SPEND)) {
+  test(`verifier rejects the report spend cap detached from its journal (${key})`, async () => {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "agentic-os-spend-proof-"),
+    );
+    try {
+      const report = validWallClockReport() as any;
+      report.provenance.configuration[key] += 1;
+      const reportPath = await writeFixture(directory, report);
+      await assert.rejects(
+        verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+        /configuration.*journal contract/,
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const mutation of [
+  {
+    name: "missing contract",
+    change: (data: any) => {
+      delete data.spendConfiguration;
+    },
+  },
+  {
+    name: "missing cap",
+    change: (data: any) => {
+      delete data.spendConfiguration.MAX_TASK_FAMILY_TOKENS;
+    },
+  },
+  {
+    name: "unknown field",
+    change: (data: any) => {
+      data.spendConfiguration.OPERATOR_AUTH_TOKEN = "private-value";
+    },
+  },
+  {
+    name: "string cap",
+    change: (data: any) => {
+      data.spendConfiguration.MAX_TASK_TOKENS = "100000";
+    },
+  },
+  {
+    name: "zero family limit",
+    change: (data: any) => {
+      data.spendConfiguration.MAX_TASK_FAMILY_TOKENS = 0;
+    },
+  },
+  {
+    name: "fractional token cap",
+    change: (data: any) => {
+      data.spendConfiguration.MAX_TASK_TOKENS = 1000.5;
+    },
+  },
+  {
+    name: "invalid startup steps",
+    change: (data: any) => {
+      data.spendConfiguration.MAX_TASK_STEPS = 10001;
+    },
+  },
+  {
+    name: "nonfinite cost",
+    change: (data: any) => {
+      data.spendConfiguration.MAX_TASK_REPORTED_COST_USD = Infinity;
+    },
+  },
+]) {
+  test(`verifier rejects a hash-bound journal with ${mutation.name}`, async () => {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "agentic-os-spend-proof-"),
+    );
+    try {
+      const records = journal();
+      mutation.change(records[0].data);
+      const reportPath = await writeFixture(
+        directory,
+        validWallClockReport(),
+        records,
+      );
+      await assert.rejects(
+        verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+        (error: unknown) =>
+          error instanceof TypeError &&
+          error.message === "Invalid wall-clock spend configuration",
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}
 
 test("verifier never grants verified24h to the compressed-all smoke profile", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "agentic-os-verify-"));
@@ -1182,6 +1478,7 @@ for (const scenario of [
       receipt.data.originAttempt.finishedAt = new Date(
         new Date(receipt.data.finishedAt).getTime() - 1_000,
       ).toISOString();
+      receipt.data.winningAttempt = { ...receipt.data.originAttempt };
     },
     expected: /primary evidence.*stale owner|stale owner.*primary evidence/iu,
   },
@@ -1325,6 +1622,7 @@ test("verifier rejects a future agent cycle observed before its missing predeces
       receipt.occurredAt = timestamp;
       receipt.data.finishedAt = timestamp;
       receipt.data.originAttempt.finishedAt = timestamp;
+      receipt.data.winningAttempt.finishedAt = timestamp;
       receipt.data.invocations[0].effectStartedAt = timestamp;
       receipt.data.invocations[0].finishedAt = timestamp;
       responsibility.occurredAt = timestamp;
@@ -1379,9 +1677,18 @@ test("verifier rejects an unreferenced successful irreversible receipt even when
           state: "succeeded",
           finishedAt: occurredAt,
         },
+        winningAttempt: {
+          id: "attempt-unreferenced-irreversible",
+          taskId: 101,
+          agentId: 1,
+          cycleNumber: 0,
+          state: "succeeded",
+          finishedAt: occurredAt,
+        },
         invocations: [
           {
             id: "invocation-unreferenced-irreversible",
+            attemptId: "attempt-unreferenced-irreversible",
             state: "succeeded",
             effectStartedAt: occurredAt,
             finishedAt: occurredAt,
@@ -1560,9 +1867,11 @@ for (const scenario of [
           sideEffectClass: "idempotent",
           finishedAt: occurredAt,
           originAttempt: null,
+          winningAttempt: null,
           invocations: [
             {
               id: "invocation-unrelated-extra",
+              attemptId: null,
               state: "succeeded",
               effectStartedAt: occurredAt,
               finishedAt: occurredAt,

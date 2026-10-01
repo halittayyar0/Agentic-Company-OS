@@ -226,8 +226,17 @@ export class SoakEvidenceObserver {
       state: string;
       finishedAt: string | null;
     } | null;
+    winningAttempt?: {
+      id: string;
+      taskId: number;
+      agentId: number;
+      cycleNumber: number;
+      state: string;
+      finishedAt: string | null;
+    } | null;
     invocations?: Array<{
       id: string;
+      attemptId: string | null;
       state: string;
       effectStartedAt: string | null;
       finishedAt: string | null;
@@ -246,6 +255,7 @@ export class SoakEvidenceObserver {
         sideEffectClass: input.sideEffectClass ?? null,
         finishedAt: input.finishedAt ?? null,
         originAttempt: input.originAttempt ?? null,
+        winningAttempt: input.winningAttempt ?? null,
         invocations: input.invocations ?? [],
       };
       const identity = JSON.stringify(data);
