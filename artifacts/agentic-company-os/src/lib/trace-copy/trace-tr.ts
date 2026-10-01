@@ -1,5 +1,42 @@
 import type { TraceCopy } from "../trace-copy";
 const copy: TraceCopy = {
+  reviewEvidence: {
+    loadError:
+      "İnceleme ayrıntıları yüklenemedi. Yeniden denemek için sayfayı yenileyin.",
+    title: "İnceleme dayanağı",
+    help: "İnceleme anındaki kayıtlar; canlı durum veya çıktı kalitesi garantisi değildir. Komutlar, ham çıktılar ve alt görev raporları gösterilmez.",
+    cycle: "İncelenen döngü",
+    operations: "İşlem kayıtları",
+    children: "Alt görevler",
+    counts: "İnceleme kaydındaki sayılar",
+    countsHelp:
+      "Sayılar aşağıdaki kısa örneklere sığmayan kayıtları da kapsar. Önceki görev döngüleri dahil değildir.",
+    receipts: "Gösterilen işlemler",
+    childSample: "Gösterilen alt görevler",
+    limited:
+      "{total} kayıttan {shown} tanesi gösteriliyor. Diğer veya okunamayan kayıtlar gösterilmiyor.",
+    empty:
+      "Bu incelemede işlem veya alt görev kaydı yok. Yalnız metin gerektiren işler araç kullanmadan da geçerli olabilir.",
+    taskStep: "Görev işlemi",
+    approvedAction: "Onaylanmış eylem",
+    resultFlag: "Bildirilen başarı işareti",
+    confirmedApplied: "Operatör uygulandığını doğruladı",
+    confirmedNotApplied: "Operatör uygulanmadığını doğruladı",
+    states: {
+      reserved: "Ayrıldı",
+      running: "Çalışıyor",
+      succeeded: "Başarılı",
+      failed: "Başarısız",
+      unknown: "Sonuç belirsiz",
+      pending: "Bekliyor",
+      planning: "Planlanıyor",
+      in_progress: "Devam ediyor",
+      awaiting_approval: "Onay bekliyor",
+      blocked: "Engellendi",
+      completed: "Tamamlandı",
+      cancelled: "İptal edildi",
+    },
+  },
   title: "Faaliyet kayıtları",
   help: "Kayıtlı görev bilgileri ve seçili faaliyet sayfası. Bir kaydın bulunması, aşamanın geçtiğini veya işlemin başarılı olduğunu kanıtlamaz.",
   loading: "Kayıtlar yükleniyor…",

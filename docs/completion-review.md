@@ -22,6 +22,29 @@ No extra model call is added. The selected review route, free/local boundaries,
 usage accounting, ownership checks and existing approval rules still apply.
 The existing activity review retains the same snapshot for later inspection.
 
+## Inspect the recorded review
+
+Open the project's **Plan and trace** view and expand its review activity.
+The **Review basis** section shows the reviewed cycle, full operation and child
+task counts, sampled states, reported command exit codes and operator
+reconciliation decisions. It distinguishes task operations from approved actions.
+The labels follow the selected application language.
+The additional panel downloads only when you expand a review. If that download
+fails, activity controls stay available and a retry control reloads the page.
+
+These are the records available at review time, not the task's current live
+state. A count can exceed the short displayed sample; the section states how
+many records are shown. Old activities without a stored snapshot do not acquire
+invented counts. Invalid or inconsistent snapshots are not displayed.
+An empty recorded snapshot explicitly allows text-only work without artificial
+tool use.
+
+The ordinary activity JSON export includes the same typed projection. Raw
+commands, tool arguments, output and child reports remain excluded from this
+projection. Original activity summaries remain in that ordinary export, so
+review it before sharing. The separate shareable evidence export retains its
+existing narrow schema and does not include the review samples.
+
 ## Privacy and limits
 
 The additional snapshot excludes commands, arguments, URLs, raw output, file

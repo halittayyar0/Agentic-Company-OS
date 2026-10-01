@@ -3,6 +3,14 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.9] - 2026-10-01
+
+### Improved
+
+- The task activity inspector displays the recorded completion review basis in all seven application languages: reviewed cycle, full counts, bounded operation and child-task samples, command exit codes and operator reconciliation. It labels review-time context and sample limits without claiming output quality or live status.
+- Review details load only when expanded. A failed detail download retains the activity controls and offers a fresh-page retry. Typed display/export data rejects unrelated or inconsistent snapshots and excludes raw tool results; the separate shareable evidence schema remains unchanged.
+- The review assets, selected trace-pack growth and route integration have a separate 10 KB raw / 4 KB gzip feature cap. Earlier base, total, language-family, individual asset and media ceilings remain fixed.
+
 ## [0.3.8] - 2026-10-01
 
 ### Improved

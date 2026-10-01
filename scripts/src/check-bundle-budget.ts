@@ -96,6 +96,10 @@ const budgets = {
   // growth and bounded route/API wiring. Existing route ceilings stay fixed.
   budgetResumeRawBytes: 13_000,
   budgetResumeGzipBytes: 4_500,
+  // Two review assets and selected trace-pack growth have a separate cap.
+  // Every previous total/base/asset/media ceiling remains unchanged.
+  completionReviewRawBytes: 10_000,
+  completionReviewGzipBytes: 4_000,
   totalCodeRawBytes: 1_345_000 + 30_000 + 29_000,
   // The separately requested 30-skill library adds a lazy route and a small
   // draft helper. Preserve the previous 396 KB ceiling for all other code;
@@ -669,6 +673,42 @@ if (
   violations.push(
     "Budget resume exceeds its recovery, selected-language and integration feature cap.",
   );
+const completionReviewAssets = codeAssets.filter((asset) =>
+  /^completion-review-(?:view|panel)-[^/]+\.js$/u.test(asset.fileName),
+);
+for (const name of ["view", "panel"]) {
+  if (
+    completionReviewAssets.filter((asset) =>
+      asset.fileName.startsWith(`completion-review-${name}-`),
+    ).length !== 1
+  )
+    violations.push(`Expected one bounded completion review ${name} asset.`);
+}
+// Passing PR #32 production log, job 110097988903: largest trace pack
+// 7.45 KB raw / 2.73 KB gzip. Conservative lower baselines for rounded
+// figures; the v0.3.8 parent has identical trace-pack sources.
+const completionReviewRawBytes =
+  // Bounded projection/disclosure wiring remains in the existing project route.
+  500 +
+  completionReviewAssets.reduce((sum, asset) => sum + asset.rawBytes, 0) +
+  Math.max(
+    0,
+    Math.max(...traceLocaleAssets.map((asset) => asset.rawBytes)) - 7_440,
+  );
+const completionReviewGzipBytes =
+  250 +
+  completionReviewAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0) +
+  Math.max(
+    0,
+    Math.max(...traceLocaleAssets.map((asset) => asset.gzipBytes)) - 2_720,
+  );
+if (
+  completionReviewRawBytes > budgets.completionReviewRawBytes ||
+  completionReviewGzipBytes > budgets.completionReviewGzipBytes
+)
+  violations.push(
+    "Completion review basis exceeds its assets and selected-language growth budget.",
+  );
 if (
   totalCodeGzipBytes -
     budgetResumeGzipBytes -
@@ -677,6 +717,7 @@ if (
     localUtilityGzipBytes -
     providerSetupGzipBytes -
     budgets.providerSetupIntegrationGzipBytes -
+    completionReviewGzipBytes -
     firstTaskModelCheckGzipBytes >
   budgets.baseCodeGzipBytes
 ) {
@@ -685,13 +726,19 @@ if (
   );
 }
 
-if (totalCodeRawBytes - budgetResumeRawBytes > budgets.totalCodeRawBytes) {
+if (
+  totalCodeRawBytes - budgetResumeRawBytes - completionReviewRawBytes >
+  budgets.totalCodeRawBytes
+) {
   violations.push(
     `total raw code ${formatBytes(totalCodeRawBytes)} exceeds ${formatBytes(budgets.totalCodeRawBytes)}`,
   );
 }
 
-if (totalCodeGzipBytes - budgetResumeGzipBytes > budgets.totalCodeGzipBytes) {
+if (
+  totalCodeGzipBytes - budgetResumeGzipBytes - completionReviewGzipBytes >
+  budgets.totalCodeGzipBytes
+) {
   violations.push(
     `total gzip code ${formatBytes(totalCodeGzipBytes)} exceeds ${formatBytes(budgets.totalCodeGzipBytes)}`,
   );
@@ -813,6 +860,9 @@ console.log(
   `Code with one language per localized surface: ${formatBytes(totalCodeRawBytes)} raw / ${formatBytes(totalCodeGzipBytes)} gzip. All home packs: ${formatBytes(allHomeLocaleRawBytes)} raw / ${formatBytes(allHomeLocaleGzipBytes)} gzip. All projects packs: ${formatBytes(allProjectLocaleRawBytes)} raw / ${formatBytes(allProjectLocaleGzipBytes)} gzip. All new-project packs: ${formatBytes(allNewProjectLocaleRawBytes)} raw / ${formatBytes(allNewProjectLocaleGzipBytes)} gzip. All emergency packs: ${formatBytes(allEmergencyLocaleRawBytes)} raw / ${formatBytes(allEmergencyLocaleGzipBytes)} gzip. Media total: ${formatBytes(totalMediaRawBytes)} raw.`,
 );
 
+console.log(
+  `Completion review assets, selected trace-pack growth and bounded route wiring: ${formatBytes(completionReviewRawBytes)} raw / ${formatBytes(completionReviewGzipBytes)} gzip (10 KB / 4 KB feature cap).`,
+);
 if (violations.length > 0) {
   throw new Error(
     `Bundle performance budget failed:\n- ${violations.join("\n- ")}`,
