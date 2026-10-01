@@ -3,6 +3,13 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.11] - 2026-10-01
+
+### Improved
+
+- Native endurance documentation uses a ten-minute preflight covering all seven fault kinds before a 24-hour launch. The independent verifier still rejects missing incidents, false health reports and shorter duration claims.
+- Synthetic endurance runs explicitly pin all nine selected token, step and reported-cost limits for both runtime types and record only those numerical limits in provenance. Malformed overrides stop before building or starting resources. The documented finite workload allowance is selected before both runs; production defaults and recorded usage remain unchanged.
+
 ## [0.3.10] - 2026-10-01
 
 ### Improved

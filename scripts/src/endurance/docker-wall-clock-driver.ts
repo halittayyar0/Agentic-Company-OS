@@ -1,5 +1,9 @@
 import os from "node:os";
 import path from "node:path";
+import {
+  createEnduranceSpendConfiguration,
+  type EnduranceSpendConfiguration,
+} from "./spend-configuration";
 
 import {
   createPlaywrightOperationsSession,
@@ -258,6 +262,8 @@ export function createDockerWallClockEnvironment(input: {
   };
   return {
     ...input.environment,
+    ...createEnduranceSpendConfiguration(input.environment ?? process.env)
+      .environment,
     // Generated bind files belong to this process, not necessarily image UID 1000.
     AGENTIC_SECRET_GID: String(process.getgid?.() ?? 1000),
     ENDURANCE_RUN_ID: input.runId,
@@ -674,6 +680,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   private readonly baseUrl: URL;
   private readonly operatorToken: string;
   private readonly harness: DockerWallClockHarness;
+  private readonly spend: EnduranceSpendConfiguration;
   private readonly fetchImpl: typeof fetch;
   private readonly topologyTimeoutMs: number;
   private readonly requestTimeoutMs: number;
@@ -728,6 +735,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
   private emergencyStopRecovery: EmergencyControlEvidence | null = null;
 
   constructor(options: DockerWallClockDriverOptions) {
+    this.spend = createEnduranceSpendConfiguration(
+      options.environment ?? process.env,
+    );
     this.runId = options.runId;
     this.seed = options.seed;
     this.durationHours = options.durationHours;
@@ -786,7 +796,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
           seed: options.seed,
           workspaceRoot: options.workspaceRoot,
           controlDirectory,
-          environment: options.environment,
+          environment: { ...options.environment, ...this.spend.environment },
         }),
       });
   }
@@ -1789,6 +1799,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       },
       workflowRunId: process.env.GITHUB_RUN_ID?.trim() || null,
       configuration: {
+        ...this.spend.provenance,
         runtime: "docker-compose",
         workers: 2,
         agents: 10,

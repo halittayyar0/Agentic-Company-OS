@@ -1,5 +1,6 @@
 import path from "node:path";
 import { lstat, mkdir, realpath } from "node:fs/promises";
+import { createEnduranceSpendConfiguration } from "./spend-configuration";
 
 import {
   DockerWallClockDriver,
@@ -108,6 +109,11 @@ export class NativeWallClockDriver implements WallClockRuntimeDriver {
       options.runtimeControlKey ?? generated.runtimeControlKey;
     this.options = {
       ...options,
+      environment: {
+        ...(options.environment ?? process.env),
+        ...createEnduranceSpendConfiguration(options.environment ?? process.env)
+          .environment,
+      },
       workspaceRoot: path.resolve(options.workspaceRoot),
       postgresRoot: path.resolve(options.postgresRoot),
       runDirectory: path.resolve(options.runDirectory),

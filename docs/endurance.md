@@ -88,6 +88,19 @@ provenance and the independently recomputed build attestation.
 
 ## Docker Compose runner
 
+Before a 24-hour run, select the synthetic workload allowance explicitly. Ten
+agents scheduled each minute can exceed the production default of 500,000
+family tokens per rolling day. Use `MAX_RECURRING_FAMILY_DAILY_TOKENS=2500000`
+for both the preflight and the long proof. In a POSIX shell, set
+`export MAX_RECURRING_FAMILY_DAILY_TOKENS=2500000`; in PowerShell use
+`$env:MAX_RECURRING_FAMILY_DAILY_TOKENS = "2500000"`. This is a finite allowance
+for the synthetic test process, not a change to an installed product or a
+provider billing limit. No provider key or paid model call is used. All nine
+selected token, step and reported-cost settings are pinned for the API and
+workers and recorded numerically in `provenance.configuration`. Defaults remain
+the production defaults; explicit malformed settings stop before building or
+starting resources. The report includes no provider keys or operator tokens.
+
 Docker Engine with Compose v2 is required. Create four independent, one-line
 secret files under the gitignored `.secrets/` directory:
 
@@ -152,9 +165,13 @@ PostgreSQL service or database is reused. The generated database password,
 operator token, and runtime-control key are per-run values and are not written
 to the report.
 
-Before starting a 24-hour native run, complete a one-minute wall-clock
+Before starting a 24-hour native run, complete a ten-minute wall-clock
 preflight from the exact clean commit and built artifacts that will be tested.
-Use the same portable PostgreSQL root and seed as the long run. The independent
+Use the `compressed-all` fault profile so the preflight exercises all seven
+fault kinds and all 100 scheduled responsibilities. A one-minute standard run
+may finish its only responsibility cycle before a provider fault begins and
+cannot establish incident coverage. Use the same selected spending allowances,
+portable PostgreSQL root and seed as the long run. The independent
 verifier binds the preflight to the commit, verifies the browser manifest and
 checkpoint bytes, and the explicit provenance check below proves that the
 native PostgreSQL driver—not Docker or the embedded development database—ran
@@ -164,10 +181,12 @@ the candidate:
 $postgresRoot = "C:\path\to\portable-postgresql"
 $preflight = "artifacts\endurance-reports\native-preflight.json"
 $commit = (git rev-parse HEAD).Trim()
+$env:MAX_RECURRING_FAMILY_DAILY_TOKENS = "2500000"
 
 pnpm endurance:wall-clock:native -- `
   --postgres-root $postgresRoot `
-  --duration-hours 0.016666666666666666 `
+  --duration-hours 0.16666666666666666 `
+  --fault-profile compressed-all `
   --seed 240901 `
   --output $preflight `
   --overwrite
@@ -188,10 +207,13 @@ if ($preflightEvidence.provenance.configuration.runtime -ne "native-postgres") {
 if ($preflightEvidence.provenance.runner.postgres -notmatch '^PostgreSQL 17\.') {
   throw "Preflight PostgreSQL provenance is not the required major version"
 }
+if ($preflightEvidence.provenance.configuration.MAX_RECURRING_FAMILY_DAILY_TOKENS -ne 2500000) {
+  throw "Preflight did not use the selected synthetic workload allowance"
+}
 ```
 
 Do not edit source, rebuild, switch commits, change the PostgreSQL root, or
-change the seed between this preflight and the 24-hour launch. If any of those
+change the seed or spending allowances between this preflight and the 24-hour launch. If any of those
 inputs changes, discard the preflight and run it again.
 
 After that preflight passes, launch the real run without changing those inputs:

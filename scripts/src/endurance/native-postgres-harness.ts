@@ -12,6 +12,7 @@ import {
 import { createServer } from "node:net";
 import path from "node:path";
 import { canonicalTempRoot } from "../temp-directory";
+import { createEnduranceSpendConfiguration } from "./spend-configuration";
 
 import {
   probeRuntimeTopology,
@@ -326,6 +327,8 @@ export function createNativeRuntimeEnvironments(
   const runDirectory = path.resolve(input.runDirectory);
   const common: NodeJS.ProcessEnv = {
     ...withoutInheritedSecrets(input.baseEnvironment ?? process.env),
+    ...createEnduranceSpendConfiguration(input.baseEnvironment ?? process.env)
+      .environment,
     WORKSPACE_ENV_FILE: path.join(runDirectory, "runtime-test.env"),
     NODE_ENV: "development",
     DATABASE_URL: input.databaseUrl,
@@ -549,7 +552,11 @@ export class NativePostgresEnduranceHarness {
         throw new TypeError(`${label} must be positive`);
       }
     }
-    this.environment = { ...process.env, ...options.environment };
+    const environment = { ...process.env, ...options.environment };
+    this.environment = {
+      ...environment,
+      ...createEnduranceSpendConfiguration(environment).environment,
+    };
     this.suppliedBinaries = options.binaries;
     this.supervisor =
       options.supervisor ??

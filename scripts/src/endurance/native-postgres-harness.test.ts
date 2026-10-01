@@ -353,6 +353,15 @@ test("native runtime environments enforce one API, two workers, and no provider 
     "http://127.0.0.1:55123/api/internal/runtime-control",
   );
   for (const environment of Object.values(environments)) {
+    assert.equal(environment.MAX_TASK_STEPS, "0");
+    assert.equal(environment.MAX_TASK_TOKENS, "100000");
+    assert.equal(environment.MAX_TASK_REPORTED_COST_USD, "1");
+    assert.equal(environment.MAX_RECURRING_DAILY_TOKENS, "250000");
+    assert.equal(environment.MAX_RECURRING_DAILY_REPORTED_COST_USD, "5");
+    assert.equal(environment.MAX_TASK_FAMILY_TOKENS, "250000");
+    assert.equal(environment.MAX_TASK_FAMILY_REPORTED_COST_USD, "3");
+    assert.equal(environment.MAX_RECURRING_FAMILY_DAILY_TOKENS, "500000");
+    assert.equal(environment.MAX_RECURRING_FAMILY_DAILY_REPORTED_COST_USD, "8");
     assert.equal(environment.NODE_ENV, "development");
     assert.equal(environment.SYNTHETIC_RUNTIME_ENABLED, "true");
     assert.equal(environment.ENDURANCE_MODE, "soak");

@@ -84,6 +84,7 @@ test("native wall-clock driver lazily wires portable PostgreSQL into the shared 
 
   const driver = new NativeWallClockDriver({
     runId: "native-driver-test",
+    environment: { MAX_RECURRING_FAMILY_DAILY_TOKENS: "2.5e6" },
     seed: 240_901,
     durationHours: 1 / 60,
     workspaceRoot: path.resolve("D:/workspace"),
@@ -139,6 +140,15 @@ test("native wall-clock driver lazily wires portable PostgreSQL into the shared 
   const innerOptions = capturedInnerOptions[0];
   assert.ok(harnessOptions);
   assert.ok(innerOptions);
+  assert.equal(
+    harnessOptions.environment?.MAX_RECURRING_FAMILY_DAILY_TOKENS,
+    "2500000",
+  );
+  assert.equal(
+    innerOptions.environment?.MAX_RECURRING_FAMILY_DAILY_TOKENS,
+    "2500000",
+  );
+  assert.equal(harnessOptions.environment?.MAX_TASK_STEPS, "0");
   assert.equal(harnessOptions.apiPort, 55125);
   assert.equal(harnessOptions.databasePort, 55434);
   assert.equal(harnessOptions.operatorToken.length >= 32, true);

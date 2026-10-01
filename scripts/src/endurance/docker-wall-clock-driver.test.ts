@@ -734,6 +734,12 @@ test("Docker driver starts the exact topology and derives minute evidence from d
     assert.equal(provenance.runner.postgres, "PostgreSQL 17.6");
     assert.equal(provenance.configuration.workers, 2);
     assert.equal(provenance.configuration.runtime, "docker-compose");
+    assert.equal(provenance.configuration.MAX_TASK_STEPS, 0);
+    assert.equal(
+      provenance.configuration.MAX_RECURRING_FAMILY_DAILY_TOKENS,
+      500000,
+    );
+    assert.equal(provenance.configuration.MAX_TASK_REPORTED_COST_USD, 1);
     assert.equal(
       requests.every(
         (request) => request.authorization === "Bearer local-operator-secret",
@@ -1123,6 +1129,38 @@ test("Docker driver retries cleanup authority retained by a partial harness star
   }
 });
 
+test("Docker provenance freezes the selected spend caps without including provider secrets", async () => {
+  const environment = {
+    MAX_RECURRING_FAMILY_DAILY_TOKENS: "2.5e6",
+    OPENAI_API_KEY: "private-provider-value",
+  };
+  const driver = new DockerWallClockDriver({
+    runId: "spend-provenance",
+    seed: 240901,
+    durationHours: 24,
+    workspaceRoot: process.cwd(),
+    controlDirectory: path.join(tmpdir(), "spend-provenance"),
+    baseUrl: "http://127.0.0.1:5000",
+    operatorToken: "private-operator-value",
+    environment,
+    harness: harness([]),
+  });
+  const pinned = createDockerWallClockEnvironment({
+    runId: "spend-provenance",
+    seed: 240901,
+    workspaceRoot: process.cwd(),
+    controlDirectory: tmpdir(),
+    environment,
+  });
+  environment.MAX_RECURRING_FAMILY_DAILY_TOKENS = "500000";
+  const { configuration } = await driver.provenance();
+  assert.equal(configuration.MAX_RECURRING_FAMILY_DAILY_TOKENS, 2500000);
+  for (const [key, value] of Object.entries(configuration)) {
+    if (key.startsWith("MAX_")) assert.equal(pinned[key], String(value));
+  }
+  assert.equal(JSON.stringify(configuration).includes("private-"), false);
+});
+
 test("Docker harness environment binds one control directory and four exact secret files", () => {
   const workspaceRoot = path.resolve("D:/agentic-os-test");
   const controlDirectory = path.resolve("D:/agentic-os-test-control");
@@ -1133,6 +1171,8 @@ test("Docker harness environment binds one control directory and four exact secr
     controlDirectory,
     environment: { KEEP_ME: "yes" },
   });
+  assert.equal(environment.MAX_TASK_STEPS, "0");
+  assert.equal(environment.MAX_RECURRING_FAMILY_DAILY_TOKENS, "500000");
   assert.equal(
     environment.AGENTIC_SECRET_GID,
     String(process.getgid?.() ?? 1000),
