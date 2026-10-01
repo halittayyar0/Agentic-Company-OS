@@ -71,6 +71,7 @@ import { LocalEmergencyStopError } from "./local-emergency-epoch";
 import { isCanonicalRootCeo } from "./agent-authority";
 import { avatarColorFor } from "./avatar-color";
 import { runJudge, type JudgeReviewRecord, type JudgeVerdict } from "./judge";
+import { loadCompletionEvidence } from "./completion-evidence";
 import {
   VmError,
   localizedVmErrorMessage,
@@ -6713,6 +6714,7 @@ async function completeTask(
     purpose: "completion",
     originalBrief: task.brief,
     actionSummary: resultSummary,
+    completionEvidence: await loadCompletionEvidence(task),
     taskExecutionModelId: resolveJudgeExecutionModelBoundary({
       taskExecutionModelId: task.executionModelId,
       turnModelId: ctx.turnModelId,

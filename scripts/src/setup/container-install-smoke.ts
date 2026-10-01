@@ -11,6 +11,7 @@ import { readInstallation } from "./resume";
 import { buildContainerDeployment } from "./deployment";
 import { executeBoundedCommand } from "../endurance/process-supervisor";
 import { reserveLoopbackPorts } from "../endurance/native-postgres-harness";
+import { proveDatabaseBackup } from "./backup-restore-proof";
 
 const source = fileURLToPath(new URL("../../..", import.meta.url));
 const image = process.argv[2];
@@ -111,18 +112,52 @@ try {
       ).phase,
       "complete",
     );
+    const deployment = buildContainerDeployment(
+      source,
+      plan,
+      restored.resources,
+      {},
+      undefined,
+      image,
+    );
+    const composeArgs = deployment.args.slice(0, deployment.args.indexOf("up"));
+    const compose = (args: string[]) =>
+      executeBoundedCommand({
+        command: "docker",
+        args: [...composeArgs, ...args],
+        cwd: source,
+        environment: { ...process.env, ...deployment.environment },
+        timeoutMs: 120000,
+        maxBufferBytes: 1048576,
+      });
+    const archivePath = path.join(directory, "agentic-os.dump");
+    const backup = await proveDatabaseBackup({
+      database: "agentic_os",
+      dumpPath: "/tmp/agentic-os.dump",
+      connectionArgs: ["-U", "agentic"],
+      command: (name, args) => compose(["exec", "-T", "db", name, ...args]),
+      copyArchive: async () => {
+        await compose(["cp", "db:/tmp/agentic-os.dump", archivePath]);
+        // Restore the copy that crossed the host boundary, not only the original.
+        await compose(["cp", archivePath, "db:/tmp/agentic-os.dump"]);
+        return archivePath;
+      },
+    });
     await writeFile(
       path.join(directory, "evidence.json"),
       JSON.stringify(
         {
           passed: true,
           image: image ?? "local-source-build",
+          backup,
           checks: [
             "real container installation",
             "private authentication",
             "static UI",
             "preferences and custom guide persisted",
             "installation resume",
+            "binary backup copied through host and restored into a fresh database",
+            "restored roster, migration journal entry count, application writes and sequence state",
           ],
         },
         null,

@@ -71,6 +71,7 @@ const completed: Record<WorkspaceLocale, string> = {
   ar: "اكتمل الإجراء الموافق عليه: {tool}.",
 };
 const effects = new Map<string, string[]>();
+const effectInputSequences = new Map<string, (string | undefined)[]>();
 const server = createServer(async (request, response) => {
   const target = new URL(request.url!, "http://localhost");
   const id = target.searchParams.get("id")!;
@@ -81,6 +82,9 @@ const server = createServer(async (request, response) => {
   if (target.pathname === "/effect") {
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
+    effectInputSequences
+      .get(id)!
+      .push(request.headers["x-fixture-input"] as string | undefined);
     effects
       .get(id)!
       .push(
@@ -93,7 +97,7 @@ const server = createServer(async (request, response) => {
   }
   response.setHeader("content-type", "text/html; charset=utf-8");
   response.end(
-    `<!doctype html><title>原文 {title} $&</title><button onclick="location.href='/effect?id=${id}'">Approved click</button><textarea aria-label="Approved input" oninput="fetch('/effect?id=${id}',{method:'POST',body:this.value})"></textarea>`,
+    `<!doctype html><title>原文 {title} $&</title><button onclick="location.href='/effect?id=${id}'">Approved click</button><output id="input-events">Input events: 0</output><textarea aria-label="Approved input" oninput="this.dataset.inputCount=String(Number(this.dataset.inputCount||0)+1);document.getElementById('input-events').textContent='Input events: '+this.dataset.inputCount;fetch('/effect?id=${id}',{method:'POST',headers:{'X-Fixture-Input':this.dataset.inputCount},body:this.value})"></textarea>`,
   );
 });
 await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -117,9 +121,10 @@ for (const locale of WORKSPACE_LOCALES) {
       "completed_recovery",
       "unknown_recovery",
     ] as const) {
-      test(`${locale} ${toolName} ${mode} preserves first language and one physical effect`, async (t) => {
+      test(`${locale} ${toolName} ${mode} preserves first language and one tool dispatch`, async (t) => {
         const id = randomUUID();
         effects.set(id, []);
+        effectInputSequences.set(id, []);
         const [agent] = await db
           .insert(agentsTable)
           .values({
@@ -315,7 +320,34 @@ for (const locale of WORKSPACE_LOCALES) {
         const deadline = Date.now() + 3000;
         while (!effects.get(id)!.length && Date.now() < deadline)
           await new Promise((resolve) => setTimeout(resolve, 10));
-        assert.ok(effects.get(id)!.length > 0);
+        if (!effects.get(id)!.length) {
+          const [observed] = await db
+            .select({
+              state: operationReceiptsTable.state,
+              failureKind: operationReceiptsTable.failureKind,
+              sanitizedError: operationReceiptsTable.sanitizedError,
+              resultData: operationReceiptsTable.resultData,
+            })
+            .from(operationReceiptsTable)
+            .where(eq(operationReceiptsTable.id, reservation.receipt.id));
+          const page = await browser
+            .snapshotPage(agent.id, locale)
+            .catch(() => null);
+          assert.fail(
+            JSON.stringify({
+              failure: "Approved fixture effect was not observed",
+              result,
+              dispatches,
+              effectBoundaries,
+              receipt: observed,
+              inputSequences: effectInputSequences.get(id),
+              page: page?.lines.join("\n").slice(0, 2_000),
+            }),
+          );
+        }
+        // Browser-native fill may produce several DOM input callbacks. The
+        // tool dispatch and effect boundary must each occur once; replay below
+        // must add no HTTP effects. Keep checking every delivered source value.
         assert.ok(
           effects
             .get(id)!

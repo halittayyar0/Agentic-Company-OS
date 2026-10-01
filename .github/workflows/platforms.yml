@@ -53,6 +53,12 @@ jobs:
         run: pnpm test
       - name: Build application and check types
         run: pnpm run build
+      - name: Install PostgreSQL 17 for disposable restore acceptance
+        run: |
+          brew install postgresql@17
+          "$(brew --prefix postgresql@17)/bin/pg_restore" --version
+      - name: Prove native installation resume and binary backup restoration
+        run: pnpm test:installation:native "$(brew --prefix postgresql@17)/bin"
       - name: Verify local database migration
         run: pnpm --filter @workspace/db run migrate
       - name: Exercise first-run and capability library
