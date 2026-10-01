@@ -160,7 +160,7 @@ const copy: ProjectStudioCopy = {
     "Bu, ajanın kaydettiği teslim özetidir. Doğrulama kayıtlarını {tab} sekmesinden inceleyebilirsin.",
   reviewDelivery: "Kanıtları incele",
   cycleDeliveryNote:
-    "Bu, son kaydedilen döngünün özetidir. Düzenli sorumluluğun güncel durumu yukarıda gösterilir.",
+    "Bu, kaydedilmiş son teslimatı gösterir. Düzenli sorumluluğun güncel durumu yukarıda gösterilir.",
   deliverySummary: "Teslim özeti",
   noDelivery: "Henüz kayıtlı teslim özeti yok. Kaydedildiğinde burada görünür.",
 };

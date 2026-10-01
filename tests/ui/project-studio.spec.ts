@@ -68,9 +68,8 @@ for (const locale of LOCALES) {
     expect(harness.meetingCreatePosts).toEqual([]);
     expect([...harness.unexpected]).toEqual([]);
     if (locale === "en")
-      await page.screenshot({
+      await delivery.screenshot({
         path: info.outputPath("delivery-phone.png"),
-        fullPage: true,
       });
   });
 }
@@ -90,7 +89,7 @@ test("completed work without a summary does not invent a delivery", async ({
   );
 });
 
-test("recurring work identifies the saved cycle without claiming the responsibility is finished", async ({
+test("recurring work identifies the saved delivery without claiming the responsibility is finished", async ({
   page,
 }) => {
   await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
@@ -108,12 +107,52 @@ test("recurring work identifies the saved cycle without claiming the responsibil
   await page.goto("/projects/101");
   const delivery = page.locator("#project-delivery-summary");
   await expect(delivery).toContainText(
-    "This is the latest saved cycle summary. The current status of the recurring responsibility is shown above.",
+    "This is the latest saved delivery. The current status of the recurring responsibility is shown above.",
   );
   await expect(delivery).toContainText(
     "Last cycle report: two source changes found.",
   );
 });
+
+for (const scenario of [
+  { name: "first conversion", cycleCount: 0, lastCycleCompletedAt: null },
+  {
+    name: "round-trip conversion after a newer finite delivery",
+    cycleCount: 5,
+    lastCycleCompletedAt: "2026-09-01T09:00:00.000Z",
+  },
+]) {
+  test(`${scenario.name} retains a finite delivery without attributing it to a recurring cycle`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem("acos.locale.v1", "en"),
+    );
+    await installProjectStudioMocks(page);
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, {
+        ...project,
+        status: "in_progress",
+        autonomyMode: "continuous",
+        cadenceSeconds: 3600,
+        progressPercent: 0,
+        completedAt: null,
+        resultSummary: "Newer one-off report retained after conversion.",
+        cycleCount: scenario.cycleCount,
+        lastCycleCompletedAt: scenario.lastCycleCompletedAt,
+      }),
+    );
+    await page.goto("/projects/101");
+    const delivery = page.locator("#project-delivery-summary");
+    await expect(delivery).toContainText(
+      "Newer one-off report retained after conversion.",
+    );
+    await expect(delivery).toContainText(
+      "This is the latest saved delivery. The current status of the recurring responsibility is shown above.",
+    );
+    await expect(delivery).not.toContainText("latest saved cycle summary");
+  });
+}
 
 for (const locale of LOCALES) {
   test(

@@ -11,7 +11,7 @@ that rule; this change aligns the initial brief and visible guidance with it.
 The saved delivery summary is now above the project workspace rather than inside
 a secondary view. Its evidence shortcut preserves other URL parameters and the
 fragment. Every authored locale explains that this is the agent's saved report.
-Recurring work labels the latest saved cycle and points to the current status;
+Recurring work shows the latest saved delivery and points to the current status;
 completed work without a summary explicitly reports the missing record.
 
 The company structure, expert customization, permissions, budgets, model selection
@@ -23,10 +23,16 @@ agent, model call or paid dependency.
 - The unchanged home-copy consumer tests passed before implementation.
 - Four new browser cases failed against the original behavior: default small-job
   approach, visible delivery, missing delivery and recurring-cycle attribution.
-- The new focused browser set passed **16/16** after implementation. It covers
+- The final focused browser set passed **18/18** after the review correction. It covers
   all seven languages at 320px, submission of a single finite task, visible saved
   output before a tab change, preserved URL parameters, duplicate-summary
-  avoidance, HTML escaping and unsafe-link refusal.
+  avoidance, HTML escaping, unsafe-link refusal and both finite/recurring
+  conversion cases.
+- Independent review identified finite-to-recurring conversion retaining an older
+  delivery. A previous cycle timestamp can also survive conversion back to finite
+  work and a newer finite completion. Three focused regression cases failed
+  against cycle attribution. The notice now describes the latest saved delivery
+  without inventing its cycle, preserving reports and historical timestamps.
 - Whole-repository build and typecheck passed. Formatting, scripts typecheck,
   production dependency audit, license policy and bundle limits passed.
 - The actual general source test command initially failed on Windows with
@@ -40,7 +46,9 @@ prove the rendered journey and request payload, not model output quality or
 measured token savings. No paid-provider task or physical-phone acceptance was
 performed in this cycle.
 
-The full source suite and full browser suite are running. Native platform,
+The full source suite is running. The initial full browser run was deliberately
+cancelled to incorporate the review correction; final browser acceptance is
+pending. Native platform,
 container and secret-scan CI, final code review, merge, release packaging and
 published-artifact acceptance have not yet been accepted for this candidate.
 This document is a progress checkpoint, not a public-release sign-off.

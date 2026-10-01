@@ -8,7 +8,7 @@ All notable changes to Agentic Company OS are documented here. The project uses
 ### Improved
 
 - Home's default **Get it done** approach and product-building guidance start with suitable existing agents. Small jobs stay with the current agent; independent deliverables and necessary specialist work can use existing experts with bounded parallelism. The seven authored interface languages explain the same approach.
-- Saved delivery summaries appear directly above the project workspace in every view, with a shortcut to recorded evidence. Recurring work identifies the latest saved cycle, while missing summaries are reported explicitly. Agent reports are distinguished from verification records.
+- Saved delivery summaries appear directly above the project workspace in every view, with a shortcut to recorded evidence. Recurring work shows the latest saved delivery without inferring its cycle from the current work mode; missing summaries are reported explicitly. Agent reports are distinguished from verification records.
 
 ### Fixed
 

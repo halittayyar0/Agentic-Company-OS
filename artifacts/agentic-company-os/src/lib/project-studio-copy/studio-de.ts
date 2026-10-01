@@ -168,7 +168,7 @@ const copy: ProjectStudioCopy = {
     "Dies ist die vom Agenten gespeicherte Ergebnisübersicht. Prüfnachweise findest du im Tab {tab}.",
   reviewDelivery: "Nachweise prüfen",
   cycleDeliveryNote:
-    "Dies ist die zuletzt gespeicherte Zusammenfassung eines Durchlaufs. Der aktuelle Status der wiederkehrenden Aufgabe steht oben.",
+    "Dies ist das zuletzt gespeicherte Ergebnis. Der aktuelle Status der wiederkehrenden Aufgabe steht oben.",
   deliverySummary: "Ergebnisübersicht",
   noDelivery:
     "Noch keine Ergebnisübersicht gespeichert. Sie erscheint nach dem Speichern hier.",

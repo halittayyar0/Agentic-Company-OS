@@ -72,7 +72,7 @@ For recurring work, include both the interval and what should count as a finishe
 
 **A useful brief includes:** the input, the expected output, how to verify it, and any limits on actions or spending.
 
-The saved **Delivery summary** appears directly above the project workspace. Open **Review evidence** to inspect recorded activity and checks. The summary is the agent's report; it is not independent proof that every claim is correct. For recurring work, it identifies the latest saved cycle, while the current responsibility status stays visible above it.
+The saved **Delivery summary** appears directly above the project workspace. Open **Review evidence** to inspect recorded activity and checks. The summary is the agent's report; it is not independent proof that every claim is correct. For recurring work, it shows the latest saved delivery, while the current responsibility status stays visible above it. Converting a finished one-off job to recurring work retains its previous delivery until a new one is saved.
 
 ## Find your way around
 

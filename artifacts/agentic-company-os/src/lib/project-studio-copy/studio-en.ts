@@ -160,7 +160,7 @@ const copy: ProjectStudioCopy = {
     "This is the delivery summary saved by the agent. Review verification records in the {tab} tab.",
   reviewDelivery: "Review evidence",
   cycleDeliveryNote:
-    "This is the latest saved cycle summary. The current status of the recurring responsibility is shown above.",
+    "This is the latest saved delivery. The current status of the recurring responsibility is shown above.",
   deliverySummary: "Delivery summary",
   noDelivery:
     "No delivery summary has been recorded yet. It appears here when saved.",

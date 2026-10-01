@@ -140,7 +140,7 @@ const copy: ProjectStudioCopy = {
   unknownModel: "未記錄模型",
   deliveryHelp: "這是代理儲存的交付摘要。可在「{tab}」分頁查看驗證紀錄。",
   reviewDelivery: "查看證據",
-  cycleDeliveryNote: "這是最近儲存的週期摘要。定期任務的目前狀態顯示於上方。",
+  cycleDeliveryNote: "這是最近儲存的交付結果。定期任務的目前狀態顯示於上方。",
   deliverySummary: "交付摘要",
   noDelivery: "尚未記錄交付摘要。儲存後會顯示於此。",
 };
