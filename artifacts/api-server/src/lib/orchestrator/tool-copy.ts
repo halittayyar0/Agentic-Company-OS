@@ -1,5 +1,7 @@
 /** App-authored tool prose. Source text and machine identifiers stay literal. */
 export const toolTr = {
+  budgetFamilyResumed:
+    "Kullanım sınırı kontrol edildi; {count} iş yeniden sıraya alındı.",
   pathInvalid: "Hata: path bir metin olmalı.",
   pathNoncanonical:
     "Hata: path başında veya sonunda boşluk bulunamaz; dosya adı sessizce değiştirilmez.",

@@ -85,7 +85,7 @@ export function executionSpendLimits(): TaskBudgetLimits {
 /** Admission uses durable provider receipts, including judge calls. Continuous
  * counters span the installation's lifetime and must not stand in for a cycle.
  * This is a reported-usage breaker, not a provider-side hard spending cap. */
-async function readIndividualTaskSpendAdmission(
+export async function readIndividualTaskSpendAdmission(
   task: Pick<
     Task,
     | "id"

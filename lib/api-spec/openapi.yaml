@@ -1133,6 +1133,72 @@ paths:
         "409":
           description: Request identity was used for different content
 
+  /tasks/{taskId}/budget-resume:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      operationId: getTaskBudgetResumeStatus
+      tags: [tasks]
+      summary: Read budget resume scope without dispatching work
+      responses:
+        "200":
+          description: Current rooted scope and budget pause snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskBudgetResumeStatus"
+        "404":
+          description: Task not found
+    post:
+      operationId: resumeTaskBudget
+      tags: [tasks]
+      summary: Check recorded allowance and resume eligible budget-paused family work
+      description: Does not reset usage or grant allowance. Queue transitions and an immutable scope-bound receipt commit together. Explicit replay returns the stored receipt without queueing again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskBudgetResumeInput"
+      responses:
+        "200":
+          description: Durable accepted or rejected budget resume receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskBudgetResumeReceipt"
+        "400":
+          description: Invalid intent
+        "409":
+          description: Request identity belongs to a different scope
+
+  /tasks/{taskId}/budget-resume/{requestId}:
+    get:
+      operationId: getTaskBudgetResumeReceipt
+      tags: [tasks]
+      summary: Inspect a budget resume receipt without dispatching work
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Immutable stored receipt, including after task deletion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskBudgetResumeReceipt"
+        "404":
+          description: No committed receipt yet; an in-flight request may still commit
+
   /tasks/{taskId}/question:
     get:
       operationId: getTaskQuestion
@@ -5927,6 +5993,64 @@ components:
           maximum: 604800
       required:
         - autonomyMode
+
+    TaskBudgetResumeInput:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId: { type: string, format: uuid }
+        rootTaskId: { type: integer, minimum: 1 }
+      required: [requestId, rootTaskId]
+
+    TaskBudgetResumeStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        taskId: { type: integer, minimum: 1 }
+        rootTaskId: { type: integer, minimum: 1, nullable: true }
+        budgetPaused: { type: boolean }
+      required: [taskId, rootTaskId, budgetPaused]
+
+    TaskBudgetResumeReceipt:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId: { type: string, format: uuid }
+        taskId: { type: integer, minimum: 1 }
+        rootTaskId: { type: integer, minimum: 1 }
+        outcome: { type: string, enum: [accepted, rejected] }
+        reason:
+          type: string
+          nullable: true
+          enum:
+            [
+              emergency_stop,
+              task_changed,
+              family_invalid,
+              family_too_large,
+              allowance_exhausted,
+              nothing_eligible,
+            ]
+        queuedTaskIds:
+          type: array
+          maxItems: 1000
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+        queuedCount: { type: integer, minimum: 0, maximum: 1000 }
+        stillPausedCount: { type: integer, minimum: 0, maximum: 1000 }
+        recordedAt: { type: string, format: date-time }
+      required:
+        [
+          requestId,
+          taskId,
+          rootTaskId,
+          outcome,
+          reason,
+          queuedTaskIds,
+          queuedCount,
+          stillPausedCount,
+          recordedAt,
+        ]
 
     TaskResumeInput:
       type: object

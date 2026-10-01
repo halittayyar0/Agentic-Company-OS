@@ -1,6 +1,8 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolAr: ToolCopy = {
+  budgetFamilyResumed:
+    "تم التحقق من حد الاستخدام وإعادة {count} من المهام إلى قائمة الانتظار.",
   schedulerClaimed: "تم تولي المهمة",
   projectMeetingRunning: "جارٍ إعداد رد لاجتماع المشروع: {title}",
   schedulerAccepted: "تم قبول المهمة وبدأ العمل.",

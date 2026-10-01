@@ -1,6 +1,8 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolDe: ToolCopy = {
+  budgetFamilyResumed:
+    "Nutzungslimit geprüft; {count} Aufgaben erneut eingereiht.",
   schedulerClaimed: "Aufgabe übernommen",
   projectMeetingRunning:
     "Antwort für die Projektbesprechung wird vorbereitet: {title}",

@@ -1,6 +1,8 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolRu: ToolCopy = {
+  budgetFamilyResumed:
+    "Лимит использования проверен; задач снова в очереди: {count}.",
   schedulerClaimed: "Задача принята в работу",
   projectMeetingRunning: "Подготовка ответа на встрече по проекту: {title}",
   schedulerAccepted: "Задача принята; работа начата.",

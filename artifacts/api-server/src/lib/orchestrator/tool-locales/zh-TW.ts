@@ -1,6 +1,7 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolZhTW: ToolCopy = {
+  budgetFamilyResumed: "已檢查使用額度，重新排入佇列的任務數：{count}。",
   schedulerClaimed: "已領取任務",
   projectMeetingRunning: "正在準備專案會議回覆：{title}",
   schedulerAccepted: "已接受任務；工作已開始。",

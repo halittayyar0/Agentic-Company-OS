@@ -50,9 +50,11 @@ import { lockAndAssertExecutionAllowed } from "../lib/orchestrator/runtime-emerg
 import { redactApprovalCapabilityScope } from "../lib/orchestrator/approval-capability-redaction";
 
 import taskAnswersRouter from "./task-answers";
+import taskBudgetResumeRouter from "./task-budget-resume";
 
 const router: IRouter = Router();
 router.use(taskAnswersRouter);
+router.use(taskBudgetResumeRouter);
 class TaskCancellationConflict extends Error {}
 class ApprovedActionInFlightConflict extends Error {}
 

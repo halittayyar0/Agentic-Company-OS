@@ -116,6 +116,9 @@ import type {
   Task,
   TaskAnswerReceipt,
   TaskAutonomyInput,
+  TaskBudgetResumeInput,
+  TaskBudgetResumeReceipt,
+  TaskBudgetResumeStatus,
   TaskInput,
   TaskQuestion,
   TaskResumeInput,
@@ -3665,6 +3668,238 @@ export const useResumeTask = <TError = ErrorType<void>,
       > => {
       return useMutation(getResumeTaskMutationOptions(options));
     }
+
+export const getGetTaskBudgetResumeStatusUrl = (taskId: number,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/budget-resume`
+}
+
+/**
+ * @summary Read budget resume scope without dispatching work
+ */
+export const getTaskBudgetResumeStatus = async (taskId: number, options?: Parameters<typeof customFetch>[1]): Promise<TaskBudgetResumeStatus> => {
+
+  return customFetch<TaskBudgetResumeStatus>(getGetTaskBudgetResumeStatusUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskBudgetResumeStatusQueryKey = (taskId: number,) => {
+    return [
+    `/api/tasks/${taskId}/budget-resume`
+    ] as const;
+    }
+
+
+export const getGetTaskBudgetResumeStatusQueryOptions = <TData = Awaited<ReturnType<typeof getTaskBudgetResumeStatus>>, TError = ErrorType<void>>(taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskBudgetResumeStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskBudgetResumeStatusQueryKey(taskId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskBudgetResumeStatus>>> = ({ signal }) => getTaskBudgetResumeStatus(taskId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskBudgetResumeStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskBudgetResumeStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskBudgetResumeStatus>>>
+export type GetTaskBudgetResumeStatusQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read budget resume scope without dispatching work
+ */
+
+export function useGetTaskBudgetResumeStatus<TData = Awaited<ReturnType<typeof getTaskBudgetResumeStatus>>, TError = ErrorType<void>>(
+ taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskBudgetResumeStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskBudgetResumeStatusQueryOptions(taskId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getResumeTaskBudgetUrl = (taskId: number,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/budget-resume`
+}
+
+/**
+ * Does not reset usage or grant allowance. Queue transitions and an immutable scope-bound receipt commit together. Explicit replay returns the stored receipt without queueing again.
+ * @summary Check recorded allowance and resume eligible budget-paused family work
+ */
+export const resumeTaskBudget = async (taskId: number,
+    taskBudgetResumeInput: TaskBudgetResumeInput, options?: Parameters<typeof customFetch>[1]): Promise<TaskBudgetResumeReceipt> => {
+
+  return customFetch<TaskBudgetResumeReceipt>(getResumeTaskBudgetUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(taskBudgetResumeInput)
+  }
+);}
+
+
+
+
+
+export const getResumeTaskBudgetMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumeTaskBudget>>, TError,{taskId: number;data: BodyType<TaskBudgetResumeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resumeTaskBudget>>, TError,{taskId: number;data: BodyType<TaskBudgetResumeInput>}, TContext> => {
+
+const mutationKey = ['resumeTaskBudget'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resumeTaskBudget>>, {taskId: number;data: BodyType<TaskBudgetResumeInput>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  resumeTaskBudget(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResumeTaskBudgetMutationResult = NonNullable<Awaited<ReturnType<typeof resumeTaskBudget>>>
+    export type ResumeTaskBudgetMutationBody = BodyType<TaskBudgetResumeInput>
+    export type ResumeTaskBudgetMutationError = ErrorType<void>
+
+    /**
+ * @summary Check recorded allowance and resume eligible budget-paused family work
+ */
+export const useResumeTaskBudget = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumeTaskBudget>>, TError,{taskId: number;data: BodyType<TaskBudgetResumeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resumeTaskBudget>>,
+        TError,
+        {taskId: number;data: BodyType<TaskBudgetResumeInput>},
+        TContext
+      > => {
+      return useMutation(getResumeTaskBudgetMutationOptions(options));
+    }
+
+export const getGetTaskBudgetResumeReceiptUrl = (taskId: number,
+    requestId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/budget-resume/${requestId}`
+}
+
+/**
+ * @summary Inspect a budget resume receipt without dispatching work
+ */
+export const getTaskBudgetResumeReceipt = async (taskId: number,
+    requestId: string, options?: Parameters<typeof customFetch>[1]): Promise<TaskBudgetResumeReceipt> => {
+
+  return customFetch<TaskBudgetResumeReceipt>(getGetTaskBudgetResumeReceiptUrl(taskId,requestId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskBudgetResumeReceiptQueryKey = (taskId: number,
+    requestId: string,) => {
+    return [
+    `/api/tasks/${taskId}/budget-resume/${requestId}`
+    ] as const;
+    }
+
+
+export const getGetTaskBudgetResumeReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getTaskBudgetResumeReceipt>>, TError = ErrorType<void>>(taskId: number,
+    requestId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskBudgetResumeReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskBudgetResumeReceiptQueryKey(taskId,requestId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskBudgetResumeReceipt>>> = ({ signal }) => getTaskBudgetResumeReceipt(taskId,requestId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined && requestId !== null && requestId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskBudgetResumeReceipt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskBudgetResumeReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskBudgetResumeReceipt>>>
+export type GetTaskBudgetResumeReceiptQueryError = ErrorType<void>
+
+
+/**
+ * @summary Inspect a budget resume receipt without dispatching work
+ */
+
+export function useGetTaskBudgetResumeReceipt<TData = Awaited<ReturnType<typeof getTaskBudgetResumeReceipt>>, TError = ErrorType<void>>(
+ taskId: number,
+    requestId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskBudgetResumeReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskBudgetResumeReceiptQueryOptions(taskId,requestId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetTaskQuestionUrl = (taskId: number,) => {
 
