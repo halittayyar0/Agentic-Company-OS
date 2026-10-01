@@ -69,6 +69,14 @@ guidance visible and no horizontal overflow at 1,366px. It uses the authored
 roster and fixture API state; it demonstrates the interface, not a live model
 task or authenticated production installation.
 
+The public start page had a separate older image with stock portraits and the
+same mandatory-team wording. It now uses the identical current PNG with matching
+intrinsic dimensions. All seven captions identify it as an English Home preview
+before model connection. The privacy text describes selected files staying in
+the tab instead of claiming the page never reads files. The existing public-page
+browser check passed **1/1**, covering seven languages at 320px, task copying and
+the local utility tools.
+
 The final source candidate must pass its own required checks after that image
 refresh. Merge, exact-source release packaging and published-artifact acceptance
 remain pending. This document is a progress checkpoint, not a release sign-off.
