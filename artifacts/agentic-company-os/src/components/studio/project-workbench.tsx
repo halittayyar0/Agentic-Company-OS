@@ -6,13 +6,11 @@ import {
   Activity,
   Bot,
   CalendarDays,
-  CheckCircle2,
   CircleDot,
   FileCheck2,
   Gauge,
   ListChecks,
   MonitorPlay,
-  ShieldCheck,
   UsersRound,
 } from "lucide-react";
 import { AgentAvatar } from "@/components/agent/agent-avatar";
@@ -20,7 +18,7 @@ import { ComputerWorkspace } from "@/components/computer/computer-workspace";
 import { ProjectMeetings } from "@/components/studio/project-meetings";
 import { DelegationConversation } from "@/components/tasks/delegation-conversation";
 import { RunInspector } from "@/components/tasks/run-inspector";
-import { Markdown } from "@/lib/markdown";
+import { ProjectDeliverySummary } from "./project-delivery-summary";
 import { TASK_STATUS_META, taskStatusLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -81,6 +79,11 @@ export function ProjectWorkbench({
   ).map((item) => ({ ...item, label: c[item.label] }));
   return (
     <section className="min-w-0 overflow-hidden rounded-[24px] border border-border/70 bg-card/90">
+      <ProjectDeliverySummary
+        project={project}
+        c={c}
+        onReview={() => setTab("evidence")}
+      />
       <ProjectWorkbenchTabs
         value={tab}
         onChange={setTab}
@@ -551,31 +554,6 @@ function ProjectEvidence({
               value={project.lastModelId ?? c.unknownModel}
             />
           </dl>
-        </section>
-
-        <section className="rounded-[22px] border border-border/70 bg-card p-5">
-          <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-            {project.status === "completed" ? (
-              <CheckCircle2
-                size={13}
-                className="text-emerald-500"
-                aria-hidden
-              />
-            ) : (
-              <ShieldCheck size={13} className="text-primary" aria-hidden />
-            )}
-            {c.deliverySummary}
-          </div>
-          <div className="mt-3 text-xs leading-5 text-muted-foreground">
-            {project.resultSummary ? (
-              <div dir="auto">
-                <p className="mb-2 text-xs">{c.source}</p>
-                <Markdown content={project.resultSummary} />
-              </div>
-            ) : (
-              <p>{c.noDelivery}</p>
-            )}
-          </div>
         </section>
       </aside>
     </div>

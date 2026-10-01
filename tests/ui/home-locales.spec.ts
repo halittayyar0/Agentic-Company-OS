@@ -1,6 +1,58 @@
 import { expect, test, type Page } from "@playwright/test";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
 import { getCapabilityCatalog } from "../../artifacts/api-server/src/lib/capabilities/catalog";
+import { loadHomeCopy } from "../../artifacts/agentic-company-os/src/lib/home-copy";
+
+for (const [locale, label] of [
+  ["tr", "İşi tamamla"],
+  ["en", "Get it done"],
+  ["de", "Aufgabe erledigen"],
+  ["ru", "Выполнить задачу"],
+  ["zh-CN", "完成任务"],
+  ["zh-TW", "完成任務"],
+  ["ar", "أنجز المهمة"],
+] as const) {
+  test(`${locale} defaults to an existing agent for a simple job`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.addInitScript(
+      (selected) => localStorage.setItem("acos.locale.v1", selected),
+      locale,
+    );
+    const harness = await installStudioFixtures(page);
+    const copy = await loadHomeCopy(locale);
+    await page.goto("/");
+    await expect(
+      page.getByRole("button", { name: label, exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page
+      .getByRole("textbox", { name: copy.desiredOutcome, exact: true })
+      .fill("Summarize the three supplied notes in one paragraph.");
+    await page
+      .getByRole("button", { name: copy.startProject, exact: true })
+      .click();
+    await expect.poll(() => harness.requests.length).toBe(1);
+    expect(harness.requests[0].path).toBe("/api/tasks");
+    expect(harness.requests[0].body).toMatchObject({
+      priority: "normal",
+      autonomyMode: "finite",
+    });
+    if (locale === "en") {
+      expect(harness.requests[0].body).toMatchObject({
+        brief: expect.stringContaining(
+          "Start with a suitable existing agent. Complete small work yourself.",
+        ),
+      });
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    expect([...harness.unexpected]).toEqual([]);
+  });
+}
 
 function watchHomeLanguageChunks(page: Page): string[] {
   const requested: string[] = [];

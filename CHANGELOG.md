@@ -3,6 +3,17 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.12] - 2026-10-01
+
+### Improved
+
+- Home's default **Get it done** approach and product-building guidance start with suitable existing agents. Small jobs stay with the current agent; independent deliverables and necessary specialist work can use existing experts with bounded parallelism. The seven authored interface languages explain the same approach.
+- Saved delivery summaries appear directly above the project workspace in every view, with a shortcut to recorded evidence. Recurring work identifies the latest saved cycle, while missing summaries are reported explicitly. Agent reports are distinguished from verification records.
+
+### Fixed
+
+- The source test runner uses paths relative to its owned checkout when launching Node. This avoids repeating long checkout paths for every test file and exceeding Windows' command-line limit.
+
 ## [0.3.11] - 2026-10-01
 
 ### Improved

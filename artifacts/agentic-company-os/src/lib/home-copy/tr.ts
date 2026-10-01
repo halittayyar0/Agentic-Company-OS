@@ -4,7 +4,7 @@ const copy = {
   deskKicker: "Senin çalışma masan",
   heroTitle: "Bugün neyi birlikte başarmalıyız?",
   heroDescription:
-    "Hedefini anlat. Ekibin işi planlasın, uygun uzmanlar üretsin. Sen ilerlemeyi ve ortaya çıkan sonucu tek yerden takip et.",
+    "İstediğin sonucu anlat. Mevcut ajan işe başlasın; ayrı uzmanlık gerektiğinde ekipten yardım alsın. İlerlemeyi ve teslimi tek yerden takip et.",
   quickToolsTitle: "Model olmadan faydalı bir kontrol dene",
   quickToolsDescription:
     "CSV veya JSON dosyasını incele ya da iki listeyi bu tarayıcıda karşılaştır.",
@@ -16,8 +16,8 @@ const copy = {
       text: "Ne istediğini ve iyi bir sonucun nasıl görüneceğini yaz.",
     },
     {
-      title: "Ekip işi paylaşsın",
-      text: "Plan, görevler ve sorumlular proje alanında bir araya gelir.",
+      title: "Ajan işe başlasın",
+      text: "Küçük işleri aynı ajan tamamlar. Bağımsız bir iş gerektiğinde uygun mevcut uzman katılır.",
     },
     {
       title: "Sonucu değerlendir",
@@ -58,16 +58,16 @@ const copy = {
   modeGroup: "Çalışma yaklaşımı",
   modes: {
     team: {
-      label: "Ekip",
-      hint: "Ekip, hedefe göre iş paylaşımı yapar.",
+      label: "İşi tamamla",
+      hint: "Mevcut ajanla başla; gerektiğinde uygun uzmandan yardım al.",
       instruction:
-        "Hedefi ve kabul kriterlerini netleştir. Mevcut ekipten uygun uzmanlara çakışmayan sorumluluklar ver; bağımlılıkları sıraya koy. Üretimden sonra uygun bir uzman teslimi bağımsız doğrulasın. Sonucu, kanıtı ve kalan eksikleri tek teslimde birleştir.",
+        "Uygun mevcut ajanla başla. Küçük işi kendin tamamla. Yalnızca bağımsız bir teslimat veya gerekli ayrı uzmanlık varsa uygun mevcut ajana delege et; paralelliği sınırla. Hedefi ve kabul kriterlerini netleştir, sonucu gereken kontrollerle doğrula. Sonucu, kanıtı ve kalan eksikleri tek teslimde birleştir.",
     },
     engineer: {
       label: "Ürün geliştir",
       hint: "Tasarım, geliştirme ve test aynı hedefte buluşur.",
       instruction:
-        "Çalışan ürün üret. Tasarım, uygulama ve bağımsız kalite kontrol adımlarını uygun mevcut uzmanlara dağıt. Gerçek test kanıtı, çalıştırma bilgisi ve açık eksiklerle teslim et.",
+        "Çalışan ürün üret. Küçük işi kendin tamamla; yalnızca bağımsız teslimat veya gerekli ayrı uzmanlık için uygun mevcut ajandan yardım al. Tasarımı, uygulamayı ve gereken kalite kontrollerini tamamla. Gerçek test kanıtı, çalıştırma bilgisi ve açık eksiklerle teslim et.",
     },
     research: {
       label: "Araştır",
