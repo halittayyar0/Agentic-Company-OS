@@ -1,5 +1,15 @@
 import type { ExpertDetailCopy } from "../expert-detail-copy";
 const copy: ExpertDetailCopy = {
+  keeper: {
+    title: "一起，一步一步来。",
+    talk: "聊一聊",
+    idle: "告诉我你想从哪里开始。我们可以把任务拆成清晰的小步骤。",
+    working: "最近的记录显示任务正在进行。我们可以一起讨论下一步。",
+    blocked: "最近的记录显示有步骤受阻。我们一起明确继续所需的条件。",
+    archived: "此专家已归档。需要时可在设置中恢复。",
+    unknown: "无法确认当前状态。请先刷新记录，再依据该状态操作。",
+    ai: "AI 专家 · 只有点击发送时才会发送消息。",
+  },
   managedPrompt:
     "此预设角色的指令跟随工作区语言。编辑并保存后将成为自定义指令；之后切换语言不会改变您的文本。",
   promptRequired: "保存前请输入工作指令。",

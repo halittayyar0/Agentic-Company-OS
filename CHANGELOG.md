@@ -9,15 +9,24 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 - Native endurance documentation uses a ten-minute preflight covering all seven fault kinds before a 24-hour launch. The independent verifier still rejects missing incidents, false health reports and shorter duration claims.
 - Synthetic endurance runs explicitly pin all nine selected token, step and reported-cost limits for both runtime types and record only those numerical limits in provenance. Malformed overrides stop before building or starting resources. The documented finite workload allowance is selected before both runs; production defaults and recorded usage remain unchanged.
+- Task families share recorded token and reported-cost limits across the root and delegated work. Finite work uses its current root cycle; recurring work also checks a rolling 24-hour allowance. Individual limits remain authoritative and unknown reported costs are not presented as zero.
+- Authenticated operators can check and resume eligible budget-paused family work in all seven interface languages. The check spends no model tokens, preserves recorded usage and does not change permissions, allowances or completed work. Emergency stop, pending approvals, leases and unresolved operations still prevent unsafe transitions.
+- An immutable request receipt lets the task page recover after a lost response or reload. The page saves the request identity before sending, inspects the same receipt after uncertainty and requires an explicit retry when no receipt exists.
+- Container setup preserves validated operator budget overrides when resuming an existing installation. Source and native PostgreSQL acceptance cover concurrent replay, cancellation, transaction rollback, corrupt families and allowance renewal; phone-width UI checks cover recovery, keyboard use and enlarged Arabic text.
+
+### Fixed
+
+- Endurance evidence records the physical attempt that completed each operation and verifies its invocation join. A replacement owner can complete a reused logical receipt; a lost owner cannot claim a successful effect. Both attempts must be final and their snapshots consistent across the evidence bundle.
+- Observer samples defer future-dated completed receipts before resolving their owners. A missing owner for an already completed historical receipt remains a verification failure.
 
 ## [0.3.10] - 2026-10-01
 
 ### Improved
 
-- Task families share recorded token and reported-cost limits across the root and delegated work. Finite work uses its current root cycle; recurring work also checks a rolling 24-hour allowance. Individual limits remain authoritative and unknown reported costs are not presented as zero.
-- Authenticated operators can check and resume eligible budget-paused family work in all seven interface languages. The check spends no model tokens, preserves recorded usage and does not change permissions, allowances or completed work. Emergency stop, pending approvals, leases and unresolved operations still prevent unsafe transitions.
-- An immutable request receipt lets the task page recover after a lost response or reload. The page saves the request identity before sending, inspects the same receipt after uncertainty and requires an explicit retry when no receipt exists.
-- Container setup preserves validated operator budget overrides when resuming an existing installation. Source and native PostgreSQL acceptance cover concurrent replay, cancellation, transaction rollback, corrupt families and allowance renewal; phone-width UI checks cover recovery, keyboard use and enlarged Arabic text.
+- Ten original Keeper mascots now have distinct colorful shells and gentle movement that follows the recorded agent status. Working, blocked and idle agents have different motion; archived agents and uncertain reads stay still. Uploaded portraits remain static.
+- A friendly profile companion in all seven application languages explains the next step. Selecting the mascot or its conversation button opens and focuses the existing chat while preserving the draft; it never sends a message automatically. The companion is interface guidance, not a generated reply.
+- A global motion control persists locally and synchronizes across tabs. System reduced-motion preferences take precedence, and animations pause in hidden tabs or outside the viewport. The new image is about 75 KiB; motion requires no service or model calls.
+- Profile guidance uses the existing selected-language lazy packs. Measured feature code growth has a separate 10 KB raw / 4 KB gzip cap against a clean v0.3.9 build; earlier bundle and media ceilings remain fixed.
 
 ## [0.3.9] - 2026-10-01
 

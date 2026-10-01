@@ -774,6 +774,7 @@ function Conversation({
               {c.instruction}
             </label>
             <textarea
+              data-keeper-chat-focus={project ? undefined : ""}
               {...composeField}
               id={formId}
               ref={(node) => {

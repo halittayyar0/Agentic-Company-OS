@@ -1,7 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Agent } from "@workspace/api-client-react";
-import rosterAtlasUrl from "@/assets/company-keeper-atlas.webp";
+import rosterAtlasUrl from "@/assets/company-keeper-color-atlas.webp";
 import { cn } from "@/lib/utils";
+import "./keeper.css";
+
+const ACCENTS = [
+  "#1461df",
+  "#ff6535",
+  "#ffc52d",
+  "#30c995",
+  "#0fa9a9",
+  "#9b65ea",
+  "#13a7ec",
+  "#824bd6",
+  "#ed557e",
+  "#f59713",
+];
 
 const TEMPLATE_MASCOT_INDEX: Record<string, number> = {
   ceo: 0,
@@ -41,6 +55,7 @@ export function AgentAvatar({
   imageSrc,
   size = "md",
   showStatus = false,
+  statusKnown = true,
   className,
 }: {
   agent: Agent;
@@ -48,9 +63,12 @@ export function AgentAvatar({
   imageSrc?: string | null;
   size?: keyof typeof SIZE_CLASS;
   showStatus?: boolean;
+  statusKnown?: boolean;
   className?: string;
 }) {
   const [customImageFailed, setCustomImageFailed] = useState(false);
+  const frame = useRef<HTMLSpanElement>(null);
+  const [visible, setVisible] = useState(false);
   const index = mascotIndex(agent);
   const column = index % 5;
   const row = Math.floor(index / 5);
@@ -61,13 +79,29 @@ export function AgentAvatar({
   const customImage = customImageFailed ? null : requestedImage;
 
   useEffect(() => setCustomImageFailed(false), [requestedImage]);
+  useEffect(() => {
+    const element = frame.current;
+    if (!element || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setVisible(entry.isIntersecting),
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <span
+      ref={frame}
+      data-keeper
+      data-keeper-mood={
+        !statusKnown ? "unknown" : !agent.isActive ? "archived" : agent.status
+      }
+      data-keeper-visible={visible}
+      style={{ "--keeper-accent": ACCENTS[index] } as CSSProperties}
       role="img"
       aria-label={agent.name}
       className={cn(
-        "relative block shrink-0 overflow-visible border border-white/25 bg-card bg-no-repeat shadow-sm ring-1 ring-black/10",
+        "keeper-frame relative block shrink-0 overflow-visible border border-white/25 bg-card bg-no-repeat shadow-sm ring-1 ring-black/10",
         SIZE_CLASS[size],
         className,
       )}
@@ -86,7 +120,7 @@ export function AgentAvatar({
       ) : (
         <span
           aria-hidden="true"
-          className="absolute inset-0 overflow-hidden rounded-[inherit] bg-no-repeat"
+          className="keeper-body absolute inset-0 overflow-hidden rounded-[inherit] bg-no-repeat"
           style={{
             backgroundImage: `url("${rosterAtlasUrl}")`,
             backgroundSize: "500% auto",
@@ -98,7 +132,7 @@ export function AgentAvatar({
         <span
           aria-hidden="true"
           className={cn(
-            "absolute -bottom-1 -right-1 size-3 rounded-full border-2 border-background",
+            "keeper-status absolute -bottom-1 -right-1 size-3 rounded-full border-2 border-background",
             agent.status === "working"
               ? "animate-pulse bg-emerald-500 motion-reduce:animate-none"
               : agent.status === "blocked"

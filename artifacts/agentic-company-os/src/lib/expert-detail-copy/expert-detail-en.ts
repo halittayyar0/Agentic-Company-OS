@@ -1,5 +1,19 @@
 import type { ExpertDetailCopy } from "../expert-detail-copy";
 const copy: ExpertDetailCopy = {
+  keeper: {
+    title: "Together, one step at a time.",
+    talk: "Let's talk",
+    idle: "Tell me where you'd like to start. We can break it into manageable steps.",
+    working:
+      "The latest record shows work in progress. We can talk about the next step.",
+    blocked:
+      "The latest record shows a blocked step. Let's clarify what is needed together.",
+    archived:
+      "This expert is archived. Restore it in settings when you need it.",
+    unknown:
+      "The current state could not be confirmed. Refresh the record before relying on it.",
+    ai: "AI expert · messages are sent only when you choose Send.",
+  },
   managedPrompt:
     "This managed role follows the workspace language. Editing and saving creates custom instructions; later language changes will preserve your text.",
   promptRequired: "Enter working instructions before saving.",

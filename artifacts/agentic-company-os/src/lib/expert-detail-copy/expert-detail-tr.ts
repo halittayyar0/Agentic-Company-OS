@@ -1,5 +1,18 @@
 import type { ExpertDetailCopy } from "../expert-detail-copy";
 const copy: ExpertDetailCopy = {
+  keeper: {
+    title: "Birlikte, adım adım.",
+    talk: "Birlikte konuşalım",
+    idle: "Nereden başlamak istediğini anlat. İşi birlikte küçük, anlaşılır adımlara bölebiliriz.",
+    working:
+      "Son kayda göre bir iş sürüyor. İstersen sonraki adımı birlikte konuşalım.",
+    blocked:
+      "Son kayda göre bir adımda engel var. Gerekeni birlikte netleştirelim.",
+    archived:
+      "Bu uzman arşivde. İhtiyacın olduğunda ayarlardan geri alabilirsin.",
+    unknown: "Güncel durum doğrulanamadı. Duruma güvenmeden önce kaydı yenile.",
+    ai: "Yapay zekâ uzmanı · mesaj yalnızca Gönder dediğinde iletilir.",
+  },
   managedPrompt:
     "Bu hazır rolün talimatları çalışma alanının dilini izler. Düzenleyip kaydettiğinde özel talimat olur; sonraki dil değişimleri metnini değiştirmez.",
   promptRequired: "Kaydetmeden önce çalışma talimatı yaz.",
