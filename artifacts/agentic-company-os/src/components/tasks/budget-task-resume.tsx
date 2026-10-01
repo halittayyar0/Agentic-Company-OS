@@ -18,11 +18,13 @@ import { studioText, type ProjectStudioCopy } from "@/lib/project-studio-copy";
 
 export default function BudgetTaskResume({
   taskId,
+  budgetPaused,
   reason,
   c,
   onResumed,
 }: {
   taskId: number;
+  budgetPaused: boolean;
   reason: string | null;
   c: ProjectStudioCopy;
   onResumed: () => void;
@@ -58,6 +60,10 @@ export default function BudgetTaskResume({
       getTaskBudgetResumeStatus(taskId, { signal, cache: "no-store" }),
     retry: false,
   });
+  const refetchScope = scope.refetch;
+  useEffect(() => {
+    void refetchScope();
+  }, [budgetPaused, refetchScope]);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -89,7 +95,8 @@ export default function BudgetTaskResume({
           (queryKey[0].startsWith("/api/tasks") ||
             queryKey[0] === "/api/org/summary"),
       });
-    } else void scope.refetch();
+    }
+    void scope.refetch();
   };
   const dispatch = async (sent: BudgetResumeIntent) => {
     if (guard.current) return;
@@ -262,7 +269,7 @@ export default function BudgetTaskResume({
           </div>
         </>
       )}
-      {!intent && receipt?.outcome !== "accepted" && (
+      {!intent && (receipt?.outcome !== "accepted" || budgetPaused) && (
         <>
           {scope.isError && (
             <p role="alert" className="text-sm">
@@ -279,7 +286,7 @@ export default function BudgetTaskResume({
             onClick={scope.isError ? () => void scope.refetch() : start}
             disabled={
               phase !== null ||
-              scope.isPending ||
+              scope.isFetching ||
               (!scope.isError &&
                 (!scope.data?.budgetPaused || !scope.data.rootTaskId))
             }

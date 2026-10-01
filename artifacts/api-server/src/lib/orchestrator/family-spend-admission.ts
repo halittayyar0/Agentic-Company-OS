@@ -36,7 +36,7 @@ interface FamilyRow {
   lifetime_cost: string | null;
   lifetime_rows: string;
   lifetime_unknown: string;
-  legacy_cost_members: string;
+  legacy_incomplete_members: string;
   cycle_tokens: string;
   cycle_cost: string | null;
   cycle_rows: string;
@@ -68,7 +68,9 @@ function evidence(
   }
   const costCoverage =
     materialized > 0
-      ? "partial"
+      ? cost === null
+        ? "unknown"
+        : "partial"
       : count === 0
         ? tokensUsed > 0
           ? "unknown"
@@ -129,7 +131,7 @@ export async function readFamilySpendAdmission(
       sum(greatest(nullif(f.estimated_cost_usd, 0), p.all_cost))::text AS lifetime_cost,
       coalesce(sum(p.all_rows), 0)::text AS lifetime_rows,
       coalesce(sum(p.all_unknown), 0)::text AS lifetime_unknown,
-      count(*) FILTER (WHERE f.estimated_cost_usd > coalesce(p.all_cost, 0))::text AS legacy_cost_members,
+      count(*) FILTER (WHERE f.tokens_used > p.all_tokens OR f.estimated_cost_usd > coalesce(p.all_cost, 0))::text AS legacy_incomplete_members,
       coalesce(sum(p.cycle_tokens), 0)::text AS cycle_tokens,
       sum(p.cycle_cost)::text AS cycle_cost,
       coalesce(sum(p.cycle_rows), 0)::text AS cycle_rows,
@@ -163,7 +165,7 @@ export async function readFamilySpendAdmission(
         row.lifetime_cost,
         row.lifetime_rows,
         row.lifetime_unknown,
-        row.legacy_cost_members,
+        row.legacy_incomplete_members,
       );
   const currentReason =
     current.tokensUsed >= limits.tokens

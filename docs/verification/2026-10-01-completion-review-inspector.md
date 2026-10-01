@@ -47,7 +47,17 @@ merged as `c408141dad453bad0e6024d6c0e7b0d8931ba1ef`. Its actual tested merge
 commit `13264c396a73420b3f28a67a7483d0658e347255`, candidate and main have the
 same Git source tree `58e854bedcafdb92f2b3809700f94276464af142`. Synchronizing
 this branch with main preserved the locally verified UI source exactly.
-The UI is not released or merged. Its complete source/UI, security and platform
-checks must pass, and the parent distribution must be verified, before publication.
+PR #35 passed all eight required source/UI, security and platform checks,
+including the final Intel and Apple Silicon macOS runs. Full Chromium acceptance
+passed 954 cases. It merged as `12ccba9ea66c1f33802e11eb87618a2145a3de02`;
+the passing head, actual tested PR merge and main all share tree
+`4444e3a94e1423f7db3be4ad9dcdfd22d80996d3`. Distribution run `36806665790`
+passed published-image installation, resume and disposable backup restore from
+this exact main before packaging. Public [v0.3.9](https://github.com/halittayyar0/Agentic-Company-OS/releases/tag/v0.3.9)
+tag and installer assets were fetched anonymously. ZIP SHA-256 is
+`15a969769e8adcb471c80080895812c6dc9cea42ced095a0ee3309de08803e77`;
+embedded source/image metadata match the workflow. Anonymous registry access
+verified Linux AMD64/ARM64 manifests and source labels at
+`sha256:d7e561212af3b5983f1772a2a6378a438a2bb094b44a0ad9d4f9e333a8159106`.
 The 25-case run does not establish physical-phone acceptance,
 native-speaker review or a real 24-hour soak. Issues #29 and #34 remain open.

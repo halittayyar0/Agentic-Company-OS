@@ -99,15 +99,13 @@ export async function resumeBudgetWithinTransaction(
       stillPausedCount,
       recordedAt: new Date(),
     });
-    await tx
-      .insert(taskBudgetResumeRequestsTable)
-      .values({
-        requestId: input.requestId,
-        taskId,
-        rootTaskId: input.rootTaskId,
-        requestHash,
-        response: JSON.parse(JSON.stringify(receipt)),
-      });
+    await tx.insert(taskBudgetResumeRequestsTable).values({
+      requestId: input.requestId,
+      taskId,
+      rootTaskId: input.rootTaskId,
+      requestHash,
+      response: JSON.parse(JSON.stringify(receipt)),
+    });
     return { receipt };
   };
   if (control.emergencyStopEnabled) return finish("emergency_stop");
@@ -297,23 +295,21 @@ export async function resumeBudgetWithinTransaction(
       [],
       candidates.length,
     );
-  await tx
-    .insert(activityEventsTable)
-    .values({
-      agentId: selected.ownerAgentId,
-      taskId,
-      type: "task_status_changed",
-      severity: "info",
-      summary: toolMessage(locale, "budgetFamilyResumed", {
-        count: queued.length,
-      }),
-      detail: {
-        runtimeEvent: "task_family_budget_resumed",
-        requestId: input.requestId,
-        rootTaskId: rootId,
-        queuedCount: queued.length,
-        stillPausedCount: candidates.length - queued.length,
-      },
-    });
+  await tx.insert(activityEventsTable).values({
+    agentId: selected.ownerAgentId,
+    taskId,
+    type: "task_status_changed",
+    severity: "info",
+    summary: toolMessage(locale, "budgetFamilyResumed", {
+      count: queued.length,
+    }),
+    detail: {
+      runtimeEvent: "task_family_budget_resumed",
+      requestId: input.requestId,
+      rootTaskId: rootId,
+      queuedCount: queued.length,
+      stillPausedCount: candidates.length - queued.length,
+    },
+  });
   return finish(null, queued, candidates.length - queued.length);
 }

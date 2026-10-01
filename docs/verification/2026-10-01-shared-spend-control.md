@@ -97,8 +97,50 @@ unchanged. All 12 installer/parser/resume/deployment checks and scripts typechec
 passed, including preserving approved limits, rejecting duplicate/invalid limits,
 and refusing oversized or linked private configuration without overwriting it.
 
-Then synchronize with PR #35 after its required checks pass, regenerate the API,
-verify the complete candidate, push a PR, inspect all required platform/security
-checks, merge and prove the exact public installer/image. No new release claim
-is supported by these local checks. Physical-phone, native-speaker and real
-24-hour acceptance remain unverified; issues #29 and #34 remain open.
+PR #35 passed all eight required checks and merged as
+`12ccba9ea66c1f33802e11eb87618a2145a3de02`. Its passing head, tested PR merge
+and main share tree `4444e3a94e1423f7db3be4ad9dcdfd22d80996d3`.
+This branch synchronized with that main as `3f4f7be`, preserving both bounded
+feature allocations. Its integrated build/bundle passed at 1388.9 KiB raw /
+418.2 KiB gzip. The parent distribution run `36806665790` passed installation,
+resume, disposable backup restore and packaging. Public 0.3.9 tag, ZIP/checksum
+and both Linux image architectures were verified anonymously; see the completion
+review checkpoint for the exact source, checksum and image digest.
+
+## Whole-branch review and fix pass
+
+One independent read-only review found two functional issues and one misleading
+cost-coverage field. The fix pass reproduced all three before changing code:
+
+- The documented `MAX_TASK_STEPS=0` disabled cap prevented container resume.
+  Parser and completed-installation regressions failed before the validator was
+  corrected to allow zero only for this setting. Other zero limits stay invalid.
+- A historical accepted receipt hid further checks on the mounted page, even
+  when only a child resumed or the selected job paused again later. Both browser
+  regressions failed before the control was separated from current eligibility.
+  Scope refresh and explicit new identities now support another deliberate
+  check without replaying the prior accepted request.
+- Materialized tokens missing from priced ledger entries could incorrectly
+  label finite-family cost coverage complete. Two regressions failed for a
+  legacy-only member and a partially priced legacy member. Coverage now remains
+  partial when some cost is known, or unknown when none is known. The recorded
+  token/cost admission limits are unchanged.
+
+After that fix pass, 54 focused integrated source checks passed, including
+spend, routing, receipt boundaries, browser recovery and installation. The
+complete monorepo typecheck/build, stable API generation, production audit and
+license policy passed. Bundle verification passed at 1389.0 KiB raw / 418.2 KiB
+gzip; the recovery feature is 11.6 KiB raw / 4.1 KiB gzip within its unchanged
+13 KB / 4.5 KB allocation. Final integrated Chromium acceptance passed 55/55
+checks across task recovery and completion-review traces; the two new same-page
+budget regressions passed alongside the seven-language phone/keyboard checks.
+The final native PostgreSQL spend/receipt suite passed 22/22, including the cost
+coverage regressions. The owned disposable cluster stopped and its PID file was
+absent. Full source/UI and platform publication gates remain before this
+candidate can be called released.
+
+Verify the complete 0.3.10 candidate, push a PR, inspect all required
+platform/security checks, merge and prove the exact public installer/image.
+No new release claim is supported by these local checks. Physical-phone,
+native-speaker and real 24-hour acceptance remain unverified; issues #29 and
+#34 remain open.

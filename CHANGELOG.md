@@ -3,6 +3,15 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.3.10] - 2026-10-01
+
+### Improved
+
+- Task families share recorded token and reported-cost limits across the root and delegated work. Finite work uses its current root cycle; recurring work also checks a rolling 24-hour allowance. Individual limits remain authoritative and unknown reported costs are not presented as zero.
+- Authenticated operators can check and resume eligible budget-paused family work in all seven interface languages. The check spends no model tokens, preserves recorded usage and does not change permissions, allowances or completed work. Emergency stop, pending approvals, leases and unresolved operations still prevent unsafe transitions.
+- An immutable request receipt lets the task page recover after a lost response or reload. The page saves the request identity before sending, inspects the same receipt after uncertainty and requires an explicit retry when no receipt exists.
+- Container setup preserves validated operator budget overrides when resuming an existing installation. Source and native PostgreSQL acceptance cover concurrent replay, cancellation, transaction rollback, corrupt families and allowance renewal; phone-width UI checks cover recovery, keyboard use and enlarged Arabic text.
+
 ## [0.3.9] - 2026-10-01
 
 ### Improved

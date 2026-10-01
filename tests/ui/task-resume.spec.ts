@@ -155,11 +155,13 @@ async function installResumeMocks(
     blockedReason = "user_input",
     lastError = blockedTask.lastError,
     budgetDenied = false,
+    budgetPartial = false,
   }: {
     failResume: boolean;
     blockedReason?: "user_input" | "runtime_failure" | "budget";
     lastError?: string;
     budgetDenied?: boolean;
+    budgetPartial?: boolean;
   },
 ) {
   let currentTask = { ...blockedTask, blockedReason, lastError };
@@ -311,13 +313,13 @@ async function installResumeMocks(
         rootTaskId: body.rootTaskId,
         outcome: budgetDenied ? "rejected" : "accepted",
         reason: budgetDenied ? "allowance_exhausted" : null,
-        queuedTaskIds: budgetDenied ? [] : [501],
+        queuedTaskIds: budgetDenied ? [] : budgetPartial ? [502] : [501],
         queuedCount: budgetDenied ? 0 : 1,
-        stillPausedCount: budgetDenied ? 1 : 0,
+        stillPausedCount: budgetDenied || budgetPartial ? 1 : 0,
         recordedAt: NOW,
       };
       budgetReceipts.set(body.requestId, receipt);
-      if (!budgetDenied)
+      if (!budgetDenied && !budgetPartial)
         currentTask = {
           ...currentTask,
           status: "pending",
@@ -416,6 +418,7 @@ async function installResumeMocks(
     budgetAttempts: () => budgetAttempts,
     allowBudget: () => {
       budgetDenied = false;
+      budgetPartial = false;
     },
     budgetRequests: () => [...budgetRequests],
     requests: () => requests,
@@ -429,6 +432,14 @@ async function installResumeMocks(
     attempts: () => resumeAttempts,
     answers: () => [...submittedAnswers],
     task: () => ({ ...currentTask }),
+    pauseBudgetAgain: () => {
+      currentTask = {
+        ...currentTask,
+        status: "blocked",
+        blockedReason: "budget",
+        lastError: "Later cycle allowance reached",
+      };
+    },
     messageScopes: () => [...messageScopes],
     activityScopes: () => [...activityScopes],
     vmStatusReads: () => vmStatusReads,
@@ -805,6 +816,61 @@ test("budget check queues work without changing displayed usage", async ({
   expect(harness.task().tokensUsed).toBe(blockedTask.tokensUsed);
   expect(harness.budgetAttempts()).toBe(1);
   expect(harness.attempts()).toBe(0);
+});
+
+test("partial budget acceptance keeps a fresh explicit check available without reload", async ({
+  page,
+}) => {
+  const harness = await installResumeMocks(page, {
+    failResume: false,
+    blockedReason: "budget",
+    budgetPartial: true,
+  });
+  await page.goto("/tasks/501");
+  const action = page.getByRole("button", {
+    name: "Kullanım sınırını kontrol et ve devam ettir",
+    exact: true,
+  });
+  await action.click();
+  await expect(
+    page.getByText("1 iş devam etmek üzere sıraya alındı.", { exact: true }),
+  ).toBeVisible();
+  expect(harness.task().status).toBe("blocked");
+  harness.allowBudget();
+  await expect(action).toBeVisible();
+  await action.click();
+  await expect.poll(harness.budgetAttempts).toBe(2);
+  expect(harness.budgetRequests()[0].requestId).not.toBe(
+    harness.budgetRequests()[1].requestId,
+  );
+  await expect.poll(() => harness.task().status).toBe("pending");
+});
+
+test("a later budget pause on the same page permits a fresh explicit check", async ({
+  page,
+}) => {
+  const harness = await installResumeMocks(page, {
+    failResume: false,
+    blockedReason: "budget",
+  });
+  await page.goto("/tasks/501");
+  const action = page.getByRole("button", {
+    name: "Kullanım sınırını kontrol et ve devam ettir",
+    exact: true,
+  });
+  await action.click();
+  await expect.poll(() => harness.task().status).toBe("pending");
+  await expect(action).toBeHidden();
+  harness.pauseBudgetAgain();
+  await expect(
+    page.getByText("Later cycle allowance reached", { exact: true }),
+  ).toBeVisible({ timeout: 10000 });
+  await expect(action).toBeVisible();
+  await action.click();
+  await expect.poll(harness.budgetAttempts).toBe(2);
+  expect(harness.budgetRequests()[0].requestId).not.toBe(
+    harness.budgetRequests()[1].requestId,
+  );
 });
 
 test("budget lost acknowledgement survives reload and only inspects its receipt", async ({

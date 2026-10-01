@@ -189,6 +189,35 @@ test("delegated inference shares one durable family budget", async (t) => {
     },
   );
 
+  for (const pricedLegacyTokens of [0, 10]) {
+    await t.test(
+      `unpriced legacy token excess is partial alongside priced receipts (${pricedLegacyTokens})`,
+      async () => {
+        limits(100);
+        const f = await family();
+        await db
+          .update(tasksTable)
+          .set({ tokensUsed: 100 })
+          .where(eq(tasksTable.id, f.root.id));
+        if (pricedLegacyTokens)
+          await receipt(f.root.id, pricedLegacyTokens, "0.10");
+        await receipt(f.child.id, 1, "0.01");
+        const result = await readTaskSpendAdmission(
+          f.grandchild,
+          localLimits,
+          "en",
+        );
+        assert.equal(result.tokensUsed, 101);
+        assert.match(result.reason ?? "", /shared/i);
+        assert.equal(
+          result.costCoverage,
+          "partial",
+          "unpriced materialized tokens cannot establish complete cost coverage",
+        );
+      },
+    );
+  }
+
   await t.test(
     "a recurring root resets the entire family cycle but retains rolling-day spend",
     async () => {

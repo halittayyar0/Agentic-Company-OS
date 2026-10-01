@@ -17,7 +17,7 @@ const costLimits = new Set([
   "MAX_TASK_FAMILY_REPORTED_COST_USD",
   "MAX_RECURRING_FAMILY_DAILY_REPORTED_COST_USD",
 ]);
-/** Preserve only recognized positive budget overrides, never arbitrary secrets
+/** Preserve recognized budget overrides (zero disables the step cap), never arbitrary secrets
  * or execution/host settings from an old environment file. */
 export function parseBudgetOverrides(source: string): Record<string, string> {
   const result: Record<string, string> = {};
@@ -42,7 +42,8 @@ export function parseBudgetOverrides(source: string): Record<string, string> {
       !value ||
       !/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value) ||
       !Number.isFinite(number) ||
-      number <= 0 ||
+      number < 0 ||
+      (number === 0 && key !== "MAX_TASK_STEPS") ||
       number > Number.MAX_SAFE_INTEGER ||
       (integerLimits.has(key) && !Number.isSafeInteger(number))
     )

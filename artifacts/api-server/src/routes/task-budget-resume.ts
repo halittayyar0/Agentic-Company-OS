@@ -72,11 +72,9 @@ router.post("/tasks/:taskId/budget-resume", async (req, res) => {
   const id = parsePositiveInteger(req.params.taskId, "taskId"),
     input = ResumeTaskBudgetBody.strict().safeParse(req.body);
   if (!id.ok || !input.success) {
-    res
-      .status(400)
-      .json({
-        error: "A request identity and exact root task identity are required",
-      });
+    res.status(400).json({
+      error: "A request identity and exact root task identity are required",
+    });
     return;
   }
   const locale = await readWorkspaceLocale();

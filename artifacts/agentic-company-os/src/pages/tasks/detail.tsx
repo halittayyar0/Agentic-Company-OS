@@ -385,6 +385,10 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
                   <BudgetTaskResume
                     key={taskId}
                     taskId={taskId}
+                    budgetPaused={
+                      project.status === "blocked" &&
+                      project.blockedReason === "budget"
+                    }
                     reason={project.lastError}
                     c={c}
                     onResumed={() => {

@@ -64,7 +64,7 @@ test("completed container resume retains operator budget limits in both config a
   await writeFile(
     file,
     original +
-      "MAX_TASK_FAMILY_TOKENS=987654\nMAX_TASK_FAMILY_REPORTED_COST_USD=4.5\nOPERATOR_AUTH_TOKEN=do-not-inherit\n",
+      "MAX_TASK_STEPS=0\nMAX_TASK_FAMILY_TOKENS=987654\nMAX_TASK_FAMILY_REPORTED_COST_USD=4.5\nOPERATOR_AUTH_TOKEN=do-not-inherit\n",
   );
   const restored = await readInstallation(
     directory,
@@ -90,9 +90,11 @@ test("completed container resume retains operator budget limits in both config a
   t.after(() => next.stopNative());
   await next.execute(restored.plan, {}, () => {});
   assert.equal(observed?.MAX_TASK_FAMILY_TOKENS, "987654");
+  assert.equal(observed?.MAX_TASK_STEPS, "0");
   assert.equal(observed?.MAX_TASK_FAMILY_REPORTED_COST_USD, "4.5");
   const saved = await readFile(file, "utf8");
   assert.match(saved, /MAX_TASK_FAMILY_TOKENS=987654/);
+  assert.match(saved, /MAX_TASK_STEPS=0/);
   assert.match(saved, /MAX_TASK_FAMILY_REPORTED_COST_USD=4.5/);
   assert.doesNotMatch(saved, /do-not-inherit/);
 });

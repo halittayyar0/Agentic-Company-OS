@@ -52,6 +52,14 @@ test("invalid or duplicate limits cannot silently fall back after restart", () =
     /MAX_TASK_FAMILY_REPORTED_COST_USD/,
   );
 });
+test("the documented zero step cap remains disabled after restart", () => {
+  assert.deepEqual(parseBudgetOverrides("MAX_TASK_STEPS=0\n"), {
+    MAX_TASK_STEPS: "0",
+  });
+  for (const key of ["MAX_TASK_TOKENS", "MAX_TASK_FAMILY_REPORTED_COST_USD"]) {
+    assert.throws(() => parseBudgetOverrides(`${key}=0`));
+  }
+});
 test("missing config is allowed while oversized and linked private configs are preserved and rejected", async (t) => {
   const directory = await mkdtemp(
     path.join(await realpath(tmpdir()), "acos-budget-config-"),

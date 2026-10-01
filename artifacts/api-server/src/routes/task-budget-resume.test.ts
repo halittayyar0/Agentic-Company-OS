@@ -99,17 +99,15 @@ async function fixture() {
       tokensUsed: 10,
     })
     .returning();
-  await db
-    .insert(usageEventsTable)
-    .values({
-      agentId: owner.id,
-      taskId: root.id,
-      kind: "judge",
-      modelId: "fixture",
-      provider: "fixture",
-      totalTokens: 20,
-      reportedCostUsd: "0.01",
-    });
+  await db.insert(usageEventsTable).values({
+    agentId: owner.id,
+    taskId: root.id,
+    kind: "judge",
+    modelId: "fixture",
+    provider: "fixture",
+    totalTokens: 20,
+    reportedCostUsd: "0.01",
+  });
   return {
     owner,
     root,
@@ -272,16 +270,14 @@ test("resuming a family skips inactive, leased, other-blocked and uncertain oper
       .returning();
     ids.push(task.id);
     if (kind === "pending_approval")
-      await db
-        .insert(approvalRequestsTable)
-        .values({
-          agentId: f.owner.id,
-          taskId: task.id,
-          category: "other",
-          title: "Pending",
-          description: "Test",
-          status: "pending",
-        });
+      await db.insert(approvalRequestsTable).values({
+        agentId: f.owner.id,
+        taskId: task.id,
+        category: "other",
+        title: "Pending",
+        description: "Test",
+        status: "pending",
+      });
     if (kind === "unknown_operation") {
       const [approval] = await db
         .insert(approvalRequestsTable)
@@ -295,23 +291,21 @@ test("resuming a family skips inactive, leased, other-blocked and uncertain oper
           consumedAt: new Date(),
         })
         .returning();
-      await db
-        .insert(operationReceiptsTable)
-        .values({
-          id: randomUUID(),
-          operationKey: randomUUID(),
-          replayKey: randomUUID(),
-          logicalExecutionId: randomUUID(),
-          taskId: task.id,
-          agentId: f.owner.id,
-          approvalId: approval.id,
-          executionKind: "approved_action",
-          sideEffectClass: "at_most_once",
-          state: "unknown",
-          finishedAt: new Date(),
-          toolName: "fixture",
-          argumentHash: "a".repeat(64),
-        });
+      await db.insert(operationReceiptsTable).values({
+        id: randomUUID(),
+        operationKey: randomUUID(),
+        replayKey: randomUUID(),
+        logicalExecutionId: randomUUID(),
+        taskId: task.id,
+        agentId: f.owner.id,
+        approvalId: approval.id,
+        executionKind: "approved_action",
+        sideEffectClass: "at_most_once",
+        state: "unknown",
+        finishedAt: new Date(),
+        toolName: "fixture",
+        argumentHash: "a".repeat(64),
+      });
     }
   }
   const reply = await request(port, "POST", f.path, f.input);
@@ -445,8 +439,8 @@ test("queue transitions, activity and receipt all roll back together", async () 
         f.input,
         "en",
       );
-    assert.ok(result.receipt);
-    assert.equal(result.receipt.outcome, "accepted");
+      assert.ok(result.receipt);
+      assert.equal(result.receipt.outcome, "accepted");
       throw new Error("fixture rollback");
     }),
     /fixture rollback/,
@@ -493,18 +487,16 @@ test("corrupt parent cycles and oversized families fail closed before queueing",
     "family_invalid",
   );
   const large = await fixture();
-  await db
-    .insert(tasksTable)
-    .values(
-      Array.from({ length: 999 }, (_, i) => ({
-        ownerAgentId: large.owner.id,
-        parentTaskId: large.root.id,
-        title: `Member ${i}`,
-        brief: "Test",
-        status: "blocked",
-        blockedReason: "budget",
-      })),
-    );
+  await db.insert(tasksTable).values(
+    Array.from({ length: 999 }, (_, i) => ({
+      ownerAgentId: large.owner.id,
+      parentTaskId: large.root.id,
+      title: `Member ${i}`,
+      brief: "Test",
+      status: "blocked",
+      blockedReason: "budget",
+    })),
+  );
   const reply = await request(port, "POST", large.path, large.input);
   assert.equal(reply.data.reason, "family_too_large");
   assert.equal(reply.data.queuedCount, 0);

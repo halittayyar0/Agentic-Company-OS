@@ -71,6 +71,10 @@ same request** reuses its identity safely. After a confirmed rejection, another
 explicit allowance check creates a fresh identity. If browser storage is
 unavailable, nothing is sent until recovery details can be saved.
 
+If only some family work resumed, the selected paused task keeps its check
+available. A later budget pause on the same open page also permits a fresh
+explicit check; the historical receipt never grants a new allowance.
+
 The control does not grant permission for paid tools or other approved actions.
 Resumed work can make the model calls already allowed by the installation, so
 keep provider-side spend limits as well as these recorded-usage controls.

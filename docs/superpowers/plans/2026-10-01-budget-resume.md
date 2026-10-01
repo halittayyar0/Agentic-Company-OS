@@ -1,6 +1,6 @@
 # Budget resume Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Let an authenticated operator safely resume eligible budget-paused family work after its allowance becomes available.
 
@@ -35,11 +35,11 @@
 
 **Interfaces:** Export `SpendReaderClient = Pick<typeof db, "select" | "execute">`; add optional final `client: SpendReaderClient = db` to both readers. `readTaskSpendBlockReason` forwards it.
 
-- [ ] Add a reader-injection test proving individual selects and recursive family execution use the supplied client.
-- [ ] Run the focused Node test with an absolute tsx loader; confirm the injected-client assertion fails.
-- [ ] Implement the optional client without changing defaults or spending policy.
-- [ ] Run focused spend/routing tests and API typecheck; record the evidence.
-- [ ] Commit reader changes and plan.
+- [x] Add a reader-injection test proving individual selects and recursive family execution use the supplied client.
+- [x] Run the focused Node test with an absolute tsx loader; confirm the injected-client assertion fails.
+- [x] Implement the optional client without changing defaults or spending policy.
+- [x] Run focused spend/routing tests and API typecheck; record the evidence.
+- [x] Commit reader changes and plan.
 
 ### Task 2: Durable budget resume API
 
@@ -47,13 +47,13 @@
 
 **Interfaces:** POST `/tasks/{taskId}/budget-resume` consumes `{requestId: UUID, rootTaskId: positive integer}`. GET `/tasks/{taskId}/budget-resume/{requestId}` returns the same immutable receipt. Receipt contains request/task/root IDs, accepted/rejected outcome, nullable enum reason, queuedTaskIds (max 1000), queuedCount, stillPausedCount and recordedAt. Reasons: `emergency_stop`, `task_changed`, `family_invalid`, `family_too_large`, `allowance_exhausted`, `nothing_eligible`.
 
-- [ ] Write route tests for retained usage, exhausted allowance, eligible descendants, unrelated tasks, duplicate/concurrent replay, cross-scope UUID conflicts, inactive/leased/nonbudget tasks and emergency stop.
-- [ ] Run to confirm the absent route fails, then implement independent receipt storage and checked-in migration.
-- [ ] Under the control lock resolve exactly one root with cycle-safe recursive SQL; reject scope changes or more than 1000 family members before any transition.
-- [ ] Lock agents -> approvals -> tasks sorted by ID. Check active owners, leases, pending/executing/unknown approvals and unfinished/unknown runtime operations before queueing each budget-only candidate with the transaction spend reader.
-- [ ] Persist receipt and activity metadata atomically; no briefs, raw errors, usage edits or allowance edits.
-- [ ] Generate clients/validators, validate stored receipt reads, run focused route tests and native PostgreSQL concurrent replay/rollback tests.
-- [ ] Commit complete backend/API boundary.
+- [x] Write route tests for retained usage, exhausted allowance, eligible descendants, unrelated tasks, duplicate/concurrent replay, cross-scope UUID conflicts, inactive/leased/nonbudget tasks and emergency stop.
+- [x] Run to confirm the absent route fails, then implement independent receipt storage and checked-in migration.
+- [x] Under the control lock resolve exactly one root with cycle-safe recursive SQL; reject scope changes or more than 1000 family members before any transition.
+- [x] Lock agents -> approvals -> tasks sorted by ID. Check active owners, leases, pending/executing/unknown approvals and unfinished/unknown runtime operations before queueing each budget-only candidate with the transaction spend reader.
+- [x] Persist receipt and activity metadata atomically; no briefs, raw errors, usage edits or allowance edits.
+- [x] Generate clients/validators, validate stored receipt reads, run focused route tests and native PostgreSQL concurrent replay/rollback tests.
+- [x] Commit complete backend/API boundary.
 
 ### Task 3: Recoverable seven-language budget panel
 
@@ -61,18 +61,18 @@
 
 **Interfaces:** Lazy `BudgetTaskResume({taskId, rootTaskId, reason, onAccepted})`; task-scoped sessionStorage identity validated before network calls; use generated API operations from Task 2.
 
-- [ ] Write failing browser cases for successful/denied check, receipt inspection after lost reply/reload, explicit same-ID retry after missing receipt and zero sends when storage fails.
-- [ ] Implement the compact panel below the brief, retaining the recorded reason; explain that checks cost no model tokens and do not reset usage.
-- [ ] Include accessible focus/status/error recovery, selected-language seven-pack copy, Arabic 320px light and other 390px dark tests, keyboard and 200% text.
-- [ ] Measure lazy transfer and bundle budget; preserve existing ceilings or document a specific feature allocation.
-- [ ] Run UI, recovery unit, type/build checks and commit.
+- [x] Write failing browser cases for successful/denied check, receipt inspection after lost reply/reload, explicit same-ID retry after missing receipt and zero sends when storage fails.
+- [x] Implement the compact panel below the brief, retaining the recorded reason; explain that checks cost no model tokens and do not reset usage.
+- [x] Include accessible focus/status/error recovery, selected-language seven-pack copy, Arabic 320px light and other 390px dark tests, keyboard and 200% text.
+- [x] Measure lazy transfer and bundle budget; preserve existing ceilings or document a specific feature allocation.
+- [x] Run UI, recovery unit, type/build checks and commit.
 
 ### Task 4: Integration, review and publication
 
 **Files:** Update README, `docs/efficient-work.md`, `docs/self-hosting.md`, verification checkpoint, CHANGELOG and candidate package version.
 
-- [ ] Synchronize only after PR #35's two macOS checks pass and its checked source is merged; preserve this branch's work.
-- [ ] Review full diff against the spec, including malformed receipts, corrupt/cyclic graphs, cancellation races and hidden unfinished operations. Add failing regression cases for concrete defects.
+- [x] Synchronize only after PR #35's two macOS checks pass and its checked source is merged; preserve this branch's work.
+- [x] Review full diff against the spec, including malformed receipts, corrupt/cyclic graphs, cancellation races and hidden unfinished operations. Add failing regression cases for concrete defects.
 - [ ] Run code generation, format, audit/licenses, source, build/type, full UI and bundle gates. Publish a PR and attach it to this chat.
 - [ ] Wait for all required Linux/Windows/macOS/container/security checks on exact head; merge only passing source and compare source trees.
 - [ ] Build immutable distribution, prove published-image install/resume/restore, package, and anonymously verify tag/ZIP/checksum/AMD64+ARM64 image.
