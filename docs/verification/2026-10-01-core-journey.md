@@ -46,12 +46,32 @@ prove the rendered journey and request payload, not model output quality or
 measured token savings. No paid-provider task or physical-phone acceptance was
 performed in this cycle.
 
-The full source suite is running. The initial full browser run was deliberately
-cancelled to incorporate the review correction; final browser acceptance is
-pending. Native platform,
-container and secret-scan CI, final code review, merge, release packaging and
-published-artifact acceptance have not yet been accepted for this candidate.
-This document is a progress checkpoint, not a public-release sign-off.
+The local full source run ended with 1,593 passes, 10 failures and six skips.
+Nine file processes and one shutdown-test child exhausted native V8 memory while
+the source and broad browser suites ran together. The owned browser run was
+cancelled to release memory. Serial retries recovered all ten affected files;
+the locale-file retry required the normal absolute loader URL after a diagnostic
+command incorrectly supplied a relative one. This recovery does not turn the
+earlier whole command into a pass. Five local skips require PostgreSQL; one
+requires Windows symlink privileges.
+
+The pre-image-refresh candidate (`ffdf631`) passed the general source-test stage
+on GitHub. Both Mac platform jobs, the production/endurance container job and
+security checks also passed. The container's ten-minute PostgreSQL fault smoke
+and independent verifier passed with `verified24h: false`. Final Windows and
+full browser acceptance were still running when this checkpoint was updated.
+Review of the delivery-attribution correction found no remaining must-fix issue.
+
+The README image was refreshed from this interface after inspection found the
+previous image still showing the old mandatory-team guidance. A bounded Chromium
+capture passed with English Home, the new approach selected, missing-model
+guidance visible and no horizontal overflow at 1,366px. It uses the authored
+roster and fixture API state; it demonstrates the interface, not a live model
+task or authenticated production installation.
+
+The final source candidate must pass its own required checks after that image
+refresh. Merge, exact-source release packaging and published-artifact acceptance
+remain pending. This document is a progress checkpoint, not a release sign-off.
 
 Apple Design references applied as web design principles: `layout.md › Best
 practices` and `Visual hierarchy` (essential information first), `feedback.md ›

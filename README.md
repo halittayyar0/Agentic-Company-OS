@@ -14,7 +14,7 @@ An open-source workspace for AI agents that work with tools, keep task records, 
 
 </div>
 
-![The real Agentic Company OS workspace, with agents, projects and activity](./docs/assets/dashboard.png)
+![English Home preview before connecting a model, with the Get it done approach selected](./docs/assets/dashboard.png)
 
 ## A workspace for getting work done
 
