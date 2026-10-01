@@ -42,8 +42,12 @@ are excluded. The shareable evidence schema remains unchanged.
 
 ## Publication gate
 
-This change is a local candidate atop PR #33's combined 0.3.8 source. It is not
-published or merged. Submit it after that parent passes and is released, then
-require the complete source/UI, security and platform gates on its final source.
+This change is the 0.3.9 candidate. Parent PR #33 passed all eight checks and
+merged as `c408141dad453bad0e6024d6c0e7b0d8931ba1ef`. Its actual tested merge
+commit `13264c396a73420b3f28a67a7483d0658e347255`, candidate and main have the
+same Git source tree `58e854bedcafdb92f2b3809700f94276464af142`. Synchronizing
+this branch with main preserved the locally verified UI source exactly.
+The UI is not released or merged. Its complete source/UI, security and platform
+checks must pass, and the parent distribution must be verified, before publication.
 The 25-case run does not establish physical-phone acceptance,
 native-speaker review or a real 24-hour soak. Issues #29 and #34 remain open.

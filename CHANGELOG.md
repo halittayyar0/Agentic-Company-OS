@@ -3,7 +3,7 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
-## [Unreleased]
+## [0.3.9] - 2026-10-01
 
 ### Improved
 
