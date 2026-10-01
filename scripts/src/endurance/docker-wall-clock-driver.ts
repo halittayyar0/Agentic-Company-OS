@@ -1788,6 +1788,10 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
     };
   }
 
+  spendConfiguration() {
+    return { ...this.spend.provenance };
+  }
+
   async provenance() {
     const runtimeAttestation = await this.harness.runtimeAttestation();
     return {

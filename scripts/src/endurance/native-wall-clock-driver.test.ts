@@ -8,12 +8,14 @@ import type { DockerWallClockDriverOptions } from "./docker-wall-clock-driver";
 import type { NativePostgresEnduranceHarnessOptions } from "./native-postgres-harness";
 import { NativeWallClockDriver } from "./native-wall-clock-driver";
 import type { WallClockRuntimeDriver } from "./run-wall-clock-soak";
+import { createEnduranceSpendConfiguration } from "./spend-configuration";
 
 test("native wall-clock driver lazily wires portable PostgreSQL into the shared coordinator contract", async () => {
   const calls: string[] = [];
   const capturedHarnessOptions: NativePostgresEnduranceHarnessOptions[] = [];
   const capturedInnerOptions: DockerWallClockDriverOptions[] = [];
   const inner: WallClockRuntimeDriver = {
+    spendConfiguration: () => createEnduranceSpendConfiguration({}).provenance,
     start: async () => {
       calls.push("start");
       return { projectId: 73, expectedResponsibilities: 10 };

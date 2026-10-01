@@ -37,6 +37,30 @@ or bypassed; no paid provider or external action is used.
 
 ## Required before publication
 
+### Journal contract correction
+
+The first real ten-minute native run on `d5c3a1f` completed 100/100 scheduled
+responsibilities and all seven faults, but its independent verification failed:
+the numerical spend fields were added to report provenance without extending
+the verifier's exact journal contract. The exact-head Windows job on `bd7f3c0`
+reproduced that rejection. Neither result is accepted runtime evidence.
+
+A new regression reproduced the rejection with a complete evidence fixture.
+The coordinator now snapshots the driver's nine selected numerical caps before
+startup and places them in the hash-bound `run_started` record. Verification
+requires that complete numeric key set, validates production startup ranges,
+and matches all caps exactly to report configuration. Missing caps, strings,
+unknown fields, invalid limits and detached values are rejected without
+reflecting their raw values. A second regression caught a startup cap changing
+while the coordinator still reported success; that drift now fails the report
+and preserves cleanup.
+
+The final focused verifier, coordinator, native/Compose driver, spend selector
+and CLI suites passed 178/178. Scripts typecheck passed. These are synthetic
+unit and integration fixtures, including virtual clocks; they do not certify
+elapsed runtime. A fresh real preflight on the new frozen source is required.
+The failed old evidence is preserved and will not be rewritten or promoted.
+
 - Full source tests, production typecheck/build, formatting, audit and licenses.
 - Independent code review; resolve material findings.
 - Live ten-minute native preflight and independent verifier on the final clean

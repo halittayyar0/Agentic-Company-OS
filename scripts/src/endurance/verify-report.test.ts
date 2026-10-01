@@ -31,6 +31,17 @@ const TEST_NODE_EXECUTABLE_SHA = digest(readFileSync(process.execPath));
 const TEST_PNPM_LOCK_SHA = digest(readFileSync(path.resolve("pnpm-lock.yaml")));
 const TEST_POSTGRES_DISTRIBUTION_SHA = "6".repeat(64);
 const TEST_POSTGRES_ROOT = path.resolve("test-portable-postgres");
+const TEST_SPEND = {
+  MAX_TASK_STEPS: 0,
+  MAX_TASK_TOKENS: 100_000,
+  MAX_TASK_REPORTED_COST_USD: 1,
+  MAX_RECURRING_DAILY_TOKENS: 250_000,
+  MAX_RECURRING_DAILY_REPORTED_COST_USD: 5,
+  MAX_TASK_FAMILY_TOKENS: 250_000,
+  MAX_TASK_FAMILY_REPORTED_COST_USD: 3,
+  MAX_RECURRING_FAMILY_DAILY_TOKENS: 2_500_000,
+  MAX_RECURRING_FAMILY_DAILY_REPORTED_COST_USD: 8,
+};
 
 function verifyEnduranceReport(options: VerifyEnduranceReportOptions) {
   return verifyEnduranceReportImplementation(
@@ -274,6 +285,7 @@ function validWallClockReport() {
       },
       workflowRunId: "workflow-1",
       configuration: {
+        ...TEST_SPEND,
         runtime: "native-postgres",
         durationHours: 24,
         workers: 2,
@@ -373,6 +385,7 @@ function journal(
         seed,
         projectId: 1,
         faultProfile,
+        spendConfiguration: { ...TEST_SPEND },
       },
     },
     ...schedule.map((fault, index) => ({
@@ -605,6 +618,120 @@ test("verifier accepts only a complete wall-clock evidence bundle", async () => 
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("verifier binds all nine selected spend limits to the starting journal", async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "agentic-os-spend-proof-"),
+  );
+  try {
+    const reportPath = await writeFixture(directory, validWallClockReport());
+    const result = await verifyEnduranceReport({
+      reportPath,
+      expectedMode: "wall_clock",
+    });
+    assert.equal(result.pass, true);
+    assert.equal(
+      result.report.provenance?.configuration
+        ?.MAX_RECURRING_FAMILY_DAILY_TOKENS,
+      2_500_000,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+for (const key of Object.keys(TEST_SPEND)) {
+  test(`verifier rejects the report spend cap detached from its journal (${key})`, async () => {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "agentic-os-spend-proof-"),
+    );
+    try {
+      const report = validWallClockReport() as any;
+      report.provenance.configuration[key] += 1;
+      const reportPath = await writeFixture(directory, report);
+      await assert.rejects(
+        verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+        /configuration.*journal contract/,
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const mutation of [
+  {
+    name: "missing contract",
+    change: (data: any) => {
+      delete data.spendConfiguration;
+    },
+  },
+  {
+    name: "missing cap",
+    change: (data: any) => {
+      delete data.spendConfiguration.MAX_TASK_FAMILY_TOKENS;
+    },
+  },
+  {
+    name: "unknown field",
+    change: (data: any) => {
+      data.spendConfiguration.OPERATOR_AUTH_TOKEN = "private-value";
+    },
+  },
+  {
+    name: "string cap",
+    change: (data: any) => {
+      data.spendConfiguration.MAX_TASK_TOKENS = "100000";
+    },
+  },
+  {
+    name: "zero family limit",
+    change: (data: any) => {
+      data.spendConfiguration.MAX_TASK_FAMILY_TOKENS = 0;
+    },
+  },
+  {
+    name: "fractional token cap",
+    change: (data: any) => {
+      data.spendConfiguration.MAX_TASK_TOKENS = 1000.5;
+    },
+  },
+  {
+    name: "invalid startup steps",
+    change: (data: any) => {
+      data.spendConfiguration.MAX_TASK_STEPS = 10001;
+    },
+  },
+  {
+    name: "nonfinite cost",
+    change: (data: any) => {
+      data.spendConfiguration.MAX_TASK_REPORTED_COST_USD = Infinity;
+    },
+  },
+]) {
+  test(`verifier rejects a hash-bound journal with ${mutation.name}`, async () => {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "agentic-os-spend-proof-"),
+    );
+    try {
+      const records = journal();
+      mutation.change(records[0].data);
+      const reportPath = await writeFixture(
+        directory,
+        validWallClockReport(),
+        records,
+      );
+      await assert.rejects(
+        verifyEnduranceReport({ reportPath, expectedMode: "wall_clock" }),
+        (error: unknown) =>
+          error instanceof TypeError &&
+          error.message === "Invalid wall-clock spend configuration",
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}
 
 test("verifier never grants verified24h to the compressed-all smoke profile", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "agentic-os-verify-"));

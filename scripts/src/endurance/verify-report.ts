@@ -27,6 +27,10 @@ import type {
   EnduranceRuntimeAttestation,
 } from "./report-schema";
 import { writeExactOutputBundle } from "./safe-output";
+import {
+  validateEnduranceSpendProvenance,
+  type EnduranceSpendValues,
+} from "./spend-configuration";
 
 interface BrowserEvidence {
   startCheckpointSha256: string;
@@ -240,6 +244,7 @@ function validateJournal(
 }
 
 interface WallClockJournalContract {
+  spendConfiguration: EnduranceSpendValues;
   requestedDurationHours: number;
   requiredHealthSampleBuckets: number;
   faultProfile: "standard" | "compressed-all";
@@ -268,6 +273,9 @@ function validateWallClockJournalContract(
     );
   }
   const data = record(runStarted.data, "wall-clock journal run_started data");
+  const spendConfiguration = validateEnduranceSpendProvenance(
+    data.spendConfiguration,
+  );
   if (data.mode !== "wall_clock") {
     throw new Error("Wall-clock journal run_started mode is invalid");
   }
@@ -490,6 +498,7 @@ function validateWallClockJournalContract(
   }
   return {
     requestedDurationHours,
+    spendConfiguration,
     requiredHealthSampleBuckets,
     faultProfile,
     expectedFaults: expectedSchedule.map((fault) => ({
@@ -929,6 +938,7 @@ function validateProvenance(
     "wall-clock provenance configuration",
   );
   const expectedConfiguration: Record<string, string | number> = {
+    ...journalContract.spendConfiguration,
     runtime: expectedRuntime,
     workers: 2,
     agents: 10,

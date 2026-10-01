@@ -14,9 +14,10 @@ const DEFAULTS = {
 } as const;
 
 type SpendKey = keyof typeof DEFAULTS;
+export type EnduranceSpendValues = Record<SpendKey, number>;
 export interface EnduranceSpendConfiguration {
   environment: Record<SpendKey, string>;
-  provenance: Record<SpendKey, number>;
+  provenance: EnduranceSpendValues;
 }
 
 export function createEnduranceSpendConfiguration(
@@ -46,4 +47,29 @@ export function createEnduranceSpendConfiguration(
     provenance[key] = value;
   }
   return { environment, provenance };
+}
+
+/** Accept only the complete numeric contract, never raw environment values. */
+export function validateEnduranceSpendProvenance(
+  value: unknown,
+): EnduranceSpendValues {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError("Invalid wall-clock spend configuration");
+  }
+  const values = value as Record<string, unknown>;
+  const keys = Object.keys(DEFAULTS) as SpendKey[];
+  if (
+    JSON.stringify(Object.keys(values).sort()) !==
+      JSON.stringify([...keys].sort()) ||
+    keys.some((key) => typeof values[key] !== "number")
+  ) {
+    throw new TypeError("Invalid wall-clock spend configuration");
+  }
+  try {
+    return createEnduranceSpendConfiguration(
+      Object.fromEntries(keys.map((key) => [key, String(values[key])])),
+    ).provenance;
+  } catch {
+    throw new TypeError("Invalid wall-clock spend configuration");
+  }
 }

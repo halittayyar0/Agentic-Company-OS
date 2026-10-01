@@ -1,6 +1,9 @@
 import path from "node:path";
 import { lstat, mkdir, realpath } from "node:fs/promises";
-import { createEnduranceSpendConfiguration } from "./spend-configuration";
+import {
+  createEnduranceSpendConfiguration,
+  type EnduranceSpendConfiguration,
+} from "./spend-configuration";
 
 import {
   DockerWallClockDriver,
@@ -71,6 +74,7 @@ function requireSafeRunId(runId: string): void {
 
 export class NativeWallClockDriver implements WallClockRuntimeDriver {
   private readonly options: NativeWallClockDriverOptions;
+  private readonly spend: EnduranceSpendConfiguration;
   private readonly operatorToken: string;
   private readonly runtimeControlKey: string;
   private readonly reservePorts: NonNullable<
@@ -107,12 +111,14 @@ export class NativeWallClockDriver implements WallClockRuntimeDriver {
     this.operatorToken = options.operatorToken ?? generated.operatorToken;
     this.runtimeControlKey =
       options.runtimeControlKey ?? generated.runtimeControlKey;
+    this.spend = createEnduranceSpendConfiguration(
+      options.environment ?? process.env,
+    );
     this.options = {
       ...options,
       environment: {
         ...(options.environment ?? process.env),
-        ...createEnduranceSpendConfiguration(options.environment ?? process.env)
-          .environment,
+        ...this.spend.environment,
       },
       workspaceRoot: path.resolve(options.workspaceRoot),
       postgresRoot: path.resolve(options.postgresRoot),
@@ -222,6 +228,10 @@ export class NativeWallClockDriver implements WallClockRuntimeDriver {
 
   createBrowserSession() {
     return this.requireInner().createBrowserSession();
+  }
+
+  spendConfiguration() {
+    return { ...this.spend.provenance };
   }
 
   async provenance() {

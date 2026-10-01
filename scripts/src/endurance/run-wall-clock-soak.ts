@@ -21,6 +21,10 @@ import {
   type EnduranceReport,
 } from "./report-schema";
 import { SoakEvidenceObserver } from "./soak-observer";
+import {
+  validateEnduranceSpendProvenance,
+  type EnduranceSpendValues,
+} from "./spend-configuration";
 
 export type WallClockCaptureContext =
   | { kind: "minute"; minute: number }
@@ -45,6 +49,8 @@ export interface IncompleteResponsibilityDiagnostic {
 }
 
 export interface WallClockRuntimeDriver extends FaultInjectionControls {
+  /** Exact caps selected for startup, available without creating a runtime. */
+  spendConfiguration(): EnduranceSpendValues;
   start(): Promise<{ projectId: number; expectedResponsibilities: number }>;
   captureEvidence(
     observer: SoakEvidenceObserver,
@@ -194,6 +200,7 @@ export async function runWallClockSoak(
   });
   let browser: BrowserMonitorResult | null = null;
   let runFailure: string | null = null;
+  let startingSpend: EnduranceSpendValues | null = null;
   let startedAt = driver.now();
 
   let realOrigin = Date.now();
@@ -207,6 +214,10 @@ export async function runWallClockSoak(
       delay(milliseconds, signal));
 
   try {
+    const spendConfiguration = validateEnduranceSpendProvenance(
+      driver.spendConfiguration(),
+    );
+    startingSpend = spendConfiguration;
     const started = await driver.start();
     projectId = started.projectId;
     expectedResponsibilities = started.expectedResponsibilities;
@@ -219,6 +230,7 @@ export async function runWallClockSoak(
       seed: options.seed,
       projectId,
       faultProfile,
+      spendConfiguration,
     });
 
     const schedule = createSeededFaultSchedule({
@@ -358,6 +370,14 @@ export async function runWallClockSoak(
     null;
   try {
     provenanceBase = await driver.provenance();
+    if (
+      !startingSpend ||
+      Object.entries(startingSpend).some(
+        ([key, value]) => provenanceBase!.configuration[key] !== value,
+      )
+    ) {
+      throw new Error("Wall-clock spend configuration changed after startup");
+    }
   } catch (error) {
     runFailure = runFailure
       ? `${runFailure}; provenance failed: ${failureMessage(error)}`

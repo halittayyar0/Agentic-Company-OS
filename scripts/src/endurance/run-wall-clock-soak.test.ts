@@ -9,6 +9,7 @@ import {
   type WallClockRuntimeDriver,
 } from "./run-wall-clock-soak";
 import { createSeededFaultSchedule } from "./fault-injector";
+import { createEnduranceSpendConfiguration } from "./spend-configuration";
 
 function testDriver(input: {
   directory: string;
@@ -24,6 +25,7 @@ function testDriver(input: {
 }): WallClockRuntimeDriver {
   const minuteCalls = new Map<number, number>();
   return {
+    spendConfiguration: () => createEnduranceSpendConfiguration({}).provenance,
     start: async () => ({
       projectId: 7,
       expectedResponsibilities: input.expectedResponsibilities ?? 14_400,
@@ -95,7 +97,11 @@ function testDriver(input: {
           browser: "chromium-test",
         },
         workflowRunId: "test-workflow",
-        configuration: { workers: 2, agents: 10 },
+        configuration: {
+          ...createEnduranceSpendConfiguration({}).provenance,
+          workers: 2,
+          agents: 10,
+        },
       };
     },
     stop: async (options) => {
@@ -346,6 +352,62 @@ test("compressed-all remains smoke-only even after a full virtual wall-clock day
       ]),
     );
     assert.equal(result.journal[0].data.faultProfile, "compressed-all");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("coordinator rejects a spend cap that changes after its starting journal snapshot", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-spend-drift-"));
+  const stopped = { count: 0 };
+  const origin = new Date("2026-09-01T00:00:00.000Z").getTime();
+  let elapsed = 0;
+  const caps = createEnduranceSpendConfiguration({
+    MAX_RECURRING_FAMILY_DAILY_TOKENS: "2500000",
+  }).provenance;
+  const driver = testDriver({
+    directory,
+    stopped,
+    now: () => new Date(origin + elapsed),
+  });
+  const start = driver.start;
+  const provenance = driver.provenance;
+  driver.spendConfiguration = () => caps;
+  driver.start = async () => {
+    caps.MAX_RECURRING_FAMILY_DAILY_TOKENS = 500_000;
+    return start();
+  };
+  driver.provenance = async () => {
+    const value = await provenance();
+    return { ...value, configuration: { ...value.configuration, ...caps } };
+  };
+  try {
+    const result = await runWallClockSoak(
+      {
+        runId: "spend-drift",
+        seed: 240_901,
+        durationHours: 24,
+        faultProfile: "compressed-all",
+        commitSha: "test-commit",
+        browserOutputDirectory: directory,
+      },
+      driver,
+      {
+        waitUntilOffset: async (offsetMs) => {
+          elapsed = Math.max(elapsed, offsetMs);
+        },
+        browserSleep: async () => undefined,
+      },
+    );
+    assert.equal(
+      result.journal[0].data.spendConfiguration &&
+        (result.journal[0].data.spendConfiguration as Record<string, number>)
+          .MAX_RECURRING_FAMILY_DAILY_TOKENS,
+      2_500_000,
+    );
+    assert.equal(result.report.pass, false);
+    assert.match(result.failure ?? "", /spend configuration changed/);
+    assert.equal(stopped.count, 1);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
