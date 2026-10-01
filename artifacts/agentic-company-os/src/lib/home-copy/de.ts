@@ -4,7 +4,7 @@ const copy = {
   deskKicker: "Dein Arbeitsbereich",
   heroTitle: "Was wollen wir heute gemeinsam erreichen?",
   heroDescription:
-    "Beschreibe dein Ziel. Dein Team plant die Arbeit und weist passende Fachkräfte zu. Fortschritt und Ergebnisse verfolgst du an einem Ort.",
+    "Beschreibe das gewünschte Ergebnis. Ein vorhandener Agent beginnt die Arbeit und zieht bei Bedarf passende Fachkräfte hinzu. Verfolge Fortschritt und Ergebnis an einem Ort.",
   quickToolsTitle: "Nützliche Prüfung ohne Modell ausprobieren",
   quickToolsDescription:
     "Prüfe CSV oder JSON oder vergleiche zwei Listen direkt im Browser.",
@@ -16,8 +16,8 @@ const copy = {
       text: "Schreibe, was du brauchst und wie ein gutes Ergebnis aussieht.",
     },
     {
-      title: "Arbeit im Team aufteilen",
-      text: "Plan, Aufgaben und Zuständige kommen im Projektbereich zusammen.",
+      title: "Den Agenten starten lassen",
+      text: "Kleine Aufgaben erledigt derselbe Agent. Für unabhängige Arbeiten kommt eine passende vorhandene Fachkraft hinzu.",
     },
     {
       title: "Ergebnis prüfen",
@@ -58,16 +58,16 @@ const copy = {
   modeGroup: "Arbeitsansatz",
   modes: {
     team: {
-      label: "Team",
-      hint: "Das Team teilt die Arbeit passend zum Ziel auf.",
+      label: "Aufgabe erledigen",
+      hint: "Mit einem vorhandenen Agenten beginnen; bei Bedarf passende Fachkräfte hinzuziehen.",
       instruction:
-        "Kläre Ziel und Abnahmekriterien. Weise geeigneten vorhandenen Fachkräften eindeutige Aufgaben zu und ordne Abhängigkeiten. Nach der Lieferung soll eine geeignete Fachkraft das Ergebnis unabhängig prüfen. Fasse Ergebnis, Belege und offene Punkte in einer Übergabe zusammen.",
+        "Beginne mit einem passenden vorhandenen Agenten. Erledige kleine Aufgaben selbst. Delegiere nur unabhängige Ergebnisse oder notwendige Facharbeit an einen passenden vorhandenen Agenten; begrenze parallele Arbeit. Kläre Ziel und Abnahmekriterien und prüfe das Ergebnis angemessen. Fasse Ergebnis, Belege und offene Punkte in einer Übergabe zusammen.",
     },
     engineer: {
       label: "Produkt entwickeln",
       hint: "Design, Entwicklung und Tests arbeiten auf dasselbe Ziel hin.",
       instruction:
-        "Erstelle ein funktionsfähiges Produkt. Verteile Design, Umsetzung und unabhängige Qualitätsprüfung auf geeignete vorhandene Fachkräfte. Liefere echte Testbelege, Startanweisungen und bekannte Lücken.",
+        "Erstelle ein funktionsfähiges Produkt. Erledige kleine Aufgaben selbst; ziehe nur für unabhängige Ergebnisse oder notwendige Facharbeit eine passende vorhandene Fachkraft hinzu. Schließe Design, Umsetzung und angemessene Qualitätsprüfungen ab. Liefere echte Testbelege, Startanweisungen und bekannte Lücken.",
     },
     research: {
       label: "Recherchieren",

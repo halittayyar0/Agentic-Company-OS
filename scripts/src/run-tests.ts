@@ -95,7 +95,9 @@ const child = spawn(
     // Fail and identify a hung file instead of consuming the whole CI job.
     "--test-timeout=300000",
     `--test-concurrency=${concurrency}`,
-    ...testFiles,
+    // The child already owns this cwd. Absolute paths repeat a long checkout
+    // prefix for every file and can exceed Windows' command-line limit.
+    ...testFiles.map((file) => path.relative(workspaceRoot, file)),
   ],
   {
     cwd: workspaceRoot,

@@ -137,6 +137,9 @@ const copy: ProjectStudioCopy = {
   tokens: "词元",
   model: "记录的模型",
   unknownModel: "未记录模型",
+  deliveryHelp: "这是代理保存的交付摘要。可在“{tab}”标签页查看验证记录。",
+  reviewDelivery: "查看证据",
+  cycleDeliveryNote: "这是最近保存的交付结果。定期任务的当前状态显示在上方。",
   deliverySummary: "交付摘要",
   noDelivery: "尚未记录交付摘要。保存后会显示在此处。",
 };

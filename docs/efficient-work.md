@@ -1,5 +1,13 @@
 # Efficient autonomous work
 
+## From a brief to a useful result
+
+Home's default **Get it done** approach starts with a suitable existing agent. The product-building approach follows the same rule: complete small work with the current agent and bring in existing experts only for independent deliverables or necessary specialist work. Both approaches still require appropriate checks and a handoff of the result, evidence and remaining gaps. Choosing an approach does not change permissions, provider settings or spending limits.
+
+The project's saved delivery summary is visible above the workspace in every view. **Review evidence** opens recorded activity and checks while preserving the project's other URL parameters. Recurring work shows the latest saved delivery; a saved summary does not mean the recurring responsibility has ended. Switching a completed one-off job to recurring work retains the previous delivery until a new one is saved. The interface does not infer a summary's cycle from the current work mode or an older cycle timestamp. A completed task with no recorded summary says so explicitly.
+
+Summary text is the agent's saved report. It does not automatically establish independent verification. The conservative Markdown renderer displays raw HTML as text and excludes unsafe link schemes.
+
 Small jobs start with the normal execution model. A task with repeated failures,
 or a finite task with several steps and little progress, can use a stronger route.
 An explicit model selection is preserved; a free selection never falls back to a paid model.

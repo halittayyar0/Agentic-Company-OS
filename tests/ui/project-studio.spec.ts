@@ -17,6 +17,144 @@ import { loadMeetingTurnCopy } from "../../artifacts/agentic-company-os/src/lib/
 import { setupMessages } from "../../artifacts/agentic-company-os/src/lib/i18n";
 
 for (const locale of LOCALES) {
+  test(`${locale} delivery is visible before opening the evidence tab`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.addInitScript(
+      (selected) => localStorage.setItem("acos.locale.v1", selected),
+      locale,
+    );
+    const harness = await installProjectStudioMocks(page);
+    const c = await loadProjectStudioCopy(locale);
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, {
+        ...project,
+        status: "completed",
+        progressPercent: 100,
+        completedAt: NOW,
+        resultSummary:
+          "## Delivered report\n\n[Open report](https://example.com/report)\n\nChecks: three supplied notes reviewed.\n\n<script>window.injected = true</script>\n\n[Unsafe link](javascript:alert(1))",
+      }),
+    );
+    await page.goto("/projects/101?keep=original#handoff");
+    const delivery = page.locator("#project-delivery-summary");
+    await expect(delivery).toBeVisible();
+    await expect(
+      delivery.getByRole("heading", { name: c.deliverySummary, exact: true }),
+    ).toBeVisible();
+    await expect(
+      delivery.getByRole("link", { name: "Open report", exact: true }),
+    ).toHaveAttribute("href", "https://example.com/report");
+    await expect(delivery.locator('a[href^="javascript:"]')).toHaveCount(0);
+    await expect(delivery.locator("script")).toHaveCount(0);
+    await expect(
+      page.getByRole("tab", { name: c.workspace, exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
+    await delivery.getByRole("button").click();
+    await expect(page).toHaveURL(/keep=original&view=evidence#handoff$/u);
+    await expect(
+      page.getByRole("tab", { name: c.evidence, exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(
+      page.getByText("Delivered report", { exact: true }),
+    ).toHaveCount(1);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    expect(harness.messagePosts).toEqual([]);
+    expect(harness.meetingCreatePosts).toEqual([]);
+    expect([...harness.unexpected]).toEqual([]);
+    if (locale === "en")
+      await delivery.screenshot({
+        path: info.outputPath("delivery-phone.png"),
+      });
+  });
+}
+
+test("completed work without a summary does not invent a delivery", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installProjectStudioMocks(page);
+  const c = await loadProjectStudioCopy("en");
+  await page.route("**/api/tasks/101", (route) =>
+    json(route, { ...project, status: "completed", resultSummary: "  " }),
+  );
+  await page.goto("/projects/101");
+  await expect(page.locator("#project-delivery-summary")).toContainText(
+    c.noDelivery,
+  );
+});
+
+test("recurring work identifies the saved delivery without claiming the responsibility is finished", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installProjectStudioMocks(page);
+  await page.route("**/api/tasks/101", (route) =>
+    json(route, {
+      ...project,
+      status: "pending",
+      autonomyMode: "continuous",
+      cadenceSeconds: 3600,
+      resultSummary: "Last cycle report: two source changes found.",
+      lastCycleCompletedAt: NOW,
+    }),
+  );
+  await page.goto("/projects/101");
+  const delivery = page.locator("#project-delivery-summary");
+  await expect(delivery).toContainText(
+    "This is the latest saved delivery. The current status of the recurring responsibility is shown above.",
+  );
+  await expect(delivery).toContainText(
+    "Last cycle report: two source changes found.",
+  );
+});
+
+for (const scenario of [
+  { name: "first conversion", cycleCount: 0, lastCycleCompletedAt: null },
+  {
+    name: "round-trip conversion after a newer finite delivery",
+    cycleCount: 5,
+    lastCycleCompletedAt: "2026-09-01T09:00:00.000Z",
+  },
+]) {
+  test(`${scenario.name} retains a finite delivery without attributing it to a recurring cycle`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem("acos.locale.v1", "en"),
+    );
+    await installProjectStudioMocks(page);
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, {
+        ...project,
+        status: "in_progress",
+        autonomyMode: "continuous",
+        cadenceSeconds: 3600,
+        progressPercent: 0,
+        completedAt: null,
+        resultSummary: "Newer one-off report retained after conversion.",
+        cycleCount: scenario.cycleCount,
+        lastCycleCompletedAt: scenario.lastCycleCompletedAt,
+      }),
+    );
+    await page.goto("/projects/101");
+    const delivery = page.locator("#project-delivery-summary");
+    await expect(delivery).toContainText(
+      "Newer one-off report retained after conversion.",
+    );
+    await expect(delivery).toContainText(
+      "This is the latest saved delivery. The current status of the recurring responsibility is shown above.",
+    );
+    await expect(delivery).not.toContainText("latest saved cycle summary");
+  });
+}
+
+for (const locale of LOCALES) {
   test(
     locale +
       " manual meeting receipt survives reload and preserves a newer draft",

@@ -128,6 +128,9 @@ export type ProjectStudioCopy = {
   model: string;
   unknownModel: string;
   deliverySummary: string;
+  deliveryHelp: string;
+  reviewDelivery: string;
+  cycleDeliveryNote: string;
   noDelivery: string;
 };
 const loaders = {

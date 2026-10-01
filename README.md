@@ -14,7 +14,7 @@ An open-source workspace for AI agents that work with tools, keep task records, 
 
 </div>
 
-![The real Agentic Company OS workspace, with agents, projects and activity](./docs/assets/dashboard.png)
+![English Home preview before connecting a model, with the Get it done approach selected](./docs/assets/dashboard.png)
 
 ## A workspace for getting work done
 
@@ -62,7 +62,7 @@ Open the **private local link** printed in the terminal. Choose your language, m
 
 ### 3. Give it a clear first job
 
-Create a project, choose an agent and describe the result you want. Start with something you can easily check:
+On **Home**, describe the result you want and choose **Get it done**. A suitable existing agent starts the job. Small jobs stay with the same agent; independent work or necessary specialist help can use existing experts within your execution limits. Start with something you can easily check:
 
 > Compare three options for [topic]. Use primary sources, include links and dates, and save a one-page comparison. Reuse one agent unless independent work is necessary. Ask me if essential information is missing.
 
@@ -71,6 +71,8 @@ For recurring work, include both the interval and what should count as a finishe
 > Every 24 hours, check [public page] for meaningful changes. Save a dated summary when something changes. Complete each cycle and wait for the next scheduled time. Do not contact anyone or publish externally.
 
 **A useful brief includes:** the input, the expected output, how to verify it, and any limits on actions or spending.
+
+The saved **Delivery summary** appears directly above the project workspace. Open **Review evidence** to inspect recorded activity and checks. The summary is the agent's report; it is not independent proof that every claim is correct. For recurring work, it shows the latest saved delivery, while the current responsibility status stays visible above it. Converting a finished one-off job to recurring work retains its previous delivery until a new one is saved.
 
 ## Find your way around
 

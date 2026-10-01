@@ -151,6 +151,11 @@ const copy: ProjectStudioCopy = {
   tokens: "الرموز",
   model: "النموذج المسجل",
   unknownModel: "لا يوجد نموذج مسجل",
+  deliveryHelp:
+    "هذا ملخص التسليم الذي حفظه الوكيل. راجع سجلات التحقق في تبويب «{tab}».",
+  reviewDelivery: "راجع الأدلة",
+  cycleDeliveryNote:
+    "هذا أحدث تسليم محفوظ. تظهر الحالة الحالية للمهمة المتكررة أعلاه.",
   deliverySummary: "ملخص التسليم",
   noDelivery: "لم يُسجل ملخص التسليم بعد. يظهر هنا عند حفظه.",
 };

@@ -4,7 +4,7 @@ const copy = {
   deskKicker: "Your workspace",
   heroTitle: "What should we accomplish together today?",
   heroDescription:
-    "Describe your goal. Let your team plan the work and assign the right experts. Follow progress and results in one place.",
+    "Describe the result you need. An existing agent starts the work and brings in suitable experts when needed. Follow progress and delivery in one place.",
   quickToolsTitle: "Try a useful check without a model",
   quickToolsDescription:
     "Inspect a CSV or JSON file, or compare two lists in this browser.",
@@ -16,8 +16,8 @@ const copy = {
       text: "Write what you need and what a good result would look like.",
     },
     {
-      title: "Let the team divide the work",
-      text: "The plan, tasks, and owners come together in the project space.",
+      title: "Let the agent get started",
+      text: "The same agent completes small jobs. A suitable existing expert joins when independent work is needed.",
     },
     {
       title: "Review the result",
@@ -57,16 +57,16 @@ const copy = {
   modeGroup: "Work approach",
   modes: {
     team: {
-      label: "Team",
-      hint: "The team divides work around your goal.",
+      label: "Get it done",
+      hint: "Start with an existing agent; bring in suitable experts when needed.",
       instruction:
-        "Clarify the goal and acceptance criteria. Assign distinct responsibilities to suitable existing experts and order dependencies. After delivery, have an appropriate expert independently verify the result. Combine the outcome, evidence, and remaining gaps in one handoff.",
+        "Start with a suitable existing agent. Complete small work yourself. Delegate only an independent deliverable or necessary specialist work to a suitable existing agent; keep parallel work bounded. Clarify the goal and acceptance criteria, and verify the result with appropriate checks. Combine the outcome, evidence, and remaining gaps in one handoff.",
     },
     engineer: {
       label: "Build a product",
       hint: "Design, implementation, and testing serve the same goal.",
       instruction:
-        "Build a working product. Assign design, implementation, and independent quality checks to suitable existing experts. Deliver real test evidence, run instructions, and known gaps.",
+        "Build a working product. Complete small work yourself; bring in a suitable existing expert only for an independent deliverable or necessary specialist work. Complete the design, implementation, and appropriate quality checks. Deliver real test evidence, run instructions, and known gaps.",
     },
     research: {
       label: "Research",
