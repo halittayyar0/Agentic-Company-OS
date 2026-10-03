@@ -3574,6 +3574,8 @@ export const GetLlmSettingsResponse = zod.object({
   "configured": zod.boolean(),
   "reachable": zod.boolean(),
   "baseUrl": zod.string().url().max(getLlmSettingsResponseOllamaBaseUrlMax).nullable(),
+  "hasAddressInEnv": zod.boolean(),
+  "addressSource": zod.enum(['runtime', 'environment', 'none']),
   "modelCount": zod.number().int().min(getLlmSettingsResponseOllamaModelCountMin),
   "toolModelCount": zod.number().int().min(getLlmSettingsResponseOllamaToolModelCountMin),
   "catalogSyncedAt": zod.number().int().min(getLlmSettingsResponseOllamaCatalogSyncedAtMin).nullable(),
@@ -3613,12 +3615,15 @@ export const updateLlmSettingsBodyOpenrouterApiKeyMax = 512;
 
 export const updateLlmSettingsBodyOpenaiApiKeyMax = 512;
 
+export const updateLlmSettingsBodyOllamaBaseUrlMax = 2048;
+
 
 
 export const UpdateLlmSettingsBody = zod.object({
   "expectedRevision": zod.number().int().min(updateLlmSettingsBodyExpectedRevisionMin).max(updateLlmSettingsBodyExpectedRevisionMax).optional().describe('The exact stored-credential revision reviewed by the operator. Legacy callers may omit it.'),
   "openrouterApiKey": zod.string().max(updateLlmSettingsBodyOpenrouterApiKeyMax).nullish(),
-  "openaiApiKey": zod.string().max(updateLlmSettingsBodyOpenaiApiKeyMax).nullish()
+  "openaiApiKey": zod.string().max(updateLlmSettingsBodyOpenaiApiKeyMax).nullish(),
+  "ollamaBaseUrl": zod.string().max(updateLlmSettingsBodyOllamaBaseUrlMax).nullish().describe('Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.')
 })
 
 

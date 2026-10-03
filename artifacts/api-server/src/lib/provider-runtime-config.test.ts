@@ -3,7 +3,9 @@ import test from "node:test";
 import {
   configureDirectOpenAI,
   configureOpenRouter,
+  configureOllama,
   createChatCompletion,
+  resolveOllamaEndpoint,
 } from "@workspace/ai-server";
 import { eq } from "drizzle-orm";
 import { encryptRuntimeEnvelope } from "./runtime-control-crypto";
@@ -32,6 +34,7 @@ test("split provider configuration revisions are monotonic and merge concurrent 
       resetProviderRuntimeConfigForTest,
       setProviderRuntimeIdentity,
       updateProviderRuntimeConfig,
+      syncProviderRuntimeConfig,
     } = await import("./provider-runtime-config");
     await dbReady;
     const envelope = encryptRuntimeEnvelope(
@@ -181,6 +184,43 @@ test("split provider configuration revisions are monotonic and merge concurrent 
     assert.equal(authorization, "Bearer rotated-openai-test-key");
 
     globalThis.fetch = originalFetch;
+    const localAddress = "http://192.168.1.2:11434/v1";
+    const localRevision = await updateProviderRuntimeConfig({
+      ollamaBaseUrl: localAddress,
+    });
+    assert.equal(localRevision.revision, 5);
+    assert.equal(localRevision.config.ollamaBaseUrl, localAddress);
+    await assert.rejects(
+      updateProviderRuntimeConfig({ ollamaBaseUrl: "https://public.example" }),
+    );
+    const [localStored] = await db.select().from(providerRuntimeConfigTable);
+    assert.equal(localStored?.revision, 5);
+    assert.equal(localStored?.ciphertext.includes(localAddress), false);
+    globalThis.fetch = (async (input, init) => {
+      const request =
+        input instanceof Request
+          ? input
+          : new Request(input, init as RequestInit);
+      const [ack] = await db
+        .select()
+        .from(providerRuntimeConfigAcksTable)
+        .where(eq(providerRuntimeConfigAcksTable.runtimeInstanceId, runtimeId));
+      assert.equal(ack?.appliedRevision, 5);
+      assert.equal(ack?.state, "applied");
+      assert.notEqual(new URL(request.url).pathname, "/v1/chat/completions");
+      return Response.json(
+        new URL(request.url).hostname === "openrouter.ai"
+          ? { data: [] }
+          : { models: [] },
+      );
+    }) as typeof fetch;
+    try {
+      await syncProviderRuntimeConfig(process.env);
+      assert.equal(resolveOllamaEndpoint()?.openAIBaseUrl, localAddress);
+    } finally {
+      globalThis.fetch = originalFetch;
+      configureOllama({ baseUrl: null });
+    }
     resetProviderRuntimeConfigForTest();
     configureOpenRouter({ apiKey: null });
     configureDirectOpenAI({ apiKey: null });

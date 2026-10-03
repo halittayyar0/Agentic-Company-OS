@@ -118,6 +118,7 @@ export * from './modelCatalogProvider';
 export * from './modelProviderId';
 export * from './modelTier';
 export * from './ollamaSettings';
+export * from './ollamaSettingsAddressSource';
 export * from './ollamaSettingsError';
 export * from './openRouterSettings';
 export * from './openRouterSettingsKeySource';

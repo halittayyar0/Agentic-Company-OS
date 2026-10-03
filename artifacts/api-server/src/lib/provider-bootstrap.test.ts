@@ -74,3 +74,24 @@ test("provider bootstrap clears absent optional configuration", async () => {
     { baseUrl: null },
   ]);
 });
+
+test("provider bootstrap prefers a saved local endpoint and null restores environment", async () => {
+  for (const saved of ["http://192.168.1.2:11434/v1", null]) {
+    let configured: string | null = null;
+    await bootstrapProviders(
+      { OLLAMA_BASE_URL: "http://127.0.0.1:11434/v1" },
+      {
+        readRuntimeConfig: async () => ({ ollamaBaseUrl: saved }),
+        configureOpenRouter: () => undefined,
+        configureDirectOpenAI: () => undefined,
+        configureOllama: ({ baseUrl }) => {
+          configured = baseUrl;
+        },
+        configureRequestObserver: () => undefined,
+        logProviderRequest: () => undefined,
+        refreshModelCatalog: async () => undefined,
+      },
+    );
+    assert.equal(configured, saved ?? "http://127.0.0.1:11434/v1");
+  }
+});

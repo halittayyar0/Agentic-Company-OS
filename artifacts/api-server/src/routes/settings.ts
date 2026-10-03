@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   configureDirectOpenAI,
   configureOpenRouter,
+  configureOllama,
   createChatCompletion,
   getFullModelCatalog,
   getOllamaCatalogSnapshot,
@@ -16,6 +17,7 @@ import {
 import { logger } from "../lib/logger";
 import {
   ProviderConfigConflict,
+  normalizeRuntimeOllamaBaseUrl,
   writeRuntimeConfigSnapshot,
   type RuntimeConfig,
 } from "../lib/runtime-config";
@@ -47,6 +49,22 @@ const PutLlmBody = z
   .object({
     openrouterApiKey: z.string().trim().max(512).nullish(),
     openaiApiKey: z.string().trim().max(512).nullish(),
+    ollamaBaseUrl: z
+      .string()
+      .trim()
+      .max(2048)
+      .transform((value, context) => {
+        try {
+          return normalizeRuntimeOllamaBaseUrl(value);
+        } catch {
+          context.addIssue({
+            code: "custom",
+            message: "Invalid private local model address",
+          });
+          return z.NEVER;
+        }
+      })
+      .nullish(),
     expectedRevision: z
       .number()
       .int()
@@ -57,7 +75,9 @@ const PutLlmBody = z
   .strict()
   .refine(
     (body) =>
-      body.openrouterApiKey !== undefined || body.openaiApiKey !== undefined,
+      body.openrouterApiKey !== undefined ||
+      body.openaiApiKey !== undefined ||
+      body.ollamaBaseUrl !== undefined,
   );
 const TestLlmBody = z
   .object({
@@ -207,6 +227,12 @@ export function createSettingsRouter(
           configured: isOllamaConfigured(),
           reachable: ollama.reachable,
           baseUrl: safeOllamaUrl(),
+          hasAddressInEnv: Boolean(environment.OLLAMA_BASE_URL?.trim()),
+          addressSource: state.config.ollamaBaseUrl?.trim()
+            ? "runtime"
+            : environment.OLLAMA_BASE_URL?.trim()
+              ? "environment"
+              : "none",
           modelCount: ollama.models.length,
           toolModelCount: ollama.models.filter((model) => model.supportsTools)
             .length,
@@ -240,16 +266,23 @@ export function createSettingsRouter(
       });
       return;
     }
-    const { openrouterApiKey, openaiApiKey, expectedRevision } = parsed.data;
+    const { openrouterApiKey, openaiApiKey, ollamaBaseUrl, expectedRevision } =
+      parsed.data;
     const patch = {
       ...(openrouterApiKey !== undefined ? { openrouterApiKey } : {}),
       ...(openaiApiKey !== undefined ? { openaiApiKey } : {}),
+      ...(ollamaBaseUrl !== undefined ? { ollamaBaseUrl } : {}),
     };
     try {
       const result = await serialize(async () => {
         const update = await writeState(patch, expectedRevision);
         configureOpenRouter({ apiKey: update.config.openrouterApiKey ?? null });
         configureDirectOpenAI({ apiKey: update.config.openaiApiKey ?? null });
+        configureOllama({
+          baseUrl:
+            update.config.ollamaBaseUrl ??
+            (environment.OLLAMA_BASE_URL?.trim() || null),
+        });
         await refresh();
         const current = catalog();
         return {
@@ -265,7 +298,11 @@ export function createSettingsRouter(
       logger.info(
         {
           providers: Object.keys(patch).map((key) =>
-            key === "openaiApiKey" ? "openai" : "openrouter",
+            key === "openaiApiKey"
+              ? "openai"
+              : key === "ollamaBaseUrl"
+                ? "ollama"
+                : "openrouter",
           ),
           revision: result.revision,
         },

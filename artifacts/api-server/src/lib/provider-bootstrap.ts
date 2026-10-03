@@ -58,7 +58,9 @@ export async function bootstrapProviders(
     apiKey: providerConfig.openaiApiKey ?? null,
   });
   dependencies.configureOllama({
-    baseUrl: environment.OLLAMA_BASE_URL?.trim() || null,
+    baseUrl:
+      providerConfig.ollamaBaseUrl ??
+      (environment.OLLAMA_BASE_URL?.trim() || null),
   });
   dependencies.configureRequestObserver((metadata) => {
     dependencies.logProviderRequest(metadata);

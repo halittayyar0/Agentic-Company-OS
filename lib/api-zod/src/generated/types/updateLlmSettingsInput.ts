@@ -23,4 +23,10 @@ export interface UpdateLlmSettingsInput {
      * @nullable
      */
   openaiApiKey?: string | null;
+  /**
+     * Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.
+     * @maxLength 2048
+     * @nullable
+     */
+  ollamaBaseUrl?: string | null;
 }

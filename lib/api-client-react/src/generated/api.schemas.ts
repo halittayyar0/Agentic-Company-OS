@@ -411,6 +411,15 @@ export interface DirectOpenAISettings {
   baseUrl: DirectOpenAISettingsBaseUrl;
 }
 
+export type OllamaSettingsAddressSource = typeof OllamaSettingsAddressSource[keyof typeof OllamaSettingsAddressSource];
+
+
+export const OllamaSettingsAddressSource = {
+  runtime: 'runtime',
+  environment: 'environment',
+  none: 'none',
+} as const;
+
 /**
  * @nullable
  */
@@ -430,6 +439,8 @@ export interface OllamaSettings {
      * @nullable
      */
   baseUrl: string | null;
+  hasAddressInEnv: boolean;
+  addressSource: OllamaSettingsAddressSource;
   /** @minimum 0 */
   modelCount: number;
   /** @minimum 0 */
@@ -525,6 +536,12 @@ export interface UpdateLlmSettingsInput {
      * @nullable
      */
   openaiApiKey?: string | null;
+  /**
+     * Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.
+     * @maxLength 2048
+     * @nullable
+     */
+  ollamaBaseUrl?: string | null;
 }
 
 export interface UpdateLlmSettingsResult {

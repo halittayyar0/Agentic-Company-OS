@@ -2975,6 +2975,11 @@ components:
           type: [string, "null"]
           format: uri
           maxLength: 2048
+        hasAddressInEnv:
+          type: boolean
+        addressSource:
+          type: string
+          enum: [runtime, environment, none]
         modelCount:
           type: integer
           minimum: 0
@@ -2992,6 +2997,8 @@ components:
           configured,
           reachable,
           baseUrl,
+          hasAddressInEnv,
+          addressSource,
           modelCount,
           toolModelCount,
           catalogSyncedAt,
@@ -3013,6 +3020,10 @@ components:
         openaiApiKey:
           type: [string, "null"]
           maxLength: 512
+        ollamaBaseUrl:
+          type: [string, "null"]
+          maxLength: 2048
+          description: Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.
 
     UpdateLlmSettingsResult:
       type: object
