@@ -95,6 +95,8 @@ export type ShellMessages = {
   projectStartBlocked: string;
   providerSetupMessage: string;
   providerSetupAction: string;
+  providerSetupChecking: string;
+  providerSetupError: string;
   notifications: string;
   openSearch: string;
   search: string;

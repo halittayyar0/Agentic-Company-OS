@@ -74,7 +74,10 @@ export default {
   expertsRetry: "Fachkräfte konnten nicht geladen werden · erneut versuchen",
   projectStartBlocked: "Neues Projekt · Sicherheitsstopp aktiv",
   providerSetupMessage:
-    "Noch ist kein nutzbares Modell verbunden. Dein Projekt wird gespeichert; das Team wartet, bis du eines verbindest.",
+    "Noch ist kein nutzbares Modell verbunden. Du kannst jetzt ein Projekt speichern; die Arbeit beginnt, sobald ein Modell verbunden ist.",
+  providerSetupChecking: "Verfügbare Modelle werden geprüft…",
+  providerSetupError:
+    "Die Modellverfügbarkeit konnte nicht geprüft werden. Versuche es erneut oder prüfe deine Verbindungen.",
   providerSetupAction: "Modell verbinden",
   notifications: "Benachrichtigungen",
   openSearch: "Suche und Befehle öffnen",

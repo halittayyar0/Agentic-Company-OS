@@ -83,8 +83,12 @@ const budgets = {
   // transfer cost without increasing the budget for existing routes.
   localUtilityRawBytes: 29_000,
   localUtilityGzipBytes: 13_000,
-  providerSetupRawBytes: 1_300,
-  providerSetupGzipBytes: 800,
+  // In-place model-check loading/error/retry states add a bounded allowance to
+  // this one lazy notice. Keep total, existing route, media and locale caps fixed.
+  // Keyboard recovery restores useful focus without interrupting draft editing.
+  // Measured notice: 2.14 KB raw / 1.08 KB gzip; other budgets stay fixed.
+  providerSetupRawBytes: 2_300,
+  providerSetupGzipBytes: 1_150,
   // Both existing project routes add lazy-import and Suspense wiring. Keep
   // that small integration allowance separate from the old-route ceiling.
   providerSetupIntegrationGzipBytes: 250,

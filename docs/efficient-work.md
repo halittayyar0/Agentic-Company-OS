@@ -2,6 +2,10 @@
 
 ## From a brief to a useful result
 
+Home and New project check the model catalog while you write. If this check fails, choose **Check again** to retry in place and keep your draft, or open **Connections** to review the setup. A failed refresh is shown even if an older catalog listed an available model. If no tool-capable model is configured, you can still submit a project to save it; model work needs a usable connection. The catalog check does not run a model prompt and does not prove a future call will succeed. Leaving or reloading an unsent form can still discard its draft.
+
+After a focused retry, focus returns to the retry action if the check fails, the connection link if setup is needed, or the job draft if a usable model is listed. Choosing another field while the check runs keeps your chosen focus.
+
 Home's default **Get it done** approach starts with a suitable existing agent. The product-building approach follows the same rule: complete small work with the current agent and bring in existing experts only for independent deliverables or necessary specialist work. Both approaches still require appropriate checks and a handoff of the result, evidence and remaining gaps. Choosing an approach does not change permissions, provider settings or spending limits.
 
 The project's saved delivery summary is visible above the workspace in every view. **Review evidence** opens recorded activity and checks while preserving the project's other URL parameters. Recurring work shows the latest saved delivery; a saved summary does not mean the recurring responsibility has ended. Switching a completed one-off job to recurring work retains the previous delivery until a new one is saved. The interface does not infer a summary's cycle from the current work mode or an older cycle timestamp. A completed task with no recorded summary says so explicitly.
