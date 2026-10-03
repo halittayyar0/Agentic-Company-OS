@@ -3,14 +3,21 @@ import {
   useGetModelCatalog,
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { LoaderCircle, PlugZap } from "lucide-react";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 
-export default function ProviderSetupNotice() {
+export default function ProviderSetupNotice({
+  onReady,
+}: {
+  onReady: () => void;
+}) {
   const { t } = useLocale();
   const [retrying, setRetrying] = useState(false);
+  const retryRef = useRef<HTMLButtonElement>(null);
+  const setupRef = useRef<HTMLAnchorElement>(null);
+  const restoreFocus = useRef(false);
   const catalog = useGetModelCatalog({
     query: {
       queryKey: getGetModelCatalogQueryKey(),
@@ -20,26 +27,42 @@ export default function ProviderSetupNotice() {
   });
   const needsRecovery = catalog.isError || retrying;
   const data = catalog.data;
+  const hasUsableModel = data?.models.some(
+    (model) =>
+      model.supportsTools &&
+      data.providers.some(
+        (provider) => provider.id === model.provider && provider.available,
+      ),
+  );
+  useLayoutEffect(() => {
+    if (retrying || !restoreFocus.current) return;
+    restoreFocus.current = false;
+    if (
+      document.activeElement !== document.body &&
+      document.activeElement !== retryRef.current
+    )
+      return;
+    if (catalog.isError) retryRef.current?.focus();
+    else if (hasUsableModel) onReady();
+    else setupRef.current?.focus();
+  }, [retrying, catalog.isError, hasUsableModel, onReady]);
   const checkAgain = async () => {
     if (retrying || catalog.isFetching) return;
+    restoreFocus.current = document.activeElement === retryRef.current;
+    const respectFocus = (event: FocusEvent) => {
+      if (event.target !== document.body && event.target !== retryRef.current)
+        restoreFocus.current = false;
+    };
+    document.addEventListener("focusin", respectFocus);
     setRetrying(true);
     try {
       await catalog.refetch();
     } finally {
+      document.removeEventListener("focusin", respectFocus);
       setRetrying(false);
     }
   };
-  if (
-    !needsRecovery &&
-    data?.models.some(
-      (model) =>
-        model.supportsTools &&
-        data.providers.some(
-          (provider) => provider.id === model.provider && provider.available,
-        ),
-    )
-  )
-    return null;
+  if (!needsRecovery && hasUsableModel) return null;
 
   return (
     <div
@@ -65,6 +88,7 @@ export default function ProviderSetupNotice() {
       </span>
       {needsRecovery ? (
         <Button
+          ref={retryRef}
           type="button"
           variant="outline"
           disabled={retrying || catalog.isFetching}
@@ -79,6 +103,7 @@ export default function ProviderSetupNotice() {
       ) : null}
       {needsRecovery || data ? (
         <Link
+          ref={setupRef}
           href="/settings"
           className="inline-flex min-h-11 min-w-0 max-w-full items-center font-semibold underline underline-offset-4 [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >

@@ -8,6 +8,7 @@ All notable changes to Agentic Company OS are documented here. The project uses
 ### Fixed
 
 - Home and New project show when model availability is being checked and offer an in-place retry if the check fails. Retrying keeps the entered job and form options; a failed refresh remains visible even when an older catalog listed a usable model. The recovery action stays visible and disabled while checking, in all seven interface languages.
+- After a focused retry completes, keyboard focus returns to the retry action, model connection link or job draft as appropriate. Editing another field while the check runs keeps the user's chosen focus.
 - Model setup guidance explains that a project can be saved before connecting a model, without describing an unsent draft as already saved. Availability checks do not run a model prompt or confirm that a future model call will succeed.
 
 ## [0.3.12] - 2026-10-01

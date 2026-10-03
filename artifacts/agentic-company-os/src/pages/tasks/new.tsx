@@ -272,7 +272,11 @@ function NewTaskForm({
 
       <div className="mx-auto max-w-3xl">
         <Suspense fallback={null}>
-          <ProviderSetupNotice />
+          <ProviderSetupNotice
+            onReady={() =>
+              (title.trim() ? briefRef : titleRef).current?.focus()
+            }
+          />
         </Suspense>
       </div>
 

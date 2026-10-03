@@ -219,7 +219,7 @@ export function HomeProjectComposer({
         </div>
       </ValidatedForm>
       <Suspense fallback={null}>
-        <ProviderSetupNotice />
+        <ProviderSetupNotice onReady={() => form.setFocus("prompt")} />
       </Suspense>
       {failure ? (
         <p
