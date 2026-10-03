@@ -611,6 +611,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      '@workspace/ai-server':
+        specifier: workspace:*
+        version: link:../lib/ai-server
       tsx:
         specifier: 'catalog:'
         version: 4.23.1

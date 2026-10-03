@@ -62,6 +62,10 @@ under `lib/db` following its current migration conventions.
 grants, expiry/refresh timing, encrypted access/refresh token and revision.
 `readRegistration()`, `replaceRegistration(expectedRevision, registration)` and
 `withRegistrationRefreshLock(registrationId, action)` return no browser secrets.
+Backend access also provides `readActiveRegistration()` and revision-guarded
+`activateRegistration(id, expectedRevision)`. Saving a validated candidate does
+not select it. Account profile identity binds issued client and validated subject;
+equal email or equal subject across different clients does not merge profiles.
 
 - [ ] RED tests: Windows/Unix protection failure, corrupt ciphertext, replacement
       conflict, two concurrent refresh owners, stale rotation and equal-email accounts.

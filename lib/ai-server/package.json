@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./owner-private-storage": "./src/owner-private-storage.ts",
+    "./chatgpt-plan-types": "./src/chatgpt-plan-types.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"

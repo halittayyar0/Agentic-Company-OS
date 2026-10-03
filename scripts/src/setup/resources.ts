@@ -2,10 +2,11 @@ import { randomBytes } from "node:crypto";
 import { mkdir, open, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
+import { OwnerPrivateStorage } from "@workspace/ai-server/owner-private-storage";
+export { windowsOwnerSid } from "@workspace/ai-server/owner-private-storage";
 import { ensureExactOutputDirectory } from "../endurance/safe-output";
 import { validateInstallationInput, type InstallationPlan } from "./plan";
 import type { InstallationCredentials } from "./session";
-import { runSetupProbe } from "./preflight";
 
 export interface InstallationResources {
   directory: string;
@@ -16,17 +17,6 @@ export interface InstallationResources {
     postgres_password?: string;
     provider_key?: string;
   };
-}
-
-export function windowsOwnerSid(identity: string): string {
-  // Entra accounts use authority 12, unlike local/domain accounts (authority 5).
-  // Require one complete whoami CSV row rather than matching an arbitrary SID
-  // embedded elsewhere in command output.
-  const sid = identity
-    .trim()
-    .match(/^"(?:[^"\r\n]|"")*","(S-1-\d+(?:-\d+){1,15})"$/u)?.[1];
-  if (!sid) throw new Error("Cannot establish installation owner");
-  return sid;
 }
 
 function nativeDatabaseUrl(value: string | undefined): string {
@@ -93,31 +83,13 @@ export async function createInstallationResources(
   // Exclusive creation prevents a second setup from overwriting credentials or
   // attaching to an unrelated installation. Recovery reads this same identity.
   try {
-    await mkdir(directory, { mode: 0o700 });
+    await new OwnerPrivateStorage(directory).initialize(true);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST")
       throw new Error("Installation already exists; resume it explicitly");
     throw error;
   }
   await ensureExactOutputDirectory(directory);
-  if (process.platform === "win32") {
-    // POSIX mode bits do not protect Windows files. Remove inherited grants
-    // before writing secrets and grant only this account and LocalSystem.
-    const identity = await runSetupProbe("whoami.exe", [
-      "/user",
-      "/fo",
-      "csv",
-      "/nh",
-    ]);
-    const sid = windowsOwnerSid(identity);
-    await runSetupProbe("icacls.exe", [
-      directory,
-      "/inheritance:r",
-      "/grant:r",
-      `*${sid}:(OI)(CI)F`,
-      "*S-1-5-18:(OI)(CI)F",
-    ]);
-  }
   const secrets = path.join(directory, "secrets");
   await mkdir(secrets, { mode: 0o700 });
   const values: Record<string, string> = {

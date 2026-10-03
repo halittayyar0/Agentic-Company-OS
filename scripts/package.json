@@ -15,6 +15,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@workspace/ai-server": "workspace:*",
     "@types/node": "catalog:",
     "tsx": "catalog:"
   }

@@ -218,6 +218,20 @@
       "when": 1790819968314,
       "tag": "0030_task_budget_resume_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791061848008,
+      "tag": "0031_chatgpt_registrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791062389235,
+      "tag": "0032_chatgpt_active_account",
+      "breakpoints": true
     }
   ]
 }
