@@ -42,13 +42,13 @@ their existing tests and generated client schemas.
 the existing revision methods keep their current signatures. Reuse exported
 `validateOllamaBaseUrl` and `configureOllama`.
 
-- [ ] Add failing storage/route/bootstrap tests for canonical private address,
+- [x] Add failing storage/route/bootstrap tests for canonical private address,
       invalid URL rejection before writes, null/environment restore, stale revision,
       and split worker application before any provider request.
-- [ ] Run the focused tests and record the missing-field/route failure.
-- [ ] Normalize and persist the endpoint, apply it during bootstrap and guarded
+- [x] Run the focused tests and record the missing-field/route failure.
+- [x] Normalize and persist the endpoint, apply it during bootstrap and guarded
       revisions, and extend strict PUT settings plus public status schema.
-- [ ] Regenerate API outputs; rerun focused tests and typechecks. Commit.
+- [x] Regenerate API outputs; rerun focused tests and typechecks. Commit.
 
 ### Task 2: Protected renewable registration storage
 
@@ -67,11 +67,11 @@ Backend access also provides `readActiveRegistration()` and revision-guarded
 not select it. Account profile identity binds issued client and validated subject;
 equal email or equal subject across different clients does not merge profiles.
 
-- [ ] RED tests: Windows/Unix protection failure, corrupt ciphertext, replacement
+- [x] RED tests: Windows/Unix protection failure, corrupt ciphertext, replacement
       conflict, two concurrent refresh owners, stale rotation and equal-email accounts.
-- [ ] Implement protected atomic storage and durable transactional lock/CAS.
+- [x] Implement protected atomic storage and durable transactional lock/CAS.
       Preserve valid old credentials on unconfirmed replacement.
-- [ ] GREEN tests plus real PostgreSQL concurrent owner verification; commit.
+- [x] GREEN tests plus real PostgreSQL concurrent owner verification; commit.
 
 ### Task 3: Official sign-in and server handoff
 
@@ -83,12 +83,12 @@ equal email or equal subject across different clients does not merge profiles.
 `confirmAccount(attemptId, expectedRevision)` consume validated backend attempts.
 CLI secure handoff imports one selected protected registration, no HTTP upload.
 
-- [ ] RED local HTTP fixtures for PKCE/state/nonce, exact callback, issuer/audience/
+- [x] RED local HTTP fixtures for PKCE/state/nonce, exact callback, issuer/audience/
       signature, replay, cancelled/expired attempt, identity-only grants, wrong client
       ID, denied consent, temporary failure and account-switch preservation.
-- [ ] Implement bounded loopback listener, official registration/token validation,
+- [x] Implement bounded loopback listener, official registration/token validation,
       account confirmation, refresh/revocation distinctions and target-host CLI flow.
-- [ ] GREEN offline end-to-end sign-in/refresh fixtures and generated types;
+- [x] GREEN offline end-to-end sign-in/refresh fixtures and generated types;
       no real human authentication. Commit.
 
 ### Task 4: Responses transport and governed coding child

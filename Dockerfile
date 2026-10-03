@@ -31,7 +31,7 @@ WORKDIR /app
 COPY --from=build --chown=node:node /prod/api/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/package.json /app/pnpm-workspace.yaml ./
 COPY --from=build --chown=node:node /app/artifacts/api-server/package.json ./artifacts/api-server/package.json
-COPY --from=build --chown=node:node /app/artifacts/api-server/start.mjs /app/artifacts/api-server/start-worker.mjs /app/artifacts/api-server/load-workspace-env.mjs /app/artifacts/api-server/load-secret-env.mjs ./artifacts/api-server/
+COPY --from=build --chown=node:node /app/artifacts/api-server/start.mjs /app/artifacts/api-server/start-worker.mjs /app/artifacts/api-server/start-chatgpt.mjs /app/artifacts/api-server/load-workspace-env.mjs /app/artifacts/api-server/load-secret-env.mjs ./artifacts/api-server/
 COPY --from=build --chown=node:node /app/artifacts/api-server/dist ./artifacts/api-server/dist
 COPY --from=build --chown=node:node /app/artifacts/agentic-company-os/dist/public ./ui
 

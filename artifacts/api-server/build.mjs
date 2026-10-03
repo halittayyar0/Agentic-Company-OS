@@ -14,6 +14,10 @@ async function buildAll() {
     entryPoints: {
       index: path.resolve(artifactDir, "src/index.ts"),
       "worker-entry": path.resolve(artifactDir, "src/worker-entry.ts"),
+      "connect-chatgpt": path.resolve(
+        artifactDir,
+        "src/connect-chatgpt-entry.ts",
+      ),
     },
     platform: "node",
     bundle: true,

@@ -8,6 +8,180 @@
 import * as zod from 'zod';
 
 
+/**
+ * @summary Saved ChatGPT accounts and explicit active selection, without credentials
+ */
+export const getChatGPTConnectionResponseRegistrationsItemAccountIdMax = 512;
+
+export const getChatGPTConnectionResponseRegistrationsItemEmailMax = 512;
+
+export const getChatGPTConnectionResponseRegistrationsItemDisplayNameMax = 512;
+
+
+export const getChatGPTConnectionResponseRegistrationsMax = 64;
+
+
+
+export const GetChatGPTConnectionResponse = zod.object({
+  "registrations": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "accountId": zod.string().max(getChatGPTConnectionResponseRegistrationsItemAccountIdMax),
+  "email": zod.string().max(getChatGPTConnectionResponseRegistrationsItemEmailMax).optional(),
+  "displayName": zod.string().max(getChatGPTConnectionResponseRegistrationsItemDisplayNameMax).optional(),
+  "revision": zod.number().int().min(1),
+  "signedIn": zod.boolean(),
+  "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
+  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds')
+})).max(getChatGPTConnectionResponseRegistrationsMax),
+  "activeRegistrationId": zod.string().uuid().nullable()
+})
+
+
+/**
+ * @summary Start a private loopback sign-in on the browser's computer
+ */
+export const BeginChatGPTSignInBody = zod.object({
+  "callbackLocation": zod.enum(['same-computer']),
+  "registrationId": zod.string().uuid().optional(),
+  "retryAttemptId": zod.string().uuid().optional(),
+  "requestPlanPermission": zod.boolean().optional().describe('Explicitly request fresh plan consent for a selected saved account or retry; ordinary sign-in never forces consent')
+})
+
+export const BeginChatGPTSignInResponse = zod.object({
+  "attemptId": zod.string().uuid(),
+  "authorizeUrl": zod.string().describe('Official one-time authorization URL. May contain an ID-token hint; never log, persist or send to analytics.'),
+  "expiresAt": zod.number().int()
+})
+
+
+export const GetChatGPTSignInParams = zod.object({
+  "attemptId": zod.coerce.string().uuid()
+})
+
+export const getChatGPTSignInResponseExpectedRevisionMin = 0;
+
+export const getChatGPTSignInResponseProposedAccountAccountIdMax = 512;
+
+export const getChatGPTSignInResponseProposedAccountEmailMax = 512;
+
+export const getChatGPTSignInResponseProposedAccountDisplayNameMax = 512;
+
+
+
+
+export const GetChatGPTSignInResponse = zod.object({
+  "attemptId": zod.string().uuid(),
+  "state": zod.enum(['pending', 'exchanging', 'review', 'confirming', 'connected', 'denied', 'cancelled', 'expired', 'failed']),
+  "expiresAt": zod.number().int(),
+  "expectedRevision": zod.number().int().min(getChatGPTSignInResponseExpectedRevisionMin).optional(),
+  "proposedAccount": zod.object({
+  "id": zod.string().uuid(),
+  "accountId": zod.string().max(getChatGPTSignInResponseProposedAccountAccountIdMax),
+  "email": zod.string().max(getChatGPTSignInResponseProposedAccountEmailMax).optional(),
+  "displayName": zod.string().max(getChatGPTSignInResponseProposedAccountDisplayNameMax).optional(),
+  "revision": zod.number().int().min(1),
+  "signedIn": zod.boolean(),
+  "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
+  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds')
+}).optional(),
+  "failureKind": zod.enum(['temporary', 'client_missing', 'client_mismatch', 'identity_invalid', 'token_invalid', 'invalid_grant', 'invalid_client', 'authorization_failed']).optional()
+})
+
+
+export const CancelChatGPTSignInParams = zod.object({
+  "attemptId": zod.coerce.string().uuid()
+})
+
+export const CancelChatGPTSignInResponse = zod.void()
+
+
+/**
+ * @summary Save the validated candidate and explicitly select it; never starts a job
+ */
+export const ConfirmChatGPTAccountParams = zod.object({
+  "attemptId": zod.coerce.string().uuid()
+})
+
+export const confirmChatGPTAccountBodyExpectedRevisionMin = 0;
+export const confirmChatGPTAccountBodyExpectedRevisionMax = 9007199254740991;
+
+
+
+export const ConfirmChatGPTAccountBody = zod.object({
+  "expectedRevision": zod.number().int().min(confirmChatGPTAccountBodyExpectedRevisionMin).max(confirmChatGPTAccountBodyExpectedRevisionMax)
+})
+
+export const confirmChatGPTAccountResponseAccountIdMax = 512;
+
+export const confirmChatGPTAccountResponseEmailMax = 512;
+
+export const confirmChatGPTAccountResponseDisplayNameMax = 512;
+
+
+
+
+export const ConfirmChatGPTAccountResponse = zod.object({
+  "id": zod.string().uuid(),
+  "accountId": zod.string().max(confirmChatGPTAccountResponseAccountIdMax),
+  "email": zod.string().max(confirmChatGPTAccountResponseEmailMax).optional(),
+  "displayName": zod.string().max(confirmChatGPTAccountResponseDisplayNameMax).optional(),
+  "revision": zod.number().int().min(1),
+  "signedIn": zod.boolean(),
+  "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
+  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds')
+})
+
+
+/**
+ * @summary Select an existing signed-in account at its observed revision
+ */
+export const SelectChatGPTAccountParams = zod.object({
+  "registrationId": zod.coerce.string().uuid()
+})
+
+export const selectChatGPTAccountBodyExpectedRevisionMin = 0;
+export const selectChatGPTAccountBodyExpectedRevisionMax = 9007199254740991;
+
+
+
+export const SelectChatGPTAccountBody = zod.object({
+  "expectedRevision": zod.number().int().min(selectChatGPTAccountBodyExpectedRevisionMin).max(selectChatGPTAccountBodyExpectedRevisionMax)
+})
+
+export const selectChatGPTAccountResponseAccountIdMax = 512;
+
+export const selectChatGPTAccountResponseEmailMax = 512;
+
+export const selectChatGPTAccountResponseDisplayNameMax = 512;
+
+
+
+
+export const SelectChatGPTAccountResponse = zod.object({
+  "id": zod.string().uuid(),
+  "accountId": zod.string().max(selectChatGPTAccountResponseAccountIdMax),
+  "email": zod.string().max(selectChatGPTAccountResponseEmailMax).optional(),
+  "displayName": zod.string().max(selectChatGPTAccountResponseDisplayNameMax).optional(),
+  "revision": zod.number().int().min(1),
+  "signedIn": zod.boolean(),
+  "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
+  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds')
+})
+
+
+/**
+ * @summary Stop renewable session, clear credentials and retain account mapping
+ */
+export const SignOutChatGPTAccountParams = zod.object({
+  "registrationId": zod.coerce.string().uuid()
+})
+
+export const SignOutChatGPTAccountResponse = zod.object({
+  "localSignedOut": zod.literal(true),
+  "revocationConfirmed": zod.boolean().nullable()
+})
+
+
 export const ListSourceChangesResponseItem = zod.object({
   "id": zod.string().uuid(),
   "agentId": zod.number().int(),

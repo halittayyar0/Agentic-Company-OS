@@ -9,6 +9,7 @@
     "pnpm": ">=10.17 <11"
   },
   "scripts": {
+    "connect:chatgpt": "tsx ./scripts/src/connect-chatgpt.ts",
     "setup": "tsx ./scripts/src/setup/bootstrap.ts",
     "evidence:verify": "tsx ./scripts/src/verify-evidence.ts",
     "dev": "pnpm --parallel --filter @workspace/api-server --filter @workspace/agentic-company-os run dev",

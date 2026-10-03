@@ -32,6 +32,7 @@ import {
 import { seedDefaultOrg } from "./lib/seed";
 import { readWorkspaceLocale } from "./lib/workspace-locale";
 import { closeAllSessions } from "./lib/vm/browser";
+import { chatgptConnectionRuntime } from "./lib/chatgpt-connection-runtime";
 import {
   startOperationsHealthSampler,
   type OperationsHealthSamplerController,
@@ -154,7 +155,10 @@ function createHttpRuntimeController(
                   runtimeHandle,
                 );
               },
-              closeSessions: () => closeAllSessions(),
+              closeSessions: async () => {
+                await chatgptConnectionRuntime.close();
+                await closeAllSessions();
+              },
               stopEmergencyMonitor: () => stopEmergencyStopMonitor(),
               markRuntimeStopped: async () => {
                 await markRuntimeStopped(runtimeHandle);
@@ -200,7 +204,10 @@ async function cleanupFailedStart(
           markTimedOutOperationsUnknown: async () => {
             await markRuntimeOperationsUnknownAfterDrainTimeout(runtimeHandle);
           },
-          closeSessions: () => closeAllSessions(),
+          closeSessions: async () => {
+            await chatgptConnectionRuntime.close();
+            await closeAllSessions();
+          },
           stopEmergencyMonitor: () => stopEmergencyStopMonitor(),
           markRuntimeStopped: async () => {
             await markRuntimeStopped(runtimeHandle);
@@ -215,6 +222,7 @@ async function cleanupFailedStart(
     return;
   }
 
+  await chatgptConnectionRuntime.close();
   await Promise.allSettled([
     stopScheduler(),
     healthSampler?.stop(),

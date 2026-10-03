@@ -15,6 +15,8 @@ import projectMeetingsRouter from "./project-meetings";
 import operationsRouter from "./operations";
 import skillsRouter from "./skills";
 import sourceChangesRouter from "./source-changes";
+import { createChatGPTConnectionRouter } from "./chatgpt-connection";
+import { chatgptConnectionRuntime } from "../lib/chatgpt-connection-runtime";
 
 const router: IRouter = Router();
 
@@ -34,5 +36,6 @@ router.use(projectMeetingsRouter);
 router.use(operationsRouter);
 router.use(skillsRouter);
 router.use(sourceChangesRouter);
+router.use(createChatGPTConnectionRouter(chatgptConnectionRuntime));
 
 export default router;

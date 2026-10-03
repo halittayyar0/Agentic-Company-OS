@@ -5,6 +5,87 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+export interface ChatGPTExpectedRevision {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  expectedRevision: number;
+}
+
+export interface ChatGPTAccount {
+  id: string;
+  /** @maxLength 512 */
+  accountId: string;
+  /** @maxLength 512 */
+  email?: string;
+  /** @maxLength 512 */
+  displayName?: string;
+  /** @minimum 1 */
+  revision: number;
+  signedIn: boolean;
+  /** Granted permission only; does not imply a tested inference request or available quota */
+  canUsePlan: boolean;
+  /**
+     * Access token expiry in Unix milliseconds
+     * @nullable
+     */
+  expiresAt: number | null;
+}
+
+export interface ChatGPTConnection {
+  /** @maxItems 64 */
+  registrations: ChatGPTAccount[];
+  /** @nullable */
+  activeRegistrationId: string | null;
+}
+
+export interface ChatGPTSignInStart {
+  attemptId: string;
+  /** Official one-time authorization URL. May contain an ID-token hint; never log, persist or send to analytics. */
+  authorizeUrl: string;
+  expiresAt: number;
+}
+
+export type ChatGPTSignInStatusState = typeof ChatGPTSignInStatusState[keyof typeof ChatGPTSignInStatusState];
+
+
+export const ChatGPTSignInStatusState = {
+  pending: 'pending',
+  exchanging: 'exchanging',
+  review: 'review',
+  confirming: 'confirming',
+  connected: 'connected',
+  denied: 'denied',
+  cancelled: 'cancelled',
+  expired: 'expired',
+  failed: 'failed',
+} as const;
+
+export type ChatGPTSignInStatusFailureKind = typeof ChatGPTSignInStatusFailureKind[keyof typeof ChatGPTSignInStatusFailureKind];
+
+
+export const ChatGPTSignInStatusFailureKind = {
+  temporary: 'temporary',
+  client_missing: 'client_missing',
+  client_mismatch: 'client_mismatch',
+  identity_invalid: 'identity_invalid',
+  token_invalid: 'token_invalid',
+  invalid_grant: 'invalid_grant',
+  invalid_client: 'invalid_client',
+  authorization_failed: 'authorization_failed',
+} as const;
+
+export interface ChatGPTSignInStatus {
+  attemptId: string;
+  state: ChatGPTSignInStatusState;
+  expiresAt: number;
+  /** @minimum 0 */
+  expectedRevision?: number;
+  proposedAccount?: ChatGPTAccount;
+  failureKind?: ChatGPTSignInStatusFailureKind;
+}
+
 export type SourceChangeState = typeof SourceChangeState[keyof typeof SourceChangeState];
 
 
@@ -3525,6 +3606,27 @@ export type PageLimitParameter = number;
  * Return rows with an id lower than this cursor.
  */
 export type BeforeIdParameter = number;
+
+export type BeginChatGPTSignInBodyCallbackLocation = typeof BeginChatGPTSignInBodyCallbackLocation[keyof typeof BeginChatGPTSignInBodyCallbackLocation];
+
+
+export const BeginChatGPTSignInBodyCallbackLocation = {
+  'same-computer': 'same-computer',
+} as const;
+
+export type BeginChatGPTSignInBody = {
+  callbackLocation: BeginChatGPTSignInBodyCallbackLocation;
+  registrationId?: string;
+  retryAttemptId?: string;
+  /** Explicitly request fresh plan consent for a selected saved account or retry; ordinary sign-in never forces consent */
+  requestPlanPermission?: boolean;
+};
+
+export type SignOutChatGPTAccount200 = {
+  localSignedOut: true;
+  /** @nullable */
+  revocationConfirmed: boolean | null;
+};
 
 export type PrepareSourceChangeBody = {
   id: string;
