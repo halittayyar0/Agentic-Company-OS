@@ -66,7 +66,9 @@ export default {
   expertsRetry: "无法加载专家 · 重试",
   projectStartBlocked: "新建项目 · 安全停止已启用",
   providerSetupMessage:
-    "尚未连接可用模型。项目会保存，团队将在连接模型后开始工作。",
+    "尚未连接可用模型。你可以先保存项目；连接模型后才会开始工作。",
+  providerSetupChecking: "正在检查可用模型…",
+  providerSetupError: "无法检查模型是否可用。请重试或检查连接设置。",
   providerSetupAction: "连接模型",
   notifications: "通知",
   openSearch: "打开搜索和命令面板",

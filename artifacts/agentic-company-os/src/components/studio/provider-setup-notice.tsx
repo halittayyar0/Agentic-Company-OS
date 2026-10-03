@@ -3,11 +3,14 @@ import {
   useGetModelCatalog,
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { PlugZap } from "lucide-react";
+import { useState } from "react";
+import { LoaderCircle, PlugZap } from "lucide-react";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { Button } from "@/components/ui/button";
 
 export default function ProviderSetupNotice() {
   const { t } = useLocale();
+  const [retrying, setRetrying] = useState(false);
   const catalog = useGetModelCatalog({
     query: {
       queryKey: getGetModelCatalogQueryKey(),
@@ -15,12 +18,23 @@ export default function ProviderSetupNotice() {
       retry: false,
     },
   });
+  const needsRecovery = catalog.isError || retrying;
+  const data = catalog.data;
+  const checkAgain = async () => {
+    if (retrying || catalog.isFetching) return;
+    setRetrying(true);
+    try {
+      await catalog.refetch();
+    } finally {
+      setRetrying(false);
+    }
+  };
   if (
-    !catalog.data ||
-    catalog.data.models.some(
+    !needsRecovery &&
+    data?.models.some(
       (model) =>
         model.supportsTools &&
-        catalog.data.providers.some(
+        data.providers.some(
           (provider) => provider.id === model.provider && provider.available,
         ),
     )
@@ -29,19 +43,48 @@ export default function ProviderSetupNotice() {
 
   return (
     <div
-      role="status"
+      role={needsRecovery ? "alert" : "status"}
       className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-control border border-attention/30 bg-attention/5 px-4 py-3 text-sm text-attention-foreground"
     >
-      <PlugZap className="size-4 shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-        {t("providerSetupMessage")}
+      {!data && !needsRecovery ? (
+        <LoaderCircle
+          className="size-4 shrink-0 animate-spin motion-reduce:animate-none"
+          aria-hidden
+        />
+      ) : (
+        <PlugZap className="size-4 shrink-0" aria-hidden />
+      )}
+      <span className="min-w-0 flex-1 basis-[calc(100%_-_1.75rem)] [overflow-wrap:anywhere] sm:basis-auto">
+        {t(
+          needsRecovery
+            ? "providerSetupError"
+            : !data
+              ? "providerSetupChecking"
+              : "providerSetupMessage",
+        )}
       </span>
-      <Link
-        href="/settings"
-        className="inline-flex min-h-11 min-w-0 max-w-full items-center font-semibold underline underline-offset-4 [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        {t("providerSetupAction")}
-      </Link>
+      {needsRecovery ? (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={retrying || catalog.isFetching}
+          aria-busy={retrying || catalog.isFetching}
+          onClick={() => void checkAgain()}
+          className="min-h-11 h-auto max-w-full whitespace-normal py-2 [overflow-wrap:anywhere]"
+        >
+          {retrying || catalog.isFetching
+            ? t("providerSetupChecking")
+            : t("checkAgain")}
+        </Button>
+      ) : null}
+      {needsRecovery || data ? (
+        <Link
+          href="/settings"
+          className="inline-flex min-h-11 min-w-0 max-w-full items-center font-semibold underline underline-offset-4 [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          {t(needsRecovery ? "connections" : "providerSetupAction")}
+        </Link>
+      ) : null}
     </div>
   );
 }

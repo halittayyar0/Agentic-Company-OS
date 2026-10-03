@@ -70,7 +70,10 @@ export default {
   expertsRetry: "Uzmanlar yüklenemedi · yeniden dene",
   projectStartBlocked: "Yeni proje · güvenlik freni etkin",
   providerSetupMessage:
-    "Henüz kullanılabilir bir model bağlı değil. Proje kaydedilir; model bağlayana kadar ekip çalışmaya başlamaz.",
+    "Henüz kullanılabilir bir model bağlı değil. Projeyi şimdi kaydedebilirsin; model bağlandıktan sonra çalışmaya başlanır.",
+  providerSetupChecking: "Kullanılabilir modeller kontrol ediliyor…",
+  providerSetupError:
+    "Model kullanılabilirliği kontrol edilemedi. Tekrar dene veya bağlantıları gözden geçir.",
   providerSetupAction: "Model bağla",
   notifications: "Bildirimler",
   openSearch: "Arama ve komut paletini aç",

@@ -86,9 +86,7 @@ test("English home can start a project with English instructions and errors", as
   await expect(
     page.getByRole("link", { name: "Connect a model" }),
   ).toBeVisible();
-  await expect(
-    page.getByText(/Your project is saved, and the team waits/u),
-  ).toBeVisible();
+  await expect(page.getByText(/You can save a project now/u)).toBeVisible();
   await page.getByRole("button", { name: "Build a website" }).click();
   const brief = page.getByRole("textbox", { name: "The result you want" });
   await expect(brief).toHaveValue(/mobile-friendly website/);
