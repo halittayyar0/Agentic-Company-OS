@@ -144,6 +144,7 @@ for (const policy of cases)
                 ReturnType<typeof prepareLinuxOwnedNamespace>
               >,
               isolateNetwork: true,
+              environment: { ...input.environment, RUST_LOG: "codex_core=debug,codex_app_server=debug", LOG_FORMAT: "json" },
             });
 
             namespaceInitPid = running.namespaceInitPid;

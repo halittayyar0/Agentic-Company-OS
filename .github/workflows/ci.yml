@@ -78,3 +78,50 @@ jobs:
             ${{ runner.temp }}/coding-namespace-probe.log
           if-no-files-found: warn
 
+  windows-owner-probe:
+    name: Empty owned Windows ACL diagnostic (not product acceptance)
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out fixed diagnostic source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Exercise exact protection script on newly owned empty fixtures
+        shell: pwsh
+        run: |
+          $source = Get-Content -LiteralPath lib/ai-server/src/owner-private-storage.ts -Raw
+          $matched = [regex]::Match($source, 'const WINDOWS_PROTECTION_SCRIPT = String.raw`(?<program>[\s\S]*?)`;')
+          if (-not $matched.Success) { throw 'Missing fixed protection script' }
+          $root = Join-Path $env:RUNNER_TEMP ('acos-owner-probe-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $root -ErrorAction Stop | Out-Null
+          $program = $matched.Groups['program'].Value
+          $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($program))
+          $powershell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+          $env:ACOS_PRIVATE_STORAGE_TARGET = $root
+          $env:ACOS_PRIVATE_STORAGE_DIRECTORY = '1'
+          $env:ACOS_PRIVATE_STORAGE_CREATE = '1'
+          & $powershell -NoLogo -NoProfile -NonInteractive -EncodedCommand $encoded
+          $directoryCode = $LASTEXITCODE
+          $file = Join-Path $root 'empty-fixture'
+          New-Item -ItemType File -Path $file -ErrorAction Stop | Out-Null
+          $env:ACOS_PRIVATE_STORAGE_TARGET = $file
+          $env:ACOS_PRIVATE_STORAGE_DIRECTORY = '0'
+          $env:ACOS_PRIVATE_STORAGE_CREATE = '0'
+          & $powershell -NoLogo -NoProfile -NonInteractive -EncodedCommand $encoded
+          $fileCode = $LASTEXITCODE
+          $observations = foreach ($path in @($root, $file)) {
+            $acl = Get-Acl -LiteralPath $path
+            @{kind=$(if($path -eq $root){'directory'}else{'empty-file'});owner=$acl.GetOwner([Security.Principal.SecurityIdentifier]).Value;protected=$acl.AreAccessRulesProtected;rules=@($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | ForEach-Object {@{sid=$_.IdentityReference.Value;rights=$_.FileSystemRights.ToString();type=$_.AccessControlType.ToString();inherited=$_.IsInherited;propagation=$_.PropagationFlags.ToString()}})}
+          }
+          @{directoryCode=$directoryCode;fileCode=$fileCode;user=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value;observations=$observations} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath "$env:RUNNER_TEMP/acos-fixed-owner-probe.json"
+          Get-Content -LiteralPath "$env:RUNNER_TEMP/acos-fixed-owner-probe.json"
+          # Every file is an empty uniquely owned runner fixture. No secret data.
+          $global:LASTEXITCODE = 0
+      - name: Preserve observations without waiving private storage validation
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fixed-windows-owner-diagnostic
+          path: ${{ runner.temp }}/acos-fixed-owner-probe.json
+          if-no-files-found: error

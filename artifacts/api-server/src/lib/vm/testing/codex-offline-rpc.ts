@@ -62,7 +62,7 @@ export function codexOfflineRpc(
   // block the owned cleanup. Retain no text, paths or credential-bearing body.
   child.stderr.on("data", (chunk: Buffer) => {
     stderrBytes += chunk.byteLength;
-    fixtureStderr = (fixtureStderr + chunk.toString("utf8").replaceAll("fixture-only-private-access", "REDACTED").replaceAll("fixture-only-private-id", "REDACTED")).slice(0, 4096);
+    fixtureStderr = (fixtureStderr + chunk.toString("utf8").replaceAll("fixture-only-private-access", "REDACTED").replaceAll("fixture-only-private-id", "REDACTED")).slice(-4096);
     if (stderrBytes > 128 * 1024) fail();
   });
   child.once("error", fail);
