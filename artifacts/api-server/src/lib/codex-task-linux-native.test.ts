@@ -265,6 +265,22 @@ print(json.dumps(r))
           outputBytesCap: 4096,
         });
         record(response);
+        console.error(
+          JSON.stringify({
+            kind: "fixed_offline_command_diagnostic",
+            mode: policy.mode,
+            writable: policy.writable,
+            exitCode: response.exitCode,
+            stdout:
+              typeof response.stdout === "string"
+                ? response.stdout.slice(-2048)
+                : null,
+            stderr:
+              typeof response.stderr === "string"
+                ? response.stderr.slice(-2048)
+                : null,
+          }),
+        );
         assert.equal(response.exitCode, 0);
         assert.equal(typeof response.stdout, "string");
         const observed = JSON.parse(response.stdout as string);

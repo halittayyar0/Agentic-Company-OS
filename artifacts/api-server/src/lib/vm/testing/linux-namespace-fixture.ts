@@ -77,7 +77,7 @@ if role == 'worker':
     if scenario != 'not-pid-one':
         command = ['/usr/bin/bwrap', '--unshare-user', '--unshare-pid',
             '--die-with-parent', '--as-pid-1', '--new-session', '--ro-bind', '/', '/',
-            '--bind', str(root), str(root), '--proc', '/proc', '--chdir', str(root),
+            '--bind', str(root), str(root), '--bind', '/proc', '/proc', '--chdir', str(root),
             '--json-status-fd', str(status_write)] + (
                 ['--block-fd', str(gate_read)] if scenario == 'early-owner-killed' else []
             ) + ['--'] + command
