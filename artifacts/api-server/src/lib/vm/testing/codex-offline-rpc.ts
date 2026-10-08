@@ -101,7 +101,8 @@ export function codexOfflineRpc(
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           pending.delete(id);
-          reject(new Error("offline_native_request_timeout:" + JSON.stringify({method, stderrBytes, fixtureStderr})));
+          console.error("ACOS_FIXED_STARTUP_DIAGNOSTIC:" + JSON.stringify({method, stderrBytes, fixtureStderr}));
+          reject(new Error("offline_native_request_timeout:" + JSON.stringify({method, stderrBytes, fixtureStderr: fixtureStderr.slice(-4096)})));
         }, 15_000);
         pending.set(id, { resolve, reject, timer });
         child.stdin.write(JSON.stringify({ id, method, params }) + "\n");
