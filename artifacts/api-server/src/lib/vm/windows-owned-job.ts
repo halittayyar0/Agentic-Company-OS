@@ -67,7 +67,7 @@ export async function compileWindowsOwnedJob(directory: string) {
       ],
       {
         windowsHide: true,
-        timeout: 30_000,
+        timeout: 90_000,
         maxBuffer: 16_384,
         env: {
           SystemRoot: systemRoot,
@@ -81,6 +81,7 @@ export async function compileWindowsOwnedJob(directory: string) {
         },
       },
     );
+    console.error("ACOS_FIXED_WINDOWS_COMPILER_DIAGNOSTIC:" + JSON.stringify({ phase: "compiler-complete", elapsedMs: performance.now() - diagnosticStart, diagnosticCompilerCeilingMs: 90000 }));
     // read verifies inherited owner/SYSTEM-only metadata without exposing any
     // binary bytes. The bounded helper is then hashed as bytes for launch.
     diagnosticPhase = "binary-protection";
