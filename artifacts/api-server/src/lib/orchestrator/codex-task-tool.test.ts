@@ -55,7 +55,7 @@ test("optional native coding is task-only, plan-only, explicitly configured and 
     );
   assert.equal(
     (await names(true, "chatgpt:fixture-model")).includes("vm_codex_task"),
-    process.platform === "win32",
+    process.platform === "win32" || process.platform === "linux",
   );
   assert.equal(
     (await names(false, "chatgpt:fixture-model")).includes("vm_codex_task"),

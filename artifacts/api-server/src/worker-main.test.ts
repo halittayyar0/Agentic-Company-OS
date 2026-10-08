@@ -168,7 +168,8 @@ test("worker registers scheduler-only capability and drains owned runtime resour
             codexNonApi: true,
             codexProcessExecution: false,
             codexExecutableConfigured: false,
-            codexNativeController: process.platform === "win32",
+            codexNativeController:
+              process.platform === "win32" || process.platform === "linux",
           },
         });
         assert.equal(config, operationsConfig);
