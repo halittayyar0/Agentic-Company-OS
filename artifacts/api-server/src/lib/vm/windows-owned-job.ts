@@ -65,7 +65,9 @@ export async function compileWindowsOwnedJob(directory: string) {
       ],
       {
         windowsHide: true,
-        timeout: 30_000,
+        // The frozen full Windows suite measured 31.05s for this public-source,
+        // credential-free compilation. Keep a bounded cold-start allowance.
+        timeout: 60_000,
         maxBuffer: 16_384,
         env: {
           SystemRoot: systemRoot,

@@ -153,6 +153,12 @@ and other installation environments still need their own validation.
 Native macOS coding support and complete container release acceptance remain pending. Do not enable
 this runtime by relaxing containment or sharing your personal Codex home.
 
+The Windows lifetime controller compiles its fixed public helper before receiving
+credentials. Compilation has a 60-second ceiling for a cold, busy machine; the
+full Windows regression measured 31.05 seconds. Owner-only output protection and
+binary identity checks remain required. This allowance does not enable native
+Windows coding or change task, launch or cleanup deadlines.
+
 For a source-change task, the backend selects that task's draft directory inside
 its agent sandbox. It never uses the original checkout directly. Multiple
 source-change rows, a different owner or a non-draft state are rejected. Other
