@@ -37,23 +37,25 @@ export function assertPrivateUnixMetadata(
 }
 
 // Paths travel only through a child environment variable, never interpolated
-// PowerShell source. Build a fresh ACL only for a newly created, empty directory.
+// PowerShell source. Build a fresh ACL only for a newly created, empty directory
+// or an exclusively created empty file, before writing any protected contents.
 // Existing files/directories must already satisfy the postcondition; a broad
 // explicit ACE must not survive an inheritance-only change.
 const WINDOWS_PROTECTION_SCRIPT = String.raw`
 $ErrorActionPreference = 'Stop'
 $target = $env:ACOS_PRIVATE_STORAGE_TARGET
+$directory = $env:ACOS_PRIVATE_STORAGE_DIRECTORY -eq '1'
 $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
 $system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
 if ($env:ACOS_PRIVATE_STORAGE_CREATE -eq '1') {
-  $acl = [System.Security.AccessControl.DirectorySecurity]::new()
+  $acl = if ($directory) { [System.Security.AccessControl.DirectorySecurity]::new() } else { [System.Security.AccessControl.FileSecurity]::new() }
   $acl.SetOwner($owner)
   $acl.SetAccessRuleProtection($true, $false)
   foreach ($sid in @($owner, $system)) {
-    $rule = [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+    $rule = if ($directory) { [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow') } else { [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'Allow') }
     $acl.AddAccessRule($rule)
   }
-  [System.IO.Directory]::SetAccessControl($target, $acl)
+  if ($directory) { [System.IO.Directory]::SetAccessControl($target, $acl) } else { [System.IO.File]::SetAccessControl($target, $acl) }
 }
 $acl = if ($env:ACOS_PRIVATE_STORAGE_DIRECTORY -eq '1') { [System.IO.Directory]::GetAccessControl($target) } else { [System.IO.File]::GetAccessControl($target) }
 if ($acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value -ne $owner.Value) { throw 'owner' }
@@ -209,6 +211,10 @@ export class OwnerPrivateStorage {
     const temporary = this.recordPath(`tmp-${randomUUID()}`);
     const handle = await open(temporary, "wx", 0o600);
     try {
+      // Elevated Windows tokens can create files owned by Administrators.
+      // Protect only this new empty file before any secret bytes are written.
+      if (process.platform === "win32")
+        await windowsProtection(temporary, false, true);
       await this.assertProtected(temporary, false);
       await handle.writeFile(value, "utf8");
       await handle.sync();
@@ -264,6 +270,8 @@ export class OwnerPrivateStorage {
       }
     }
     try {
+      if (process.platform === "win32")
+        await windowsProtection(target, false, true);
       await this.assertProtected(target, false);
       return await action();
     } finally {
