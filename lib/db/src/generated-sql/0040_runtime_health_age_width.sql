@@ -1,0 +1,2 @@
+ALTER TABLE "runtime_health_samples" ALTER COLUMN "scheduler_tick_age_ms" SET DATA TYPE bigint;--> statement-breakpoint
+ALTER TABLE "runtime_health_samples" ALTER COLUMN "oldest_due_age_ms" SET DATA TYPE bigint;

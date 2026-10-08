@@ -37,6 +37,15 @@ Integrated review and release gates remain pending.
   development dependencies alongside production dependencies in verification
   and CI. Preserve upstream toolchain licenses and source bytes verbatim.
 
+### Fixed
+
+- New Windows private records and locks receive the installation owner's private
+  permissions before credentials are written or a protected action starts,
+  including installations running with administrator privileges.
+- Operational health sampling stores scheduler and waiting-task ages beyond
+  25 days without an integer overflow. Migration 0040 preserves existing
+  observations, missing values and checks against negative durations.
+
 ## [0.3.13] - 2026-10-03
 
 ### Fixed
