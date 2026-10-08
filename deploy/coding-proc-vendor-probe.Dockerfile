@@ -25,6 +25,7 @@ COPY --from=compiler /source/provenance.json /source/binary-sha256.txt /source/c
 COPY deploy/codex-attribution/bubblewrap-source.tar.gz deploy/codex-attribution/BUBBLEWRAP-COPYING /usr/share/doc/acos-proc-vendor-probe/
 COPY scripts/src/testing/vendor-proc/prepare-source.py /usr/share/doc/acos-proc-vendor-probe/
 COPY scripts/src/testing/vendor-proc/probe.py /opt/agentic-codex/proc-probe.py
+COPY scripts/src/testing/vendor-proc/privacy.py /opt/agentic-codex/proc-privacy.py
 USER node
 ENTRYPOINT ["/usr/bin/python3", "-I", "-S", "/opt/agentic-codex/proc-probe.py"]
 

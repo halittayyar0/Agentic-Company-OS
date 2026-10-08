@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Build original and sole-conditional variants with the same toolchain
+      - name: Build original and guarded variants with the same toolchain
         run: |
           docker build --pull --file deploy/coding-proc-vendor-probe.Dockerfile --target namespace-probe-red --tag acos-vendor-proc:red .
           docker build --pull --file deploy/coding-proc-vendor-probe.Dockerfile --target namespace-probe-green --tag acos-vendor-proc:green .
@@ -31,6 +31,7 @@ jobs:
             docker run "${confinement[@]}" --entrypoint /usr/bin/cat "acos-vendor-proc:$variant" /usr/share/doc/acos-proc-vendor-probe/provenance.json > "vendor-proc-evidence/$variant-source.json"
             docker run "${confinement[@]}" --entrypoint /usr/bin/cat "acos-vendor-proc:$variant" /usr/share/doc/acos-proc-vendor-probe/binary-sha256.txt > "vendor-proc-evidence/$variant-binaries.txt"
             docker run "${confinement[@]}" --entrypoint /usr/bin/cat "acos-vendor-proc:$variant" /usr/share/doc/acos-proc-vendor-probe/build-packages.txt > "vendor-proc-evidence/$variant-build-packages.txt"
+            docker run "${confinement[@]}" --entrypoint /usr/bin/cat "acos-vendor-proc:$variant" /usr/share/doc/acos-proc-vendor-probe/compiler-version.txt > "vendor-proc-evidence/$variant-compiler-version.txt"
             for case in plain info-missing info-collision; do
               probe_name="acos-vendor-${GITHUB_RUN_ID}-$variant-$case"
               docker run --name "$probe_name" "${confinement[@]}" \
@@ -39,8 +40,16 @@ jobs:
               test ! -s "vendor-proc-evidence/$variant-$case-remaining-containers.txt"
             done
           done
+      - name: Observe known-live synthetic parent and sibling access
+        run: |
+          probe_name="acos-vendor-${GITHUB_RUN_ID}-known-live-privacy"
+          docker run --name "$probe_name" --rm --pull=never --network=none --read-only --user=1000:1000 --cap-drop=ALL --pids-limit=128 --security-opt=no-new-privileges:true --security-opt=seccomp="$GITHUB_WORKSPACE/deploy/coding-seccomp.json" --security-opt=apparmor=agentic-coding --tmpfs=/tmp:rw,exec,nosuid,size=64m,mode=1777 --env=HOME=/tmp --entrypoint=/usr/bin/python3 acos-vendor-proc:green -I -S /opt/agentic-codex/proc-privacy.py > vendor-proc-evidence/known-live-privacy.json
+          docker container ls --all --filter "name=^/$probe_name$" --format '{{json .}}' > vendor-proc-evidence/known-live-privacy-remaining-containers.txt
+          test ! -s vendor-proc-evidence/known-live-privacy-remaining-containers.txt
       - name: Independently reject incorrect explicit namespace information
         run: python3 scripts/src/testing/vendor-proc/check.py
+      - name: Require real denial of private parent and sibling process access
+        run: python3 scripts/src/testing/vendor-proc/check-privacy.py
       - name: Preserve exact fixed evidence even on refusal
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

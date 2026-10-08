@@ -45,6 +45,14 @@ assert kernel['pidNamespace'] != green['identity']['pidNamespace']
 assert kernel['mountNamespace'] != green['identity']['mountNamespace']
 assert kernel['procChildren'] == green['identity']['procChildren']
 assert kernel['procChildren']  # Positive actual submount evidence; no empty-set credit.
+required_ro={'/proc/bus','/proc/fs','/proc/irq','/proc/sys','/proc/sysrq-trigger','/proc/acpi','/proc/scsi'}
+required_null={'/proc/interrupts','/proc/kcore','/proc/keys','/proc/latency_stats','/proc/timer_list'}
+assert required_ro | required_null <= set(kernel['procChildren'])
+for path in required_ro:
+    assert 'ro' in kernel['procChildren'][path]['flags']
+for path in required_null:
+    assert kernel['procChildren'][path]['kind']=='tmpfs'
+    assert kernel['procChildren'][path]['root']=='/null'
 
 missing = cases['red-info-missing']
 assert missing['returncode'] == 1 and missing['timeout'] and not missing['informationRecords']
