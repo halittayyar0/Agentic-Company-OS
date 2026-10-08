@@ -32,6 +32,12 @@ const script = String.raw`
     let at;
     while ((at=buffer.indexOf('\n'))>=0) {
       const value = JSON.parse(buffer.slice(0,at)); buffer=buffer.slice(at+1);
+      if(value.method==='fixture/withdrawApproval') {
+        send({method:'serverRequest/resolved',params:{threadId:'thread_fixture',requestId:'approval_fixture'}});
+        event('item/completed',{completedAtMs:105,item:{type:'fileChange',id:'item_patch',changes:[{path:prepared.cwd+require('node:path').sep+'fixture-new.txt',kind:{type:'add'},diff:'A useful result\n'}],status:'declined'}});
+        event('turn/completed',{turn:{id:'turn_fixture',status:'completed',items:[]}});
+        continue;
+      }
       if (value.method==='initialize') { experimental=value.params.capabilities?.experimentalApi===true; send({id:value.id,result:{userAgent:'fixture'}}); }
       else if(value.method==='config/read') send({id:value.id,result:{config:{...prepared.permissions.configuration.values,permissions:{[prepared.permissions?.id]:process.argv[1]==='profile_changed'?{...prepared.permissions?.definition,network:{enabled:true}}:prepared.permissions?.definition}},layers:[{name:{type:'user',file:prepared.permissions.configuration.file,profile:null},config:prepared.permissions.configuration.values,disabledReason:null}]}});
       else if(value.method==='permissionProfile/list') send({id:value.id,result:{data:[{id:prepared.permissions?.id,allowed:process.argv[1]!=='profile_denied'}],nextCursor:null}});
@@ -51,7 +57,6 @@ const script = String.raw`
           if(process.argv[1]!=='missing_patch') event('item/started',{startedAtMs:100,item:{type:'fileChange',id:'item_patch',changes,status:'inProgress'}});
           send({id:'approval_fixture',method:'item/fileChange/requestApproval',params:{threadId:'thread_fixture',turnId:'turn_fixture',itemId:'item_patch',startedAtMs:101,grantRoot:process.argv[1]==='grant'?'/outside':null}});
           if(process.argv[1]==='changed_patch') setTimeout(()=>event('item/fileChange/patchUpdated',{itemId:'item_patch',changes:[{...changes[0],diff:'A different result\n'}]}),20);
-          if(process.argv[1]==='cleared_approval') setTimeout(()=>{send({method:'serverRequest/resolved',params:{threadId:'thread_fixture',requestId:'approval_fixture'}});event('item/completed',{completedAtMs:105,item:{type:'fileChange',id:'item_patch',changes,status:'declined'}});event('turn/completed',{turn:{id:'turn_fixture',status:'completed',items:[]}});},10);
           continue;
         }
         if(process.argv[1]!=='unknown_usage') event('thread/tokenUsage/updated',{tokenUsage:{last:{inputTokens:3,outputTokens:2,totalTokens:5},total:{inputTokens:13,outputTokens:12,totalTokens:25}}});
@@ -68,6 +73,7 @@ const script = String.raw`
   });
 `;
 function setup(t: TestContext, mode = "ok", startupDelayMs = 0) {
+  let fixtureChild: ReturnType<typeof spawn> | undefined;
   let current = { ...binding },
     launches = 0,
     stops = 0;
@@ -101,6 +107,7 @@ function setup(t: TestContext, mode = "ok", startupDelayMs = 0) {
           stdio: ["pipe", "pipe", "pipe"],
         },
       );
+      fixtureChild = child;
       t.after(() => child.kill());
       return {
         child,
@@ -118,6 +125,12 @@ function setup(t: TestContext, mode = "ok", startupDelayMs = 0) {
   return {
     ports,
     modes,
+    withdrawApproval: () => {
+      assert.ok(fixtureChild?.stdin);
+      fixtureChild.stdin.write(
+        JSON.stringify({ method: "fixture/withdrawApproval" }) + "\n",
+      );
+    },
     change: (patch: Partial<CodexTaskBinding>) => {
       current = { ...current, ...patch };
     },
@@ -135,10 +148,14 @@ test("a native cleared approval cancels its callback without failing a separatel
   let cancelled = false;
   fixture.ports.approve = async (_request, _binding, signal) => {
     assert.ok(signal);
-    await new Promise<void>((resolve) => {
+    const aborted = new Promise<void>((resolve) => {
       if (signal.aborted) resolve();
       else signal.addEventListener("abort", () => resolve(), { once: true });
     });
+    // Withdraw only after the callback has begun waiting. A fixed child timer
+    // can expire before stdout delivery on a loaded native runner.
+    fixture.withdrawApproval();
+    await aborted;
     cancelled = true;
     throw new Error("fixture-private-cancelled-approval-diagnostic");
   };
