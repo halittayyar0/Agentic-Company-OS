@@ -171,6 +171,9 @@ jobs:
       - name: Audit production dependencies
         run: pnpm run security:audit
 
+      - name: Audit development and build dependencies
+        run: pnpm run security:audit:all
+
       - name: Check production dependency licenses
         run: pnpm --filter @workspace/scripts run check:licenses
 

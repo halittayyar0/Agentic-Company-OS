@@ -30,6 +30,13 @@ Integrated review and release gates remain pending.
 - [Connection walkthroughs](./docs/model-connections.md) in all seven languages
   explain connection states, server addresses and phone handoff.
 
+### Security
+
+- Replace preview discovery's vulnerable glob dependency with Node 24's native
+  file discovery. Pin fixed source-map and build-copy dependencies, and audit
+  development dependencies alongside production dependencies in verification
+  and CI. Preserve upstream toolchain licenses and source bytes verbatim.
+
 ## [0.3.13] - 2026-10-03
 
 ### Fixed
