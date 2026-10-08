@@ -166,6 +166,8 @@ export function buildCodexTaskConfiguration(input: Input) {
       log_user_prompt: false,
     },
   };
+  // Diagnostic hypothesis only: isolate native host skill discovery during startup.
+  (values.features as Record<string, unknown>).skip_host_skill_discovery = true;
   const configuration = { file: path.join(input.home, "config.toml"), values };
   const permissions: NonNullable<PreparedCodexTask["permissions"]> = {
     id: "acos_task",
