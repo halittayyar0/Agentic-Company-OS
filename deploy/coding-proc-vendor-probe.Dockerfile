@@ -1,16 +1,16 @@
 FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS compiler
 USER root
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc meson ninja-build pkg-config libcap-dev python3 \
+    && apt-get install -y --no-install-recommends gcc libc6-dev meson ninja-build pkg-config libcap-dev python3 \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /source
 COPY deploy/codex-attribution/bubblewrap-source.tar.gz /source/
 COPY scripts/src/testing/vendor-proc/prepare-source.py /source/
 RUN python3 /source/prepare-source.py \
-    && meson setup /source/build-red /source/tree/bubblewrap --buildtype=release -Dtests=false -Dsupport_setuid=false -Dselinux=disabled -Dman=disabled -Dbash_completion=disabled -Dzsh_completion=disabled \
+    && (meson setup /source/build-red /source/tree/bubblewrap --buildtype=release -Dtests=false -Dsupport_setuid=false -Dselinux=disabled -Dman=disabled -Dbash_completion=disabled -Dzsh_completion=disabled || { cat /source/build-red/meson-logs/meson-log.txt; exit 1; }) \
     && ninja -C /source/build-red \
     && cp /source/tree/bubblewrap.c.modified /source/tree/bubblewrap/bubblewrap.c \
-    && meson setup /source/build-green /source/tree/bubblewrap --buildtype=release -Dtests=false -Dsupport_setuid=false -Dselinux=disabled -Dman=disabled -Dbash_completion=disabled -Dzsh_completion=disabled \
+    && (meson setup /source/build-green /source/tree/bubblewrap --buildtype=release -Dtests=false -Dsupport_setuid=false -Dselinux=disabled -Dman=disabled -Dbash_completion=disabled -Dzsh_completion=disabled || { cat /source/build-green/meson-logs/meson-log.txt; exit 1; }) \
     && ninja -C /source/build-green \
     && sha256sum /source/build-red/bwrap /source/build-green/bwrap > /source/binary-sha256.txt \
     && gcc --version > /source/compiler-version.txt \
