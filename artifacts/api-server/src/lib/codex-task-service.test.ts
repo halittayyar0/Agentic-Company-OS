@@ -187,7 +187,7 @@ test("source workspace invalidation while awaiting native approval stops the own
       },
     );
     void running.catch(() => {});
-    await f.pending();
+    await f.pending(running);
     await db
       .update(sourceChangesTable)
       .set({ state: "checking", revision: 2 })
@@ -260,7 +260,7 @@ test("a stalled usage acknowledgement times out without publishing or later resu
     },
   );
   void running.catch(() => {});
-  const approval = await f.pending();
+  const approval = await f.pending(running);
   await f.decide(approval.id, {
     decision: "approved",
     expectedArgsHash: approval.scope?.argsHash,
@@ -343,7 +343,7 @@ for (const mode of ["completed", "lost_after_consumption"])
       },
     );
     void running.catch(() => {});
-    const approval = await f.pending();
+    const approval = await f.pending(running);
     assert.equal(
       (
         await f.decide(approval.id, {
@@ -493,7 +493,7 @@ test("failed usage persistence retains the observed turn but cannot publish a re
     },
   );
   void running.catch(() => {});
-  const approval = await f.pending();
+  const approval = await f.pending(running);
   await f.decide(approval.id, {
     decision: "approved",
     expectedArgsHash: approval.scope?.argsHash,

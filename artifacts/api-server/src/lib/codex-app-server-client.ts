@@ -302,7 +302,7 @@ export function createCodexAppServerClient(
         cancellation,
         cancel,
         timer: setTimeout(
-          () => { console.error("ACOS_FIXED_RPC_TIMEOUT_DIAGNOSTIC:" + JSON.stringify({ method })); fail(new CodexClientError("timeout")); },
+          () => fail(new CodexClientError("timeout")),
           approvalTimeoutMs,
         ),
       };
@@ -461,7 +461,7 @@ export function createCodexAppServerClient(
       const id = ++nextId;
       const promise = new Promise<unknown>((resolve, reject) => {
         const timer = setTimeout(
-          () => fail(new CodexClientError("timeout")),
+          () => { console.error("ACOS_FIXED_RPC_TIMEOUT_DIAGNOSTIC:" + JSON.stringify({ method })); fail(new CodexClientError("timeout")); },
           timeoutMs,
         );
         pending.set(id, { resolve, reject, timer, method });

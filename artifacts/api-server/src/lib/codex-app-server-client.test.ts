@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { once } from "node:events";
 import test, { type TestContext } from "node:test";
 import { createCodexAppServerClient } from "./codex-app-server-client";
 
-const script = String.raw`
+const script = String.raw`setTimeout(() => {
   let buffer='';
   const send = value => process.stdout.write(JSON.stringify(value)+'\n');
   process.stdin.setEncoding('utf8');
@@ -44,13 +45,15 @@ const script = String.raw`
       }
     }
   });
+  process.send('fixture_ready');
+}, Number(process.argv[2] ?? 0));
 `;
 
 test(
   "the final synchronous action fence can reject an accept before physical stdio write",
   { timeout: 3000 },
   async (t) => {
-    const child = fixture(t);
+    const child = await fixture(t);
     const write = child.stdin.write.bind(child.stdin);
     let accepted = false,
       checked = false;
@@ -89,7 +92,7 @@ test(
 );
 
 test("a server request rejection retains only its known request method and never its private error message", async (t) => {
-  const client = createCodexAppServerClient(fixture(t, "rejected"), {
+  const client = createCodexAppServerClient(await fixture(t, "rejected"), {
     assertOwned: async () => {},
   });
   t.after(() => client.close());
@@ -120,18 +123,21 @@ test(
     const progress = new Promise<void>((resolve) => {
       progressed = resolve;
     });
-    const client = createCodexAppServerClient(fixture(t, "pending_events"), {
-      assertOwned: async () => {},
-      requestTimeoutMs: 500,
-      approve: async () => {
-        started();
-        await gate;
-        return "decline";
+    const client = createCodexAppServerClient(
+      await fixture(t, "pending_events"),
+      {
+        assertOwned: async () => {},
+        requestTimeoutMs: 500,
+        approve: async () => {
+          started();
+          await gate;
+          return "decline";
+        },
+        onNotification: (event) => {
+          if (event.method === "fixture/progress") progressed();
+        },
       },
-      onNotification: (event) => {
-        if (event.method === "fixture/progress") progressed();
-      },
-    });
+    );
     t.after(() => {
       release();
       client.close();
@@ -163,7 +169,7 @@ for (const mode of ["resolved_pending", "terminal_pending", "item_pending"])
       const end = new Promise<void>((resolve) => {
         ended = resolve;
       });
-      const client = createCodexAppServerClient(fixture(t, mode), {
+      const client = createCodexAppServerClient(await fixture(t, mode), {
         assertOwned: async () => {},
         requestTimeoutMs: 500,
         approve: async (_request, cancellation) => {
@@ -202,7 +208,7 @@ test(
   { timeout: 4000 },
   async (t) => {
     let signal: AbortSignal | undefined;
-    const client = createCodexAppServerClient(fixture(t), {
+    const client = createCodexAppServerClient(await fixture(t), {
       assertOwned: async () => {},
       requestTimeoutMs: 1000,
       approvalTimeoutMs: 50,
@@ -220,7 +226,7 @@ test(
 );
 
 test("Codex capability inspection reads configuration and profiles without accepting configuration writes or execution RPCs", async (t) => {
-  const client = createCodexAppServerClient(fixture(t), {
+  const client = createCodexAppServerClient(await fixture(t), {
     assertOwned: async () => {},
   });
   t.after(() => client.close());
@@ -269,7 +275,7 @@ test(
     const end = new Promise<void>((resolve) => {
       ended = resolve;
     });
-    const child = fixture(t, "queued_terminal");
+    const child = await fixture(t, "queued_terminal");
     const receivedTerminal = new Promise<void>((resolve) => {
       let observed = "";
       child.stdout.on("data", (chunk) => {
@@ -320,15 +326,27 @@ test(
   },
 );
 
-function fixture(t: TestContext, mode = "ok") {
-  const child = spawn(process.execPath, ["-e", script, mode], {
-    shell: false,
-    windowsHide: true,
-    stdio: ["pipe", "pipe", "pipe"],
-  });
+async function fixture(t: TestContext, mode = "ok") {
+  const child = spawn(
+    process.execPath,
+    ["-e", script, mode, mode === "pending_events" ? "750" : "0"],
+    {
+      shell: false,
+      windowsHide: true,
+      stdio: ["pipe", "pipe", "pipe", "ipc"],
+    },
+  ) as ChildProcessWithoutNullStreams;
   t.after(() => {
     child.kill();
   });
+  // RPC deadlines measure the live protocol, after this owned offline peer
+  // has installed its handlers. Process startup is separately bounded. The
+  // delayed progress fixture catches accidental inclusion in its 500ms RPC.
+  const [ready] = await once(child, "message", {
+    signal: AbortSignal.timeout(2500),
+  });
+  assert.equal(ready, "fixture_ready");
+  child.disconnect();
   return child;
 }
 async function begin(client: ReturnType<typeof createCodexAppServerClient>) {
@@ -356,7 +374,7 @@ test("Codex JSONL uses the real stdio pipes, scoped approvals and fragmented UTF
   const completed = new Promise<void>((resolve) => {
     done = resolve;
   });
-  const client = createCodexAppServerClient(fixture(t), {
+  const client = createCodexAppServerClient(await fixture(t), {
     assertOwned: async () => {
       fences++;
     },
@@ -398,7 +416,7 @@ test("loss of ownership while an approval is pending fences the reply and fails 
   const approvalStarted = new Promise<void>((resolve) => {
     started = resolve;
   });
-  const client = createCodexAppServerClient(fixture(t), {
+  const client = createCodexAppServerClient(await fixture(t), {
     assertOwned: async () => {
       if (lost) throw new Error("private lease error");
     },
@@ -434,7 +452,7 @@ for (const [mode, kind] of [
   test(`Codex ${mode} cannot become a successful completed turn`, async (t) => {
     let approvals = 0,
       terminal = false;
-    const client = createCodexAppServerClient(fixture(t, mode), {
+    const client = createCodexAppServerClient(await fixture(t, mode), {
       assertOwned: async () => {},
       approve: async () => {
         approvals++;
@@ -469,7 +487,7 @@ test("Codex cancellation and nonresponsive requests have bounded, safe failures"
   const failed = assert.rejects(client.failure, { kind: "timeout" });
   await assert.rejects(client.request("initialize", {}), { kind: "timeout" });
   await failed;
-  const next = createCodexAppServerClient(fixture(t), {
+  const next = createCodexAppServerClient(await fixture(t), {
     assertOwned: async () => {},
     signal: controller.signal,
   });
