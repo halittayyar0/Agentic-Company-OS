@@ -257,7 +257,7 @@ export async function launchLinuxOwnedNamespace(input: Input): Promise<{
       input.workspace,
       "--dev",
       "/dev",
-      "--ro-bind",
+      "--bind",
       "/proc",
       "/proc",
       "--chdir",
