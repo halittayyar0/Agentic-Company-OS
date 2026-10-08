@@ -19,7 +19,9 @@ command=json.loads(result['stdout'])
 assert command['workspaceRead']=='positive-workspace'
 assert command['workspaceWritten'] and command['selfFdEnumerationAndClose']
 assert command['profile']==result['profile']=='agentic-coding-proc-probe (enforce)'
-assert command['uidMap'].split()==['1000','1000','1'] and command['gidMap'].split()==['1000','1000','1']
+# Vendored Bubblewrap's nested setup namespace maps the retained UID/GID1000
+# through its intermediary namespace's UID/GID0, not directly to host1000.
+assert command['uidMap'].split()==['1000','0','1'] and command['gidMap'].split()==['1000','0','1']
 assert not command['directPrivate']['opened']
 assert len(command['targets'])==2
 denied=True
