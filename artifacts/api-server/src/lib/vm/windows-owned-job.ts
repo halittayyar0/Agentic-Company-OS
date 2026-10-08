@@ -44,6 +44,9 @@ export async function compileWindowsOwnedJob(directory: string) {
   await storage.initialize(true);
   await storage.write("owned-job.cs", WINDOWS_OWNED_JOB_SOURCE);
   const executable = path.join(directory, "owned-job.exe");
+  // The compiler overwrites this exclusively owned empty output in place.
+  // Elevated Windows tokens otherwise assign a new file to Administrators.
+  await storage.write("owned-job.exe", "");
   try {
     await executeFile(
       path.join(

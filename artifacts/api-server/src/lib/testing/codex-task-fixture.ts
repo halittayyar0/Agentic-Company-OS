@@ -263,8 +263,27 @@ export async function fixture(t: TestContext, approvalTimeoutMs?: number) {
       },
     }).request;
   }
-  async function pending() {
-    for (let i = 0; i < 100; i++) {
+  async function pending(running?: Promise<unknown>) {
+    // Task admission, digest reads, session creation and peer startup precede
+    // the approval. Observe the actual running task and bound this fixture
+    // wait independently of those phases, rather than assuming 100 fast polls.
+    let settled = false,
+      failure: unknown;
+    void running?.then(
+      () => {
+        settled = true;
+      },
+      (error) => {
+        settled = true;
+        failure = error;
+      },
+    );
+    const until = Date.now() + 15_000;
+    while (Date.now() < until) {
+      if (settled) {
+        if (failure !== undefined) throw failure;
+        assert.fail("Owned task ended before an approval was created");
+      }
       const [row] = await db
         .select()
         .from(approvalRequestsTable)

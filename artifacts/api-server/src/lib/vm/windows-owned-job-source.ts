@@ -7,6 +7,8 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 public static class AcosOwnedJob {
   [StructLayout(LayoutKind.Sequential)] struct Limits {
@@ -57,7 +59,19 @@ public static class AcosOwnedJob {
   static void Check(bool value) { if (!value) throw new InvalidOperationException("owned_job_failed"); }
   static void Record(string directory, string name, string value) {
     string temporary = Path.Combine(directory, "tmp-" + Guid.NewGuid().ToString("N"));
-    File.WriteAllText(temporary, value, new UTF8Encoding(false));
+    SecurityIdentifier owner = WindowsIdentity.GetCurrent().User;
+    FileSecurity security = new FileSecurity();
+    security.SetOwner(owner);
+    security.SetAccessRuleProtection(true, false);
+    security.AddAccessRule(new FileSystemAccessRule(owner, FileSystemRights.FullControl, AccessControlType.Allow));
+    security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier("S-1-5-18"), FileSystemRights.FullControl, AccessControlType.Allow));
+    // CreateNew and the initial security descriptor protect this exact owned
+    // record before writing. Existing records never have their ACL repaired.
+    using (FileStream stream = new FileStream(temporary, FileMode.CreateNew, FileSystemRights.Write, FileShare.None, 4096, FileOptions.WriteThrough, security)) {
+      byte[] contents = new UTF8Encoding(false).GetBytes(value);
+      stream.Write(contents, 0, contents.Length);
+      stream.Flush(true);
+    }
     File.Move(temporary, Path.Combine(directory, name));
   }
   static void Drain(IntPtr job) {

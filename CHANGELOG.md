@@ -42,6 +42,8 @@ Integrated review and release gates remain pending.
 - New Windows private records and locks receive the installation owner's private
   permissions before credentials are written or a protected action starts,
   including installations running with administrator privileges.
+- Windows process controllers reserve their private compiler output and create
+  protected control receipts with the owner's permissions under elevated tokens.
 - Operational health sampling stores scheduler and waiting-task ages beyond
   25 days without an integer overflow. Migration 0040 preserves existing
   observations, missing values and checks against negative durations.
