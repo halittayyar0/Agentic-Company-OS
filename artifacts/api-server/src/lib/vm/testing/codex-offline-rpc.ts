@@ -1,3 +1,4 @@
+import { readFile, readdir, readlink } from "node:fs/promises";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 
@@ -7,6 +8,50 @@ export function codexOfflineRpc(
   child: ChildProcessWithoutNullStreams,
   workspace: string,
 ) {
+  async function fixedOwnedProcessState(root: number | undefined) {
+    if (!root || process.platform !== "linux") return;
+    try {
+      const names = (await readdir("/proc")).filter(name => /^[1-9][0-9]*$/.test(name));
+      if (names.length > 2048) throw new Error("fixed_snapshot_process_bound");
+      const records: Array<{pid: number; parent: number; state: string; namespacePids: string}> = [];
+      for (const name of names) {
+        try {
+          const status = await readFile("/proc/"+name+"/status", "utf8");
+          records.push({pid: Number(name), parent: Number(status.match(/^PPid:\s+(\d+)/m)?.[1]), state: status.match(/^State:\s+([^\n]+)/m)?.[1] ?? "unavailable", namespacePids: status.match(/^NSpid:\s+([^\n]+)/m)?.[1] ?? "unavailable"});
+        } catch {}
+      }
+      if (!records.some(item => item.pid === root)) throw new Error("fixed_snapshot_root_gone");
+      const owned = new Set([root]);
+      for (let step=0; step<64; step++) {
+        let changed=false;
+        for(const item of records) if(owned.has(item.parent) && !owned.has(item.pid)) { owned.add(item.pid); changed=true; }
+        if(!changed)break;
+      }
+      if(owned.size > 64)throw new Error("fixed_snapshot_descendant_bound");
+      const states=[];
+      for(const item of records.filter(item=>owned.has(item.pid))) {
+        const base="/proc/"+item.pid;
+        const read = async (file: string) => (await readFile(base+file,"utf8").catch(()=>"unavailable")).slice(0,4096);
+        const link = async (file: string) => await readlink(base+file).catch(()=>"unavailable");
+        const executable=(await link("/exe")).split("/").at(-1);
+        const args=await read("/cmdline");
+        const roles=["app-server","fs-sandbox-helper","codex-linux-sandbox","--as-pid-1","--unshare-pid"].filter(value=>args.split("\0").includes(value));
+        const fds=[];
+        const fdNames=await readdir(base+"/fd").catch(()=>[]);
+        for(const fd of fdNames.slice(0,128)) {
+          const target=await link("/fd/"+fd);
+          if(/^pipe:\[[0-9]+\]$/.test(target)) fds.push({fd:Number(fd),pipe:target,flags:(await read("/fdinfo/"+fd)).match(/^flags:\s+([^\n]+)/m)?.[1] ?? "unavailable"});
+        }
+        const waits: Record<string,number>={};
+        for(const tid of (await readdir(base+"/task").catch(()=>[])).slice(0,128)) {
+          const wait=(await read("/task/"+tid+"/wchan")).trim();
+          waits[wait]=(waits[wait]??0)+1;
+        }
+        states.push({...item,executable,roles,wchan:(await read("/wchan")).trim(),pidNamespace:await link("/ns/pid"),mountNamespace:await link("/ns/mnt"),pipes:fds,threadWaits:waits});
+      }
+      console.error("ACOS_FIXED_PROCESS_DIAGNOSTIC:"+JSON.stringify({root,states,scope:"fixed offline fixture descendants only; no environment, arbitrary arguments or memory"}));
+    } catch(error) { console.error("ACOS_FIXED_PROCESS_DIAGNOSTIC:"+JSON.stringify({root,error:error instanceof Error?error.message.slice(0,120):"snapshot_unavailable"})); }
+  }
   const allowed = new Set([
     "initialize",
     "config/read",
@@ -107,6 +152,7 @@ export function codexOfflineRpc(
           reject(new Error("offline_native_request_timeout:" + JSON.stringify({method, stderrBytes, fixtureStderr: fixtureStderr.slice(-4096)})));
         }, 15_000);
         pending.set(id, { resolve, reject, timer });
+        if(method === "thread/start") setTimeout(() => { if(pending.has(id)) void fixedOwnedProcessState(child.pid); }, 8000).unref();
         child.stdin.write(JSON.stringify({ id, method, params }) + "\n");
       });
     },
