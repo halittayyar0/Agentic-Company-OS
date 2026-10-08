@@ -1,3 +1,4 @@
+import { startKnownLiveProcControls } from "./vm/testing/known-live-proc";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -153,6 +154,8 @@ for (const policy of cases)
       );
       let running: Awaited<ReturnType<typeof ports.launch>> | undefined;
       let rpc: ReturnType<typeof codexOfflineRpc> | undefined;
+      let procControls:
+        Awaited<ReturnType<typeof startKnownLiveProcControls>> | undefined;
       try {
         const prepared = await ports.prepare(binding);
         assert.ok(prepared.permissions);
@@ -210,6 +213,8 @@ for (const policy of cases)
             return item.id === "acos_task" && item.allowed === true;
           }),
         );
+        procControls = await startKnownLiveProcControls(home);
+        const procBefore = await procControls.snapshot();
         const thread = await rpc.request("thread/start", {
           model: prepared.model,
           modelProvider: "openai_chatgpt_plan",
@@ -257,9 +262,23 @@ child_program="import ctypes,json,os;lib=ctypes.CDLL(None,use_errno=True);ctypes
 descendant=subprocess.run(['/usr/bin/python3','-I','-S','-c',child_program],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=2)
 assert descendant.returncode==0 and not descendant.stderr and len(descendant.stdout)<1024
 r['descendantBarrier']=json.loads(descendant.stdout)
-r['procTokenReadable']=False
-r['procPrivateReadable']=False
-for p in os.listdir('/proc'):
+def proc_denial(file):
+ try:
+  fd=os.open(file,os.O_RDONLY|os.O_NONBLOCK);os.close(fd)
+  return {'opened':True,'errno':None}
+ except OSError as error:return {'opened':False,'errno':error.errno}
+r['knownLiveProc']=[]
+for target in ${JSON.stringify(procControls.targets)}:
+ base='/proc/'+str(target['pid'])
+ r['knownLiveProc'].append({'name':target['name'],'environment':proc_denial(base+'/environ'),'root':proc_denial(base+'/root'+target['file']),'cwd':proc_denial(base+'/cwd/'+os.path.basename(target['file'])),'fileFd':proc_denial(base+'/fd/'+str(target['fileFd'])),'controllerFd':proc_denial(base+'/fd/'+str(target['controllerFd'])),'processControl':proc_denial(base+'/oom_score_adj')})
+r['procTokenReadable']=any(target['environment']['opened'] for target in r['knownLiveProc'])
+r['procPrivateReadable']=any(target['root']['opened'] or target['cwd']['opened'] or target['fileFd']['opened'] or target['controllerFd']['opened'] for target in r['knownLiveProc'])
+try:
+ proc_entries=os.listdir('/proc');r['procView']='enumerable'
+except FileNotFoundError as error:
+ assert error.errno==errno.ENOENT
+ proc_entries=[];r['procView']='absent'
+for p in proc_entries:
  if not p.isdigit():continue
  try:
   if b'fixture-only-private-access' in open('/proc/'+p+'/environ','rb').read():r['procTokenReadable']=True
@@ -307,10 +326,38 @@ print(json.dumps(r))
           errno: 1,
           tokenPresent: false,
         });
+        assert.deepEqual(
+          await procControls.snapshot(),
+          procBefore,
+          "known_private_targets_must_still_be_live_and_unchanged",
+        );
+        assert.equal(observed.knownLiveProc.length, 2);
+        assert.deepEqual(
+          observed.knownLiveProc.map((target: any) => target.name),
+          procControls.targets.map((target) => target.name),
+        );
+        for (const target of observed.knownLiveProc)
+          for (const access of [
+            "environment",
+            "root",
+            "cwd",
+            "fileFd",
+            "controllerFd",
+            "processControl",
+          ]) {
+            assert.equal(target[access].opened, false);
+            assert.ok(
+              [1, 2, 13].includes(target[access].errno),
+              "known_private_target_denial_must_be_real",
+            );
+          }
+        assert.ok(["absent", "enumerable"].includes(observed.procView));
         const {
           commandBarrier,
           ordinaryThreadPositive,
           descendantBarrier,
+          knownLiveProc,
+          procView,
           ...originalObserved
         } = observed;
         assert.deepEqual(originalObserved, {
@@ -353,7 +400,11 @@ print(json.dumps(r))
         );
       } finally {
         rpc?.dispose();
-        await running?.stop();
+        try {
+          await running?.stop();
+        } finally {
+          await procControls?.stop();
+        }
         assert.equal(ownedAgentRuntimeCount(), 0);
         assert.equal(path.dirname(await realpath(root)), parent);
         assert.ok(path.basename(root).startsWith("acos-native-codex-proof-"));
