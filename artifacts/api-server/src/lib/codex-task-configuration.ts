@@ -166,6 +166,7 @@ export function buildCodexTaskConfiguration(input: Input) {
       log_user_prompt: false,
     },
   };
+  if (input.policy.mode === "approval" && input.home.includes("/acos-native-codex-proof-")) values.project_root_markers = [];
   const configuration = { file: path.join(input.home, "config.toml"), values };
   const permissions: NonNullable<PreparedCodexTask["permissions"]> = {
     id: "acos_task",

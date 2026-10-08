@@ -144,7 +144,7 @@ for (const policy of cases)
                 ReturnType<typeof prepareLinuxOwnedNamespace>
               >,
               isolateNetwork: true,
-              environment: { ...input.environment, RUST_LOG: policy.mode === "approval" ? "codex_core=info,codex_app_server=warn,codex_exec_server::fs_sandbox=trace" : "codex_core=debug,codex_app_server=warn" },
+              environment: { ...input.environment, RUST_LOG: policy.mode === "approval" ? "codex_core=info,codex_app_server=warn,codex_exec_server::fs_sandbox=info" : "codex_core=debug,codex_app_server=warn" },
             });
 
             namespaceInitPid = running.namespaceInitPid;
@@ -219,7 +219,7 @@ for (const policy of cases)
           approvalsReviewer: "user",
           permissions: "acos_task",
           runtimeWorkspaceRoots: [workspace],
-          config: policy.mode === "approval" ? { project_root_markers: [] } : {},
+          config: {},
           ephemeral: true,
           allowProviderModelFallback: false,
         });
