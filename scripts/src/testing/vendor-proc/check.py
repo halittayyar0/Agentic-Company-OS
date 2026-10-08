@@ -23,7 +23,7 @@ for variant in ('red', 'green'):
             assert len(kernel) == 1
             result['kernel'] = json.loads(kernel[0])
         records = []
-        for line in result['stdout'].splitlines():
+        for line in result['informationOutput'].splitlines():
             if line.startswith('{'):
                 record = json.loads(line)
                 if 'pid-namespace' in record:

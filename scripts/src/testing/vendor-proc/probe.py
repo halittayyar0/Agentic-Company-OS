@@ -50,12 +50,16 @@ except OSError as e: root_write_error=e.errno
 print('ACOS_KERNEL_RESULT:'+json.dumps({'pid':os.getpid(),'procSelf':os.readlink('/proc/self'),'uid':os.getuid(),'gid':os.getgid(),'caps':{k:status[k].strip() for k in ['CapInh','CapPrm','CapEff','CapBnd','CapAmb']},'nnp':status['NoNewPrivs'].strip(),'apparmor':open('/proc/self/attr/current').read().strip(),'pidNamespace':os.readlink('/proc/self/ns/pid'),'mountNamespace':os.readlink('/proc/self/ns/mnt'),'rootRo':root_ro,'rootWriteError':root_write_error,'read':read,'procChildren':mounts}),flush=True)
 """
 command=['/usr/bin/bwrap','--unshare-user','--unshare-pid','--as-pid-1','--die-with-parent','--new-session','--ro-bind','/','/','--bind','/proc','/proc','--dev','/dev','--tmpfs','/tmp','--bind',workspace,workspace,'--chdir',workspace]
-if sys.argv[1]!='plain': command += ['--json-status-fd','1']
+information_read,information_write=None,None
+if sys.argv[1]!='plain':
+    information_read,information_write=os.pipe()
+    command += ['--json-status-fd',str(information_write)]
 command += ['--','/usr/bin/python3','-I','-S','-c',program]
 collision_pid=int(sys.argv[2])
 if collision_pid:
     for _ in range(collision_pid-3): subprocess.run(['/usr/bin/true'],check=True,timeout=2)
-child=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+child=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,pass_fds=() if information_write is None else (information_write,))
+if information_write is not None: os.close(information_write)
 if collision_pid: assert child.pid==collision_pid-1
 try:
     stdout,stderr=child.communicate(timeout=3)
@@ -63,17 +67,29 @@ try:
 except subprocess.TimeoutExpired as error:
     stdout,stderr=error.output or b'',error.stderr or b''
     timeout=True
-result={'case':sys.argv[1],'identity':identity,'childPid':child.pid,'collisionTargetPid':collision_pid,'returncode':child.poll(),'timeout':timeout,'stdout':stdout[-16384:].decode('utf8','replace'),'stderr':stderr[-2048:].decode('utf8','replace'),'workspaceWritten':os.path.isfile(workspace+'/written') and open(workspace+'/written').read()=='fixed-written-workspace'}
+information=b''
+if information_read is not None:
+    os.set_blocking(information_read,False)
+    try: information=os.read(information_read,8192)
+    except BlockingIOError: pass
+    os.close(information_read)
+result={'case':sys.argv[1],'identity':identity,'childPid':child.pid,'collisionTargetPid':collision_pid,'returncode':child.poll(),'timeout':timeout,'stdout':stdout[-16384:].decode('utf8','replace'),'stderr':stderr[-2048:].decode('utf8','replace'),'informationOutput':information.decode('utf8','replace'),'workspaceWritten':os.path.isfile(workspace+'/written') and open(workspace+'/written').read()=='fixed-written-workspace'}
 print('ACOS_PROBE_RESULT:'+json.dumps(result),flush=True)
 # Fixed namespace PID1 exits; the kernel retires its descendants and all pipes.
 os._exit(0)
 '''
-command = ['/usr/bin/bwrap', '--unshare-user', '--unshare-pid', '--as-pid-1', '--die-with-parent', '--new-session', '--json-status-fd', '1', '--ro-bind', '/', '/', '--bind', '/proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp', '--', '/usr/bin/python3', '-I', '-S', '-c', inner, case, str(collision_pid)]
+outer_read,outer_write=os.pipe()
+command = ['/usr/bin/bwrap', '--unshare-user', '--unshare-pid', '--as-pid-1', '--die-with-parent', '--new-session', '--json-status-fd', str(outer_write), '--ro-bind', '/', '/', '--bind', '/proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp', '--', '/usr/bin/python3', '-I', '-S', '-c', inner, case, str(collision_pid)]
 try:
-    result = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
-    assert len(result.stdout) <= 32768 and len(result.stderr) <= 8192
-    print(json.dumps({'kind': 'sole-conditional-vendor-probe', 'case': case, 'outerReturncode': result.returncode, 'result': result.stdout.decode('utf8','replace'), 'outerStderr': result.stderr.decode('utf8','replace'), 'scope': 'standalone fixed experiment only; no production toolchain or permission acceptance'}))
+    outer=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,pass_fds=(outer_write,))
+    os.close(outer_write)
+    stdout,stderr=outer.communicate(timeout=10)
+    assert len(stdout) <= 32768 and len(stderr) <= 8192
+    os.set_blocking(outer_read,False)
+    information=os.read(outer_read,8192)
+    print(json.dumps({'kind': 'sole-conditional-vendor-probe', 'case': case, 'outerReturncode': outer.returncode, 'result': stdout.decode('utf8','replace'), 'outerStderr': stderr.decode('utf8','replace'), 'outerInformation':information.decode('utf8','replace'),'scope': 'standalone fixed experiment only; no production toolchain or permission acceptance'}))
 finally:
+    os.close(outer_read)
     for sibling in keepers:
         sibling.terminate()
         sibling.wait(timeout=2)
