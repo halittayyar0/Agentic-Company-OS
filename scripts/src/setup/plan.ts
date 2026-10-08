@@ -157,6 +157,7 @@ export function planInstallation(
     settings.codingRuntime &&
     (settings.mode !== "container" ||
       !capabilities.coding?.ready ||
+      capabilities.coding.apparmor !== true ||
       settings.accessMode === "read_only" ||
       (settings.accessMode === "custom" &&
         settings.customPermissions?.terminal !== true))

@@ -1,3 +1,4 @@
+import { readLinuxCodingMode } from "./linux-managed-coding-toolchain";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
@@ -91,7 +92,12 @@ for (const scenario of [
         );
         const { stdout, stderr } = await run(
           "/usr/bin/python3",
-          [path.join(root, "fixture.py"), scenario, root],
+          [
+            path.join(root, "fixture.py"),
+            scenario,
+            root,
+            await readLinuxCodingMode(),
+          ],
           {
             cwd: root,
             env: { PATH: "/usr/bin:/bin", LANG: "C.UTF-8", HOME: root },

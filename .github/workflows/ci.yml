@@ -62,7 +62,7 @@ jobs:
             --tmpfs=/tmp:rw,exec,nosuid,size=64m,mode=1777 --env=HOME=/tmp \
             agentic-company-os:coding-ci \
             /usr/bin/bwrap --unshare-user --unshare-pid --die-with-parent \
-            --as-pid-1 --new-session --ro-bind / / --proc /proc --dev /dev --tmpfs /tmp \
+            --as-pid-1 --new-session --ro-bind / / --bind /proc /proc --dev /dev --tmpfs /tmp \
             -- /usr/bin/python3 -I -S -c 'import json,os; print(json.dumps({"pid":os.getpid()}))' \
             > "$RUNNER_TEMP/coding-namespace-probe.log" 2>&1 || true
           cat "$RUNNER_TEMP/coding-namespace-probe.log"

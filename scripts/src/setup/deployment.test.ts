@@ -68,7 +68,7 @@ function plan(
       composeVersion: "2.40.0",
       native: { ready: true, issues: [] },
       container: { ready: true, issues: [] },
-      coding: { ready: true, issues: [], apparmor: false },
+      coding: { ready: true, issues: [], apparmor: true },
     },
   );
 }
@@ -77,6 +77,19 @@ test("selected coding deployment keeps API authority separate and private overri
   const image = `ghcr.io/owner/app@sha256:${"a".repeat(64)}`;
   const codingImage = `ghcr.io/owner/app-coding@sha256:${"b".repeat(64)}`;
   const selected = plan("container", "later", true);
+  assert.throws(
+    () =>
+      buildContainerDeployment(
+        source,
+        selected,
+        resources,
+        {},
+        undefined,
+        image,
+        { apparmor: false, image: codingImage },
+      ),
+    /coding/u,
+  );
   assert.throws(
     () =>
       buildContainerDeployment(

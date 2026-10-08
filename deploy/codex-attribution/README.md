@@ -31,3 +31,22 @@ Ratatui's crate SHA-256, from the pinned Codex Cargo.lock:
 Toolchain updates require refreshing the archive integrity, native binary
 identity, source attribution and actual offline permission/cleanup gates.
 The system helper stays root-owned and cannot be replaced by a coding task.
+
+## Modified managed-container helpers
+
+The optional coding image also builds two **modified system helpers** from the
+included Bubblewrap source. The original Codex archive and its bundled helper
+remain unchanged. ACOS selects the modified helpers only after managed Linux
+runtime admission; native Linux retains its existing system-helper checks.
+
+- `/usr/bin/bwrap`: conditional namespace information lookup, with a bounded
+  pre-clone PID/proc namespace check when information is requested.
+- `/opt/agentic-inner/bwrap`: the same guard plus an unconditional command filter
+  after sandbox setup. Commands and descendants cannot create namespaces or
+  remount proc through an alias; ordinary threads and fork/exec remain available.
+
+These modifications are distributed under **LGPL-2.0-or-later**, with the upstream
+copying terms and complete corresponding source. See
+[build and modification details](./MANAGED-HELPERS.md). Helper digests are
+separate from the original npm and bundled-component identities. A version
+string alone cannot admit either modified binary.

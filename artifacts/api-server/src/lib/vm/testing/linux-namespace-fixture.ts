@@ -77,7 +77,7 @@ if role == 'worker':
     if scenario != 'not-pid-one':
         command = ['/usr/bin/bwrap', '--unshare-user', '--unshare-pid',
             '--die-with-parent', '--as-pid-1', '--new-session', '--ro-bind', '/', '/',
-            '--bind', str(root), str(root), '--proc', '/proc', '--chdir', str(root),
+            '--bind', str(root), str(root), *(['--bind', '/proc', '/proc'] if sys.argv[4]=='managed' else ['--proc', '/proc']), '--chdir', str(root),
             '--json-status-fd', str(status_write)] + (
                 ['--block-fd', str(gate_read)] if scenario == 'early-owner-killed' else []
             ) + ['--'] + command
@@ -142,7 +142,7 @@ if role == 'worker':
 
 scenario, root = role, Path(sys.argv[2]).resolve()
 worker = subprocess.Popen(['/usr/bin/python3', '-I', str(root / 'fixture.py'),
-    'worker', str(root), scenario], env={'PATH': '/usr/bin:/bin', 'HOME': str(root), 'LANG': 'C.UTF-8'})
+    'worker', str(root), scenario, sys.argv[3]], env={'PATH': '/usr/bin:/bin', 'HOME': str(root), 'LANG': 'C.UTF-8'})
 owned = None
 try:
     if scenario in ('startup-owner-gone', 'not-pid-one'):

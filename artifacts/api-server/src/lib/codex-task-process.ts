@@ -1,4 +1,9 @@
 import {
+  readLinuxCodingMode,
+  MANAGED_CODING_COMMAND_PATH,
+  MANAGED_CODEX_EXECUTABLE,
+} from "./vm/linux-managed-coding-toolchain";
+import {
   execFile,
   type ChildProcessWithoutNullStreams,
 } from "node:child_process";
@@ -214,6 +219,7 @@ interface State {
   native: NativeLauncher;
   handle: unknown;
   controlDirectory: string;
+  linuxMode: "native" | "managed";
   launched: boolean;
 }
 /** A real production prepare/launch boundary. The isolated owner-only home is
@@ -285,6 +291,10 @@ export function createCodexTaskProcessPorts(
     await exact(workspace, true);
     const native = injectedNative ?? defaultNative();
     await systemPreflight(native);
+    const linuxMode =
+      process.platform === "linux" ? await readLinuxCodingMode() : "native";
+    if (linuxMode === "managed" && executable !== MANAGED_CODEX_EXECUTABLE)
+      unsupported();
     const executableFingerprint = await fingerprint(executable);
     const base = new OwnerPrivateStorage(storageDirectory);
     await base.initialize();
@@ -324,11 +334,12 @@ export function createCodexTaskProcessPorts(
       >[0]["policy"],
       canUseTerminal: true,
       processExecEnabled,
+      managedLinux: linuxMode === "managed",
     });
     if (previous && (await storage.read("config.toml")) !== built.toml)
       unsupported();
     await storage.write("config.toml", built.toml);
-    const environment = processEnvironment(home);
+    const environment = processEnvironment(home, linuxMode);
     if (
       (await native.version(executable, home, { ...environment })).trim() !==
       "codex-cli 0.159.2"
@@ -364,14 +375,25 @@ export function createCodexTaskProcessPorts(
       native,
       handle,
       controlDirectory: path.join(runtimeDirectory, "owned-job-control"),
+      linuxMode,
       launched: false,
     };
   }
-  function processEnvironment(home: string): NodeJS.ProcessEnv {
+  function processEnvironment(
+    home: string,
+    linuxMode: "native" | "managed",
+  ): NodeJS.ProcessEnv {
     const environment =
       process.platform === "win32"
         ? windowsEnvironment(home)
-        : { PATH: "/usr/bin:/bin", HOME: home, USERPROFILE: home };
+        : {
+            PATH:
+              linuxMode === "managed"
+                ? MANAGED_CODING_COMMAND_PATH
+                : "/usr/bin:/bin",
+            HOME: home,
+            USERPROFILE: home,
+          };
     return {
       ...environment,
       CODEX_HOME: home,
@@ -419,6 +441,11 @@ export function createCodexTaskProcessPorts(
         await exact(workspace, true);
         await systemPreflight(state.native);
         if (
+          process.platform === "linux" &&
+          (await readLinuxCodingMode()) !== state.linuxMode
+        )
+          unsupported();
+        if (
           (await state.storage.read("config.toml")) !== state.config ||
           (await fingerprint(executable)) !== state.executableFingerprint
         )
@@ -445,7 +472,7 @@ export function createCodexTaskProcessPorts(
         workspace,
         controlDirectory: state.controlDirectory,
         environment: {
-          ...processEnvironment(state.home),
+          ...processEnvironment(state.home, state.linuxMode),
           ACOS_CODEX_ACCESS_TOKEN: context.registration.credentials.accessToken,
         },
         assertOwned,

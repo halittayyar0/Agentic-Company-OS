@@ -7,6 +7,12 @@ import test from "node:test";
 import { createCodexTaskProcessPorts } from "./codex-task-process";
 import type { CodexTaskAuthority } from "./codex-task-authority";
 import { ownedAgentRuntimeCount } from "./orchestrator/owned-agent-runtimes";
+import {
+  readLinuxCodingMode,
+  MANAGED_CODEX_EXECUTABLE,
+} from "./vm/linux-managed-coding-toolchain";
+import { codexOfflineRpc } from "./vm/testing/codex-offline-rpc";
+import { codexTaskConfigurationMatches } from "./codex-task-configuration";
 
 const enabled = process.env.ACOS_LINUX_NAMESPACE_TESTS === "1";
 if (enabled && process.platform !== "linux")
@@ -15,6 +21,7 @@ test(
   "default Linux process factory launches the owned controller with a private home and backend workspace",
   { skip: !enabled, timeout: 30_000 },
   async () => {
+    const managed = (await readLinuxCodingMode()) === "managed";
     const temp = await realpath(tmpdir());
     const root = await realpath(
       await mkdtemp(path.join(temp, "acos-linux-factory-")),
@@ -86,12 +93,37 @@ else:
           ReturnType<ReturnType<typeof createCodexTaskProcessPorts>["launch"]>
         >
       | undefined;
+    let rpc: ReturnType<typeof codexOfflineRpc> | undefined;
     try {
+      if (managed) {
+        let overrideContextRead = false;
+        const refused = createCodexTaskProcessPorts({
+          authority: {
+            ...authority,
+            readLaunchContext: async () => {
+              overrideContextRead = true;
+              return authority.readLaunchContext();
+            },
+          },
+          workspace,
+          storageDirectory,
+          executable,
+          processExecEnabled: true,
+        });
+        await assert.rejects(refused.prepare(binding), {
+          kind: "unsupported_capability",
+        });
+        assert.equal(
+          overrideContextRead,
+          false,
+          "managed_override_must_refuse_before_credentials",
+        );
+      }
       const ports = createCodexTaskProcessPorts({
         authority,
         workspace,
         storageDirectory,
-        executable,
+        executable: managed ? MANAGED_CODEX_EXECUTABLE : executable,
         processExecEnabled: true,
       });
       const prepared = await ports.prepare(binding);
@@ -101,15 +133,37 @@ else:
       running.child.stdout.on("data", (data) => {
         stdout += data;
       });
-      const deadline = Date.now() + 5000;
-      while (!stdout.includes("factory-ready")) {
-        assert.ok(Date.now() < deadline);
-        await new Promise((resolve) => setTimeout(resolve, 25));
-      }
-      running.child.stdin.write("factory-challenge\n");
-      while (!stdout.includes("factory-challenge")) {
-        assert.ok(Date.now() < deadline);
-        await new Promise((resolve) => setTimeout(resolve, 25));
+      if (managed) {
+        rpc = codexOfflineRpc(running.child, workspace);
+        await rpc.request("initialize", {
+          clientInfo: { name: "acos_offline_factory", version: "1" },
+          capabilities: { experimentalApi: true },
+        });
+        rpc.initialized();
+        const configuration = await rpc.request("config/read", {
+          cwd: workspace,
+          includeLayers: true,
+        });
+        assert.ok(prepared.permissions);
+        assert.equal(
+          codexTaskConfigurationMatches(
+            configuration,
+            prepared.permissions.configuration,
+          ),
+          true,
+        );
+        assert.deepEqual(rpc.methods, ["initialize", "config/read"]);
+      } else {
+        const deadline = Date.now() + 5000;
+        while (!stdout.includes("factory-ready")) {
+          assert.ok(Date.now() < deadline);
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        running.child.stdin.write("factory-challenge\n");
+        while (!stdout.includes("factory-challenge")) {
+          assert.ok(Date.now() < deadline);
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
       }
       assert.equal(ownedAgentRuntimeCount(), 1);
       await running.stop();
@@ -117,6 +171,7 @@ else:
       assert.doesNotMatch(stdout, /fixture-only-private/);
       await assert.rejects(ports.launch(prepared, binding));
     } finally {
+      rpc?.dispose();
       await running?.stop();
       assert.equal(ownedAgentRuntimeCount(), 0);
       assert.equal(path.dirname(await realpath(root)), temp);

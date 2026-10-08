@@ -1,3 +1,4 @@
+import { readLinuxCodingMode } from "./linux-managed-coding-toolchain";
 import {
   spawn,
   execFile,
@@ -66,6 +67,7 @@ async function systemTool(file: string) {
 }
 export async function prepareLinuxOwnedNamespace(directory: string) {
   if (process.platform !== "linux" || !process.getuid) throw unsupported();
+  const mode = await readLinuxCodingMode();
   const bwrap = await systemTool("/usr/bin/bwrap"),
     python = await systemTool("/usr/bin/python3");
   const environment = {
@@ -87,12 +89,15 @@ export async function prepareLinuxOwnedNamespace(directory: string) {
   // Legacy Bubblewrap falls back to an alias inside the denied private home.
   // Refuse early instead of granting read access to credentials/history.
   if (
-    !acceptsLinuxBwrapIdentity({
-      version: version.stdout,
-      help: help.stdout,
-      sha256: bwrap.sha256,
-      architecture: process.arch,
-    })
+    !acceptsLinuxBwrapIdentity(
+      {
+        version: version.stdout,
+        help: help.stdout,
+        sha256: bwrap.sha256,
+        architecture: process.arch,
+      },
+      mode,
+    )
   )
     throw unsupported();
   const py = await execute(
@@ -114,6 +119,7 @@ export async function prepareLinuxOwnedNamespace(directory: string) {
   await storage.initialize(true);
   await storage.write("guardian.py", LINUX_OWNED_NAMESPACE_SOURCE);
   return Object.freeze({
+    mode,
     script: path.join(directory, "guardian.py"),
     bwrap,
     python,
@@ -185,6 +191,7 @@ export async function launchLinuxOwnedNamespace(input: Input): Promise<{
     )
   )
     throw unsupported();
+  if ((await readLinuxCodingMode()) !== input.helper.mode) throw unsupported();
   await exact(input.cwd, true);
   await exact(input.workspace, true);
   await exact(input.executable);
@@ -257,8 +264,9 @@ export async function launchLinuxOwnedNamespace(input: Input): Promise<{
       input.workspace,
       "--dev",
       "/dev",
-      "--proc",
-      "/proc",
+      ...(input.helper.mode === "managed"
+        ? ["--bind", "/proc", "/proc"]
+        : ["--proc", "/proc"]),
       "--chdir",
       input.cwd,
       "--json-status-fd",

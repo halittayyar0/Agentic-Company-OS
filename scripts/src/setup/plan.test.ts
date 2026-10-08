@@ -25,7 +25,7 @@ const input = {
 test("coding workers are an explicit compatible container choice, never a side effect of a tool pack", () => {
   const compatible = {
     ...capabilities,
-    coding: { ready: true, issues: [], apparmor: false },
+    coding: { ready: true, issues: [], apparmor: true },
   };
   const selected = { ...input, mode: "container", codingRuntime: true };
   assert.equal(
@@ -57,6 +57,14 @@ test("coding workers are an explicit compatible container choice, never a side e
     );
   }
   assert.throws(() => planInstallation(selected, capabilities), /coding/u);
+  assert.throws(
+    () =>
+      planInstallation(selected, {
+        ...compatible,
+        coding: { ...compatible.coding, apparmor: false },
+      }),
+    /coding/u,
+  );
   assert.throws(
     () => validateInstallationInput({ ...selected, codingRuntime: "true" }),
     /coding/u,

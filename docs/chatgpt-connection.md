@@ -258,15 +258,26 @@ host policy or advertise supported coding execution after a skipped test.
 
 The ordinary production Docker image omits this optional native coding
 toolchain. The separate `coding-runtime` target packages Codex 0.159.2 and its
-pinned namespace helper. The built image passed 22 offline native permission
-and lifetime cases with Python 3.11.2, UID 1000, an init reaper, a read-only root,
-dropped host capabilities and a 512-process limit. The public opt-in
+pinned bundled helper, plus two separately identified modified system helpers.
+Managed mode requires a protected manifest and observed containment before
+credentials and again before launch: Linux x64, UID/GID 1000, zero capability
+sets, no-new-privileges, seccomp, an enforced dedicated AppArmor profile,
+read-only root and all required Docker proc masks. An absent manifest retains
+native Linux's existing helper checks and fresh proc mount. An invalid managed
+installation is refused; it does not fall back to a weaker mode.
+
+The guarded outer helper retains the already masked proc mounts for its owned
+PID namespace. The distinct inner helper installs mandatory command restrictions
+after filesystem setup. Both the app-server PATH and effective command PATH
+select that protected helper. The original Codex package and component pins
+remain unchanged; modified source, licenses and build provenance ship separately.
+The public opt-in
 `pnpm test:coding:container IMAGE_DIGEST` gate repeats this scope and verifies
 real Compose merges, including the installer's final private override.
 
 The [container wizard option](./self-hosting.md#optional-coding-workers) selects
 only the existing workers and a separate immutable image. It requires Compose
-2.24.4 or later and a Linux x64 engine. AppArmor hosts must load the dedicated
+2.24.4 or later and a Linux x64 engine with AppArmor. Hosts must load the dedicated
 bundled profile first; CI requires its actual enforced path. Local evidence on
 a host without AppArmor does not prove that path. Full container installation,
 resume and public release checks remain separate acceptance gates. Keep the
@@ -293,6 +304,20 @@ can re-execute it; its containing installation directory gets no profile grant.
 Each owned namespace has fresh temporary storage for the native mount registry.
 An executable installed below `/tmp` retains its explicit installation tree
 through a read-only bind; unrelated host temporary files are not mounted.
+
+Backend positive controls prove two private synthetic peers are alive and
+readable before and after each command. Command probes must deny those exact
+environment, root, cwd and held-file/controller paths. Only an observed `ENOENT`
+permits an absent restricted proc view. These peers are not an app-server
+parent/sibling lineage claim, and their process-control probe is a read-open
+check. Independent kernel regressions exercise real parent/sibling writes and
+mount-alias attempts. Managed command cases also verify the inherited namespace
+filter while ordinary threads and fork/exec remain functional.
+
+An existing protected session created with an older command configuration is
+refused on configuration mismatch. Its private history is retained. Review the
+task's **Coding session** and use **Archive and reset session** before a fresh
+admission; startup never silently rewrites or discards that history.
 
 A fifth case runs the production driver through initialization, configuration
 inspection and thread creation. It awaits a delayed final admission refusal,

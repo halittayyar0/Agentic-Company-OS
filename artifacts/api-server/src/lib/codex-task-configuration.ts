@@ -1,3 +1,4 @@
+import { MANAGED_CODING_COMMAND_PATH } from "./vm/linux-managed-coding-toolchain";
 import path from "node:path";
 import type { PreparedCodexTask } from "./codex-task-adapter";
 
@@ -14,6 +15,8 @@ interface Input {
   policy: Policy;
   canUseTerminal: boolean;
   processExecEnabled: boolean;
+  /** Backend-only result of protected Linux toolchain and containment admission. */
+  managedLinux?: boolean;
 }
 export interface CodexOwnedConfiguration {
   file: string;
@@ -123,6 +126,9 @@ export function buildCodexTaskConfiguration(input: Input) {
     // The app-server alone receives the credential. Commands cannot inherit it.
     shell_environment_policy: {
       inherit: "none",
+      ...(input.managedLinux
+        ? { set: { PATH: MANAGED_CODING_COMMAND_PATH } }
+        : {}),
       experimental_use_profile: false,
     },
     analytics: { enabled: false },

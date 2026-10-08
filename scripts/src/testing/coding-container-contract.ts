@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 
 const BWRAP =
-  "77360cb751ccedc5971391444ac86a8a33c15b04d6b4a6fe45f5d25496e62c4c";
+  "d614afff26b5f4f2250f432876399dc95ed2e8c04dbf6dbece3a067d9c7cacb7";
 const INTEGRITY =
   "sha512-RrCZ1X52wpa1lOsXtCtSyhjOFdQPh7LH5Ccv8HsKmd/2UXbUwxXFqWXFK3JzatquUNGtW/TLox5Y7qVOGkV0/Q==";
 
@@ -62,11 +62,13 @@ export function assertCodingContainerIdentity(value: unknown): void {
     uid?: unknown;
     node?: unknown;
     bwrapSha256?: unknown;
+    innerBwrapSha256?: unknown;
     manifest?: {
       executable?: unknown;
       version?: unknown;
       imageRuntime?: unknown;
       integrity?: unknown;
+      bwrapSha256?: unknown;
     };
   } | null;
   assert.ok(
@@ -75,6 +77,10 @@ export function assertCodingContainerIdentity(value: unknown): void {
       typeof identity.node === "string" &&
       /^v24\.\d+\.\d+$/u.test(identity.node) &&
       identity.bwrapSha256 === BWRAP &&
+      identity.innerBwrapSha256 ===
+        "9f5789651eb95860fe3242745513a177029983e7a208854529ae7dc23aaf0eb9" &&
+      identity.manifest?.bwrapSha256 ===
+        "77360cb751ccedc5971391444ac86a8a33c15b04d6b4a6fe45f5d25496e62c4c" &&
       identity.manifest?.imageRuntime === true &&
       identity.manifest.executable === "/opt/agentic-codex/bin/codex" &&
       identity.manifest.version === "0.159.2" &&

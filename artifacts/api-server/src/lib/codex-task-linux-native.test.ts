@@ -1,3 +1,5 @@
+import { readLinuxCodingMode } from "./vm/linux-managed-coding-toolchain";
+import { startKnownLiveProcControls } from "./vm/testing/known-live-proc";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -49,6 +51,7 @@ for (const policy of cases)
     `actual Linux Codex ${policy.mode} files=${policy.writable} enforces the owned named permission boundary without inference`,
     { skip: !enabled, timeout: 45_000 },
     async () => {
+      const managed = (await readLinuxCodingMode()) === "managed";
       const parent = await realpath(tmpdir());
       const root = await realpath(
         await mkdtemp(path.join(parent, "acos-native-codex-proof-")),
@@ -153,6 +156,8 @@ for (const policy of cases)
       );
       let running: Awaited<ReturnType<typeof ports.launch>> | undefined;
       let rpc: ReturnType<typeof codexOfflineRpc> | undefined;
+      let procControls:
+        Awaited<ReturnType<typeof startKnownLiveProcControls>> | undefined;
       try {
         const prepared = await ports.prepare(binding);
         assert.ok(prepared.permissions);
@@ -210,6 +215,8 @@ for (const policy of cases)
             return item.id === "acos_task" && item.allowed === true;
           }),
         );
+        procControls = await startKnownLiveProcControls(home);
+        const procBefore = await procControls.snapshot();
         const thread = await rpc.request("thread/start", {
           model: prepared.model,
           modelProvider: "openai_chatgpt_plan",
@@ -244,9 +251,38 @@ except OSError:r['executableWritable']=False
 try:
  s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.close();r['socketPermissionDenied']=False
 except OSError as e:r['socketPermissionDenied']=e.errno in (errno.EPERM,errno.EACCES)
-r['procTokenReadable']=False
-r['procPrivateReadable']=False
-for p in os.listdir('/proc'):
+r['commandBarrier']=None;r['ordinaryThreadPositive']=None;r['descendantBarrier']=None
+if ${managed ? "True" : "False"}:
+ import ctypes,subprocess,threading
+ lib=ctypes.CDLL(None,use_errno=True)
+ ctypes.set_errno(0)
+ ns_result=lib.unshare(0x10000000)
+ r['commandBarrier']={'result':ns_result,'errno':ctypes.get_errno(),'uid':os.getuid(),'gid':os.getgid(),'nnp':lib.prctl(39,0,0,0,0)}
+ thread_result=[]
+ thread=threading.Thread(target=lambda:thread_result.append('ordinary-thread-complete'))
+ thread.start();thread.join(timeout=2)
+ r['ordinaryThreadPositive']=thread_result==['ordinary-thread-complete'] and not thread.is_alive()
+ child_program="import ctypes,json,os;lib=ctypes.CDLL(None,use_errno=True);ctypes.set_errno(0);result=lib.unshare(0x10000000);print(json.dumps({'result':result,'errno':ctypes.get_errno(),'tokenPresent':'ACOS_CODEX_ACCESS_TOKEN' in os.environ}))"
+ descendant=subprocess.run(['/usr/bin/python3','-I','-S','-c',child_program],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=2)
+ assert descendant.returncode==0 and not descendant.stderr and len(descendant.stdout)<1024
+ r['descendantBarrier']=json.loads(descendant.stdout)
+def proc_denial(file):
+ try:
+  fd=os.open(file,os.O_RDONLY|os.O_NONBLOCK);os.close(fd)
+  return {'opened':True,'errno':None}
+ except OSError as error:return {'opened':False,'errno':error.errno}
+r['knownLiveProc']=[]
+for target in ${JSON.stringify(procControls.targets)}:
+ base='/proc/'+str(target['pid'])
+ r['knownLiveProc'].append({'name':target['name'],'environment':proc_denial(base+'/environ'),'root':proc_denial(base+'/root'+target['file']),'cwd':proc_denial(base+'/cwd/'+os.path.basename(target['file'])),'fileFd':proc_denial(base+'/fd/'+str(target['fileFd'])),'controllerFd':proc_denial(base+'/fd/'+str(target['controllerFd'])),'processControl':proc_denial(base+'/oom_score_adj')})
+r['procTokenReadable']=any(target['environment']['opened'] for target in r['knownLiveProc'])
+r['procPrivateReadable']=any(target['root']['opened'] or target['cwd']['opened'] or target['fileFd']['opened'] or target['controllerFd']['opened'] for target in r['knownLiveProc'])
+try:
+ proc_entries=os.listdir('/proc');r['procView']='enumerable'
+except FileNotFoundError as error:
+ assert error.errno==errno.ENOENT
+ proc_entries=[];r['procView']='absent'
+for p in proc_entries:
  if not p.isdigit():continue
  try:
   if b'fixture-only-private-access' in open('/proc/'+p+'/environ','rb').read():r['procTokenReadable']=True
@@ -264,10 +300,77 @@ print(json.dumps(r))
           outputBytesCap: 4096,
         });
         record(response);
+        console.error(
+          JSON.stringify({
+            kind: "fixed_offline_command_diagnostic",
+            mode: policy.mode,
+            writable: policy.writable,
+            exitCode: response.exitCode,
+            stdout:
+              typeof response.stdout === "string"
+                ? response.stdout.slice(-2048)
+                : null,
+            stderr:
+              typeof response.stderr === "string"
+                ? response.stderr.slice(-2048)
+                : null,
+          }),
+        );
         assert.equal(response.exitCode, 0);
         assert.equal(typeof response.stdout, "string");
         const observed = JSON.parse(response.stdout as string);
-        assert.deepEqual(observed, {
+        if (managed) {
+          assert.deepEqual(
+            observed.commandBarrier,
+            { result: -1, errno: 1, uid: 1000, gid: 1000, nnp: 1 },
+            "mandatory_inner_filter_must_be_used_by_actual_codex_command",
+          );
+          assert.equal(observed.ordinaryThreadPositive, true);
+          assert.deepEqual(observed.descendantBarrier, {
+            result: -1,
+            errno: 1,
+            tokenPresent: false,
+          });
+        } else {
+          assert.equal(observed.commandBarrier, null);
+          assert.equal(observed.ordinaryThreadPositive, null);
+          assert.equal(observed.descendantBarrier, null);
+        }
+        assert.deepEqual(
+          await procControls.snapshot(),
+          procBefore,
+          "known_private_targets_must_still_be_live_and_unchanged",
+        );
+        assert.equal(observed.knownLiveProc.length, 2);
+        assert.deepEqual(
+          observed.knownLiveProc.map((target: any) => target.name),
+          procControls.targets.map((target) => target.name),
+        );
+        for (const target of observed.knownLiveProc)
+          for (const access of [
+            "environment",
+            "root",
+            "cwd",
+            "fileFd",
+            "controllerFd",
+            "processControl",
+          ]) {
+            assert.equal(target[access].opened, false);
+            assert.ok(
+              [1, 2, 13].includes(target[access].errno),
+              "known_private_target_denial_must_be_real",
+            );
+          }
+        assert.ok(["absent", "enumerable"].includes(observed.procView));
+        const {
+          commandBarrier,
+          ordinaryThreadPositive,
+          descendantBarrier,
+          knownLiveProc,
+          procView,
+          ...originalObserved
+        } = observed;
+        assert.deepEqual(originalObserved, {
           read: "workspace-readable",
           tokenPresent: false,
           privateReadable: false,
@@ -307,7 +410,11 @@ print(json.dumps(r))
         );
       } finally {
         rpc?.dispose();
-        await running?.stop();
+        try {
+          await running?.stop();
+        } finally {
+          await procControls?.stop();
+        }
         assert.equal(ownedAgentRuntimeCount(), 0);
         assert.equal(path.dirname(await realpath(root)), parent);
         assert.ok(path.basename(root).startsWith("acos-native-codex-proof-"));

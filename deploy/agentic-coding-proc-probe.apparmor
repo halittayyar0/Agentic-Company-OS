@@ -7,7 +7,7 @@
 abi <abi/3.0>,
 #include <tunables/global>
 
-profile agentic-coding flags=(attach_disconnected,mediate_deleted) {
+profile agentic-coding-proc-probe flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
   network,
   deny network ax25,
@@ -32,7 +32,7 @@ profile agentic-coding flags=(attach_disconnected,mediate_deleted) {
   signal (receive) peer=unconfined,
   signal (receive) peer=runc,
   signal (receive) peer=crun,
-  signal (send,receive) peer=agentic-coding,
+  signal (send,receive) peer=agentic-coding-proc-probe,
 
   # Nonrelease experiment: named process controls, not complete admission.
   deny @{PROC}/[0-9]*/{oom_adj,oom_score_adj,coredump_filter,sched,latency,autogroup,fail-nth,clear_refs,timerslack_ns,comm,loginuid,timens_offsets,attr/**} w,
@@ -53,5 +53,5 @@ profile agentic-coding flags=(attach_disconnected,mediate_deleted) {
   deny /sys/firmware/** rwklx,
   deny /sys/devices/virtual/powercap/** rwklx,
   deny /sys/kernel/security/** rwklx,
-  ptrace (trace,tracedby,read,readby) peer=agentic-coding,
+  ptrace (trace,tracedby,read,readby) peer=agentic-coding-proc-probe,
 }

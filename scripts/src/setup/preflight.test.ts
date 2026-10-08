@@ -117,3 +117,23 @@ test("coding capability follows the actual engine architecture and exact Compose
     if (expected) assert.equal(state.coding?.apparmor, true);
   }
 });
+
+test("an engine without AppArmor keeps ordinary installation available but cannot select managed coding", async () => {
+  const state = await detectInstallCapabilities({
+    platform: "darwin",
+    arch: "arm64",
+    nodeVersion: "v24.20.0",
+    run: async (command, args) =>
+      command === "docker" && args[0] === "info" && args[2] === "{{json .}}"
+        ? JSON.stringify({
+            OSType: "linux",
+            Architecture: "x86_64",
+            SecurityOptions: ["name=seccomp,profile=builtin"],
+          })
+        : available(command, args),
+  });
+  assert.equal(state.container.ready, true);
+  assert.equal(state.native.ready, true);
+  assert.equal(state.coding?.ready, false);
+  assert.ok(state.coding?.issues.includes("coding_apparmor_required"));
+});

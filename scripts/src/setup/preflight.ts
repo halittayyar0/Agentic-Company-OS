@@ -109,6 +109,7 @@ export async function detectInstallCapabilities(
   } catch {
     codingIssues.push("coding_x64_engine_required");
   }
+  if (!apparmor) codingIssues.push("coding_apparmor_required");
   return {
     platform,
     architecture,

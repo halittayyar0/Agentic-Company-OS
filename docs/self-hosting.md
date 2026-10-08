@@ -39,8 +39,9 @@ Read-only access disables this option; custom access requires terminal permissio
 Connect an eligible account after installation. Model tasks still need account
 permission, task authority and budgets; setup makes no inference request.
 
-If the **Docker host** uses AppArmor, its administrator must load the bundled
-profile there before installation, from the extracted bundle or checkout:
+The optional coding image requires AppArmor on the **Docker host**. Its
+administrator must load the bundled profile there before installation, from
+the extracted bundle or checkout:
 
 ```sh
 sudo apparmor_parser -r -W deploy/agentic-coding.apparmor

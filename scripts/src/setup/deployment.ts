@@ -162,7 +162,7 @@ export function buildContainerDeployment(
   if (
     plan.settings.codingRuntime &&
     (!coding ||
-      typeof coding.apparmor !== "boolean" ||
+      coding.apparmor !== true ||
       (prebuiltImage && !coding.image) ||
       (coding.image &&
         (!/^ghcr\.io\/[a-z0-9_.-]+\/[a-z0-9_.-]+@sha256:[a-f0-9]{64}$/u.test(

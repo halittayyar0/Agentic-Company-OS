@@ -75,6 +75,23 @@ test("owned Codex config isolates the provider credential from commands and reta
     true,
   );
 });
+
+test("verified managed Linux configuration fixes command helper selection without inheriting credentials", () => {
+  const built = buildCodexTaskConfiguration({ ...input, managedLinux: true });
+  assert.deepEqual(built.values.shell_environment_policy, {
+    inherit: "none",
+    set: { PATH: "/opt/agentic-inner:/usr/bin:/bin" },
+    experimental_use_profile: false,
+  });
+  const actual = response(built);
+  (actual.config.shell_environment_policy as Record<string, unknown>).set = {
+    PATH: "/usr/bin:/bin",
+  };
+  assert.equal(
+    codexTaskConfigurationMatches(actual, built.permissions.configuration!),
+    false,
+  );
+});
 test("full/custom access grants only workspace file writes and keeps command networking and extra agents disabled", () => {
   for (const policy of [
     { mode: "full_access" as const },
