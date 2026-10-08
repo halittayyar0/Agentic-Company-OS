@@ -34,6 +34,10 @@ original = source.read_bytes()
 anchor = b'      namespace_ids_read (pid);'
 assert original.count(anchor) == 1
 changed = original.replace(anchor, b'      if (opt_info_fd != -1 || opt_json_status_fd != -1)\n        namespace_ids_read (pid);')
+proc_guard = Path('/source/proc-info-guard.c').read_bytes()
+main_anchor = b'int\nmain (int    argc,'
+assert changed.count(main_anchor) == 1
+changed = changed.replace(main_anchor, proc_guard + b'\n' + main_anchor)
 guard_anchor = b'  if (proc_fd == -1)\n    die_with_error ("Can\'t open /proc");'
 assert changed.count(guard_anchor) == 1
 guard = b'''
@@ -57,6 +61,11 @@ guard = b'''
           memcmp (proc_self_pid, expected_proc_self_pid,
                   (size_t) expected_proc_self_length) != 0)
         die ("Cannot report namespace IDs with mismatched procfs PID numbering");
+      cleanup_fd int proc_status_fd = TEMP_FAILURE_RETRY (
+        openat (proc_fd, "self/status", O_RDONLY | O_CLOEXEC));
+      if (proc_status_fd == -1 ||
+          !acos_proc_status_matches (proc_status_fd, getpid ()))
+        die ("Cannot report namespace IDs with mismatched procfs PID namespace");
     }
 '''
 changed = changed.replace(guard_anchor, guard_anchor + guard)
@@ -76,6 +85,7 @@ Path('/source/provenance.json').write_text(json.dumps({
     'changedSourceSha256': hashlib.sha256(changed).hexdigest(),
     'filteredSourceSha256': hashlib.sha256(filtered).hexdigest(),
     'commandFilterSha256': hashlib.sha256(command_filter).hexdigest(),
+    'procInformationGuardSha256': hashlib.sha256(proc_guard).hexdigest(),
     'filterScope': 'mandatory inner helper only; after namespace setup before execution; no opt-out',
     'license': 'LGPL-2.0-or-later',
     'scope': 'same source/toolchain; no production digest or admission modification',

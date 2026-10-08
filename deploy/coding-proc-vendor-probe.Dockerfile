@@ -7,7 +7,10 @@ WORKDIR /source
 COPY deploy/codex-attribution/bubblewrap-source.tar.gz /source/
 COPY scripts/src/testing/vendor-proc/prepare-source.py /source/
 COPY scripts/src/testing/vendor-proc/command-filter.c /source/
-RUN python3 /source/prepare-source.py \
+COPY scripts/src/testing/vendor-proc/proc-info-guard.c scripts/src/testing/vendor-proc/proc-info-guard-test.c /source/
+RUN gcc -Wall -Wextra -Werror /source/proc-info-guard-test.c -o /source/proc-info-guard-test \
+    && /source/proc-info-guard-test \
+    && python3 /source/prepare-source.py \
     && (meson setup /source/build-red /source/tree/bubblewrap --buildtype=release -Dtests=false -Dsupport_setuid=false -Dselinux=disabled -Dman=disabled -Dbash_completion=disabled -Dzsh_completion=disabled || { cat /source/build-red/meson-logs/meson-log.txt; exit 1; }) \
     && ninja -C /source/build-red \
     && cp /source/tree/bubblewrap.c.modified /source/tree/bubblewrap/bubblewrap.c \
@@ -29,6 +32,7 @@ COPY --from=compiler /source/provenance.json /source/binary-sha256.txt /source/c
 COPY deploy/codex-attribution/bubblewrap-source.tar.gz deploy/codex-attribution/BUBBLEWRAP-COPYING /usr/share/doc/acos-proc-vendor-probe/
 COPY scripts/src/testing/vendor-proc/prepare-source.py /usr/share/doc/acos-proc-vendor-probe/
 COPY scripts/src/testing/vendor-proc/command-filter.c /usr/share/doc/acos-proc-vendor-probe/
+COPY scripts/src/testing/vendor-proc/proc-info-guard.c /usr/share/doc/acos-proc-vendor-probe/
 COPY scripts/src/testing/vendor-proc/probe.py /opt/agentic-codex/proc-probe.py
 COPY scripts/src/testing/vendor-proc/privacy.py /opt/agentic-codex/proc-privacy.py
 USER node
