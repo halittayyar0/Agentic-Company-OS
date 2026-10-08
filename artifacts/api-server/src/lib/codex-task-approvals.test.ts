@@ -281,25 +281,42 @@ for (const expiredFence of [false, true])
   });
 
 test("an expired review is invalidated and cannot emit a native decision", async (t) => {
-  const f = await fixture(t, 300),
+  const f = await fixture(t),
     request = f.request();
-  const choice = f.bridge.approve(request, f.authority.binding);
-  void choice.catch(() => {});
-  const approval = await f.pending();
-  await assert.rejects(choice, { kind: "timeout" });
-  const row = await f.row();
-  assert.equal(row.state, "invalidated");
-  assert.equal(row.invalidationReason, "expired");
-  assert.equal(row.consumedAt, null);
-  assert.notEqual(
-    (
-      await f.decide(approval.id, {
-        decision: "approved",
-        expectedArgsHash: request.action.digest,
-      })
-    ).status,
-    200,
-  );
+  let expiredClock: number | undefined;
+  const bridge = createCodexTaskApprovalBridge({
+    authority: f.authority,
+    session: f.session,
+    now: () => expiredClock ?? Date.now(),
+    pollIntervalMs: 20,
+  });
+  try {
+    const choice = bridge.approve(request, f.authority.binding);
+    void choice.catch(() => {});
+    const approval = await f.pending(choice);
+    const awaiting = await f.row();
+    assert.equal(awaiting.state, "awaiting");
+    // Cross the persisted deadline only after the real review exists. A
+    // short wall-clock timeout can expire before a loaded runner observes it.
+    expiredClock = awaiting.expiresAt.getTime() + 1;
+    await assert.rejects(choice, { kind: "timeout" });
+    const row = await f.row();
+    assert.equal(row.state, "invalidated");
+    assert.equal(row.invalidationReason, "expired");
+    assert.equal(row.decision, null);
+    assert.equal(row.consumedAt, null);
+    assert.notEqual(
+      (
+        await f.decide(approval.id, {
+          decision: "approved",
+          expectedArgsHash: request.action.digest,
+        })
+      ).status,
+      200,
+    );
+  } finally {
+    await bridge.close();
+  }
 });
 
 test("a human rejection blocks the task and cannot queue execution or consume authority", async (t) => {
@@ -328,21 +345,72 @@ test("a human rejection blocks the task and cannot queue execution or consume au
 test("emergency stop prevents the reviewed decision and invalidates its native wait", async (t) => {
   const f = await fixture(t),
     request = f.request();
+  let releasePoll!: () => void;
+  const resumePoll = new Promise<void>((resolve) => {
+    releasePoll = resolve;
+  });
+  let observeParkedPoll!: () => void;
+  const parkedPoll = new Promise<void>((resolve) => {
+    observeParkedPoll = resolve;
+  });
+  const bridge = createCodexTaskApprovalBridge({
+    authority: {
+      ...f.authority,
+      readBinding: async () => {
+        if ((await f.row())?.state === "awaiting") {
+          // Hold the native poll outside any DB transaction so the actual
+          // HTTP decision reaches the emergency-stop gate first.
+          observeParkedPoll();
+          await resumePoll;
+        }
+        return f.authority.readBinding();
+      },
+    },
+    session: f.session,
+    pollIntervalMs: 20,
+  });
+  try {
+    const choice = bridge.approve(request, f.authority.binding);
+    void choice.catch(() => {});
+    const approval = await f.pending(choice);
+    await parkedPoll;
+    await db.update(runtimeControlsTable).set({ emergencyStopEnabled: true });
+    const decision = await f.decide(approval.id, {
+      decision: "approved",
+      expectedArgsHash: request.action.digest,
+    });
+    assert.equal(decision.status, 423);
+    assert.equal(decision.body.code, "EMERGENCY_STOP_ACTIVE");
+    releasePoll();
+    await assert.rejects(choice);
+    const row = await f.row();
+    assert.equal(row.state, "invalidated");
+    assert.equal(row.decision, null);
+    assert.equal(row.consumedAt, null);
+  } finally {
+    releasePoll();
+    await bridge.close();
+  }
+});
+
+test("emergency stop observed by the native poll closes the review before a later decision", async (t) => {
+  const f = await fixture(t),
+    request = f.request();
   const choice = f.bridge.approve(request, f.authority.binding);
   void choice.catch(() => {});
-  const approval = await f.pending();
+  const approval = await f.pending(choice);
   await db.update(runtimeControlsTable).set({ emergencyStopEnabled: true });
-  assert.equal(
-    (
-      await f.decide(approval.id, {
-        decision: "approved",
-        expectedArgsHash: request.action.digest,
-      })
-    ).status,
-    423,
-  );
   await assert.rejects(choice);
-  assert.equal((await f.row()).state, "invalidated");
+  const decision = await f.decide(approval.id, {
+    decision: "approved",
+    expectedArgsHash: request.action.digest,
+  });
+  assert.equal(decision.status, 409);
+  assert.equal(decision.body.code, "APPROVAL_ALREADY_RESOLVED");
+  const row = await f.row();
+  assert.equal(row.state, "invalidated");
+  assert.equal(row.decision, null);
+  assert.equal(row.consumedAt, null);
 });
 
 test("a corrupted native marker cannot broaden ordinary awaiting-approval task authority", async (t) => {
