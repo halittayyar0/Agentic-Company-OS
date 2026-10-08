@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -39,6 +39,8 @@ import {
 } from "@/lib/new-project-copy";
 import { cn } from "@/lib/utils";
 import { readSkillDraft } from "@/lib/skill-draft";
+import { useComposerDraft } from "@/hooks/use-composer-draft";
+import type { ComposerDraft } from "@/lib/composer-draft";
 
 const AUTONOMY_OPTIONS = ["finite", "continuous"] as const;
 const PRIORITY_OPTIONS = ["low", "normal", "high", "urgent"] as const;
@@ -157,11 +159,37 @@ function NewTaskForm({
   const [initialSkillDraft] = useState(() =>
     readSkillDraft(window.history.state),
   );
-  const [title, setTitle] = useState(initialSkillDraft?.title ?? "");
-  const [brief, setBrief] = useState(initialSkillDraft?.brief ?? "");
-  const [priority, setPriority] = useState<TaskPriority>("normal");
-  const [autonomyMode, setAutonomyMode] = useState<TaskAutonomyMode>("finite");
-  const [cadenceSeconds, setCadenceSeconds] = useState<ProjectCadence>(3600);
+  const draft = useComposerDraft<Extract<ComposerDraft, { kind: "project" }>>(
+    {
+      version: 1,
+      kind: "project",
+      title: initialSkillDraft?.title ?? "",
+      brief: initialSkillDraft?.brief ?? "",
+      priority: "normal",
+      autonomyMode: "finite",
+      cadenceSeconds: 3600,
+    },
+    !!initialSkillDraft,
+  );
+  const { title, brief, priority, autonomyMode, cadenceSeconds } = draft.value;
+  const setTitle = (value: string) =>
+    draft.change({ ...draft.current.current, title: value });
+  const setBrief = (value: string) =>
+    draft.change({ ...draft.current.current, brief: value });
+  const setPriority = (value: TaskPriority) =>
+    draft.change({ ...draft.current.current, priority: value });
+  const setAutonomyMode = (value: TaskAutonomyMode) =>
+    draft.change({ ...draft.current.current, autonomyMode: value });
+  const setCadenceSeconds = (value: ProjectCadence) =>
+    draft.change({ ...draft.current.current, cadenceSeconds: value });
+  useEffect(() => {
+    if (!initialSkillDraft) return;
+    // Consume deliberate skill-prefill navigation once; a reload must preserve
+    // the user's later edits rather than reapply the old library seed.
+    const { acosSkillDraft: _seed, ...state } = window.history.state ?? {};
+    window.history.replaceState(state, "");
+    draft.change(draft.current.current);
+  }, [initialSkillDraft]);
   const [validationError, setValidationError] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
@@ -190,11 +218,25 @@ function NewTaskForm({
       autonomyMode,
       ...(autonomyMode === "continuous" ? { cadenceSeconds } : {}),
     } satisfies TaskInput;
+    const submittedDraft = draft.current.current;
 
     createTask.mutate(
       { data: projectInput },
       {
         onSuccess: (newTask) => {
+          if (
+            !Number.isInteger(newTask?.id) ||
+            newTask.id <= 0 ||
+            newTask.id > 2147483647
+          ) {
+            toast({
+              title: copy.failureTitle,
+              description: copy.failureDescription,
+              variant: "destructive",
+            });
+            return;
+          }
+          draft.finish(submittedDraft);
           toast({
             title: copy.successTitle,
             description: copy.successDescription(newTask.id),
@@ -285,6 +327,11 @@ function NewTaskForm({
         noValidate
         className="mx-auto mt-8 max-w-3xl"
       >
+        {draft.error && (
+          <p role="alert" className="mb-3 break-words text-sm leading-6">
+            {copy.draftStorageError}
+          </p>
+        )}
         <div className="overflow-hidden rounded-[22px] border border-foreground/15 bg-card shadow-[0_40px_130px_-78px_hsl(var(--foreground))] transition-[border-color,box-shadow] focus-within:border-foreground/30 focus-within:shadow-[0_44px_140px_-74px_hsl(var(--foreground))]">
           <div className="border-b border-border/75 px-5 py-4 sm:px-7 sm:py-5">
             <Label

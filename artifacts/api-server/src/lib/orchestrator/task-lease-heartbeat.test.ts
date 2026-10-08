@@ -26,6 +26,7 @@ import {
   reserveOperation,
 } from "./operation-receipts";
 import { stepTask } from "./step-task";
+import type { ToolRuntimeContext } from "./execute-tool";
 import {
   startTaskLeaseHeartbeat,
   TaskLeaseOwnershipLostError,
@@ -502,7 +503,11 @@ test("two deterministic heartbeat ticks renew task, agent, and running attempt d
   const providerStarted = createDeferred<void>();
   const providerResult =
     createDeferred<Awaited<ReturnType<typeof createChatCompletion>>>();
+  let selectedModel: string | undefined;
+  let dispatchedTools = 0;
+  let dispatchedContext: ToolRuntimeContext | undefined;
   const createCompletion: typeof createChatCompletion = async (params) => {
+    selectedModel = params.model;
     providerStarted.resolve();
     return providerResult.promise.then((result) => ({
       ...result,
@@ -511,7 +516,11 @@ test("two deterministic heartbeat ticks renew task, agent, and running attempt d
   };
   const dependencies = {
     createCompletion,
-    runTool: async () => suspendedToolResult(),
+    runTool: async (context: ToolRuntimeContext) => {
+      dispatchedTools++;
+      dispatchedContext = context;
+      return suspendedToolResult();
+    },
     leaseHeartbeatRuntime: fixture.clock.runtime,
     runtimeOperationsConfig: workerConfig,
   };
@@ -548,6 +557,13 @@ test("two deterministic heartbeat ticks renew task, agent, and running attempt d
     providerResult.resolve(lifecycleCompletion("test-model"));
     await stepping;
   }
+  assert.equal(dispatchedTools, 1);
+  assert.ok(dispatchedContext);
+  assert.equal(dispatchedContext.turnModelId, selectedModel);
+  assert.equal(
+    dispatchedContext.runtimeAttemptId,
+    fixture.claimed.runtimeAttemptId,
+  );
 });
 
 test("provider completion during a persistence outage stays fail closed", async (t) => {

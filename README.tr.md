@@ -142,6 +142,10 @@ Her taşınabilir sürüm sabit bir Linux amd64/arm64 imajına bağlanır; kurul
 
 Teknik belgelerin bir bölümü İngilizcedir. Tekrarlanabilir bir hata bildirimi, daha anlaşılır bir çeviri, faydalı bir rehber veya test edilmiş küçük bir düzeltme de değerli bir katkıdır.
 
+**Geliştirme önizlemesi:** [model bağlantısı rehberi](./docs/model-connections.tr.md)
+yerel modelleri, ChatGPT'yi, API anahtarlarını ve ilk iş taslağının korunmasını
+anlatır. Bu akış yayımlanmış v0.3.13 kurulum paketinde bulunmaz.
+
 ---
 
 **[MIT lisansıyla](./LICENSE) açık kaynak.** Paketteki IBM Plex yazı tipleri SIL Open Font License 1.1 kapsamındadır; [üçüncü taraf bildirimlerine](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt) bakabilirsin.

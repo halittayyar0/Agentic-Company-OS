@@ -24,6 +24,8 @@
     "security:audit": "pnpm audit --prod",
     "test": "tsx ./scripts/src/run-tests.ts",
     "test:installation:native": "tsx ./scripts/src/setup/native-install-smoke.ts",
+    "test:connection:native": "tsx ./scripts/src/testing/guided-local-connection-smoke.ts",
+    "test:coding:container": "tsx ./scripts/src/testing/coding-container-smoke.ts",
     "test:ui": "node ./artifacts/agentic-company-os/node_modules/vite/bin/vite.js build --config ./artifacts/agentic-company-os/vite.config.ts && playwright test --config playwright.config.ts",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
@@ -32,6 +34,7 @@
   "private": true,
   "pnpm": {
     "overrides": {
+      "proxy-addr": "2.0.8",
       "qs": "6.16.0",
       "fast-uri": "3.1.8",
       "brace-expansion": "5.0.12",

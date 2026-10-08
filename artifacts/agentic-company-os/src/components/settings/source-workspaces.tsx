@@ -5,9 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import { customFetch, listAgents } from "@workspace/api-client-react";
 import { useLocale } from "../i18n/locale-provider";
 import { Button } from "../ui/button";
+import { Link } from "wouter";
 
 type Change = {
   id: string;
+  taskId?: number | null;
   agentId: number;
   sourcePath: string;
   request: string;
@@ -48,6 +50,7 @@ const initialCommands = JSON.stringify(
 );
 const inputClass =
   "w-full min-h-11 rounded-lg border bg-background px-3 py-2 text-sm";
+const sourceUrl = "/api/source-changes";
 export function SourceWorkspaceSettings() {
   const { locale } = useLocale();
   const pack = useCustomizationCopy(locale);
@@ -62,12 +65,12 @@ function SourceWorkspaceSettingsBody({ c }: { c: readonly string[] }) {
   const [selected, setSelected] = useState<Change | null>(null),
     [commands, setCommands] = useState(initialCommands),
     [busy, setBusy] = useState(false),
-    [notice, setNotice] = useState<number | null>(null);
+    [notice, setNotice] = useState<14 | 15 | 32 | null>(null);
   const active = useRef(false),
     requestId = useRef<string | null>(null);
   const changes = useQuery({
     queryKey: ["source-changes"],
-    queryFn: () => customFetch<Change[]>("/api/source-changes"),
+    queryFn: () => customFetch<Change[]>(sourceUrl),
     enabled: opened,
     retry: false,
   });
@@ -87,8 +90,16 @@ function SourceWorkspaceSettingsBody({ c }: { c: readonly string[] }) {
       setSelected(row);
       setNotice(14);
       await changes.refetch();
-    } catch {
-      setNotice(15);
+    } catch (error) {
+      const failure = error as {
+        status?: unknown;
+        data?: { code?: unknown } | null;
+      } | null;
+      setNotice(
+        failure?.status === 409 && failure.data?.code === "SOURCE_CODING_ACTIVE"
+          ? 32
+          : 15,
+      );
       await changes.refetch();
     } finally {
       active.current = false;
@@ -101,7 +112,44 @@ function SourceWorkspaceSettingsBody({ c }: { c: readonly string[] }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-  const status = (row: Change) => c[22 + states.indexOf(row.state)] ?? c[30];
+  const status = (row: Change) =>
+    c[states.includes(row.state) ? 22 + states.indexOf(row.state) : 30];
+  const inspect = (id: string) =>
+    act(() => customFetch<Change>(`${sourceUrl}/${id}`));
+  const mutate = (action: "check" | "apply" | "rollback") =>
+    act(() =>
+      post(`${sourceUrl}/${selected!.id}/${action}`, {
+        expectedRevision: selected!.revision,
+        command: action === "check" ? JSON.parse(commands) : undefined,
+      }),
+    );
+  function field(
+    index: number,
+    value: string,
+    change: (value: string) => void,
+    maxLength: number,
+    Tag: "input" | "textarea",
+    dir?: "ltr",
+  ) {
+    return (
+      <label className="block space-y-1">
+        <span>{c[index]}</span>
+        <Tag
+          className={inputClass}
+          value={value}
+          required
+          maxLength={maxLength}
+          dir={dir}
+          disabled={busy}
+          onChange={(event) => {
+            change(event.target.value);
+            requestId.current = null;
+          }}
+        />
+      </label>
+    );
+  }
+  const taskId = selected?.taskId ?? 0;
   return (
     <details
       className="space-y-4 rounded-panel border bg-card p-4 sm:p-6"
@@ -117,7 +165,7 @@ function SourceWorkspaceSettingsBody({ c }: { c: readonly string[] }) {
           event.preventDefault();
           requestId.current ??= crypto.randomUUID();
           void act(() =>
-            post("/api/source-changes", {
+            post(sourceUrl, {
               id: requestId.current,
               agentId: Number(agentId),
               sourcePath,
@@ -126,21 +174,7 @@ function SourceWorkspaceSettingsBody({ c }: { c: readonly string[] }) {
           );
         }}
       >
-        <label className="block space-y-1">
-          <span>{c[2]}</span>
-          <input
-            className={inputClass}
-            value={sourcePath}
-            required
-            maxLength={2048}
-            dir="ltr"
-            disabled={busy}
-            onChange={(event) => {
-              setSource(event.target.value);
-              requestId.current = null;
-            }}
-          />
-        </label>
+        {field(2, sourcePath, setSource, 2048, "input", "ltr")}
         <label className="block space-y-1">
           <span>{c[3]}</span>
           <select
@@ -165,20 +199,7 @@ function SourceWorkspaceSettingsBody({ c }: { c: readonly string[] }) {
               ))}
           </select>
         </label>
-        <label className="block space-y-1">
-          <span>{c[4]}</span>
-          <textarea
-            className={inputClass}
-            required
-            maxLength={4000}
-            value={request}
-            disabled={busy}
-            onChange={(event) => {
-              setRequest(event.target.value);
-              requestId.current = null;
-            }}
-          />
-        </label>
+        {field(4, request, setRequest, 4000, "textarea")}
         <Button disabled={busy || !agentId} type="submit">
           {busy ? c[13] : c[5]}
         </Button>
@@ -188,13 +209,9 @@ function SourceWorkspaceSettingsBody({ c }: { c: readonly string[] }) {
         <Button
           variant="outline"
           disabled={busy}
-          onClick={() => {
-            void changes.refetch();
-            if (selected)
-              void act(() =>
-                customFetch<Change>(`/api/source-changes/${selected.id}`),
-              );
-          }}
+          onClick={() =>
+            void (selected ? inspect(selected.id) : changes.refetch())
+          }
         >
           {c[12]}
         </Button>
@@ -216,11 +233,7 @@ function SourceWorkspaceSettingsBody({ c }: { c: readonly string[] }) {
             <Button
               variant="outline"
               disabled={busy}
-              onClick={() =>
-                void act(() =>
-                  customFetch<Change>(`/api/source-changes/${row.id}`),
-                )
-              }
+              onClick={() => void inspect(row.id)}
             >
               {c[7]}
             </Button>
@@ -261,17 +274,7 @@ function SourceWorkspaceSettingsBody({ c }: { c: readonly string[] }) {
                 />
               </label>
               <p className="text-xs text-muted-foreground">{c[18]}</p>
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  void act(() =>
-                    post(`/api/source-changes/${selected.id}/check`, {
-                      expectedRevision: selected.revision,
-                      command: JSON.parse(commands),
-                    }),
-                  )
-                }
-              >
+              <Button disabled={busy} onClick={() => void mutate("check")}>
                 {c[9]}
               </Button>
             </>
@@ -292,40 +295,30 @@ function SourceWorkspaceSettingsBody({ c }: { c: readonly string[] }) {
             </details>
           )}
           <p className="text-xs text-muted-foreground">{c[17]}</p>
-          {selected.state === "verified" && (
+          {["verified", "applied"].includes(selected.state) && (
             <Button
+              variant={selected.state === "applied" ? "outline" : "default"}
               disabled={busy}
               onClick={() =>
-                void act(() =>
-                  post(`/api/source-changes/${selected.id}/apply`, {
-                    expectedRevision: selected.revision,
-                  }),
-                )
+                void mutate(selected.state === "applied" ? "rollback" : "apply")
               }
             >
-              {c[10]}
-            </Button>
-          )}
-          {selected.state === "applied" && (
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                void act(() =>
-                  post(`/api/source-changes/${selected.id}/rollback`, {
-                    expectedRevision: selected.revision,
-                  }),
-                )
-              }
-            >
-              {c[11]}
+              {c[selected.state === "applied" ? 11 : 10]}
             </Button>
           )}
         </div>
       )}
       {notice !== null && (
-        <p role={notice === 15 ? "alert" : "status"} className="text-sm">
+        <p role={notice === 14 ? "status" : "alert"} className="text-sm">
           {c[notice]}
+          {Number.isSafeInteger(taskId) && taskId > 0 && (
+            <Link
+              href={`/tasks/${taskId}`}
+              className="ms-2 inline-flex min-h-11 underline"
+            >
+              {c[33]}
+            </Link>
+          )}
         </p>
       )}
     </details>

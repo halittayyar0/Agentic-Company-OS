@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import {
   taskBudgetBlockReason,
+  unreportedTokenUsageBlockReason,
   type TaskBudgetLimits,
 } from "./task-budget-policy";
 import type { WorkspaceLocale } from "../workspace-locale";
@@ -16,6 +17,7 @@ import {
   type SpendReaderClient,
 } from "./family-spend-admission";
 import { ModelAdmissionDeniedError } from "./model-fallback";
+import { tokenUsageEvidence } from "../usage-coverage";
 
 export class TaskSpendBudgetError extends ModelAdmissionDeniedError {}
 
@@ -111,16 +113,19 @@ export async function readIndividualTaskSpendAdmission(
         string | null
       >`sum(${usageEventsTable.reportedCostUsd}) filter (where ${usageEventsTable.createdAt} >= ${cycleStart})`,
       rows: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${cycleStart})`,
+      tokenReported: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${cycleStart} and ${usageEventsTable.usageReported} is true)`,
       unknown: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${cycleStart} and ${usageEventsTable.reportedCostUsd} is null)`,
       allTokens: sql<string>`coalesce(sum(${usageEventsTable.totalTokens}), 0)`,
       allCost: sql<string | null>`sum(${usageEventsTable.reportedCostUsd})`,
       allRows: sql<string>`count(*)`,
+      allTokenReported: sql<string>`count(*) filter (where ${usageEventsTable.usageReported} is true)`,
       allUnknown: sql<string>`count(*) filter (where ${usageEventsTable.reportedCostUsd} is null)`,
       dayTokens: sql<string>`coalesce(sum(case when ${usageEventsTable.createdAt} >= ${dayStart} then ${usageEventsTable.totalTokens} else 0 end), 0)`,
       dayCost: sql<
         string | null
       >`sum(${usageEventsTable.reportedCostUsd}) filter (where ${usageEventsTable.createdAt} >= ${dayStart})`,
       dayRows: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${dayStart})`,
+      dayTokenReported: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${dayStart} and ${usageEventsTable.usageReported} is true)`,
       dayUnknown: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${dayStart} and ${usageEventsTable.reportedCostUsd} is null)`,
     })
     .from(usageEventsTable)
@@ -164,16 +169,27 @@ export async function readIndividualTaskSpendAdmission(
       : Math.max(task.tokensUsed, Number(usage?.allTokens ?? 0)),
     estimatedCostUsd: cycleCost.reportedCostUsd,
   };
-  const cycleReason = taskBudgetBlockReason(
-    snapshot,
-    { ...limits, maxSteps: recurring ? null : limits.maxSteps },
-    locale,
+  const cycleTokenEvidence = tokenUsageEvidence(
+    recurring ? usage?.rows : usage?.allRows,
+    recurring ? usage?.tokenReported : usage?.allTokenReported,
+    !recurring && task.tokensUsed > Number(usage?.allTokens ?? 0),
   );
+  const cycleReason =
+    taskBudgetBlockReason(
+      snapshot,
+      { ...limits, maxSteps: recurring ? null : limits.maxSteps },
+      locale,
+    ) ??
+    unreportedTokenUsageBlockReason(
+      cycleTokenEvidence.tokenUsageCoverage,
+      locale,
+    );
   if (cycleReason || !recurring)
     return {
       reason: cycleReason,
       tokensUsed: snapshot.tokensUsed,
       ...cycleCost,
+      ...cycleTokenEvidence,
       usageSource: recurring
         ? "current_cycle_usage_ledger"
         : "max(task_aggregate,usage_events_ledger)",
@@ -188,19 +204,32 @@ export async function readIndividualTaskSpendAdmission(
     tokensUsed: Number(usage?.dayTokens ?? 0),
     estimatedCostUsd: dailyCost.reportedCostUsd,
   };
-  const reason = taskBudgetBlockReason(
-    daily,
-    {
-      maxSteps: null,
-      maxTokens: Math.floor(positive("MAX_RECURRING_DAILY_TOKENS", 250_000)),
-      maxReportedCostUsd: positive("MAX_RECURRING_DAILY_REPORTED_COST_USD", 5),
-    },
-    locale,
+  const dailyTokenEvidence = tokenUsageEvidence(
+    usage?.dayRows,
+    usage?.dayTokenReported,
   );
+  const reason =
+    taskBudgetBlockReason(
+      daily,
+      {
+        maxSteps: null,
+        maxTokens: Math.floor(positive("MAX_RECURRING_DAILY_TOKENS", 250_000)),
+        maxReportedCostUsd: positive(
+          "MAX_RECURRING_DAILY_REPORTED_COST_USD",
+          5,
+        ),
+      },
+      locale,
+    ) ??
+    unreportedTokenUsageBlockReason(
+      dailyTokenEvidence.tokenUsageCoverage,
+      locale,
+    );
   return {
     reason,
     tokensUsed: daily.tokensUsed,
     ...dailyCost,
+    ...dailyTokenEvidence,
     usageSource: "rolling_24h_usage_ledger",
   };
 }

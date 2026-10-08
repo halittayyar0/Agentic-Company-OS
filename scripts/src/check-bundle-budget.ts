@@ -2,6 +2,10 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+import { measureUsageReportingBundleGrowth } from "./usage-reporting-bundle-budget";
+import { measureCodingRecoveryBundle } from "./coding-recovery-bundle-budget";
+import { measureComposerDraftBundle } from "./composer-draft-bundle-budget";
+import { measureConnectionBundle } from "./connection-bundle-budget";
 
 const outputDirectory = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -166,6 +170,12 @@ const assets = readdirSync(outputDirectory)
 const codeAssets = assets.filter((asset) =>
   /\.(?:css|js)$/iu.test(asset.fileName),
 );
+const composerDraft = measureComposerDraftBundle(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+);
 const languageLocales = [
   "tr",
   "en",
@@ -242,6 +252,32 @@ const meetingTurnLocaleAssets = languagePackAssets(
   "meeting turn recovery",
 );
 const operationsLocaleAssets = languagePackAssets("operations-", "operations");
+const codingRecoveryLocaleAssets = languagePackAssets(
+  "coding-recovery-",
+  "coding session recovery",
+);
+const connectionLocaleAssets = languagePackAssets(
+  "connection-",
+  "guided connection",
+);
+const connection = measureConnectionBundle(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+);
+const codingRecovery = measureCodingRecoveryBundle(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+);
+const usageReportingGrowth = measureUsageReportingBundleGrowth(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+);
 const meetingLocaleAssets = languagePackAssets("meetings-", "project meetings");
 const studioLocaleAssets = languagePackAssets("studio-", "project studio");
 const expertChatLocaleAssets = languagePackAssets("chat-", "expert chat");
@@ -299,6 +335,8 @@ const localeAssetNames = new Set(
     ...meetingTurnLocaleAssets,
     ...meetingLocaleAssets,
     ...operationsLocaleAssets,
+    ...codingRecoveryLocaleAssets,
+    ...connectionLocaleAssets,
     ...computerLocaleAssets,
     ...fileLocaleAssets,
     ...browserLocaleAssets,
@@ -330,6 +368,8 @@ const sharedCodeGzipBytes = sharedCodeAssets.reduce(
 );
 const totalCodeRawBytes =
   sharedCodeRawBytes +
+  Math.max(...connectionLocaleAssets.map((asset) => asset.rawBytes)) +
+  Math.max(...codingRecoveryLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...studioLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...traceLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...meetingTurnLocaleAssets.map((asset) => asset.rawBytes)) +
@@ -356,6 +396,8 @@ const totalCodeRawBytes =
   Math.max(...shellLocaleAssets.map((asset) => asset.rawBytes));
 const totalCodeGzipBytes =
   sharedCodeGzipBytes +
+  Math.max(...connectionLocaleAssets.map((asset) => asset.gzipBytes)) +
+  Math.max(...codingRecoveryLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...studioLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...traceLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...meetingTurnLocaleAssets.map((asset) => asset.gzipBytes)) +
@@ -773,15 +815,19 @@ for (const surface of keeperSurfaces) {
   const matches = codeAssets.filter((asset) => surface.match(asset.fileName));
   if (matches.length !== 1)
     throw new Error("Expected exactly one measured Keeper integration asset.");
-  keeperLiveRawBytes += Math.max(0, matches[0].rawBytes - surface.raw);
-  keeperLiveGzipBytes += Math.max(0, matches[0].gzipBytes - surface.gzip);
-  sharedResumeRawBytes += Math.max(
-    0,
-    matches[0].rawBytes - surface.keeperReleaseRaw,
-  );
+  // Draft's measured entry growth belongs to its own strict feature cap.
+  // Remove it from Keeper and resume overlap before applying either credit.
+  const isEntry = /^index-[^/]+\.js$/u.test(matches[0].fileName);
+  const accountedRaw =
+    matches[0].rawBytes - (isEntry ? composerDraft.entryRaw : 0);
+  const accountedGzip =
+    matches[0].gzipBytes - (isEntry ? composerDraft.entryGzip : 0);
+  keeperLiveRawBytes += Math.max(0, accountedRaw - surface.raw);
+  keeperLiveGzipBytes += Math.max(0, accountedGzip - surface.gzip);
+  sharedResumeRawBytes += Math.max(0, accountedRaw - surface.keeperReleaseRaw);
   sharedResumeGzipBytes += Math.max(
     0,
-    matches[0].gzipBytes - surface.keeperReleaseGzip,
+    accountedGzip - surface.keeperReleaseGzip,
   );
 }
 if (
@@ -800,6 +846,10 @@ const budgetResumeGlobalGzipBytes =
   budgetResumeGzipBytes - Math.min(900, sharedResumeGzipBytes);
 if (
   totalCodeGzipBytes -
+    connection.gzip -
+    composerDraft.gzip -
+    codingRecovery.gzip -
+    usageReportingGrowth.gzip -
     budgetResumeGlobalGzipBytes -
     skillLibraryGzipBytes -
     customizationGzipBytes -
@@ -812,31 +862,39 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code excluding bounded new features exceeds the original 396 KB gzip budget`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
 if (
   totalCodeRawBytes -
+    connection.raw -
+    composerDraft.raw -
+    codingRecovery.raw -
+    usageReportingGrowth.raw -
     budgetResumeGlobalRawBytes -
     completionReviewRawBytes -
     keeperLiveRawBytes >
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `total raw code ${formatBytes(totalCodeRawBytes)} exceeds ${formatBytes(budgets.totalCodeRawBytes)}`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - connection.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
 if (
   totalCodeGzipBytes -
+    connection.gzip -
+    composerDraft.gzip -
+    codingRecovery.gzip -
+    usageReportingGrowth.gzip -
     budgetResumeGlobalGzipBytes -
     completionReviewGzipBytes -
     keeperLiveGzipBytes >
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `total gzip code ${formatBytes(totalCodeGzipBytes)} exceeds ${formatBytes(budgets.totalCodeGzipBytes)}`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -938,8 +996,12 @@ if (
 )
   violations.push("Meeting language packs exceed their aggregate budget.");
 if (
-  operationsLocaleAssets.reduce((sum, a) => sum + a.rawBytes, 0) > 100000 ||
-  operationsLocaleAssets.reduce((sum, a) => sum + a.gzipBytes, 0) > 36000
+  operationsLocaleAssets.reduce((sum, a) => sum + a.rawBytes, 0) -
+    usageReportingGrowth.allLocaleRaw >
+    100000 ||
+  operationsLocaleAssets.reduce((sum, a) => sum + a.gzipBytes, 0) -
+    usageReportingGrowth.allLocaleGzip >
+    36000
 )
   violations.push("Operations language packs exceed 100 KB raw / 36 KB gzip.");
 console.table(
@@ -961,6 +1023,15 @@ console.log(
 );
 console.log(
   `Living Keepers measured integration and selected-language growth: ${formatBytes(keeperLiveRawBytes)} raw / ${formatBytes(keeperLiveGzipBytes)} gzip (10 KB / 4 KB feature cap).`,
+);
+console.log(
+  `Coding session recovery logic, largest selected language and measured project wiring: ${codingRecovery.raw} raw / ${codingRecovery.gzip} gzip bytes (12 KB / 4.5 KB cap), including ${codingRecovery.integrationRaw} raw route bytes (500-byte cap, no gzip credit); all packs ${codingRecovery.allLocaleRaw} raw / ${codingRecovery.allLocaleGzip} gzip bytes (18 KB / 8 KB cap). Existing base and total ceilings retained.`,
+);
+console.log(
+  `Composer draft continuity: ${composerDraft.raw} raw / ${composerDraft.gzip} gzip bytes (5 KB / 2 KB cap), project wiring ${composerDraft.integrationRaw} raw / ${composerDraft.integrationGzip} gzip bytes (1200 / 500 cap), entry integration ${composerDraft.entryRaw} raw / ${composerDraft.entryGzip} gzip bytes (3000 / 1200 cap). All warning additions ${composerDraft.allLocaleRaw} raw / ${composerDraft.allLocaleGzip} gzip bytes (4 KB / 2 KB cap). Entry excluded from Keeper/resume overlap; no duplicate, vendor, CSS or API credit.`,
+);
+console.log(
+  `Guided connection: ${connection.raw} raw / ${connection.gzip} gzip bytes (28 KB / 10.5 KB exclusive feature cap); all authored packs ${connection.allLocaleRaw} raw / ${connection.allLocaleGzip} gzip bytes (40 KB / 16 KB cap).`,
 );
 if (violations.length > 0) {
   throw new Error(
@@ -989,6 +1060,9 @@ console.log(
 
 console.log(
   `All operations language packs: ${formatBytes(operationsLocaleAssets.reduce((s, a) => s + a.rawBytes, 0))} raw / ${formatBytes(operationsLocaleAssets.reduce((s, a) => s + a.gzipBytes, 0))} gzip.`,
+);
+console.log(
+  `Usage reporting measured feature: ${usageReportingGrowth.raw} raw / ${usageReportingGrowth.gzip} gzip bytes; all locale additions ${usageReportingGrowth.allLocaleRaw} raw / ${usageReportingGrowth.allLocaleGzip} gzip bytes. Existing base ceilings retained.`,
 );
 
 console.log(

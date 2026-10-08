@@ -141,6 +141,9 @@
 
 連結中的技術文件以英語為主。歡迎範圍明確的小型貢獻：可重現的錯誤回報、更清楚的翻譯、實用指南或經過測試的修正。
 
+**開發預覽：**[模型連線指南](./docs/model-connections.zh-TW.md)介紹本機模型、ChatGPT、API 金鑰及首次任務草稿的保留。
+已發布的 v0.3.13 安裝套件尚未包含此流程。
+
 ---
 
 **以 [MIT 授權條款](./LICENSE)開放原始碼。** 隨附的 IBM Plex 字型採用 SIL Open Font License 1.1；請參閱[第三方聲明](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt)。

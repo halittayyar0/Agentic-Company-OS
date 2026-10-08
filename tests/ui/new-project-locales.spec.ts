@@ -29,7 +29,7 @@ test("English new-project form validates in place and keeps the draft after a fa
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Connect a model" }),
+    page.getByRole("button", { name: "Connect a model" }),
   ).toBeVisible();
   const name = page.getByRole("textbox", { name: "Project name" });
   const brief = page.getByRole("textbox", { name: "Goal and scope" });

@@ -1,4 +1,5 @@
 import type OpenAI from "openai";
+import { PlanInferenceError } from "@workspace/ai-server";
 import { db, usageEventsTable } from "@workspace/db";
 import { logger } from "../logger";
 
@@ -9,6 +10,8 @@ export interface RecordedUsage {
   completionTokens: number;
   totalTokens: number;
   reportedCostUsd: number | null;
+  /** False means token counters below are a reported lower bound, not zero usage. */
+  usageReported: boolean;
 }
 
 function nonNegativeInteger(value: unknown): number {
@@ -22,16 +25,19 @@ function nonNegativeInteger(value: unknown): number {
  * cost directly; for other providers cost stays null instead of inventing a
  * per-token price.
  */
-export async function recordCompletionUsage(params: {
-  completion: OpenAI.Chat.Completions.ChatCompletion;
+interface UsageContext {
   provider: string;
   modelId: string;
   agentId: number;
   taskId: number | null;
   kind: UsageKind;
-}): Promise<RecordedUsage> {
-  const usage = params.completion.usage as
-    (OpenAI.Completions.CompletionUsage & { cost?: unknown }) | undefined;
+}
+async function appendUsage(
+  params: UsageContext,
+  usage: (OpenAI.Completions.CompletionUsage & { cost?: unknown }) | undefined,
+  outcome: "completed" | "failed",
+  failureKind: string | null,
+): Promise<RecordedUsage> {
   const promptTokens = nonNegativeInteger(usage?.prompt_tokens);
   const completionTokens = nonNegativeInteger(usage?.completion_tokens);
   const totalTokens = nonNegativeInteger(
@@ -42,12 +48,21 @@ export async function recordCompletionUsage(params: {
     typeof rawCost === "number" && Number.isFinite(rawCost) && rawCost >= 0
       ? rawCost
       : null;
+  const usageReported = [
+    usage?.prompt_tokens,
+    usage?.completion_tokens,
+    usage?.total_tokens,
+  ].every(
+    (value) =>
+      typeof value === "number" && Number.isSafeInteger(value) && value >= 0,
+  );
 
   const normalized = {
     promptTokens,
     completionTokens,
     totalTokens,
     reportedCostUsd,
+    usageReported,
   };
 
   await db
@@ -58,6 +73,9 @@ export async function recordCompletionUsage(params: {
       kind: params.kind,
       modelId: params.modelId,
       provider: params.provider,
+      usageReported,
+      outcome,
+      failureKind,
       promptTokens,
       completionTokens,
       totalTokens,
@@ -72,4 +90,37 @@ export async function recordCompletionUsage(params: {
     });
 
   return normalized;
+}
+
+export async function recordCompletionUsage(
+  params: UsageContext & {
+    completion: OpenAI.Chat.Completions.ChatCompletion;
+  },
+): Promise<RecordedUsage> {
+  return appendUsage(params, params.completion.usage, "completed", null);
+}
+
+/** Preserve accounting before propagating the exact failed inference outcome.
+ * Connection validation and an already-paused plan did not start inference and
+ * produce no fabricated receipt. The ordinary successful append stays with the
+ * caller, including its existing late-result ownership fence. */
+export async function withCompletionFailureAccounting<T>(
+  action: () => Promise<T>,
+  context: UsageContext,
+): Promise<T> {
+  try {
+    return await action();
+  } catch (error) {
+    if (
+      error instanceof PlanInferenceError &&
+      (error.requestStarted || error.usage !== null)
+    )
+      await appendUsage(
+        context,
+        error.usage ?? undefined,
+        "failed",
+        error.kind,
+      );
+    throw error;
+  }
 }

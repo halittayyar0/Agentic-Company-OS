@@ -22,6 +22,18 @@ export function OperationsSummaryStrip({
 
   const intervention =
     model.taskCounts.blocked + model.taskCounts.awaitingApproval;
+  // A retained older snapshot has no provenance; it must not imply measured
+  // totals. Provider health coverage is independent of usage reporting.
+  const tokenCoverage = model.usage.tokenUsageCoverage ?? "unknown";
+  const tokenValue =
+    tokenCoverage === "complete" || tokenCoverage === "no_usage"
+      ? number.format(model.usage.taskTokens)
+      : model.usage.taskTokens > 0
+        ? t("tokensAtLeast", { count: number.format(model.usage.taskTokens) })
+        : t("tokenUsageUnknown");
+  const costComplete =
+    model.usage.usageEvents > 0 &&
+    model.usage.costReportedEvents === model.usage.usageEvents;
   const entries = [
     {
       label: t("activeWork"),
@@ -61,11 +73,17 @@ export function OperationsSummaryStrip({
     },
     {
       label: t("tokenUsage"),
-      value: number.format(model.usage.taskTokens),
+      value: tokenValue,
       detail:
-        model.usage.providerMetricsCoverage === "complete"
-          ? t("reportedCost", { cost: currency(model.usage.reportedCostUsd) })
-          : t("partialCost"),
+        tokenCoverage === "no_usage"
+          ? t("noRecordedUsage")
+          : tokenCoverage !== "complete"
+            ? t("tokenCoveragePartial")
+            : costComplete
+              ? t("reportedCost", {
+                  cost: currency(model.usage.reportedCostUsd),
+                })
+              : t("partialCost"),
       icon: Coins,
     },
   ];

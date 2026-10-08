@@ -12,6 +12,9 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type OpenAI from "openai";
 import {
   createChatCompletion,
+  completionTokenControl,
+  chatGPTPlanHistoryMessage,
+  PlanInferenceError,
   DEFAULT_MAX_COMPLETION_TOKENS,
 } from "@workspace/ai-server";
 import {
@@ -45,7 +48,10 @@ import {
   taskRetryDecision,
   type TaskStepFailureKind,
 } from "./task-retry-policy";
-import { recordCompletionUsage } from "./usage-ledger";
+import {
+  recordCompletionUsage,
+  withCompletionFailureAccounting,
+} from "./usage-ledger";
 import { executionComplexity } from "./execution-economy";
 import {
   readTaskSpendBlockReason,
@@ -87,6 +93,7 @@ import {
 } from "./task-lease-heartbeat";
 import { assertOutstandingApprovalCapacity } from "./runtime-capacity";
 import { completeOperation, markOperationRunning } from "./operation-receipts";
+import { planTaskRecoveryMessage } from "./plan-task-recovery";
 
 const MAX_CONSECUTIVE_FAILURES = Math.max(
   1,
@@ -585,6 +592,8 @@ export async function stepTask(
   let stepError: string | null = null;
   let spendBudgetExceeded = false;
   let stepFailureKind: TaskStepFailureKind | null = null;
+  let planFailureKind: PlanInferenceError["kind"] | null = null;
+  let planRetryAt: number | null = null;
   let exhaustedModelFailures: ReadonlyArray<ModelAttemptFailure> = [];
   let attemptDisposition: "succeeded" | "blocked" | null = null;
   let attemptModelId: string | null = null;
@@ -622,7 +631,10 @@ export async function stepTask(
       ? `${baseSystemPrompt}\n\n${exclusiveTurnSystemPrompt(exclusivePolicy, locale)}`
       : baseSystemPrompt;
     const authorizedTools = filterToolsForExclusiveTurn(
-      await getToolsForAgent(agent, true),
+      await getToolsForAgent(agent, true, {
+        modelId: task.executionModelId ?? agent.modelId,
+        locale,
+      }),
       exclusivePolicy,
     );
     const maxToolRounds = resolveMaxToolRounds(
@@ -741,12 +753,27 @@ export async function stepTask(
             toolMessage(locale, "taskModelRunning", { model: route.modelId }),
           );
           await assertTaskInferenceAdmission(task.id, locale);
-          const result = await createCompletion({
-            model: route.modelId,
-            messages,
-            tools: toolCatalog?.tools ?? authorizedTools,
-            maxTokens: DEFAULT_MAX_COMPLETION_TOKENS,
-          });
+          attemptModelId = route.modelId;
+          attemptProvider = route.provider;
+          const result = await withCompletionFailureAccounting(
+            () =>
+              createCompletion({
+                model: route.modelId,
+                messages,
+                tools: toolCatalog?.tools ?? authorizedTools,
+                ...completionTokenControl(
+                  route.modelId,
+                  DEFAULT_MAX_COMPLETION_TOKENS,
+                ),
+              }),
+            {
+              provider: route.provider,
+              modelId: route.modelId,
+              agentId: agent.id,
+              taskId: task.id,
+              kind: "task_step",
+            },
+          );
           try {
             await leaseHeartbeat.assertOwned();
           } catch (error) {
@@ -880,10 +907,7 @@ export async function stepTask(
         }
         if (round < maxToolRounds - 1 && passiveResponsesForRoute === 0) {
           passiveResponsesForRoute += 1;
-          messages.push({
-            role: "assistant",
-            content: assistantMessage.content ?? null,
-          });
+          messages.push(chatGPTPlanHistoryMessage(completion));
           messages.push({
             role: "user",
             content: statusCopy.taskOpenInstruction,
@@ -895,10 +919,7 @@ export async function stepTask(
           await activateRoute(fallbackAfterPassive, "passive_response");
           activeRoutes = activeRoutes.slice(1);
           passiveResponsesForRoute = 0;
-          messages.push({
-            role: "assistant",
-            content: assistantMessage.content ?? null,
-          });
+          messages.push(chatGPTPlanHistoryMessage(completion));
           messages.push({
             role: "user",
             content: statusCopy.taskPassiveFallbackInstruction,
@@ -934,11 +955,7 @@ export async function stepTask(
         );
       }
 
-      messages.push({
-        role: "assistant",
-        content: assistantMessage.content ?? null,
-        tool_calls: toolCalls,
-      });
+      messages.push(chatGPTPlanHistoryMessage(completion));
 
       let taskTerminated = false;
       let lifecycleToolRejected = false;
@@ -1044,6 +1061,7 @@ export async function stepTask(
             taskId: task.id,
             taskLeaseOwner: task.leaseOwner,
             runtimeAttemptId: task.runtimeAttemptId,
+            turnModelId: model,
             assertTaskLease: (action) => leaseHeartbeat.assertOwned(action),
             attachOperationInvocation: (input) =>
               leaseHeartbeat.attachOperationInvocation(input),
@@ -1196,6 +1214,16 @@ export async function stepTask(
     } else if (error instanceof TaskSpendBudgetError) {
       spendBudgetExceeded = true;
       stepError = error.message;
+    } else if (error instanceof PlanInferenceError) {
+      stepFailureKind = "chatgpt_plan";
+      planFailureKind = error.kind;
+      planRetryAt = error.kind === "quota" ? error.retryAt : null;
+      stepError = planTaskRecoveryMessage(error, locale);
+      if (error.usage) {
+        promptTokens += error.usage.prompt_tokens;
+        completionTokens += error.usage.completion_tokens;
+        totalTokens += error.usage.total_tokens;
+      }
     } else if (error instanceof ModelProviderSetupRequiredError) {
       stepFailureKind = "provider_setup_required";
       stepError = PROVIDER_SETUP_MESSAGE[locale];
@@ -1223,13 +1251,16 @@ export async function stepTask(
         const failureCount = stepError ? task.consecutiveFailures + 1 : 0;
         const persistentProviderFailure =
           stepFailureKind === "model_routes_exhausted" ||
-          stepFailureKind === "provider_setup_required";
+          stepFailureKind === "provider_setup_required" ||
+          stepFailureKind === "chatgpt_plan";
         const retryDecision = stepError
           ? taskRetryDecision({
               autonomyMode: task.autonomyMode,
               failureKind: stepFailureKind ?? "runtime",
               consecutiveFailures: failureCount,
               maxConsecutiveRuntimeFailures: MAX_CONSECUTIVE_FAILURES,
+              planRetryAt,
+              now: finishedAt.getTime(),
             })
           : null;
         const shouldBlock =
@@ -1374,6 +1405,12 @@ export async function stepTask(
               lastSteppedAt: finishedAt,
               lastHeartbeatAt: finishedAt,
               tokensUsed: task.tokensUsed + totalTokens,
+              ...(attemptModelId
+                ? {
+                    lastModelId: attemptModelId,
+                    lastModelProvider: attemptProvider,
+                  }
+                : {}),
               consecutiveFailures: failureCount,
               ...(stepError
                 ? { nextAttemptAt: nextRetryAt }
@@ -1457,21 +1494,32 @@ export async function stepTask(
               agentId: agent.id,
               taskId: task.id,
               type: "error",
-              summary: shouldBlock
-                ? toolMessage(locale, "taskBlocked", { count: failureCount })
-                : persistentProviderFailure
-                  ? toolMessage(locale, "taskProviderRetry", {
-                      at: nextRetryAt!.toISOString(),
-                    })
-                  : toolMessage(locale, "taskRuntimeRetry", {
-                      at: nextRetryAt!.toISOString(),
-                    }),
+              summary:
+                stepFailureKind === "chatgpt_plan"
+                  ? stepError
+                  : shouldBlock
+                    ? toolMessage(locale, "taskBlocked", {
+                        count: failureCount,
+                      })
+                    : persistentProviderFailure
+                      ? toolMessage(locale, "taskProviderRetry", {
+                          at: nextRetryAt!.toISOString(),
+                        })
+                      : toolMessage(locale, "taskRuntimeRetry", {
+                          at: nextRetryAt!.toISOString(),
+                        }),
               detail: {
-                runtimeEvent: shouldBlock
-                  ? "task_blocked_after_runtime_failures"
-                  : "task_retry_scheduled",
+                runtimeEvent:
+                  stepFailureKind === "chatgpt_plan"
+                    ? shouldBlock
+                      ? "chatgpt_plan_paused"
+                      : "chatgpt_plan_retry_scheduled"
+                    : shouldBlock
+                      ? "task_blocked_after_runtime_failures"
+                      : "task_retry_scheduled",
                 attemptId: task.runtimeAttemptId,
                 failureKind: stepFailureKind,
+                ...(planFailureKind ? { planFailureKind, planRetryAt } : {}),
                 consecutiveFailures: failureCount,
                 nextAttemptAt: nextRetryAt?.toISOString() ?? null,
                 remainsActive: !shouldBlock,
@@ -1483,7 +1531,10 @@ export async function stepTask(
                   attempt: failure.attempt,
                 })),
               },
-              severity: shouldBlock ? "critical" : "warning",
+              severity:
+                shouldBlock && stepFailureKind !== "chatgpt_plan"
+                  ? "critical"
+                  : "warning",
             });
           } else if (operationOutcomeUnknown) {
             await tx.insert(activityEventsTable).values({

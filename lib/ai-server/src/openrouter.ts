@@ -1,5 +1,15 @@
 import { randomUUID } from "node:crypto";
 import OpenAI from "openai";
+import {
+  createChatGPTPlanCompletion,
+  getChatGPTPlanCatalogSnapshot,
+  refreshChatGPTPlanCatalog,
+} from "./chatgpt-plan-provider";
+import {
+  chatGPTPlanRequestId,
+  PlanInferenceError,
+  resolveChatGPTPlanModelId,
+} from "./chatgpt-plan-responses";
 import { openai } from "./client";
 import {
   getDirectOpenAIClient,
@@ -34,7 +44,8 @@ import {
  *   the Authorization header to an attacker-controlled server.
  */
 
-export type ModelProvider = "replit" | "openrouter" | "openai" | "ollama";
+export type ModelProvider =
+  "replit" | "openrouter" | "openai" | "ollama" | "chatgpt";
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
@@ -446,6 +457,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Resolves which backend serves a given model id. */
 export function resolveModelProvider(modelId: string): ModelProvider | null {
+  if (resolveChatGPTPlanModelId(modelId)) return "chatgpt";
   if (!modelId) return null;
   if (isKnownModelId(modelId)) return "replit";
   if (resolveDirectOpenAIModelId(modelId)) return "openai";
@@ -468,6 +480,15 @@ export interface UnifiedChatCompletionParams {
   signal?: AbortSignal;
   /** Diagnostics can opt out of SDK retries to bound billable attempts. */
   disableRetries?: boolean;
+}
+
+/** Plan preview rejects an output-token ceiling. The host retains its own
+ * admission budgets; they are not an upstream cap on an in-flight response. */
+export function completionTokenControl(
+  model: string,
+  limit: number,
+): { maxTokens?: number } {
+  return resolveChatGPTPlanModelId(model) ? {} : { maxTokens: limit };
 }
 
 export const DEFAULT_LLM_REQUEST_TIMEOUT_MS = 120_000;
@@ -621,6 +642,37 @@ export async function createChatCompletion(
   params: UnifiedChatCompletionParams,
 ): Promise<{ completion: UnifiedCompletion; provider: ModelProvider }> {
   const { model, messages, tools, maxTokens, responseFormat, signal } = params;
+  if (resolveChatGPTPlanModelId(model)) {
+    // The plan stream owns its deadline so cancellation retains observed usage.
+    // An outer generic race could discard that accounting when it wins first.
+    await withChatCompletionTimeout(
+      async () => providerRequestGuard?.(),
+      signal,
+    );
+    try {
+      const completion = await createChatGPTPlanCompletion(
+        params,
+        resolveLlmRequestTimeoutMs(),
+      );
+      observeProviderRequest({
+        provider: "chatgpt",
+        model,
+        requestId: chatGPTPlanRequestId(completion),
+        clientRequestId: null,
+        outcome: "success",
+      });
+      return { completion, provider: "chatgpt" };
+    } catch (error) {
+      observeProviderRequest({
+        provider: "chatgpt",
+        model,
+        requestId: error instanceof PlanInferenceError ? error.requestId : null,
+        clientRequestId: null,
+        outcome: "error",
+      });
+      throw error;
+    }
+  }
   return withChatCompletionTimeout(async (boundedSignal) => {
     await providerRequestGuard?.();
     // Legacy fleet always wins for known Replit model ids.
@@ -767,6 +819,7 @@ export function getFullModelCatalog(): {
     ...model,
     isDefault: false,
   }));
+  const chatgpt = getChatGPTPlanCatalogSnapshot();
 
   return {
     providers: [
@@ -790,12 +843,18 @@ export function getFullModelCatalog(): {
         label: "Ollama (yerel)",
         available: isOllamaConfigured(),
       },
+      { id: "chatgpt", label: "ChatGPT plan", available: chatgpt.available },
     ],
     models: [
       ...replitModels,
       ...openRouterModels,
       ...directOpenAIModels,
       ...ollamaModels,
+      ...chatgpt.models.map((model) => ({
+        ...model,
+        provider: "chatgpt" as const,
+        isDefault: false,
+      })),
     ],
     liveSyncedAt: liveCatalog.fetchedAt || null,
   };
@@ -809,6 +868,7 @@ export async function refreshModelCatalog(force = false): Promise<void> {
   await Promise.all([
     fetchLiveOpenRouterCatalog(force),
     refreshOllamaCatalog(force),
+    refreshChatGPTPlanCatalog(force),
   ]);
 }
 

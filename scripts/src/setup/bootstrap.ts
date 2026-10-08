@@ -43,6 +43,15 @@ export async function launchSetup(argv = process.argv.slice(2)) {
       ? {
           ...detected,
           native: { ready: false, issues: ["native_source_required"] },
+          ...(!distribution.codingImage
+            ? {
+                coding: {
+                  ready: false,
+                  issues: ["coding_distribution_missing"],
+                  apparmor: detected.coding?.apparmor ?? false,
+                },
+              }
+            : {}),
         }
       : detected;
   };
@@ -51,7 +60,7 @@ export async function launchSetup(argv = process.argv.slice(2)) {
     throw new Error("Start the installer with pnpm run setup");
   const controller = new AbortController();
   const restored = args.resume
-    ? await readInstallation(args.resume, workspaceRoot)
+    ? await readInstallation(args.resume, workspaceRoot, capabilities)
     : null;
   const executor = createInstallationExecutor({
     workspaceRoot,
@@ -61,7 +70,12 @@ export async function launchSetup(argv = process.argv.slice(2)) {
         path.join(homedir(), ".agentic-company-os", "instances")),
     pnpmPath,
     capabilities,
-    ...(distribution ? { prebuiltImage: distribution.image } : {}),
+    ...(distribution
+      ? {
+          prebuiltImage: distribution.image,
+          codingImage: distribution.codingImage,
+        }
+      : {}),
     applyPreferences: applyInstallationPreferences,
     signal: controller.signal,
     ...(restored

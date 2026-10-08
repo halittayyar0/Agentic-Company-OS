@@ -103,15 +103,16 @@ sanitized kind and optional actual usage, never tokens/URLs with secrets.
 Codex adapter consumes current attempt/lease, workspace, permissions, signal and
 registration revision, and returns a terminal runtime result with proof scope.
 
-- [ ] RED streamed fixtures for function-call IDs/history, unsupported controls,
+- [x] RED streamed fixtures for function-call IDs/history, unsupported controls,
       terminal completion, partial quota/error, EOF, timeout/cancellation and absent
       usage; assert no paid route called and no failure becomes task success.
-- [ ] Implement account model discovery and Responses adapter, usage ledger on
+- [x] Implement account model discovery and Responses adapter, usage ledger on
       failed calls, unknown cost and bounded recovery without silent provider change.
-- [ ] RED Codex JSON-RPC child fixtures for initialize/thread/turn, approval fence,
+- [x] RED Codex JSON-RPC child fixtures for initialize/thread/turn, approval fence,
       lost lease, wrong account revision, crash and interrupted turn.
-- [ ] Implement optional child adapter with isolated auth/config, bounded/redacted
-      logs and platform-safe owned process cleanup. Verify tests, types and commit.
+- [x] Implement optional child adapter with isolated auth/config, bounded/redacted
+      logs and platform-safe owned process cleanup. Verify offline tests and types;
+      include it in the atomic feature commit under Task 6.
 
 ### Task 5: Guided connection with draft continuity
 
@@ -123,25 +124,34 @@ add actual rendered tests under `tests/ui` using current fixture conventions.
 Draft contains bounded text/mode/title/priority/type/cadence plus schema version,
 never credentials. Composer owns submission; connection callback only refreshes.
 
-- [ ] RED browser tests for navigating/closing/denied consent, malformed draft,
+- [x] RED browser tests for navigating/closing/denied consent, malformed draft,
       failed storage, locale change, focus restoration and zero submissions before
       explicit Start. Include server/phone handoff guidance and environment restore.
-- [ ] Implement in-place local/ChatGPT/API connection choices, preserve composer
+- [x] Implement in-place local/ChatGPT/API connection choices, preserve composer
       context and make discovered/connected/tested/limited states understandable.
-- [ ] GREEN seven-locale keyboard, 320/390px, desktop and RTL tests; verify reduced
-      motion, API contracts and bundle budget. Commit.
+- [x] GREEN seven-locale keyboard, 320/390px, desktop and RTL tests; verify reduced
+      motion, API contracts and bundle budget. Include in the Task 6 feature commit.
 
 ### Task 6: Integrated review and release
 
-- [ ] Update English README, authored locale guides, architecture/security and
+- [x] Update English README, authored locale guides, architecture/security and
       changelog with actual support and human/live-call limits.
 - [ ] Run existing verify/platform gates and meaningful integrated real-database
       fixture tests. Fix concrete failures; do not repeat optional broad testing.
-- [ ] One fresh whole-branch reviewer checks the spec, permissions, credential
+- [x] One fresh whole-branch reviewer checks the spec, permissions, credential
       storage, interrupted streams, draft continuity and generated contracts.
 - [ ] Push/PR, attach PR, accept required exact-head checks, merge and publish only
       when the whole feature works. Validate public installer/image/source anonymously.
-- [ ] Keep 24h native evidence independent and honest; short proof is not 24h.
+- [x] Keep 24h native evidence independent and honest; short proof is not 24h.
+
+Local acceptance on 2026-10-08: 1,948 general tests passed, zero failures,
+30 explicitly skipped platform cases; 12 real PostgreSQL checks passed without
+skips. Current frontend build passed 82 focused browser cases; the earlier full
+browser build passed 1,086. Whole format, typecheck/build, unchanged API
+regeneration and unchanged bundle ceilings passed. The final reviewer covered
+the public fa406 baseline through the integrated working tree and accepted the
+late fixes. This is offline/local evidence; exact-head remote platform,
+AppArmor, complete current browser and published-artifact gates remain open.
 
 Self-review: every spec subsystem maps to one task above; every Review focus line
 has an explicit acceptance owner. Product code has not been implemented at plan

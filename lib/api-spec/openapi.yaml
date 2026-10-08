@@ -42,6 +42,101 @@ tags:
   - name: vm
     description: Per-agent virtual computer (sandbox filesystem + terminal)
 paths:
+  /tasks/{taskId}/coding-session:
+    get:
+      operationId: getCodexSessionRecovery
+      tags: [tasks]
+      summary: Read coding-session recovery eligibility without starting work
+      parameters:
+        - {
+            name: taskId,
+            in: path,
+            required: true,
+            schema: { type: integer, minimum: 1 },
+          }
+      responses:
+        "200":
+          description: Observed metadata eligibility; the write revalidates under locks
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/CodexSessionRecoveryStatus" }
+        "404": { description: Task missing }
+        "503": { description: Recovery metadata unavailable }
+  /tasks/{taskId}/coding-session/recover:
+    post:
+      operationId: recoverCodexSession
+      tags: [tasks]
+      summary: Archive a stopped coding session and permit a fresh session on a later authorized task invocation
+      description: Operator-only metadata transition. Requires a unique request identity, exact observed revision and explicit acknowledgement that uncertain effects remain unresolved. Does not start or resume a task, reconcile effects, delete files, reuse a private home or grant native permissions. Running sessions, unknown cleanup, active task ownership and live native approvals are refused. Repeating a committed request returns its original receipt; changed scope conflicts.
+      parameters:
+        - {
+            name: taskId,
+            in: path,
+            required: true,
+            schema: { type: integer, minimum: 1 },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CodexSessionRecoveryInput" }
+      responses:
+        "200":
+          description: Immutable accepted or rejected recovery receipt
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/CodexSessionRecoveryReceipt" }
+        "400":
+          { description: Invalid request or missing explicit acknowledgement }
+        "409": { description: Request identity belongs to another scope }
+        "503":
+          {
+            description: Commit or receipt is uncertain; query the same request identity,
+          }
+  /tasks/{taskId}/coding-session/recover/{requestId}:
+    get:
+      operationId: getCodexSessionRecoveryReceipt
+      tags: [tasks]
+      summary: Recover the immutable receipt after a lost response
+      parameters:
+        - {
+            name: taskId,
+            in: path,
+            required: true,
+            schema: { type: integer, minimum: 1 },
+          }
+        - {
+            name: requestId,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: Original committed receipt, independent of subsequent task or session state
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/CodexSessionRecoveryReceipt" }
+        "404": { description: No receipt committed for this scope }
+        "503": { description: Receipt unavailable }
+  /connections/codex:
+    get:
+      operationId: getCodexTaskStatus
+      tags: [settings]
+      summary: Read the executing workers' optional coding configuration without probes or inference
+      description: Authenticated read-only observation of fresh healthy scheduler workers. Startup flags are not native availability or filesystem containment proof. Every task still requires live authority and actual native preflight. API-host flags and operating system never substitute for worker reports.
+      responses:
+        "200":
+          description: Bounded worker configuration snapshot; never claims globally verified coding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CodexTaskStatus"
+        "503":
+          description: Status unavailable; no credential or raw backend diagnostic is returned
   /connections/chatgpt:
     get:
       operationId: getChatGPTConnection
@@ -179,6 +274,43 @@ paths:
         "400": { description: Invalid request }
         "404": { description: Registration missing }
         "409": { description: Registration changed or signed out }
+        "503": { description: Connection unavailable }
+  /connections/chatgpt/accounts/{registrationId}/plan/retry:
+    parameters:
+      - {
+          name: registrationId,
+          in: path,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
+    post:
+      operationId: retryChatGPTPlan
+      tags: [settings]
+      summary: Explicitly clear this observed quota pause; never starts a job or changes provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedRevision, pauseId]
+              properties:
+                expectedRevision:
+                  { type: integer, minimum: 0, maximum: 9007199254740991 }
+                pauseId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Account with admission resumed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatGPTAccount" }
+        "400": { description: Invalid request }
+        "404": { description: Registration missing }
+        "409":
+          {
+            description: "Registration or pause changed, signed out or plan permission missing",
+          }
         "503": { description: Connection unavailable }
   /connections/chatgpt/accounts/{registrationId}/session:
     parameters:
@@ -2649,6 +2781,177 @@ components:
             type: [integer, "null"],
             description: Access token expiry in Unix milliseconds,
           }
+        planPause:
+          $ref: "#/components/schemas/ChatGPTPlanPause"
+    ChatGPTPlanPause:
+      type: object
+      additionalProperties: false
+      required: [id, code, pausedAt, retryAt]
+      properties:
+        id: { type: string, format: uuid }
+        code:
+          type: [string, "null"]
+          enum:
+            [
+              subscription_sharing_usage_limit_exceeded,
+              rate_limit_exceeded,
+              null,
+            ]
+        pausedAt: { type: integer, minimum: 1, maximum: 9007199254740991 }
+        retryAt:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 9007199254740991
+          description: Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown
+    CodexSessionRecoveryInput:
+      type: object
+      additionalProperties: false
+      required: [requestId, expectedRevision, acknowledgeUncertainEffects]
+      properties:
+        requestId: { type: string, format: uuid }
+        expectedRevision:
+          { type: integer, minimum: 1, maximum: 9007199254740991 }
+        acknowledgeUncertainEffects: { type: boolean, enum: [true] }
+    CodexSessionRecoveryReason:
+      type: string
+      enum:
+        [
+          task_missing,
+          session_missing,
+          revision_changed,
+          revision_exhausted,
+          task_active,
+          session_running,
+          cleanup_unknown,
+          native_pending,
+          already_reset,
+        ]
+    CodexSessionRecoveryStatus:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          taskId,
+          sessionState,
+          revision,
+          cleanupState,
+          canReset,
+          reason,
+          requiresRevalidation,
+        ]
+      properties:
+        taskId: { type: integer, minimum: 1 }
+        sessionState:
+          { type: string, enum: [none, running, ready, uncertain, reset] }
+        revision:
+          { type: [integer, "null"], minimum: 1, maximum: 9007199254740991 }
+        cleanupState:
+          {
+            type: [string, "null"],
+            enum: [unknown, not_launched, verified, null],
+          }
+        canReset: { type: boolean }
+        reason:
+          anyOf:
+            [
+              { $ref: "#/components/schemas/CodexSessionRecoveryReason" },
+              { type: "null" },
+            ]
+        requiresRevalidation: { type: boolean, enum: [true] }
+    CodexSessionRecoveryReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          requestId,
+          taskId,
+          expectedRevision,
+          outcome,
+          reason,
+          revision,
+          recordedAt,
+          taskResumed,
+          effectsReconciled,
+        ]
+      properties:
+        requestId: { type: string, format: uuid }
+        taskId: { type: integer, minimum: 1 }
+        expectedRevision:
+          { type: integer, minimum: 1, maximum: 9007199254740991 }
+        outcome: { type: string, enum: [accepted, rejected] }
+        reason:
+          anyOf:
+            [
+              { $ref: "#/components/schemas/CodexSessionRecoveryReason" },
+              { type: "null" },
+            ]
+        revision:
+          { type: [integer, "null"], minimum: 1, maximum: 9007199254740991 }
+        recordedAt: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        taskResumed: { type: boolean, enum: [false] }
+        effectsReconciled: { type: boolean, enum: [false] }
+    CodexTaskStatus:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          state,
+          sampledAt,
+          truncated,
+          proofScope,
+          requiresTaskPreflight,
+          workers,
+        ]
+      properties:
+        state:
+          type: string
+          enum: [no_worker, unknown, unavailable, preflight_required]
+        sampledAt: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        truncated:
+          type: boolean
+          description: Some workers are omitted; absence from this list cannot establish fleet-wide unavailability
+        proofScope: { type: string, enum: [worker_configuration] }
+        requiresTaskPreflight: { type: boolean, enum: [true] }
+        workers:
+          type: array
+          maxItems: 128
+          items: { $ref: "#/components/schemas/CodexWorkerConfiguration" }
+    CodexWorkerConfiguration:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          runtimeInstanceId,
+          role,
+          configurationState,
+          configurationAt,
+          heartbeatAt,
+          staleAt,
+        ]
+      properties:
+        runtimeInstanceId: { type: string }
+        role: { type: string, enum: [worker, combined] }
+        configurationState:
+          type: string
+          enum:
+            [
+              disabled,
+              configuration_required,
+              unsupported_platform,
+              preflight_required,
+              not_reported,
+            ]
+        configurationAt:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+          description: Startup configuration observation, not a successful native coding check
+        heartbeatAt: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        staleAt:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+          description: This heartbeat observation must not be treated as fresh after this time
     ChatGPTConnection:
       type: object
       additionalProperties: false
@@ -3610,6 +3913,11 @@ components:
           minimum: 0
       required: [reserved, running, unresolvedUnknown]
 
+    TokenUsageCoverage:
+      type: string
+      enum: [no_usage, complete, partial, unknown]
+      description: Token totals are lower bounds unless every call has reported usage.
+
     OperationsUsageSummary:
       type: object
       additionalProperties: false
@@ -3626,6 +3934,14 @@ components:
         costReportedEvents:
           type: integer
           minimum: 0
+        tokenReportedEvents:
+          type: integer
+          minimum: 0
+        tokenUnreportedEvents:
+          type: integer
+          minimum: 0
+        tokenUsageCoverage:
+          $ref: "#/components/schemas/TokenUsageCoverage"
         providerMetricsCoverage:
           $ref: "#/components/schemas/OperationsProviderMetricsCoverage"
       required:
@@ -4871,7 +5187,7 @@ components:
           description: Model id that actually served this turn.
         usedProvider:
           type: [string, "null"]
-          description: Provider that served this turn (replit, openrouter, openai, or ollama).
+          description: Provider that served this turn (replit, openrouter, openai, ollama, or chatgpt).
       required:
         - userMessage
         - agentMessage
@@ -6537,6 +6853,14 @@ components:
           type: number
         costReportedEventsToday:
           type: number
+        tokenReportedEventsToday:
+          type: integer
+          minimum: 0
+        tokenUnreportedEventsToday:
+          type: integer
+          minimum: 0
+        tokenUsageCoverageToday:
+          $ref: "#/components/schemas/TokenUsageCoverage"
       required:
         - totalAgents
         - activeAgents
@@ -6552,7 +6876,7 @@ components:
 
     ModelProviderId:
       type: string
-      enum: [replit, openrouter, openai, ollama]
+      enum: [replit, openrouter, openai, ollama, chatgpt]
 
     ModelCatalogProvider:
       type: object

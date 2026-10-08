@@ -18,6 +18,18 @@ export interface ChatGPTRegistrationInput {
   email?: string;
   displayName?: string;
   credentials: ChatGPTRegistrationCredentials | null;
+  /** Backend admission generation. Token rotation does not advance it. */
+  planAdmissionVersion?: number;
+  planPause?: ChatGPTPlanPause | null;
+}
+
+export interface ChatGPTPlanPause {
+  id: string;
+  code:
+    "subscription_sharing_usage_limit_exceeded" | "rate_limit_exceeded" | null;
+  pausedAt: number;
+  /** Only an actual upstream Retry-After, never a guessed plan reset. */
+  retryAt: number | null;
 }
 
 export interface ChatGPTRegistration extends ChatGPTRegistrationInput {
@@ -34,6 +46,7 @@ export interface ChatGPTRegistrationPublicStatus {
   signedIn: boolean;
   canUsePlan: boolean;
   expiresAt: number | null;
+  planPause?: ChatGPTPlanPause | null;
 }
 
 export interface ChatGPTRegistrationAccess {

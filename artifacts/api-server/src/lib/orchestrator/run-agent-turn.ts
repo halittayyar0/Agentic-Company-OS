@@ -9,6 +9,8 @@ import { and, desc, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import type OpenAI from "openai";
 import {
   createChatCompletion,
+  completionTokenControl,
+  chatGPTPlanHistoryMessage,
   DEFAULT_MAX_COMPLETION_TOKENS,
 } from "@workspace/ai-server";
 import {
@@ -32,7 +34,10 @@ import { getToolsForAgent } from "./tools";
 import { executeTool } from "./execute-tool";
 import { buildChatSystemPrompt } from "./system-prompt";
 import { selectModel, type ModelOverrideInput } from "./model-select";
-import { recordCompletionUsage } from "./usage-ledger";
+import {
+  recordCompletionUsage,
+  withCompletionFailureAccounting,
+} from "./usage-ledger";
 import {
   computerSurfaceForTool,
   deferredComputerToolMessage,
@@ -322,12 +327,23 @@ export async function runAgentTurn(
       if (!heartbeat) throw new AgentBusyError("Agent chat lease was lost");
       let completion;
       try {
-        const { completion: result, provider } = await createCompletion({
-          model,
-          messages,
-          tools: tools.length > 0 ? tools : undefined,
-          maxTokens: DEFAULT_MAX_COMPLETION_TOKENS,
-        });
+        const { completion: result, provider } =
+          await withCompletionFailureAccounting(
+            () =>
+              createCompletion({
+                model,
+                messages,
+                tools: tools.length > 0 ? tools : undefined,
+                ...completionTokenControl(model, DEFAULT_MAX_COMPLETION_TOKENS),
+              }),
+            {
+              provider: selection.provider ?? "unknown",
+              modelId: model,
+              agentId: agent.id,
+              taskId,
+              kind: "chat",
+            },
+          );
         usedModel = result.model?.trim() || model;
         usedProvider = provider;
         await recordCompletionUsage({
@@ -369,11 +385,7 @@ export async function runAgentTurn(
         break;
       }
 
-      messages.push({
-        role: "assistant",
-        content: assistantMessage.content ?? null,
-        tool_calls: toolCalls,
-      });
+      messages.push(chatGPTPlanHistoryMessage(completion));
 
       let turnTerminated = false;
       let computerToolExecutedInBatch = false;

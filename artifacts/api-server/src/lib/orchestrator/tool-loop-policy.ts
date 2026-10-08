@@ -5,7 +5,11 @@ import { terminalMessage } from "../vm/terminal-localization";
 export type AgentLoopMode = "chat" | "task";
 
 export function isTerminalTool(name: string): boolean {
-  return name === "vm_run_command" || name === "vm_run_sudo_command";
+  return (
+    name === "vm_run_command" ||
+    name === "vm_run_sudo_command" ||
+    name === "vm_codex_task"
+  );
 }
 
 const COMPUTER_TOOL_PREFIXES = ["browser_", "vm_"] as const;

@@ -18,6 +18,10 @@ import { reserveOperation } from "../lib/orchestrator/operation-receipts";
 import { scrubExpiredApprovals } from "../lib/orchestrator/sudo-approval-retention";
 import { redactApprovalCapabilityScope } from "../lib/orchestrator/approval-capability-redaction";
 import {
+  validateCodexApprovalDecision,
+  CodexApprovalConflict,
+} from "../lib/codex-task-approvals";
+import {
   parseCursorPage,
   parseOptionalEnum,
   parsePositiveInteger,
@@ -249,6 +253,13 @@ export function createApprovalsRouter(
                 "The command digest confirmation does not match",
               );
           }
+          await validateCodexApprovalDecision(
+            tx,
+            liveApproval,
+            decisionNow,
+            parsed.data.expectedArgsHash,
+            status === "approved",
+          );
           const [resolved] = await tx
             .update(approvalRequestsTable)
             .set({
@@ -348,6 +359,13 @@ export function createApprovalsRouter(
           return resolved;
         });
       } catch (error) {
+        if (error instanceof CodexApprovalConflict) {
+          res.status(409).json({
+            error: "Native approval scope or ownership changed",
+            code: "APPROVAL_BINDING_CHANGED",
+          });
+          return;
+        }
         if (error instanceof EmergencyStopError) {
           res
             .status(423)

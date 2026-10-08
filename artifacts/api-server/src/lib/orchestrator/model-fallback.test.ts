@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { PlanInferenceError } from "@workspace/ai-server";
 import {
   ModelRoutesExhaustedError,
   ModelAdmissionDeniedError,
@@ -9,6 +10,42 @@ import {
   runWithModelFallback,
 } from "./model-fallback";
 import type { ModelRouteCandidate } from "./model-select";
+
+test("plan quota or interrupted usage cannot trigger another billable attempt or paid route", async () => {
+  for (const kind of [
+    "quota",
+    "timeout",
+    "temporary",
+    "cancelled",
+    "interrupted",
+  ] as const) {
+    const failure = new PlanInferenceError(
+      kind,
+      { prompt_tokens: 12, completion_tokens: 4, total_tokens: 16 },
+      kind === "quota" ? "subscription_sharing_usage_limit_exceeded" : null,
+      kind === "temporary" ? 503 : 200,
+    );
+    let attempts = 0;
+    await assert.rejects(
+      runWithModelFallback({
+        routes: [
+          route("chatgpt:gpt-fixture", "chatgpt"),
+          route("openai:gpt-paid", "openai", true),
+        ],
+        attemptsPerRoute: 3,
+        execute: async () => {
+          attempts++;
+          throw failure;
+        },
+        sleep: async () => {
+          throw new Error("Must not automatically replay plan usage");
+        },
+      }),
+      (error: unknown) => error === failure,
+    );
+    assert.equal(attempts, 1);
+  }
+});
 
 function route(
   modelId: string,

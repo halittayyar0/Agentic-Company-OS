@@ -17,6 +17,8 @@ export const toolDe: ToolCopy = {
     "Die Zuständigkeit für die unterbrochene Arbeit wurde freigegeben; die Aufgabe wurde erneut eingereiht.",
   schedulerStepBudget: "Schrittlimit des Betreibers erreicht ({used}/{limit}).",
   schedulerTokenBudget: "Tokenbudget erreicht ({used}/{limit}).",
+  schedulerUnreportedTokenUsage:
+    "Der Tokenverbrauch für diesen Auftrag wurde nicht vollständig gemeldet. Weitere Modellaufrufe sind angehalten, damit keine ungemessenen Kosten entstehen. Prüfen Sie die protokollierten Aufrufe; starten Sie zum Fortfahren einen neuen Auftrag mit einem Anbieter, der den Tokenverbrauch meldet. Die bisherigen Aufzeichnungen bleiben erhalten.",
   schedulerCostBudget:
     "Vom Anbieter gemeldetes Kostenbudget erreicht (${used}/{limit}).",
   schedulerFamilyTokenBudget:

@@ -5,6 +5,7 @@ import {
   configureOpenRouter,
   configureOllama,
   createChatCompletion,
+  completionTokenControl,
   getFullModelCatalog,
   getOllamaCatalogSnapshot,
   getOllamaConfigurationError,
@@ -388,7 +389,7 @@ export function createSettingsRouter(
       )({
         model: model.id,
         messages: [{ role: "user", content: "Reply only with OK." }],
-        maxTokens: 10,
+        ...completionTokenControl(model.id, 10),
         signal: AbortSignal.timeout(20_000),
         disableRetries: true,
       });

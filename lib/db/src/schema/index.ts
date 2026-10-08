@@ -23,3 +23,6 @@ export * from "./execution-policy";
 export * from "./capability-installations";
 export * from "./source-changes";
 export * from "./chatgpt-registrations";
+export * from "./codex-task-sessions";
+export * from "./codex-action-approvals";
+export * from "./codex-session-recoveries";

@@ -283,6 +283,80 @@
       ar: "اربط الكمبيوتر أو الخادم والهاتف بشبكة Tailscale نفسها وفعّل HTTPS. تفتح مساحة العمل في متصفح الهاتف.",
     };
     copy.phoneHelp = phoneRequirements[locale];
+    const codingWords = {
+      en: [
+        "Codex coding worker",
+        "Optional download for Linux x64 containers. Adds a pinned Codex CLI for coding tasks; connect an eligible account after setup. Other tasks keep your selected provider.",
+        "Requires a Linux x64 Docker engine, Compose 2.24.4 or later, a coding image in this installer and terminal permission.",
+        "If your Docker host uses AppArmor, its administrator must first load the bundled agentic-coding profile. See the setup guide.",
+        "Coding setup guide",
+        "Enabled",
+        "Disabled",
+      ],
+      tr: [
+        "Codex kodlama çalışanı",
+        "Linux x64 container için isteğe bağlı indirme. Kodlama görevlerine sabit sürümlü Codex CLI ekler; uygun hesabını kurulumdan sonra bağla. Diğer görevler seçtiğin sağlayıcıda kalır.",
+        "Linux x64 Docker motoru, Compose 2.24.4 veya üstü, bu kurulumda kodlama imajı ve terminal izni gerekir.",
+        "Docker sunucun AppArmor kullanıyorsa yöneticisi önce paketteki agentic-coding profilini yüklemeli. Kurulum rehberine bak.",
+        "Kodlama kurulumu rehberi",
+        "Etkin",
+        "Kapalı",
+      ],
+      de: [
+        "Codex für Programmieraufgaben",
+        "Optionaler Download für Linux-x64-Container. Fügt die Codex-CLI in einer festen Version hinzu; verbinde danach ein berechtigtes Konto. Andere Aufgaben nutzen deinen gewählten Anbieter.",
+        "Erfordert eine Linux-x64-Docker-Engine, Compose ab 2.24.4, ein Programmier-Image im Installationspaket und Terminalzugriff.",
+        "Bei AppArmor muss die Administration des Docker-Hosts zuerst das mitgelieferte Profil agentic-coding laden. Siehe die Anleitung.",
+        "Anleitung für Programmieraufgaben",
+        "Aktiviert",
+        "Deaktiviert",
+      ],
+      ru: [
+        "Codex для задач программирования",
+        "Необязательная загрузка для контейнеров Linux x64. Добавляет Codex CLI фиксированной версии; после установки подключите подходящий аккаунт. Другие задачи используют выбранного провайдера.",
+        "Нужны движок Docker Linux x64, Compose 2.24.4 или новее, образ для программирования в установщике и доступ к терминалу.",
+        "Если сервер Docker использует AppArmor, администратор должен сначала загрузить прилагаемый профиль agentic-coding. См. руководство.",
+        "Руководство по настройке программирования",
+        "Включено",
+        "Выключено",
+      ],
+      "zh-CN": [
+        "Codex 编程工作进程",
+        "Linux x64 容器的可选下载。为编程任务添加固定版本的 Codex CLI；安装后连接符合条件的账户。其他任务继续使用你选择的服务商。",
+        "需要 Linux x64 Docker 引擎、Compose 2.24.4 或更新版本、安装包中的编程镜像以及终端权限。",
+        "如果 Docker 主机使用 AppArmor，管理员须先加载随附的 agentic-coding 配置。请参阅安装指南。",
+        "编程环境安装指南",
+        "已启用",
+        "已关闭",
+      ],
+      "zh-TW": [
+        "Codex 程式碼工作程序",
+        "Linux x64 容器的選用下載。為程式碼任務加入固定版本的 Codex CLI；安裝後連線至符合資格的帳戶。其他任務繼續使用你選擇的供應商。",
+        "需要 Linux x64 Docker 引擎、Compose 2.24.4 或更新版本、安裝套件中的程式碼映像及終端機權限。",
+        "若 Docker 主機使用 AppArmor，管理員須先載入隨附的 agentic-coding 設定檔。請參閱安裝指南。",
+        "程式碼環境安裝指南",
+        "已啟用",
+        "已停用",
+      ],
+      ar: [
+        "عامل Codex للبرمجة",
+        "تنزيل اختياري لحاويات Linux x64. يضيف إصدارًا ثابتًا من Codex CLI لمهام البرمجة؛ اربط حسابًا مؤهلًا بعد التثبيت. تستخدم المهام الأخرى المزود الذي اخترته.",
+        "يتطلب محرك Docker بنظام Linux x64 وCompose بالإصدار 2.24.4 أو أحدث وصورة البرمجة في حزمة التثبيت وإذن الطرفية.",
+        "إذا كان مضيف Docker يستخدم AppArmor، يجب على المسؤول تحميل ملف agentic-coding المرفق أولًا. راجع دليل الإعداد.",
+        "دليل إعداد البرمجة",
+        "مفعّل",
+        "معطّل",
+      ],
+    };
+    [
+      copy.codingTitle,
+      copy.codingHelp,
+      copy.codingUnavailable,
+      copy.codingAppArmor,
+      copy.codingGuide,
+      copy.codingEnabled,
+      copy.codingDisabled,
+    ] = codingWords[locale];
     permissionKeys.forEach((key, index) => {
       copy[`permission_${key}`] = permissionWords[locale][index];
     });
@@ -297,6 +371,20 @@
   function draw() {
     const selected = capabilities?.[value("mode")];
     const issues = issueWords[$("language").value] || issueWords.en;
+    const coding = form.elements.namedItem("codingRuntime");
+    const permission =
+      value("accessMode") !== "read_only" &&
+      (value("accessMode") !== "custom" ||
+        new FormData(form).getAll("customPermission").includes("terminal"));
+    const codingReady =
+      value("mode") === "container" &&
+      capabilities?.coding?.ready &&
+      permission;
+    coding.disabled = !codingReady;
+    if (!codingReady) coding.checked = false;
+    $("coding-field").hidden = value("mode") !== "container";
+    $("coding-unavailable").hidden = !!codingReady;
+    $("coding-apparmor").hidden = !capabilities?.coding?.apparmor;
     form.elements
       .namedItem("phoneAccess")
       .querySelector('[value="private_network"]').disabled =
@@ -381,6 +469,12 @@
           plan.settings.toolPacks.map((key) => copy[key]).join(", ") || "—",
         ],
         ["phone", copy[plan.settings.phoneAccess]],
+        [
+          "codingTitle",
+          plan.settings.codingRuntime
+            ? copy.codingEnabled
+            : copy.codingDisabled,
+        ],
       ]) {
         const dt = document.createElement("dt"),
           dd = document.createElement("dd");
@@ -412,6 +506,7 @@
       port: Number(value("port")),
       phoneAccess: value("phoneAccess"),
       toolPacks: new FormData(form).getAll("toolPacks"),
+      codingRuntime: form.elements.namedItem("codingRuntime").checked,
       ...(value("accessMode") === "custom"
         ? {
             customPermissions: Object.fromEntries(

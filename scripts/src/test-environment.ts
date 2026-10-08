@@ -10,6 +10,7 @@ export function assertLocalTestEnvironment(
     "DATABASE_MIGRATIONS_DIR",
     "POSTGRES_RACE_TEST_DISPOSABLE",
     "POSTGRES_RACE_TEST_FAIL_IF_SKIPPED",
+    "CHATGPT_STORAGE_DIRECTORY",
   ].filter(
     (name) => environment[name] !== undefined && environment[name] !== "",
   );
@@ -23,3 +24,27 @@ export function assertLocalTestEnvironment(
     );
   }
 }
+
+/** One owned, empty store per suite invocation. Default provider discovery must
+ * never load or refresh a developer's renewable ChatGPT credentials. */
+export async function prepareLocalTestEnvironment(
+  environment: NodeJS.ProcessEnv,
+): Promise<NodeJS.ProcessEnv> {
+  assertLocalTestEnvironment(environment);
+  const canonicalTemp = await realpath(tmpdir());
+  const directory = await mkdtemp(
+    path.join(canonicalTemp, "acos-general-test-chatgpt-"),
+  );
+  return {
+    ...environment,
+    ALLOW_AGENT_CODEX_TASKS: "false",
+    ACOS_CODEX_EXECUTABLE: undefined,
+    TEMP: canonicalTemp,
+    TMP: canonicalTemp,
+    TMPDIR: canonicalTemp,
+    CHATGPT_STORAGE_DIRECTORY: directory,
+  };
+}
+import { mkdtemp, realpath } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";

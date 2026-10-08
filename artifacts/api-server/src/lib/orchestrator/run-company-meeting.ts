@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import {
   createChatCompletion,
+  completionTokenControl,
   DEFAULT_MAX_COMPLETION_TOKENS,
   resolveLlmRequestTimeoutMs,
 } from "@workspace/ai-server";
@@ -22,7 +23,10 @@ import {
 } from "./runtime-emergency-stop";
 import { selectModel } from "./model-select";
 import { buildChatSystemPrompt } from "./system-prompt";
-import { recordCompletionUsage } from "./usage-ledger";
+import {
+  recordCompletionUsage,
+  withCompletionFailureAccounting,
+} from "./usage-ledger";
 
 const MIN_MEETING_LEASE_MS = 5 * 60_000;
 const MEETING_LEASE_BUFFER_MS = 60_000;
@@ -174,20 +178,33 @@ export async function runCompanyMeetingTurn(params: {
 
     let completion;
     try {
-      const result = await createChatCompletion({
-        model: selection.modelId,
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: meetingPrompt(founderContent, responseMode),
-          },
-        ],
-        maxTokens: Math.max(
-          100,
-          Math.min(MEETING_MAX_COMPLETION_TOKENS, Math.floor(maxTokens)),
-        ),
-      });
+      const result = await withCompletionFailureAccounting(
+        () =>
+          createChatCompletion({
+            model: selection.modelId,
+            messages: [
+              { role: "system", content: systemPrompt },
+              {
+                role: "user",
+                content: meetingPrompt(founderContent, responseMode),
+              },
+            ],
+            ...completionTokenControl(
+              selection.modelId,
+              Math.max(
+                100,
+                Math.min(MEETING_MAX_COMPLETION_TOKENS, Math.floor(maxTokens)),
+              ),
+            ),
+          }),
+        {
+          provider: selection.provider ?? "unknown",
+          modelId: selection.modelId,
+          agentId: agent.id,
+          taskId: null,
+          kind: "chat",
+        },
+      );
       await recordCompletionUsage({
         completion: result.completion,
         provider: result.provider,

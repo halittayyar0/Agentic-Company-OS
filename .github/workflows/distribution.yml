@@ -36,11 +36,33 @@ jobs:
           digest=$(jq -r '."containerimage.digest"' /tmp/image-metadata.json)
           test "${digest#sha256:}" != "$digest"
           echo "RELEASE_IMAGE=$image@$digest" >> "$GITHUB_ENV"
+      - name: Publish a separate immutable optional x64 coding image
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          docker buildx build --platform linux/amd64 --target coding-runtime --tag "$image:coding-sha-$GITHUB_SHA" --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" --metadata-file /tmp/coding-image-metadata.json --push .
+          digest=$(jq -r '."containerimage.digest"' /tmp/coding-image-metadata.json)
+          test "${digest#sha256:}" != "$digest"
+          echo "RELEASE_CODING_IMAGE=$image@$digest" >> "$GITHUB_ENV"
+      - name: Require the dedicated confined coding profile
+        run: |
+          docker info --format '{{json .SecurityOptions}}' | grep --quiet 'name=apparmor'
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends apparmor
+          sudo apparmor_parser -r -W deploy/agentic-coding.apparmor
+      - name: Prove the exact published optional coding toolchain
+        env:
+          ACOS_CODING_CONTAINER_SMOKE: "1"
+          ACOS_CODING_REQUIRE_APPARMOR: "1"
+        run: |
+          docker pull "$RELEASE_CODING_IMAGE"
+          pnpm test:coding:container "$RELEASE_CODING_IMAGE"
       - name: Prove installation and resume from the published image
-        run: pnpm exec tsx scripts/src/setup/container-install-smoke.ts "$RELEASE_IMAGE"
+        run: |
+          pnpm exec tsx scripts/src/setup/container-install-smoke.ts "$RELEASE_IMAGE"
+          pnpm exec tsx scripts/src/setup/container-install-smoke.ts "$RELEASE_IMAGE" "$RELEASE_CODING_IMAGE"
       - name: Package the standalone installer
         run: |
-          node scripts/build-setup.mjs --image "$RELEASE_IMAGE" --commit "$GITHUB_SHA" --out /tmp/Agentic-Company-OS-setup
+          node scripts/build-setup.mjs --image "$RELEASE_IMAGE" --coding-image "$RELEASE_CODING_IMAGE" --commit "$GITHUB_SHA" --out /tmp/Agentic-Company-OS-setup
           cd /tmp
           zip -r Agentic-Company-OS-setup.zip Agentic-Company-OS-setup
           sha256sum Agentic-Company-OS-setup.zip > SETUP-SHA256SUMS.txt
@@ -51,5 +73,6 @@ jobs:
             /tmp/Agentic-Company-OS-setup.zip
             /tmp/SETUP-SHA256SUMS.txt
             /tmp/image-metadata.json
+            /tmp/coding-image-metadata.json
           if-no-files-found: error
           retention-days: 30

@@ -14,4 +14,5 @@ export const ModelProviderId = {
   openrouter: 'openrouter',
   openai: 'openai',
   ollama: 'ollama',
+  chatgpt: 'chatgpt',
 } as const;

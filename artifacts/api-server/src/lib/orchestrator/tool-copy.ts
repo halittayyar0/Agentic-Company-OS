@@ -412,6 +412,8 @@ export const toolTr = {
     "Kesintiye uğrayan çalışmanın sahipliği bırakıldı; görev yeniden sıraya alındı.",
   schedulerStepBudget: "Operatör adım sınırı aşıldı ({used}/{limit}).",
   schedulerTokenBudget: "Token bütçesi aşıldı ({used}/{limit}).",
+  schedulerUnreportedTokenUsage:
+    "Bu işin token kullanımı eksik raporlandı. Ölçülemeyen harcamayı önlemek için yeni model çağrıları durduruldu. Kayıtlı çağrıları inceleyin; devam etmek için token kullanımını raporlayan bir sağlayıcıyla yeni bir iş başlatın. Mevcut kayıtlar korunur.",
   schedulerCostBudget:
     "Sağlayıcı-raporlu maliyet bütçesi aşıldı (${used}/{limit}).",
   schedulerFamilyTokenBudget:

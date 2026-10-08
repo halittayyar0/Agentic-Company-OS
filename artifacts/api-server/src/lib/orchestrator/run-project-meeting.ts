@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import {
   createChatCompletion,
+  completionTokenControl,
   DEFAULT_MAX_COMPLETION_TOKENS,
 } from "@workspace/ai-server";
 import {
@@ -25,7 +26,10 @@ import {
 import { resolveCompanyMeetingLeaseMs } from "./run-company-meeting";
 import { selectModel } from "./model-select";
 import { buildChatSystemPrompt } from "./system-prompt";
-import { recordCompletionUsage } from "./usage-ledger";
+import {
+  recordCompletionUsage,
+  withCompletionFailureAccounting,
+} from "./usage-ledger";
 import { readWorkspaceLocale } from "../workspace-locale";
 import { toolMessage } from "./tool-localization";
 
@@ -69,11 +73,21 @@ async function defaultTextCompletionRunner(params: {
       modelId: params.agent.modelId,
     },
   });
-  const result = await createChatCompletion({
-    model: selection.modelId,
-    messages: params.messages,
-    maxTokens: params.maxTokens,
-  });
+  const result = await withCompletionFailureAccounting(
+    () =>
+      createChatCompletion({
+        model: selection.modelId,
+        messages: params.messages,
+        ...completionTokenControl(selection.modelId, params.maxTokens),
+      }),
+    {
+      provider: selection.provider ?? "unknown",
+      modelId: selection.modelId,
+      agentId: params.agent.id,
+      taskId: params.projectId,
+      kind: "chat",
+    },
+  );
   await recordCompletionUsage({
     completion: result.completion,
     provider: result.provider,

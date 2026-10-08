@@ -84,3 +84,36 @@ test("PostgreSQL CLI is optional when an existing database is supplied", async (
   assert.equal(state.postgresClientVersion, null);
   assert.equal(state.container.ready, true);
 });
+
+test("coding capability follows the actual engine architecture and exact Compose feature floor", async () => {
+  for (const [version, architecture, expected] of [
+    ["2.24.3", "x86_64", false],
+    ["2.24.4", "x86_64", true],
+    ["2.40.0", "aarch64", false],
+    ["2.40.0-rc1", "x86_64", false],
+    ["2.40.0", "amd64", true],
+  ] as const) {
+    const state = await detectInstallCapabilities({
+      platform: "darwin",
+      arch: "arm64",
+      nodeVersion: "v24.20.0",
+      run: async (command, args) => {
+        if (
+          command === "docker" &&
+          args[0] === "info" &&
+          args[2] === "{{json .}}"
+        )
+          return JSON.stringify({
+            OSType: "linux",
+            Architecture: architecture,
+            SecurityOptions: ["name=apparmor"],
+          });
+        if (command === "docker" && args[0] === "compose") return version;
+        return available(command, args);
+      },
+    });
+    assert.equal(state.coding?.ready, expected, `${version}/${architecture}`);
+    assert.equal(state.container.ready, true);
+    if (expected) assert.equal(state.coding?.apparmor, true);
+  }
+});

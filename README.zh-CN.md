@@ -141,6 +141,9 @@
 
 链接中的技术文档以英语为主。欢迎范围明确的小型贡献：可复现的缺陷报告、更清晰的翻译、实用指南或经过测试的修复。
 
+**开发预览：**[模型连接指南](./docs/model-connections.zh-CN.md)介绍本地模型、ChatGPT、API 密钥及首次任务草稿的保留。
+已发布的 v0.3.13 安装包尚未包含这个流程。
+
 ---
 
 **依据 [MIT 许可证](./LICENSE)开源。** 随附的 IBM Plex 字体采用 SIL Open Font License 1.1；请参阅[第三方声明](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt)。

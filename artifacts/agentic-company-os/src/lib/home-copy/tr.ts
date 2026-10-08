@@ -1,6 +1,8 @@
 import type { HomeCopy } from "../home-copy";
 
 const copy = {
+  draftStorageError:
+    "Bu sekme taslağı sayfa yenileme için kaydedemiyor. Metninizi burada düzenleyebilirsiniz; sayfayı yenilemeden veya sekmeyi kapatmadan önce bir kopyasını alın.",
   deskKicker: "Senin çalışma masan",
   heroTitle: "Bugün neyi birlikte başarmalıyız?",
   heroDescription:

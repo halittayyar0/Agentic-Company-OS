@@ -7,6 +7,11 @@ import test from "node:test";
 import { createFileChatGPTRegistrationStore } from "./chatgpt-registration-store";
 import { exportChatGPTSession, importChatGPTSession } from "./chatgpt-handoff";
 import { runChatGPTConnectionCLI } from "./chatgpt-cli";
+import {
+  recordChatGPTPlanQuota,
+  retryChatGPTPlanQuota,
+} from "./chatgpt-plan-admission";
+import { PlanInferenceError } from "@workspace/ai-server";
 
 test("protected selected-session handoff retires the source, preserves the target host and cannot replay consumed credentials", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "acos-session-handoff-"));
@@ -63,6 +68,19 @@ test("protected selected-session handoff retires the source, preserves the targe
       },
     });
     await source.activateRegistration(id, 1);
+    await recordChatGPTPlanQuota(
+      source,
+      (await source.readRegistration(id))!,
+      new PlanInferenceError("quota", null, "rate_limit_exceeded", 429),
+    );
+    const firstPause = (await source.readRegistration(id))!.planPause!;
+    await retryChatGPTPlanQuota(source, id, 2, firstPause.id);
+    await recordChatGPTPlanQuota(
+      source,
+      (await source.readRegistration(id))!,
+      new PlanInferenceError("quota", null, "rate_limit_exceeded", 429),
+    );
+    const transferredPause = (await source.readRegistration(id))!.planPause!;
     const transferDirectory = path.join(root, "transfer");
     await assert.rejects(
       exportChatGPTSession({
@@ -87,7 +105,7 @@ test("protected selected-session handoff retires the source, preserves the targe
           "--registration",
           id,
           "--expected-revision",
-          "1",
+          "4",
           "--target-host",
           targetHost,
           "--transfer-directory",
@@ -178,6 +196,16 @@ test("protected selected-session handoff retires the source, preserves the targe
     assert.equal(active.clientId, clientId);
     assert.equal(active.subject, subject);
     assert.equal(active.credentials!.refreshToken, "fixture-handoff-refresh");
+    assert.equal(
+      active.planAdmissionVersion,
+      0,
+      "admission generations belong to this host's authority",
+    );
+    assert.deepEqual(
+      active.planPause,
+      transferredPause,
+      "a host transfer does not bypass the account's unknown quota reset",
+    );
     assert.equal(await target.getHostId(), targetHost);
     const consumed = await readFile(
       path.join(transferDirectory, "session-transfer.json"),

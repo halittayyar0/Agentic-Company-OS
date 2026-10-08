@@ -52,6 +52,9 @@ import { ErrorBoundary } from "@/components/error-boundary";
 const BudgetTaskResume = lazy(
   () => import("@/components/tasks/budget-task-resume"),
 );
+const CodingSessionRecovery = lazy(
+  () => import("@/components/tasks/coding-session-recovery"),
+);
 
 function hasBudgetResumeRecovery(taskId: number) {
   try {
@@ -399,6 +402,11 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
                 </Suspense>
               </ErrorBoundary>
             ) : null}
+            <ErrorBoundary resetKey={taskId}>
+              <Suspense fallback={null}>
+                <CodingSessionRecovery key={taskId} taskId={taskId} />
+              </Suspense>
+            </ErrorBoundary>
           </div>
 
           <ProjectTeamSummary

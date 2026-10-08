@@ -3,6 +3,9 @@ import type { Agent } from "@workspace/db";
 import { isCanonicalRootCeo } from "./agent-authority";
 import { capabilityToolDefinitions } from "../capabilities/capability-tools";
 import { readExecutionPolicy, policyAllowsTool } from "../execution-policy";
+import { codexTaskMayBeOffered } from "../codex-task-capability";
+import { getCodexTaskCopy } from "../codex-task-copy";
+import type { WorkspaceLocale } from "../workspace-locale";
 
 type ToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
 
@@ -490,6 +493,7 @@ import { readCapabilityPacks, toolPack } from "../capabilities/extension-store";
 export async function getToolsForAgent(
   agent: Agent,
   hasActiveTask: boolean,
+  context: { modelId?: string | null; locale?: WorkspaceLocale } = {},
 ): Promise<ToolDef[]> {
   const permissions = agent.permissions;
   // Approval is also available in direct chat. If no task exists, the
@@ -515,6 +519,24 @@ export async function getToolsForAgent(
       vmReadFileTool,
       vmWriteFileTool,
     );
+    if (
+      hasActiveTask &&
+      codexTaskMayBeOffered() &&
+      (context.modelId ?? agent.modelId ?? "").startsWith("chatgpt:")
+    )
+      tools.push({
+        type: "function",
+        function: {
+          name: "vm_codex_task",
+          description: getCodexTaskCopy(context.locale ?? "tr").description,
+          parameters: {
+            type: "object",
+            properties: { prompt: { type: "string", maxLength: 32000 } },
+            required: ["prompt"],
+            additionalProperties: false,
+          },
+        },
+      });
   }
 
   if (permissions.canUseSudo && (await isCanonicalRootCeo(agent))) {

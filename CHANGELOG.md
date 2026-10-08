@@ -3,6 +3,33 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## Unreleased — guided model connection
+
+These changes are in development and are not included in the v0.3.13 setup ZIP.
+Integrated review and release gates remain pending.
+
+### Added
+
+- In-place local, ChatGPT and API connection choices keep the first-job composer
+  open. Seven authored language packs and validated tab drafts preserve input
+  through navigation, reload and denied sign-in; only explicit Start submits it.
+- Revision-guarded local model addresses, protected ChatGPT registrations,
+  serialized rotating credentials and protected server handoff. Saved accounts
+  require explicit selection; identity-only consent cannot enable inference.
+- A separate streamed plan transport preserves reported usage on failures,
+  unknown costs and selected-provider boundaries. Optional Codex coding uses
+  owned task sessions, exact action approval scopes and explicit uncertain-session
+  recovery; model output alone is not verified delivery.
+- Linux PID namespace lifetime control and an offline gate using the actual
+  pinned Codex CLI. Fixed commands verify workspace permissions and private-data
+  denial; a separate driver case refuses final admission before any model turn.
+  Native Windows/macOS coding is unsupported and refused; ordinary application
+  installation is separate. Linux container coding has offline local proof;
+  enforced AppArmor and exact-source release acceptance remain pending. These
+  tests do not establish live plan inference or a 24-hour result.
+- [Connection walkthroughs](./docs/model-connections.md) in all seven languages
+  explain connection states, server addresses and phone handoff.
+
 ## [0.3.13] - 2026-10-03
 
 ### Fixed

@@ -32,6 +32,8 @@ export default {
     "Failed",
     "Outcome unknown",
     "Preparing",
+    "Codex is still running, or process cleanup is unverified. Open the task and inspect its coding session before running source checks.",
+    "Open task",
   ],
   policy: [
     "Agent access",

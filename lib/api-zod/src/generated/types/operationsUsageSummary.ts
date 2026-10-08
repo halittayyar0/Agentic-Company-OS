@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0-alpha.1
  */
 import type { OperationsProviderMetricsCoverage } from './operationsProviderMetricsCoverage';
+import type { TokenUsageCoverage } from './tokenUsageCoverage';
 
 export interface OperationsUsageSummary {
   /** @minimum 0 */
@@ -16,5 +17,10 @@ export interface OperationsUsageSummary {
   usageEvents: number;
   /** @minimum 0 */
   costReportedEvents: number;
+  /** @minimum 0 */
+  tokenReportedEvents?: number;
+  /** @minimum 0 */
+  tokenUnreportedEvents?: number;
+  tokenUsageCoverage?: TokenUsageCoverage;
   providerMetricsCoverage: OperationsProviderMetricsCoverage;
 }

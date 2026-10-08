@@ -1,3 +1,4 @@
+import { tokenUsageEvidence } from "../usage-coverage";
 import {
   activityEventsTable,
   agentsTable,
@@ -123,7 +124,9 @@ export interface OperationsTaskCounts {
   awaitingApproval: number;
 }
 
-export interface OperationsUsageSummary {
+export interface OperationsUsageSummary extends ReturnType<
+  typeof tokenUsageEvidence
+> {
   taskTokens: number;
   reportedCostUsd: number;
   usageEvents: number;
@@ -333,6 +336,7 @@ function numberValue(value: unknown): number {
 }
 
 const PUBLIC_FAILURE_KINDS = new Set([
+  "chatgpt_plan",
   "api_restarted",
   "api_restarted_after_dispatch",
   "binding_unavailable",
@@ -555,6 +559,7 @@ async function loadUsage(
       tokens: sum(usageEventsTable.totalTokens),
       reportedCost: sum(usageEventsTable.reportedCostUsd),
       costReportedEvents: count(usageEventsTable.reportedCostUsd),
+      tokenReportedEvents: sql<number>`count(*) filter (where ${usageEventsTable.usageReported} is true)`,
     })
     .from(usageEventsTable)
     .where(
@@ -571,8 +576,8 @@ async function loadUsage(
     reportedCostUsd: Number(numberValue(row?.reportedCost).toFixed(6)),
     usageEvents: numberValue(row?.events),
     costReportedEvents: numberValue(row?.costReportedEvents),
-    // The durable ledger currently records successful completions only and has
-    // no error/latency row, so complete provider health must not be claimed.
+    ...tokenUsageEvidence(row?.events, row?.tokenReportedEvents),
+    // Token/cost provenance is independent of provider latency/health coverage.
     providerMetricsCoverage: "partial",
   };
 }

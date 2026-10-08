@@ -1,5 +1,10 @@
 import type { OperationsCopy } from "../operations-copy";
 const copy = {
+  tokensAtLeast: "Mindestens {count}",
+  tokenUsageUnknown: "Tokenverbrauch unbekannt",
+  tokenCoveragePartial:
+    "Für einige Aufrufe fehlt der gemeldete Tokenverbrauch; die Summen sind Untergrenzen.",
+  noRecordedUsage: "Keine Nutzungsbelege in diesem Zeitraum.",
   recoveryTitle: "Gespeicherte Abgleichentscheidung prüfen",
   recoveryHelp:
     "Dieser Tab bewahrt eine ungeklärte Entscheidung für dieses Projekt auch außerhalb des Verlaufs auf. Neuladen erhält sie; Schließen des Tabs oder Gerätewechsel möglicherweise nicht.",

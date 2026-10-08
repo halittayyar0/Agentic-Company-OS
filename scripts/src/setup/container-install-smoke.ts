@@ -12,13 +12,24 @@ import { buildContainerDeployment } from "./deployment";
 import { executeBoundedCommand } from "../endurance/process-supervisor";
 import { reserveLoopbackPorts } from "../endurance/native-postgres-harness";
 import { proveDatabaseBackup } from "./backup-restore-proof";
+import { parseContainerSmokeOptions } from "./container-install-smoke-options";
+import {
+  applyFixtureBuildNetwork,
+  parseFixtureBuildNetwork,
+} from "./container-install-smoke-build";
 
 const source = fileURLToPath(new URL("../../..", import.meta.url));
-const image = process.argv[2];
+const { image, codingImage, codingRuntime } = parseContainerSmokeOptions(
+  process.argv.slice(2),
+);
+const fixtureBuildNetwork = parseFixtureBuildNetwork(
+  process.env.ACOS_TEST_CONTAINER_BUILD_NETWORK,
+);
 const directory = await mkdtemp(
   path.join(tmpdir(), "acos-container-install-proof-"),
 );
 const [port] = await reserveLoopbackPorts(1);
+const capabilities = await detectInstallCapabilities();
 const plan = planInstallation(
   {
     mode: "container",
@@ -28,15 +39,29 @@ const plan = planInstallation(
     provider: "later",
     phoneAccess: "local",
     toolPacks: ["data", "code"],
+    ...(codingRuntime ? { codingRuntime: true } : {}),
   },
-  await detectInstallCapabilities(),
+  capabilities,
 );
 const options = {
   workspaceRoot: source,
   installationParent: directory,
   pnpmPath: process.execPath,
   applyPreferences: applyInstallationPreferences,
+  ...(fixtureBuildNetwork
+    ? {
+        run: async (command: Parameters<typeof executeBoundedCommand>[0]) => {
+          await applyFixtureBuildNetwork(
+            command,
+            directory,
+            fixtureBuildNetwork,
+          );
+          return executeBoundedCommand(command);
+        },
+      }
+    : {}),
   ...(image ? { prebuiltImage: image } : {}),
+  ...(codingImage ? { codingImage } : {}),
 };
 const installer = createInstallationExecutor(options);
 let privateDirectory: string | null = null;
@@ -48,6 +73,39 @@ try {
     authorization: `Bearer ${result.operatorToken}`,
     "content-type": "application/json",
   };
+  async function codingConfiguration() {
+    const response = await fetch(`${result.url}/api/connections/codex`, {
+      headers,
+      redirect: "error",
+      signal: AbortSignal.timeout(20000),
+    });
+    assert.equal(response.status, 200);
+    const status = (await response.json()) as {
+      state: string;
+      proofScope: string;
+      requiresTaskPreflight: boolean;
+      truncated: boolean;
+      workers: Array<{ role: string; configurationState: string }>;
+    };
+    assert.equal(status.proofScope, "worker_configuration");
+    assert.equal(status.requiresTaskPreflight, true);
+    assert.equal(status.truncated, false);
+    assert.equal(status.workers.length, 2);
+    assert.equal(
+      status.state,
+      codingRuntime ? "preflight_required" : "unavailable",
+    );
+    assert.ok(
+      status.workers.every(
+        (worker) =>
+          worker.role === "worker" &&
+          worker.configurationState ===
+            (codingRuntime ? "preflight_required" : "disabled"),
+      ),
+    );
+    return status;
+  }
+  await codingConfiguration();
   assert.equal(
     (
       await fetch(`${result.url}/api/skills`, {
@@ -81,6 +139,33 @@ try {
   await installer.stopNative();
   const restored = await readInstallation(privateDirectory, source);
   assert.equal(restored.complete, true);
+  const reviewedDeployment = buildContainerDeployment(
+    source,
+    plan,
+    restored.resources,
+    {},
+    undefined,
+    image,
+    codingRuntime
+      ? { image: codingImage, apparmor: capabilities.coding!.apparmor }
+      : undefined,
+  );
+  const composeArgs = reviewedDeployment.args.slice(
+    0,
+    reviewedDeployment.args.indexOf("up"),
+  );
+  const compose = (args: string[]) =>
+    executeBoundedCommand({
+      command: "docker",
+      args: [...composeArgs, ...args],
+      cwd: source,
+      environment: { ...process.env, ...reviewedDeployment.environment },
+      timeoutMs: 120000,
+      maxBufferBytes: 1048576,
+    });
+  // A live no-op "up" is weaker than restoring stopped services. Only this
+  // fresh UUID-scoped fixture is stopped; its database volume is retained.
+  await compose(["stop"]);
   const resumed = createInstallationExecutor({
     ...options,
     resume: {
@@ -96,6 +181,7 @@ try {
       () => {},
     );
     assert.equal(again.operatorToken, result.operatorToken);
+    const workerConfiguration = await codingConfiguration();
     const entries = (await (
       await fetch(`${again.url}/api/skills/extensions`, {
         headers,
@@ -112,24 +198,6 @@ try {
       ).phase,
       "complete",
     );
-    const deployment = buildContainerDeployment(
-      source,
-      plan,
-      restored.resources,
-      {},
-      undefined,
-      image,
-    );
-    const composeArgs = deployment.args.slice(0, deployment.args.indexOf("up"));
-    const compose = (args: string[]) =>
-      executeBoundedCommand({
-        command: "docker",
-        args: [...composeArgs, ...args],
-        cwd: source,
-        environment: { ...process.env, ...deployment.environment },
-        timeoutMs: 120000,
-        maxBufferBytes: 1048576,
-      });
     const archivePath = path.join(directory, "agentic-os.dump");
     const backup = await proveDatabaseBackup({
       database: "agentic_os",
@@ -149,13 +217,20 @@ try {
         {
           passed: true,
           image: image ?? "local-source-build",
+          codingImage: codingImage ?? null,
+          codingRuntime,
+          fixtureBuildNetwork: fixtureBuildNetwork ?? "default",
+          workerConfiguration,
+          proofScope:
+            "Installer/API/two workers/PostgreSQL, preferences, resume and backup. No account sign-in, inference or generated coding delivery.",
           backup,
           checks: [
             "real container installation",
             "private authentication",
             "static UI",
             "preferences and custom guide persisted",
-            "installation resume",
+            "installation resume after stopping all fixture services",
+            "worker-only coding configuration before and after restart; every coding task still requires native preflight",
             "binary backup copied through host and restored into a fresh database",
             "restored roster, migration journal entry count, application writes and sequence state",
           ],
@@ -182,6 +257,9 @@ try {
       {},
       undefined,
       image,
+      codingRuntime
+        ? { image: codingImage, apparmor: capabilities.coding!.apparmor }
+        : undefined,
     );
     const args = deployment.args.slice(0, deployment.args.indexOf("up"));
     // Remove only this fresh test's UUID-scoped project and its disposable data.

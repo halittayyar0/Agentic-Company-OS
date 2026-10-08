@@ -1911,6 +1911,12 @@ const SAFE_RESULT_FIELDS_BY_TOOL: Readonly<
     "taskDisposition",
     "executionLocale",
   ]),
+  vm_codex_task: new Set([
+    "executionLocale",
+    "proofScope",
+    "deliverableVerified",
+    "nativeItemCount",
+  ]),
   vm_run_sudo_command: new Set([
     "executionLocale",
     "ok",
@@ -1955,6 +1961,15 @@ const SAFE_RESULT_FIELDS_BY_TOOL: Readonly<
 });
 
 function isSafeResultPrimitive(key: string, value: unknown): boolean {
+  if (key === "proofScope") return value === "codex_turn";
+  if (key === "deliverableVerified") return value === false;
+  if (key === "nativeItemCount")
+    return (
+      typeof value === "number" &&
+      Number.isInteger(value) &&
+      value >= 0 &&
+      value <= 128
+    );
   if (key === "executionLocale") return isWorkspaceLocale(value);
   if (["ok"].includes(key)) return typeof value === "boolean";
   if (["exitCode"].includes(key)) {
@@ -3556,6 +3571,7 @@ const TRANSACTIONAL_TOOLS = new Set([
 ]);
 const IDEMPOTENT_TOOLS = new Set(["vm_write_file"]);
 const AT_MOST_ONCE_TOOLS = new Set([
+  "vm_codex_task",
   "browser_save_screenshot",
   "vm_run_command",
   "browser_open",

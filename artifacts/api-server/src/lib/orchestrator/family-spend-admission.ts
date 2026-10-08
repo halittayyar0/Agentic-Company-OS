@@ -2,6 +2,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import type { WorkspaceLocale } from "../workspace-locale";
 import { toolMessage } from "./tool-localization";
+import { tokenUsageEvidence } from "../usage-coverage";
+import { unreportedTokenUsageBlockReason } from "./task-budget-policy";
 
 /** A transaction reader keeps admission and its queue transition in one scope. */
 export type SpendReaderClient = Pick<typeof db, "select" | "execute">;
@@ -36,15 +38,19 @@ interface FamilyRow {
   lifetime_cost: string | null;
   lifetime_rows: string;
   lifetime_unknown: string;
+  lifetime_token_reported: string;
   legacy_incomplete_members: string;
+  legacy_incomplete_token_members: string;
   cycle_tokens: string;
   cycle_cost: string | null;
   cycle_rows: string;
   cycle_unknown: string;
+  cycle_token_reported: string;
   day_tokens: string;
   day_cost: string | null;
   day_rows: string;
   day_unknown: string;
+  day_token_reported: string;
 }
 
 function evidence(
@@ -53,6 +59,8 @@ function evidence(
   rows: string,
   unknown: string,
   legacy = "0",
+  tokenReported = "0",
+  legacyTokens = "0",
 ) {
   const tokensUsed = Number(tokens),
     count = Number(rows),
@@ -80,7 +88,12 @@ function evidence(
           : cost === null
             ? "unknown"
             : "partial";
-  return { tokensUsed, reportedCostUsd: cost, costCoverage };
+  return {
+    tokensUsed,
+    reportedCostUsd: cost,
+    costCoverage,
+    ...tokenUsageEvidence(count, tokenReported, Number(legacyTokens) > 0),
+  };
 }
 
 /** One statement reads the rooted graph and its receipt ledger consistently.
@@ -111,14 +124,17 @@ export async function readFamilySpendAdmission(
         coalesce(sum(u.total_tokens), 0) AS all_tokens,
         sum(u.reported_cost_usd) AS all_cost,
         count(u.id) AS all_rows,
+        count(u.id) FILTER (WHERE u.usage_reported IS TRUE) AS all_token_reported,
         count(u.id) FILTER (WHERE u.reported_cost_usd IS NULL) AS all_unknown,
         coalesce(sum(u.total_tokens) FILTER (WHERE u.created_at >= r.cycle_start), 0) AS cycle_tokens,
         sum(u.reported_cost_usd) FILTER (WHERE u.created_at >= r.cycle_start) AS cycle_cost,
         count(u.id) FILTER (WHERE u.created_at >= r.cycle_start) AS cycle_rows,
+        count(u.id) FILTER (WHERE u.created_at >= r.cycle_start AND u.usage_reported IS TRUE) AS cycle_token_reported,
         count(u.id) FILTER (WHERE u.created_at >= r.cycle_start AND u.reported_cost_usd IS NULL) AS cycle_unknown,
         coalesce(sum(u.total_tokens) FILTER (WHERE u.created_at >= ${dayStart}), 0) AS day_tokens,
         sum(u.reported_cost_usd) FILTER (WHERE u.created_at >= ${dayStart}) AS day_cost,
         count(u.id) FILTER (WHERE u.created_at >= ${dayStart}) AS day_rows,
+        count(u.id) FILTER (WHERE u.created_at >= ${dayStart} AND u.usage_reported IS TRUE) AS day_token_reported,
         count(u.id) FILTER (WHERE u.created_at >= ${dayStart} AND u.reported_cost_usd IS NULL) AS day_unknown
       FROM family f CROSS JOIN root r
       LEFT JOIN usage_events u ON u.task_id = f.id AND u.kind IN ('task_step', 'judge')
@@ -130,15 +146,19 @@ export async function readFamilySpendAdmission(
       coalesce(sum(greatest(f.tokens_used, p.all_tokens)), 0)::text AS lifetime_tokens,
       sum(greatest(nullif(f.estimated_cost_usd, 0), p.all_cost))::text AS lifetime_cost,
       coalesce(sum(p.all_rows), 0)::text AS lifetime_rows,
+      coalesce(sum(p.all_token_reported), 0)::text AS lifetime_token_reported,
       coalesce(sum(p.all_unknown), 0)::text AS lifetime_unknown,
       count(*) FILTER (WHERE f.tokens_used > p.all_tokens OR f.estimated_cost_usd > coalesce(p.all_cost, 0))::text AS legacy_incomplete_members,
+      count(*) FILTER (WHERE f.tokens_used > p.all_tokens)::text AS legacy_incomplete_token_members,
       coalesce(sum(p.cycle_tokens), 0)::text AS cycle_tokens,
       sum(p.cycle_cost)::text AS cycle_cost,
       coalesce(sum(p.cycle_rows), 0)::text AS cycle_rows,
+      coalesce(sum(p.cycle_token_reported), 0)::text AS cycle_token_reported,
       coalesce(sum(p.cycle_unknown), 0)::text AS cycle_unknown,
       coalesce(sum(p.day_tokens), 0)::text AS day_tokens,
       sum(p.day_cost)::text AS day_cost,
       coalesce(sum(p.day_rows), 0)::text AS day_rows,
+      coalesce(sum(p.day_token_reported), 0)::text AS day_token_reported,
       coalesce(sum(p.day_unknown), 0)::text AS day_unknown
     FROM family f JOIN receipts p ON p.id = f.id
   `);
@@ -159,6 +179,8 @@ export async function readFamilySpendAdmission(
         row.cycle_cost,
         row.cycle_rows,
         row.cycle_unknown,
+        "0",
+        row.cycle_token_reported,
       )
     : evidence(
         row.lifetime_tokens,
@@ -166,6 +188,8 @@ export async function readFamilySpendAdmission(
         row.lifetime_rows,
         row.lifetime_unknown,
         row.legacy_incomplete_members,
+        row.lifetime_token_reported,
+        row.legacy_incomplete_token_members,
       );
   const currentReason =
     current.tokensUsed >= limits.tokens
@@ -180,7 +204,7 @@ export async function readFamilySpendAdmission(
             used: current.reportedCostUsd!,
             limit: limits.cost,
           })
-        : null;
+        : unreportedTokenUsageBlockReason(current.tokenUsageCoverage, locale);
   if (currentReason || !row.recurring)
     return {
       ...current,
@@ -195,6 +219,8 @@ export async function readFamilySpendAdmission(
     row.day_cost,
     row.day_rows,
     row.day_unknown,
+    "0",
+    row.day_token_reported,
   );
   return {
     ...daily,
@@ -213,6 +239,6 @@ export async function readFamilySpendAdmission(
               used: daily.reportedCostUsd!,
               limit: limits.dailyCost,
             })
-          : null,
+          : unreportedTokenUsageBlockReason(daily.tokenUsageCoverage, locale),
   };
 }

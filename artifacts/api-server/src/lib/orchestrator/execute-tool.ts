@@ -19,6 +19,12 @@ import {
 } from "../capabilities/capability-tools";
 import { getCapabilityCatalog } from "../capabilities/catalog";
 import { getToolsForAgent } from "./tools";
+import {
+  runGovernedCodexTask,
+  validCodexTaskArguments,
+} from "../codex-task-service";
+import { CodexTaskError } from "../codex-task-adapter";
+import { getCodexTaskCopy } from "../codex-task-copy";
 import { validateTeamToolArgs } from "./team-tool-validation";
 import {
   BrowserDiagnosticError,
@@ -2074,6 +2080,14 @@ async function executeToolWithPolicy(
       "Hata: arac argumanlari bir JSON nesnesi olmali.",
     );
   }
+  if (name === "vm_codex_task" && !validCodexTaskArguments(args))
+    return empty(
+      JSON.stringify({
+        message: getCodexTaskCopy(ctx.locale ?? "tr").invalid,
+        code: "CODEX_ARGUMENTS_INVALID",
+      }),
+      "rejected",
+    );
 
   // Validate before read-only canonicalization can erase invalid field types.
   if (isCapabilityTool(name) && !validCapabilityArgs(name, args)) {
@@ -2300,7 +2314,10 @@ async function dispatchToolHandler(
   args: Record<string, unknown>,
 ): Promise<ToolExecutionResult> {
   if (isCapabilityTool(name)) {
-    const available = await getToolsForAgent(ctx.agent, ctx.taskId !== null);
+    const available = await getToolsForAgent(ctx.agent, ctx.taskId !== null, {
+      modelId: ctx.turnModelId,
+      locale: ctx.locale,
+    });
     try {
       await assertPackEnabled(name);
       if (name === "list_extensions" || name === "run_extension") {
@@ -2367,6 +2384,8 @@ async function dispatchToolHandler(
       return computerObserve(ctx);
     case "vm_run_command":
       return vmRunCommand(ctx, args);
+    case "vm_codex_task":
+      return executeCodexTaskTool(ctx, args);
     case "vm_run_sudo_command":
       return vmRunSudoCommand(ctx, args);
     case "vm_list_files":
@@ -4265,6 +4284,94 @@ async function computerObserve(
       "rejected",
     );
   }
+}
+
+export async function executeCodexTaskTool(
+  ctx: ToolRuntimeContext,
+  args: Record<string, unknown>,
+  dependencies: { runTask?: typeof runGovernedCodexTask } = {},
+): Promise<ToolExecutionResult> {
+  const copy = getCodexTaskCopy(ctx.locale ?? "tr");
+  if (
+    !validCodexTaskArguments(args) ||
+    !ctx.agent.permissions.canUseTerminal ||
+    !isDurableTaskContext(ctx) ||
+    !ctx.turnModelId?.startsWith("chatgpt:") ||
+    ctx.preapprovedAction
+  )
+    return empty(
+      JSON.stringify({
+        message: copy.unavailable,
+        code: "CODEX_TASK_UNAVAILABLE",
+      }),
+      "rejected",
+    );
+  return runDurableExternalEffect(ctx, {
+    toolName: "vm_codex_task",
+    normalizedArgs: { prompt: args.prompt },
+    execute: async ({ startEffect }) => {
+      const result = await (dependencies.runTask ?? runGovernedCodexTask)(
+        ctx,
+        { prompt: args.prompt },
+        { beforeTurnBoundary: startEffect },
+      );
+      return {
+        result: {
+          content: JSON.stringify({
+            message: copy.completed,
+            status: result.status,
+            text: result.text,
+            usage: result.usage,
+            reportedCostUsd: null,
+            proofScope: result.proofScope,
+            deliverableVerified: false,
+            actions: result.actionReceipts.map((item) => ({
+              actionDigest: item.actionDigest,
+              status: item.status,
+              exitCode: item.exitCode,
+              completedAtMs: item.completedAtMs,
+            })),
+          }),
+          createdTasks: [],
+          createdAgents: [],
+          toolOutcome: "succeeded",
+        },
+        resultData: {
+          proofScope: "codex_turn",
+          deliverableVerified: false,
+          nativeItemCount: result.actionReceipts.length,
+        },
+      };
+    },
+    onError: async (error) =>
+      empty(
+        JSON.stringify({
+          message:
+            error instanceof CodexTaskError && error.requestStarted
+              ? copy.interrupted
+              : copy.unavailable,
+          code:
+            error instanceof CodexTaskError
+              ? `CODEX_${error.kind.toUpperCase()}`
+              : "CODEX_TASK_UNAVAILABLE",
+          usage: error instanceof CodexTaskError ? error.usage : null,
+          requestStarted:
+            error instanceof CodexTaskError && error.requestStarted,
+          actions:
+            error instanceof CodexTaskError
+              ? error.actionReceipts.map((item) => ({
+                  actionDigest: item.actionDigest,
+                  status: item.status,
+                  exitCode: item.exitCode,
+                  completedAtMs: item.completedAtMs,
+                }))
+              : [],
+          reportedCostUsd: null,
+          deliverableVerified: false,
+        }),
+        "rejected",
+      ),
+  });
 }
 
 async function vmRunCommand(

@@ -83,9 +83,12 @@ for (const [locale, error, retry, checking] of [
         .first()
         .evaluate((element) => element.getBoundingClientRect().width);
       expect(descriptionWidth).toBeGreaterThan(noticeWidth / 2);
-      await expect(notice.getByRole("link")).toHaveAttribute(
-        "href",
-        "/settings",
+      await expect(
+        notice.getByRole("button", { name: retry, exact: true }),
+      ).toBeVisible();
+      await expect(notice.getByRole("button").last()).toHaveAttribute(
+        "aria-haspopup",
+        "dialog",
       );
       expect(
         await page.evaluate(
@@ -109,7 +112,7 @@ for (const [locale, error, retry, checking] of [
       await expect(
         notice.getByRole("button", { name: retry, exact: true }),
       ).toBeVisible();
-      const retryButton = notice.getByRole("button");
+      const retryButton = notice.getByRole("button").first();
       await retryButton.focus();
       await page.keyboard.press("Enter");
       await expect(retryButton).toBeDisabled();
@@ -175,7 +178,7 @@ test("a slow first model check remains visible while the user writes a job", asy
     await page.locator("#project-outcome").fill("Summarize my meeting notes.");
     finishCheck();
     await expect(
-      page.getByRole("link", { name: "Connect a model" }),
+      page.getByRole("button", { name: "Connect a model" }),
     ).toBeVisible();
     await expect(page.getByText(/You can save a project now/u)).toBeVisible();
     await expect(page.getByText(/Your project is saved/u)).toHaveCount(0);
@@ -229,10 +232,10 @@ test("a second failed check remains retryable and a model without tools still ne
   await retry.click();
   await expect(notice).toHaveCount(0);
   await expect(
-    page.getByRole("link", { name: "Connect a model", exact: true }),
+    page.getByRole("button", { name: "Connect a model", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Connect a model", exact: true }),
+    page.getByRole("button", { name: "Connect a model", exact: true }),
   ).toBeFocused();
   await expect(page.getByText(/You can save a project now/u)).toBeVisible();
   await expect(page.locator("#project-outcome")).toHaveValue(
@@ -260,9 +263,9 @@ test("a failed refresh shows recovery even when a ready catalog was cached", asy
   await page.goto("/");
   await expect(page.locator("#project-outcome")).toBeVisible();
   await firstResponse;
-  await expect(page.getByRole("link", { name: "Connect a model" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("button", { name: "Connect a model" }),
+  ).toHaveCount(0);
   unavailable = true;
   await page.clock.fastForward(31_000);
   await page.getByRole("button", { name: "Create new", exact: true }).click();
@@ -332,7 +335,8 @@ test("finishing a model retry does not take focus from a user editing their draf
     const retry = page
       .getByRole("alert")
       .filter({ hasText: "Could not check model availability." })
-      .getByRole("button");
+      .getByRole("button")
+      .first();
     await retry.focus();
     await page.keyboard.press("Enter");
     await expect(retry).toBeDisabled();

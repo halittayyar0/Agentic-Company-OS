@@ -2,6 +2,7 @@ import type { Server } from "node:http";
 import { closeDatabase, databaseBackend, dbReady } from "@workspace/db";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { readCodexConfigurationReport } from "./lib/codex-task-capability";
 import { bootstrapProviders } from "./lib/provider-bootstrap";
 import { setProviderRuntimeIdentity } from "./lib/provider-runtime-config";
 import { reconcileInterruptedComputerActivities } from "./lib/orchestrator/execute-tool";
@@ -269,6 +270,7 @@ export async function startHttpRuntime(
         role: options.operationsConfig.role,
         schedulerEnabled: options.rolePlan.startsScheduler,
         capabilities: {
+          ...readCodexConfigurationReport(options.environment),
           http: true,
           scheduler: options.rolePlan.startsScheduler,
         },

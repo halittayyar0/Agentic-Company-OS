@@ -18,8 +18,9 @@ import { proveDatabaseBackup } from "./backup-restore-proof";
 export async function runNativeInstallSmoke(
   postgresBin: string,
   pnpmPath: string,
-  acceptance?: {
-    providerKey: string;
+  acceptance?: (
+    { kind?: "live-model"; providerKey: string } | { kind: "offline-guided" }
+  ) & {
     run: (context: {
       baseUrl: string;
       operatorToken: string;
@@ -91,7 +92,10 @@ export async function runNativeInstallSmoke(
         locale: "ar",
         port: appPort,
         accessMode: "read_only",
-        provider: acceptance ? "openrouter" : "later",
+        provider:
+          acceptance && acceptance.kind !== "offline-guided"
+            ? "openrouter"
+            : "later",
         phoneAccess: "local",
         toolPacks: ["data", "documents"],
       },
@@ -108,7 +112,9 @@ export async function runNativeInstallSmoke(
       plan,
       {
         databaseUrl: `postgresql://setup_proof:${password}@127.0.0.1:${dbPort}/setup_proof`,
-        ...(acceptance ? { providerKey: acceptance.providerKey } : {}),
+        ...(acceptance && "providerKey" in acceptance
+          ? { providerKey: acceptance.providerKey }
+          : {}),
       },
       (step, complete) => {
         if (complete) process.stdout.write(`verified ${step}\n`);
@@ -197,7 +203,11 @@ export async function runNativeInstallSmoke(
         operatorToken: result.operatorToken!,
         directory,
       });
-      checks.push("live model finite and recurring acceptance");
+      checks.push(
+        acceptance.kind === "offline-guided"
+          ? "offline guided connection with real API, workers and browser acceptance"
+          : "live model finite and recurring acceptance",
+      );
     }
     await writeFile(
       path.join(directory, "evidence.json"),

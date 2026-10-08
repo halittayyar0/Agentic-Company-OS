@@ -52,6 +52,22 @@ HEALTHCHECK --interval=15s --timeout=3s --start-period=30s --retries=3 \
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "artifacts/api-server/start.mjs"]
 
+# Explicit optional x64 coding image. Ordinary builds keep the smaller runtime
+# and the native capability disabled. Archive scripts/authentication never run.
+FROM runtime AS coding-runtime
+
+USER root
+COPY scripts/src/testing/install-codex-linux-fixture.py /tmp/install-codex-linux.py
+COPY deploy/codex-attribution /usr/share/doc/agentic-codex
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3 /tmp/install-codex-linux.py --image-runtime \
+    && install -o root -g root -m 0555 /opt/agentic-codex/codex-resources/bwrap /usr/bin/bwrap \
+    && rm /tmp/install-codex-linux.py
+ENV ACOS_CODEX_EXECUTABLE=/opt/agentic-codex/bin/codex
+USER node
+
 # Synthetic endurance execution is deliberately unavailable in the ordinary
 # production image. The dedicated target carries a root-owned, immutable build
 # attestation which the runtime verifies before accepting soak-only fixtures.

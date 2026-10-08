@@ -148,6 +148,10 @@ A 24-hour soak, physical-phone/carrier acceptance and native-speaker review are 
 
 Small, focused contributions are welcome: a reproducible bug report, a clearer translation, a useful guide or a tested fix.
 
+**Development preview:** the [guided model connection walkthrough](./docs/model-connections.md)
+explains local models, ChatGPT, API keys and keeping your first-job draft. This
+flow is not included in the released v0.3.13 setup package.
+
 ---
 
 **Open source under the [MIT License](./LICENSE).** Bundled IBM Plex fonts use SIL Open Font License 1.1; see [third-party notices](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt).

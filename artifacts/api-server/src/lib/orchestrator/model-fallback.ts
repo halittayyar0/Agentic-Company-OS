@@ -1,4 +1,5 @@
 import type { ModelRouteCandidate } from "./model-select";
+import { PlanInferenceError } from "@workspace/ai-server";
 
 export type ModelFailureKind =
   | "rate_limit"
@@ -116,6 +117,9 @@ export function classifyRecoverableModelError(
   error: unknown,
 ): ModelFailureKind | null {
   if (error instanceof ModelAdmissionDeniedError) return null;
+  // The plan adapter owns its recovery and preserves failure usage. Replaying
+  // here could spend again after a partial stream or bypass a plan quota pause.
+  if (error instanceof PlanInferenceError) return null;
   if (!(error instanceof Error) && (typeof error !== "object" || !error)) {
     return null;
   }

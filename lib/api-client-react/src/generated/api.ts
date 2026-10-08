@@ -47,6 +47,10 @@ import type {
   ChatGPTSignInStart,
   ChatGPTSignInStatus,
   CheckSourceChangeBody,
+  CodexSessionRecoveryInput,
+  CodexSessionRecoveryReceipt,
+  CodexSessionRecoveryStatus,
+  CodexTaskStatus,
   CompanyChannel,
   CompanyChannelMember,
   CompanyChannelMemberInput,
@@ -115,6 +119,7 @@ import type {
   ReadinessStatus,
   ReconcileOperationInput,
   ResetAgentAvatarParams,
+  RetryChatGPTPlanBody,
   RollbackSourceChangeBody,
   SavePersonalCapabilityBody,
   SignOutChatGPTAccount200,
@@ -178,6 +183,316 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetCodexSessionRecoveryUrl = (taskId: number,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/coding-session`
+}
+
+/**
+ * @summary Read coding-session recovery eligibility without starting work
+ */
+export const getCodexSessionRecovery = async (taskId: number, options?: Parameters<typeof customFetch>[1]): Promise<CodexSessionRecoveryStatus> => {
+
+  return customFetch<CodexSessionRecoveryStatus>(getGetCodexSessionRecoveryUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCodexSessionRecoveryQueryKey = (taskId: number,) => {
+    return [
+    `/api/tasks/${taskId}/coding-session`
+    ] as const;
+    }
+
+
+export const getGetCodexSessionRecoveryQueryOptions = <TData = Awaited<ReturnType<typeof getCodexSessionRecovery>>, TError = ErrorType<void>>(taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecovery>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCodexSessionRecoveryQueryKey(taskId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCodexSessionRecovery>>> = ({ signal }) => getCodexSessionRecovery(taskId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecovery>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCodexSessionRecoveryQueryResult = NonNullable<Awaited<ReturnType<typeof getCodexSessionRecovery>>>
+export type GetCodexSessionRecoveryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read coding-session recovery eligibility without starting work
+ */
+
+export function useGetCodexSessionRecovery<TData = Awaited<ReturnType<typeof getCodexSessionRecovery>>, TError = ErrorType<void>>(
+ taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecovery>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCodexSessionRecoveryQueryOptions(taskId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecoverCodexSessionUrl = (taskId: number,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/coding-session/recover`
+}
+
+/**
+ * Operator-only metadata transition. Requires a unique request identity, exact observed revision and explicit acknowledgement that uncertain effects remain unresolved. Does not start or resume a task, reconcile effects, delete files, reuse a private home or grant native permissions. Running sessions, unknown cleanup, active task ownership and live native approvals are refused. Repeating a committed request returns its original receipt; changed scope conflicts.
+ * @summary Archive a stopped coding session and permit a fresh session on a later authorized task invocation
+ */
+export const recoverCodexSession = async (taskId: number,
+    codexSessionRecoveryInput: CodexSessionRecoveryInput, options?: Parameters<typeof customFetch>[1]): Promise<CodexSessionRecoveryReceipt> => {
+
+  return customFetch<CodexSessionRecoveryReceipt>(getRecoverCodexSessionUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(codexSessionRecoveryInput)
+  }
+);}
+
+
+
+
+
+export const getRecoverCodexSessionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverCodexSession>>, TError,{taskId: number;data: BodyType<CodexSessionRecoveryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recoverCodexSession>>, TError,{taskId: number;data: BodyType<CodexSessionRecoveryInput>}, TContext> => {
+
+const mutationKey = ['recoverCodexSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recoverCodexSession>>, {taskId: number;data: BodyType<CodexSessionRecoveryInput>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  recoverCodexSession(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecoverCodexSessionMutationResult = NonNullable<Awaited<ReturnType<typeof recoverCodexSession>>>
+    export type RecoverCodexSessionMutationBody = BodyType<CodexSessionRecoveryInput>
+    export type RecoverCodexSessionMutationError = ErrorType<void>
+
+    /**
+ * @summary Archive a stopped coding session and permit a fresh session on a later authorized task invocation
+ */
+export const useRecoverCodexSession = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverCodexSession>>, TError,{taskId: number;data: BodyType<CodexSessionRecoveryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recoverCodexSession>>,
+        TError,
+        {taskId: number;data: BodyType<CodexSessionRecoveryInput>},
+        TContext
+      > => {
+      return useMutation(getRecoverCodexSessionMutationOptions(options));
+    }
+
+export const getGetCodexSessionRecoveryReceiptUrl = (taskId: number,
+    requestId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/coding-session/recover/${requestId}`
+}
+
+/**
+ * @summary Recover the immutable receipt after a lost response
+ */
+export const getCodexSessionRecoveryReceipt = async (taskId: number,
+    requestId: string, options?: Parameters<typeof customFetch>[1]): Promise<CodexSessionRecoveryReceipt> => {
+
+  return customFetch<CodexSessionRecoveryReceipt>(getGetCodexSessionRecoveryReceiptUrl(taskId,requestId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCodexSessionRecoveryReceiptQueryKey = (taskId: number,
+    requestId: string,) => {
+    return [
+    `/api/tasks/${taskId}/coding-session/recover/${requestId}`
+    ] as const;
+    }
+
+
+export const getGetCodexSessionRecoveryReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>, TError = ErrorType<void>>(taskId: number,
+    requestId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCodexSessionRecoveryReceiptQueryKey(taskId,requestId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>> = ({ signal }) => getCodexSessionRecoveryReceipt(taskId,requestId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined && requestId !== null && requestId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCodexSessionRecoveryReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>>
+export type GetCodexSessionRecoveryReceiptQueryError = ErrorType<void>
+
+
+/**
+ * @summary Recover the immutable receipt after a lost response
+ */
+
+export function useGetCodexSessionRecoveryReceipt<TData = Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>, TError = ErrorType<void>>(
+ taskId: number,
+    requestId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCodexSessionRecoveryReceiptQueryOptions(taskId,requestId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCodexTaskStatusUrl = () => {
+
+
+
+
+  return `/api/connections/codex`
+}
+
+/**
+ * Authenticated read-only observation of fresh healthy scheduler workers. Startup flags are not native availability or filesystem containment proof. Every task still requires live authority and actual native preflight. API-host flags and operating system never substitute for worker reports.
+ * @summary Read the executing workers' optional coding configuration without probes or inference
+ */
+export const getCodexTaskStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<CodexTaskStatus> => {
+
+  return customFetch<CodexTaskStatus>(getGetCodexTaskStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCodexTaskStatusQueryKey = () => {
+    return [
+    `/api/connections/codex`
+    ] as const;
+    }
+
+
+export const getGetCodexTaskStatusQueryOptions = <TData = Awaited<ReturnType<typeof getCodexTaskStatus>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexTaskStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCodexTaskStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCodexTaskStatus>>> = ({ signal }) => getCodexTaskStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCodexTaskStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCodexTaskStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getCodexTaskStatus>>>
+export type GetCodexTaskStatusQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the executing workers' optional coding configuration without probes or inference
+ */
+
+export function useGetCodexTaskStatus<TData = Awaited<ReturnType<typeof getCodexTaskStatus>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexTaskStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCodexTaskStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetChatGPTConnectionUrl = () => {
 
@@ -605,6 +920,78 @@ export const useSelectChatGPTAccount = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSelectChatGPTAccountMutationOptions(options));
+    }
+
+export const getRetryChatGPTPlanUrl = (registrationId: string,) => {
+
+
+
+
+  return `/api/connections/chatgpt/accounts/${registrationId}/plan/retry`
+}
+
+/**
+ * @summary Explicitly clear this observed quota pause; never starts a job or changes provider
+ */
+export const retryChatGPTPlan = async (registrationId: string,
+    retryChatGPTPlanBody: RetryChatGPTPlanBody, options?: Parameters<typeof customFetch>[1]): Promise<ChatGPTAccount> => {
+
+  return customFetch<ChatGPTAccount>(getRetryChatGPTPlanUrl(registrationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(retryChatGPTPlanBody)
+  }
+);}
+
+
+
+
+
+export const getRetryChatGPTPlanMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryChatGPTPlan>>, TError,{registrationId: string;data: BodyType<RetryChatGPTPlanBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryChatGPTPlan>>, TError,{registrationId: string;data: BodyType<RetryChatGPTPlanBody>}, TContext> => {
+
+const mutationKey = ['retryChatGPTPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryChatGPTPlan>>, {registrationId: string;data: BodyType<RetryChatGPTPlanBody>}> = (props) => {
+          const {registrationId,data} = props ?? {};
+
+          return  retryChatGPTPlan(registrationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryChatGPTPlanMutationResult = NonNullable<Awaited<ReturnType<typeof retryChatGPTPlan>>>
+    export type RetryChatGPTPlanMutationBody = BodyType<RetryChatGPTPlanBody>
+    export type RetryChatGPTPlanMutationError = ErrorType<void>
+
+    /**
+ * @summary Explicitly clear this observed quota pause; never starts a job or changes provider
+ */
+export const useRetryChatGPTPlan = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryChatGPTPlan>>, TError,{registrationId: string;data: BodyType<RetryChatGPTPlanBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retryChatGPTPlan>>,
+        TError,
+        {registrationId: string;data: BodyType<RetryChatGPTPlanBody>},
+        TContext
+      > => {
+      return useMutation(getRetryChatGPTPlanMutationOptions(options));
     }
 
 export const getSignOutChatGPTAccountUrl = (registrationId: string,) => {

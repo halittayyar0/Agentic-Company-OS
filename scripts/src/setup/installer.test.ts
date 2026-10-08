@@ -39,6 +39,71 @@ const makePlan = (mode: string) =>
     capabilities,
   );
 
+test("coding installer persists the reviewed choice and rechecks host policy before selecting worker images", async (t) => {
+  const parent = await mkdtemp(
+    path.join(await realpath(tmpdir()), "acos-coding-installer-"),
+  );
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const selectedCapabilities = {
+    ...capabilities,
+    coding: { ready: true, issues: [], apparmor: true },
+  };
+  const selected = planInstallation(
+    { ...makePlan("container").settings, codingRuntime: true },
+    selectedCapabilities,
+  );
+  const apiImage = `ghcr.io/owner/app@sha256:${"a".repeat(64)}`;
+  const codingImage = `ghcr.io/owner/app@sha256:${"b".repeat(64)}`;
+  let commands = 0;
+  const base = {
+    workspaceRoot: process.cwd(),
+    installationParent: parent,
+    pnpmPath: process.execPath,
+    capabilities: async () => selectedCapabilities,
+    verify: async () => topology,
+    applyPreferences: async () => {},
+    run: async () => {
+      commands++;
+      return { stdout: "", stderr: "", exitCode: 0 };
+    },
+    prebuiltImage: apiImage,
+  };
+  const missing = createInstallationExecutor(base);
+  t.after(() => missing.stopNative());
+  await assert.rejects(
+    missing.execute(selected, {}, () => {}),
+    /coding_distribution_missing/u,
+  );
+  assert.equal(commands, 0);
+  const executor = createInstallationExecutor({
+    ...base,
+    codingImage,
+    run: async (command) => {
+      commands++;
+      assert.ok(
+        command.args.some((arg) =>
+          arg.endsWith("compose.coding-apparmor.yaml"),
+        ),
+      );
+      return { stdout: "", stderr: "", exitCode: 0 };
+    },
+  });
+  t.after(() => executor.stopNative());
+  await executor.execute(selected, {}, () => {});
+  const directory = executor.installationDirectory()!;
+  const override = JSON.parse(
+    await readFile(path.join(directory, "compose.override.json"), "utf8"),
+  );
+  assert.equal(override.services.app.image, apiImage);
+  assert.equal(override.services["worker-1"].image, codingImage);
+  const saved = JSON.parse(
+    await readFile(path.join(directory, "installation.json"), "utf8"),
+  );
+  assert.equal(saved.plan.settings.codingRuntime, true);
+  assert.equal(saved.phase, "complete");
+  assert.equal(commands, 1);
+});
+
 test("completed container resume retains operator budget limits in both config and launch", async (t) => {
   const parent = await mkdtemp(
     path.join(await realpath(tmpdir()), "acos-budget-resume-installer-"),

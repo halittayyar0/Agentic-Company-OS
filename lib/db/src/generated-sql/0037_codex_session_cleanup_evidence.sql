@@ -1,0 +1,3 @@
+ALTER TABLE "codex_task_sessions" ADD COLUMN "cleanup_state" text DEFAULT 'unknown' NOT NULL;--> statement-breakpoint
+ALTER TABLE "codex_task_sessions" ADD COLUMN "cleanup_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "codex_task_sessions" ADD CONSTRAINT "codex_task_sessions_cleanup" CHECK ("codex_task_sessions"."cleanup_state" IN ('unknown','not_launched','verified') AND (("codex_task_sessions"."cleanup_state" = 'unknown' AND "codex_task_sessions"."cleanup_at" IS NULL) OR ("codex_task_sessions"."cleanup_state" <> 'unknown' AND "codex_task_sessions"."cleanup_at" IS NOT NULL)) AND ("codex_task_sessions"."state" <> 'running' OR "codex_task_sessions"."cleanup_state" = 'unknown'));

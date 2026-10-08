@@ -141,6 +141,10 @@ Diese Ergebnisse gelten für die genannte Version. Ein 24-Stunden-Dauertest, Abn
 
 Die verlinkte technische Dokumentation ist überwiegend auf Englisch. Kleine, gezielte Beiträge sind willkommen: ein reproduzierbarer Fehlerbericht, eine klarere Übersetzung, eine nützliche Anleitung oder eine getestete Korrektur.
 
+**Entwicklungsvorschau:** die [Anleitung zur Modellverbindung](./docs/model-connections.de.md)
+erklärt lokale Modelle, ChatGPT, API-Schlüssel und den Erhalt des ersten Entwurfs.
+Dieser Ablauf ist im veröffentlichten Installationspaket v0.3.13 noch nicht enthalten.
+
 ---
 
 **Open Source unter der [MIT-Lizenz](./LICENSE).** Die mitgelieferten IBM-Plex-Schriften stehen unter der SIL Open Font License 1.1; siehe [Drittanbieterhinweise](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt).

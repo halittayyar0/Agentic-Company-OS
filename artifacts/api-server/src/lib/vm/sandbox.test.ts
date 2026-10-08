@@ -29,6 +29,10 @@ import {
   writeTextFile,
 } from "./sandbox";
 import { assertAgentSudoLocalOnly } from "../runtime-security";
+import {
+  registerOwnedAgentRuntime,
+  ownedAgentRuntimeCount,
+} from "../orchestrator/owned-agent-runtimes";
 import { ceoPermissionsPreset } from "../orchestrator/permission-presets";
 import { canonicalArgumentHash } from "../orchestrator/operation-receipts";
 import {
@@ -44,6 +48,33 @@ process.env.AGENT_SANDBOX_ROOT = sandboxBase;
 
 test.after(async () => {
   await fsp.rm(sandboxBase, { recursive: true, force: true });
+});
+
+test("the shared sandbox emergency stop waits for owned runtime cleanup before that runtime is unregistered", async () => {
+  let release!: () => void,
+    invoked = 0;
+  const proof = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const runtime = registerOwnedAgentRuntime(
+    captureLocalExecutionEpoch(),
+    async () => {
+      invoked++;
+      await proof;
+    },
+  );
+  try {
+    assert.equal(stopAllAgentProcesses(), 1);
+    assert.equal(invoked, 1);
+    assert.equal(ownedAgentRuntimeCount(), 1);
+    release();
+    await runtime.stop();
+    assert.equal(ownedAgentRuntimeCount(), 0);
+  } finally {
+    release();
+    await runtime.stop();
+    deactivateLocalEmergencyStop();
+  }
 });
 
 test("safeResolve rejects traversal outside the per-agent root", () => {

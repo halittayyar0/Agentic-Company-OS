@@ -14,6 +14,8 @@ export const toolEn: ToolCopy = {
     "Ownership of the interrupted work was released; the task was queued again.",
   schedulerStepBudget: "Operator step limit reached ({used}/{limit}).",
   schedulerTokenBudget: "Token budget reached ({used}/{limit}).",
+  schedulerUnreportedTokenUsage:
+    "Token usage for this job was not reported completely. Further model calls are paused to prevent untracked spending. Review the recorded calls; to continue, start a new job using a provider that reports token usage. Existing records are preserved.",
   schedulerCostBudget:
     "Provider-reported cost budget reached (${used}/{limit}).",
   schedulerFamilyTokenBudget:

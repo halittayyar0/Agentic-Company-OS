@@ -53,3 +53,15 @@ export function taskBudgetBlockReason(
 }
 import type { WorkspaceLocale } from "../workspace-locale";
 import { toolMessage } from "./tool-localization";
+import type { TokenUsageCoverage } from "../usage-coverage";
+
+/** Missing receipts are not a zero balance. Keep the evidence and stop before
+ * the next call; a missing dollar price alone does not invalidate token usage. */
+export function unreportedTokenUsageBlockReason(
+  coverage: TokenUsageCoverage,
+  locale: WorkspaceLocale,
+): string | null {
+  return coverage === "unknown" || coverage === "partial"
+    ? toolMessage(locale, "schedulerUnreportedTokenUsage")
+    : null;
+}

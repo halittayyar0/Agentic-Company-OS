@@ -276,7 +276,50 @@ The OpenRouter text catalog is refreshed before the API begins listening and the
 
 Known unprefixed built-in fleet model IDs route to the Replit AI integration. Vendor-prefixed IDs route to OpenRouter. Direct OpenAI IDs use `openai:`, and local Ollama IDs use `ollama:`; prefixes are removed only inside the selected adapter. The OpenRouter and direct OpenAI API bases are constants and cannot be set through the Settings UI, preventing a caller from redirecting their authorization headers. OpenAI requests carry a server-generated client request ID; the host logger records only provider/model/outcome and safe request IDs. Optional `APP_PUBLIC_URL` is validated as a credential-free HTTP(S) URL and only its origin is sent as OpenRouter `HTTP-Referer` attribution; it never changes the provider endpoint. The Replit integration base URL remains operator-supplied environment configuration and belongs to the trusted deployment boundary.
 
-Ollama is a separate private-egress boundary. `OLLAMA_BASE_URL` is server configuration, never a browser field. Validation accepts only an empty/`/v1` path on exact local aliases or private IP literals, rejects credentials/query/hash/public/link-local targets, and disables redirects for native catalog discovery. `/api/tags` discovers installed models and `/api/show` verifies each capability with bounded concurrency and timeouts. Models without a reported `tools` capability remain discoverable but fail closed for agent selection. Inference then uses the validated endpoint's OpenAI-compatible `/v1/chat/completions`.
+Ollama is a separate private-egress boundary. The development branch adds a
+revision-guarded `ollamaBaseUrl` Settings override; `OLLAMA_BASE_URL` remains the
+installation default when the override is absent or removed. Validation accepts
+only an empty/`/v1` path on exact local aliases or private IP literals, rejects
+credentials/query/hash/public/link-local targets, and disables redirects for
+native catalog discovery. The backend reaches this address, not the operator's
+browser. API and split workers apply the selected revision before their next
+provider request. `/api/tags` discovers installed models and `/api/show` verifies
+each capability with bounded concurrency and timeouts. Models without a reported
+`tools` capability remain discoverable but fail closed for agent selection.
+Inference uses the validated endpoint's OpenAI-compatible `/v1/chat/completions`.
+
+### Guided connection branch (unreleased)
+
+Home and New project open a lazy connection dialog while keeping their composer
+mounted. Seven selected-language packs explain local, ChatGPT and API options.
+Versioned, bounded tab drafts contain only job fields; connection callbacks
+refresh availability and cannot submit the draft. A successful save can unblock
+an existing, already-authorized provider-waiting job.
+
+ChatGPT registrations bind host/client/account identity and permission grants.
+PostgreSQL deployments encrypt credentials and serialize refresh with durable
+locks and revision checks. Development file storage is owner-private. Saving a
+reviewed registration and selecting it are distinct operations. The remote
+handoff transfers a selected protected registration; there is no HTTP credential
+upload endpoint or remote loopback callback substitution.
+
+The plan provider uses a separate Responses transport and account model catalog.
+Only terminal completion succeeds. Partial failures retain reported usage;
+missing usage/cost remains unknown. Plan and local selections cannot silently
+route to a paid API. Optional Codex App Server children bind the current task,
+lease, account revision, executable, workspace and named permissions. Exact
+native action scopes fence approvals; an uncertain session needs explicit
+operator recovery after verified process cleanup. Source checks and native
+admission serialize on the same source-change row.
+
+Windows Job Objects and Linux PID namespaces provide platform lifetime
+controllers. They do not by themselves certify command permissions. Offline
+Linux tests additionally exercise the actual pinned CLI's named permission
+boundary and production driver's pre-inference admission refusal. Tested
+unelevated Windows named-profile execution refuses; macOS and container coding
+acceptance remain pending. Normal plan transport is independent of this optional
+native capability. See [connection guide](./chatgpt-connection.md) for the measured
+scope; published v0.3.13 does not contain this integration.
 
 Chat, task-step, and judge completions pass through the usage ledger. Each row identifies kind, agent/task, provider, model, and normalized prompt/completion/total token fields. OpenRouter's direct `usage.cost` is stored when present; Replit, direct OpenAI, and Ollama retain `null` cost rather than applying a possibly stale price table. Explicit OpenRouter free pins never cross into paid inference; explicit Ollama pins never leave the local provider. Usage write failures are logged but do not roll back the model action, so the ledger is operational accounting rather than a financial system of record.
 

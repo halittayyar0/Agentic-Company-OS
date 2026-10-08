@@ -15,6 +15,7 @@ import {
   TaskSpendBudgetError,
 } from "./task-spend-admission";
 import { runJudge } from "./judge";
+import { readFamilySpendAdmission } from "./family-spend-admission";
 
 const localLimits = {
   maxSteps: null,
@@ -129,6 +130,7 @@ test("delegated inference shares one durable family budget", async (t) => {
       provider: "fixture",
       totalTokens: tokens,
       reportedCostUsd: cost,
+      usageReported: true,
       createdAt,
     });
   }
@@ -425,6 +427,33 @@ test("delegated inference shares one durable family budget", async (t) => {
         readTaskSpendAdmission(f.child, localLimits, "en"),
         /rooted task family/i,
       );
+    },
+  );
+
+  await t.test(
+    "family token reporting is independent of legacy missing-price evidence",
+    async () => {
+      limits(1000, 100);
+      const f = await family();
+      await db
+        .update(tasksTable)
+        .set({ estimatedCostUsd: "5" })
+        .where(eq(tasksTable.id, f.root.id));
+      await db.insert(usageEventsTable).values({
+        agentId: agent.id,
+        taskId: f.child.id,
+        kind: "task_step",
+        modelId: "fixture",
+        provider: "fixture",
+        totalTokens: 10,
+        usageReported: true,
+        reportedCostUsd: null,
+      });
+      const result = await readFamilySpendAdmission(f.root.id, "en");
+      assert.equal(result.tokenUsageCoverage, "complete");
+      assert.equal(result.tokenReportedEvents, 1);
+      assert.equal(result.tokenUnreportedEvents, 0);
+      assert.notEqual(result.costCoverage, "complete");
     },
   );
 });

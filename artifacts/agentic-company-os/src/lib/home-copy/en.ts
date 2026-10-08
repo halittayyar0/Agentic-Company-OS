@@ -1,6 +1,8 @@
 import type { HomeCopy } from "../home-copy";
 
 const copy = {
+  draftStorageError:
+    "This tab cannot save your draft for reload. Your text remains editable here; keep a copy before reloading or closing the tab.",
   deskKicker: "Your workspace",
   heroTitle: "What should we accomplish together today?",
   heroDescription:

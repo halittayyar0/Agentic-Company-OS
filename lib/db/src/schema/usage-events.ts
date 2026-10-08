@@ -1,4 +1,5 @@
 import {
+  boolean,
   check,
   index,
   integer,
@@ -7,6 +8,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { agentsTable } from "./agents";
@@ -26,6 +28,13 @@ export const usageEventsTable = pgTable(
     kind: text("kind").notNull(),
     modelId: text("model_id").notNull(),
     provider: text("provider").notNull(),
+    /** Backend-generated correlation for the optional native coding inference.
+     * Null preserves ordinary completions and historical immutable receipts. */
+    inferenceKey: text("inference_key"),
+    // Null retains unknown provenance for receipts written before this field.
+    usageReported: boolean("usage_reported"),
+    outcome: text("outcome").notNull().default("completed"),
+    failureKind: text("failure_kind"),
     promptTokens: integer("prompt_tokens").notNull().default(0),
     completionTokens: integer("completion_tokens").notNull().default(0),
     totalTokens: integer("total_tokens").notNull().default(0),
@@ -35,12 +44,28 @@ export const usageEventsTable = pgTable(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("usage_events_inference_key_unique")
+      .on(table.inferenceKey)
+      .where(sql`${table.inferenceKey} IS NOT NULL`),
+    check(
+      "usage_events_inference_key_check",
+      sql`${table.inferenceKey} IS NULL OR (${table.inferenceKey} ~ '^codex:[a-f0-9]{64}$' AND ${table.provider} = 'chatgpt' AND ${table.kind} = 'task_step')`,
+    ),
     index("usage_events_created_idx").on(table.createdAt),
     index("usage_events_agent_created_idx").on(table.agentId, table.createdAt),
     index("usage_events_task_created_idx").on(table.taskId, table.createdAt),
     check(
       "usage_events_kind_check",
       sql`${table.kind} in ('chat', 'task_step', 'judge')`,
+    ),
+    check(
+      "usage_events_outcome_check",
+      sql`${table.outcome} in ('completed', 'failed')`,
+    ),
+    check(
+      "usage_events_failure_check",
+      sql`(${table.outcome} = 'completed' and ${table.failureKind} is null) or
+      (${table.outcome} = 'failed' and ${table.failureKind} is not null and length(${table.failureKind}) between 1 and 64 and ${table.usageReported} is not null)`,
     ),
     check("usage_events_prompt_tokens_check", sql`${table.promptTokens} >= 0`),
     check(

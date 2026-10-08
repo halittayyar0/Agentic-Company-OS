@@ -45,6 +45,7 @@ export function createInstallationExecutor(options: {
   installationParent: string;
   pnpmPath: string;
   prebuiltImage?: string;
+  codingImage?: string;
   // This must persist every selected policy/tool/language setting before setup
   // can finish. Kept mandatory so a UI-only selection cannot claim completion.
   applyPreferences: (
@@ -98,6 +99,7 @@ export function createInstallationExecutor(options: {
     const completed: InstallationStep[] = [];
     let currentStep: InstallationStep | null = null;
     let phone: PhoneConnection | undefined;
+    let codingAppArmor: boolean | undefined;
     const record = async (phase: string) => {
       if (!resources) return;
       await writeExactOutputBundle({
@@ -148,10 +150,15 @@ export function createInstallationExecutor(options: {
           throw new Error(
             "The portable distribution supports containers; use source setup for native installation",
           );
-        planInstallation(
-          plan.settings,
-          await (options.capabilities ?? detectInstallCapabilities)(),
-        );
+        const detected = await (
+          options.capabilities ?? detectInstallCapabilities
+        )();
+        planInstallation(plan.settings, detected);
+        if (plan.settings.codingRuntime) {
+          if (options.prebuiltImage && !options.codingImage)
+            throw new Error("coding_distribution_missing");
+          codingAppArmor = detected.coding!.apparmor;
+        }
         const relative = path.relative(
           options.workspaceRoot,
           options.installationParent,
@@ -252,6 +259,9 @@ export function createInstallationExecutor(options: {
             credentials,
             phone?.url,
             options.prebuiltImage,
+            plan.settings.codingRuntime
+              ? { image: options.codingImage, apparmor: codingAppArmor! }
+              : undefined,
           );
           if (options.resume)
             Object.assign(

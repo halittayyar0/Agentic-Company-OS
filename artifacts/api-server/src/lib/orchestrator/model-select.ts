@@ -2,6 +2,7 @@ import {
   chooseModel,
   getFullModelCatalog,
   isDirectOpenAIConfigured,
+  isChatGPTPlanConfigured,
   isOllamaConfigured,
   isOpenRouterConfigured,
   MODEL_CATALOG,
@@ -19,8 +20,8 @@ import {
  *   2. agent's saved manual pin (modelMode === "manual")
  *   3. automatic routing by purpose/depth/complexity (Replit fleet)
  *
- * A manual pick whose provider is unavailable (e.g. OpenRouter key missing)
- * gracefully falls back to automatic routing instead of failing the turn.
+ * A ChatGPT or local pin preserves its billing boundary even when unavailable.
+ * Other manual picks keep the existing automatic recovery policy.
  */
 
 export interface ModelOverrideInput {
@@ -70,6 +71,7 @@ function providerAvailable(provider: string): boolean {
   if (provider === "openrouter") return isOpenRouterConfigured();
   if (provider === "openai") return isDirectOpenAIConfigured();
   if (provider === "ollama") return isOllamaConfigured();
+  if (provider === "chatgpt") return isChatGPTPlanConfigured();
   return false;
 }
 
@@ -107,6 +109,10 @@ export function selectModel(params: {
     );
     const provider = catalogModel?.provider ?? resolveModelProvider(candidate);
     const toolCompatible = catalogModel?.supportsTools !== false;
+    if (provider === "chatgpt") {
+      // A disconnected plan is a connection problem, not permission to bill an API.
+      return { modelId: candidate, provider, usedFallback: false };
+    }
     if (provider && isFreeModel(candidate, provider)) {
       // Free is an explicit spend boundary even when live metadata says the
       // model lacks tools. Keep the free route and let bounded compatibility
@@ -188,6 +194,17 @@ export function selectModel(params: {
     }
   }
 
+  if (providerAvailable("chatgpt")) {
+    const planModel = getFullModelCatalog().models.find(
+      (model) => model.provider === "chatgpt" && model.supportsTools,
+    );
+    if (planModel)
+      return {
+        modelId: planModel.id,
+        provider: "chatgpt",
+        usedFallback: manualFallback,
+      };
+  }
   throw new ModelProviderSetupRequiredError();
 }
 
@@ -281,6 +298,10 @@ export function selectModelPlan(params: {
     source,
     tier: selectedTier,
   };
+  // Plan failures retain their selected account/model. Another model or API is
+  // a new user choice, not a transparent replay of potentially consumed usage.
+  if (selected.provider === "chatgpt")
+    return { primary, routes: [primary], freeOnly: false };
   const freeOnly =
     source !== "automatic" && isFreeModel(selected.modelId, selected.provider);
   const localOnly = source !== "automatic" && selected.provider === "ollama";
@@ -292,6 +313,7 @@ export function selectModelPlan(params: {
     .filter(
       (model) =>
         !seen.has(model.id) &&
+        model.provider !== "chatgpt" &&
         model.supportsTools &&
         providerAvailability.get(model.provider) === true &&
         TIER_RANK[model.tier] <= TIER_RANK[selectedTier] &&

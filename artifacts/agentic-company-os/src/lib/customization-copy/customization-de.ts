@@ -32,6 +32,8 @@ export default {
     "Fehlgeschlagen",
     "Ergebnis unklar",
     "Wird vorbereitet",
+    "Codex läuft noch oder das Beenden der Prozesse ist nicht bestätigt. Öffne die Aufgabe und prüfe die Coding-Sitzung, bevor du den Quellcode prüfst.",
+    "Aufgabe öffnen",
   ],
   policy: [
     "Agentenzugriff",

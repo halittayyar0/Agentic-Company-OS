@@ -5,6 +5,7 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+import type { ChatGPTPlanPause } from './chatGPTPlanPause';
 
 export interface ChatGPTAccount {
   id: string;
@@ -24,4 +25,5 @@ export interface ChatGPTAccount {
      * @nullable
      */
   expiresAt: number | null;
+  planPause?: ChatGPTPlanPause;
 }

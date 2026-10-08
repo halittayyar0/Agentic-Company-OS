@@ -17,6 +17,8 @@ import skillsRouter from "./skills";
 import sourceChangesRouter from "./source-changes";
 import { createChatGPTConnectionRouter } from "./chatgpt-connection";
 import { chatgptConnectionRuntime } from "../lib/chatgpt-connection-runtime";
+import { createCodexTaskStatusRouter } from "./codex-task-status";
+import { createCodexSessionRecoveryRouter } from "./codex-session-recovery";
 
 const router: IRouter = Router();
 
@@ -37,5 +39,7 @@ router.use(operationsRouter);
 router.use(skillsRouter);
 router.use(sourceChangesRouter);
 router.use(createChatGPTConnectionRouter(chatgptConnectionRuntime));
+router.use(createCodexTaskStatusRouter());
+router.use(createCodexSessionRecoveryRouter());
 
 export default router;

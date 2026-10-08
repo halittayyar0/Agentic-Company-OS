@@ -12,6 +12,8 @@ export const toolZhTW: ToolCopy = {
   schedulerRecoveryNote: "已釋放中斷工作的執行權；任務已重新排入佇列。",
   schedulerStepBudget: "已達到操作員設定的步驟上限（{used}/{limit}）。",
   schedulerTokenBudget: "已達到權杖預算上限（{used}/{limit}）。",
+  schedulerUnreportedTokenUsage:
+    "此工作的權杖用量報告不完整。為避免無法計量的支出，已暫停後續模型呼叫。請檢查已記錄的呼叫；如需繼續，請使用能夠回報權杖用量的供應商建立新工作。現有記錄將保留。",
   schedulerCostBudget: "已達到供應商回報的費用預算上限（${used}/{limit}）。",
   schedulerFamilyTokenBudget:
     "任務 #{rootTaskId} 及其子任務已達到共享權杖預算上限（{used}/{limit}）。",

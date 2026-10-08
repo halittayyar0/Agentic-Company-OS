@@ -5,6 +5,7 @@ export interface SetupDistribution {
   schemaVersion: 1;
   commit: string;
   image: string;
+  codingImage?: string;
 }
 
 export function validateDistribution(value: unknown): SetupDistribution {
@@ -12,7 +13,10 @@ export function validateDistribution(value: unknown): SetupDistribution {
     throw new Error("Invalid distribution manifest");
   const data = value as Record<string, unknown>;
   if (
-    Object.keys(data).sort().join(",") !== "commit,image,schemaVersion" ||
+    Object.keys(data).sort().join(",") !==
+      (Object.hasOwn(data, "codingImage")
+        ? "codingImage,commit,image,schemaVersion"
+        : "commit,image,schemaVersion") ||
     data.schemaVersion !== 1 ||
     typeof data.commit !== "string" ||
     !/^[a-f0-9]{40}$/u.test(data.commit) ||
@@ -22,7 +26,23 @@ export function validateDistribution(value: unknown): SetupDistribution {
     )
   )
     throw new Error("Invalid distribution manifest");
-  return { schemaVersion: 1, commit: data.commit, image: data.image };
+  if (
+    Object.hasOwn(data, "codingImage") &&
+    (typeof data.codingImage !== "string" ||
+      !/^ghcr\.io\/[a-z0-9_.-]+\/[a-z0-9_.-]+@sha256:[a-f0-9]{64}$/u.test(
+        data.codingImage,
+      ) ||
+      data.codingImage === data.image)
+  )
+    throw new Error("Invalid coding distribution image");
+  return {
+    schemaVersion: 1,
+    commit: data.commit,
+    image: data.image,
+    ...(typeof data.codingImage === "string"
+      ? { codingImage: data.codingImage }
+      : {}),
+  };
 }
 
 export async function readDistribution(

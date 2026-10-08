@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { eq } from "drizzle-orm";
 
 delete process.env.DATABASE_URL;
 process.env.NODE_ENV = "test";
@@ -21,8 +22,17 @@ const directory = await mkdtemp(
 );
 process.env.AGENT_SANDBOX_ROOT = path.join(directory, "sandboxes");
 process.env.ALLOW_AGENT_PROCESS_EXEC = "true";
-const { db, dbReady, agentsTable, closeDatabase } =
-  await import("@workspace/db");
+const {
+  db,
+  dbReady,
+  agentsTable,
+  tasksTable,
+  sourceChangesTable,
+  codexTaskSessionsTable,
+  closeDatabase,
+} = await import("@workspace/db");
+const { loadCompletionEvidence } =
+  await import("./orchestrator/completion-evidence");
 const {
   prepareSourceChange,
   inspectSourceChange,
@@ -83,6 +93,13 @@ test("a source change stays isolated, requires passing checks, applies only its 
   };
   const prepared = await prepareSourceChange(request);
   assert.equal(prepared.state, "draft");
+  assert.ok(prepared.taskId);
+  const [task] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, prepared.taskId));
+  const delivery = async () =>
+    (await loadCompletionEvidence(task)).sourceChanges[0];
   assert.equal((await prepareSourceChange(request)).id, prepared.id);
   const copy = path.join(
     process.env.AGENT_SANDBOX_ROOT!,
@@ -104,14 +121,19 @@ test("a source change stays isolated, requires passing checks, applies only its 
     "process.exit(1)",
   ]);
   assert.equal(failed.state, "draft");
+  assert.equal((await delivery()).snapshotChecksPassed, false);
   const checked = await checkSourceChange(request.id, failed.revision, [
     "node",
     "--check",
     "{workspace}/answer.mjs",
   ]);
   assert.equal(checked.state, "verified");
+  assert.equal((await delivery()).snapshotChecksPassed, true);
+  assert.equal((await delivery()).candidateCommit, checked.candidateCommit);
+  assert.equal((await delivery()).applicationRecorded, false);
   const applied = await applySourceChange(request.id, checked.revision);
   assert.equal(applied.state, "applied");
+  assert.equal((await delivery()).applicationRecorded, true);
   assert.match(await readFile(path.join(source, "answer.mjs"), "utf8"), /2/);
   assert.equal(
     (await applySourceChange(request.id, checked.revision)).appliedCommit,
@@ -119,6 +141,8 @@ test("a source change stays isolated, requires passing checks, applies only its 
   );
   const reverted = await rollbackSourceChange(request.id, applied.revision);
   assert.equal(reverted.state, "rolled_back");
+  assert.equal((await delivery()).snapshotChecksPassed, true);
+  assert.equal((await delivery()).applicationRecorded, false);
   assert.match(await readFile(path.join(source, "answer.mjs"), "utf8"), /1/);
   await writeFile(path.join(source, "untracked.txt"), "operator work");
   await assert.rejects(
@@ -277,3 +301,68 @@ test("an unchanged workspace cannot create a misleading applied version", async 
     /SOURCE_NO_CHANGES/,
   );
 });
+
+for (const state of ["running", "uncertain"])
+  test(`source checks refuse a ${state} native session with unverified cleanup without committing or advancing the source revision`, async () => {
+    const { row, copy, agent } = await fixture();
+    await writeFile(
+      path.join(copy, "answer.mjs"),
+      "export const answer = 2;\n",
+    );
+    assert.ok(row.taskId);
+    const head = () =>
+      promisify(execFile)("git", ["-C", copy, "rev-parse", "HEAD"], {
+        windowsHide: true,
+      });
+    const before = (await head()).stdout;
+    try {
+      await db.insert(codexTaskSessionsTable).values({
+        taskId: row.taskId,
+        agentId: agent.id,
+        revision: 1,
+        state,
+        ownerToken: state === "running" ? randomUUID() : null,
+        attemptId: randomUUID(),
+        leaseOwner: randomUUID(),
+        policyRevision: 1,
+        registrationId: randomUUID(),
+        registrationRevision: 1,
+        admissionVersion: 0,
+        hostId: "fixture",
+        cwd: copy,
+        storageDirectory: "/fixture/private",
+        home: "/fixture/private/home",
+        model: "fixture",
+        executableDigest: "a".repeat(64),
+      });
+      await assert.rejects(
+        checkSourceChange(row.id, row.revision, [
+          "node",
+          "--check",
+          "{workspace}/answer.mjs",
+        ]),
+        /SOURCE_CODING_ACTIVE/,
+      );
+      const [current] = await db
+        .select()
+        .from(sourceChangesTable)
+        .where(eq(sourceChangesTable.id, row.id));
+      assert.equal(current.state, "draft");
+      assert.equal(current.revision, row.revision);
+      assert.equal((await head()).stdout, before);
+    } finally {
+      await db
+        .delete(codexTaskSessionsTable)
+        .where(eq(codexTaskSessionsTable.taskId, row.taskId));
+    }
+    assert.equal(
+      (
+        await checkSourceChange(row.id, row.revision, [
+          "node",
+          "--check",
+          "{workspace}/answer.mjs",
+        ])
+      ).state,
+      "verified",
+    );
+  });

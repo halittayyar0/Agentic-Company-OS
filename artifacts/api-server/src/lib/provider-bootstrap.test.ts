@@ -28,6 +28,7 @@ test("provider bootstrap configures every server-only provider before catalog re
         assert.equal(baseUrl, "http://ollama.internal:11434");
         calls.push("ollama");
       },
+      configureChatGPTProvider: () => calls.push("chatgpt"),
       configureRequestObserver: (nextObserver) => {
         observerBox.current = nextObserver;
         calls.push("observer");
@@ -43,6 +44,7 @@ test("provider bootstrap configures every server-only provider before catalog re
     "openrouter",
     "openai",
     "ollama",
+    "chatgpt",
     "observer",
     "catalog",
   ]);

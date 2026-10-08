@@ -63,6 +63,30 @@ function validateInput(
     (value.displayName !== undefined && !boundedText(value.displayName))
   )
     throw new Error("chatgpt_registration_invalid");
+  const version = value.planAdmissionVersion ?? 0,
+    pause = value.planPause ?? null;
+  if (
+    !Number.isSafeInteger(version) ||
+    version < 0 ||
+    value.planAdmissionVersion === null ||
+    (pause !== null &&
+      (typeof pause !== "object" ||
+        Array.isArray(pause) ||
+        Object.keys(pause).some(
+          (field) => !["id", "code", "pausedAt", "retryAt"].includes(field),
+        ) ||
+        !UUID.test(pause.id) ||
+        ![
+          null,
+          "subscription_sharing_usage_limit_exceeded",
+          "rate_limit_exceeded",
+        ].includes(pause.code) ||
+        !Number.isSafeInteger(pause.pausedAt) ||
+        pause.pausedAt <= 0 ||
+        (pause.retryAt !== null &&
+          (!Number.isSafeInteger(pause.retryAt) || pause.retryAt <= 0))))
+  )
+    throw new Error("chatgpt_registration_invalid");
   const credentials = value.credentials;
   if (
     credentials !== null &&
@@ -109,6 +133,8 @@ function validateInput(
               ? {}
               : { earliestRefreshAt: credentials.earliestRefreshAt }),
           },
+    planAdmissionVersion: version,
+    planPause: pause,
   });
 }
 
@@ -145,6 +171,9 @@ function status(
       credentials.grants.includes("resource.invoke") &&
       credentials.grants.includes("chatgpt.tokens.use.direct"),
     expiresAt: credentials?.expiresAt ?? null,
+    ...(registration.planPause
+      ? { planPause: structuredClone(registration.planPause) }
+      : {}),
   };
 }
 
@@ -233,7 +262,28 @@ function assertReplacement(
     (current?.revision ?? 0) !== expectedRevision
   )
     throw new ChatGPTRegistrationConflict();
-  const candidate = validateInput(input);
+  const currentVersion = current?.planAdmissionVersion ?? 0;
+  const nextVersion =
+    input.planAdmissionVersion === undefined
+      ? currentVersion
+      : input.planAdmissionVersion;
+  const requestedPause =
+    input.planPause === undefined ||
+    (input.planPause === null && nextVersion === currentVersion)
+      ? (current?.planPause ?? null)
+      : input.planPause;
+  const candidate = validateInput({
+    ...input,
+    planAdmissionVersion: nextVersion,
+    planPause: requestedPause,
+  });
+  if (
+    (!current && nextVersion !== 0) ||
+    (current &&
+      nextVersion !== currentVersion &&
+      (nextVersion !== currentVersion + 1 || candidate.planPause !== null))
+  )
+    throw new Error("chatgpt_registration_admission_conflict");
   if (
     candidate.hostId !== hostId ||
     (current &&

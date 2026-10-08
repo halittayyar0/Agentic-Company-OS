@@ -1,5 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
+import { PlanInferenceError } from "@workspace/ai-server";
+import { retryChatGPTPlanQuota } from "../lib/chatgpt-plan-admission";
 import type { ChatGPTRegistrationStore } from "@workspace/ai-server/chatgpt-plan-types";
 import { ChatGPTRegistrationConflict } from "../lib/chatgpt-registration-store";
 import {
@@ -31,6 +33,7 @@ const begin = z
         !value.retryAttemptId
       ),
   );
+const retryPlan = revision.extend({ pauseId: uuid }).strict();
 
 export interface ChatGPTConnectionDependencies {
   store(): Promise<ChatGPTRegistrationStore>;
@@ -62,6 +65,12 @@ export function createChatGPTConnectionRouter(
       return;
     }
     if (error instanceof ChatGPTSessionError) {
+      res
+        .status(error.kind === "temporary" ? 503 : 409)
+        .json({ error: error.kind });
+      return;
+    }
+    if (error instanceof PlanInferenceError) {
       res
         .status(error.kind === "temporary" ? 503 : 409)
         .json({ error: error.kind });
@@ -201,6 +210,29 @@ export function createChatGPTConnectionRouter(
       }
       try {
         res.json(await (await dependencies.sessions()).signOut(id.data));
+      } catch (error) {
+        failure(res, error);
+      }
+    },
+  );
+  router.post(
+    `${base}/accounts/:registrationId/plan/retry`,
+    async (req, res) => {
+      const id = uuid.safeParse(req.params.registrationId),
+        parsed = retryPlan.safeParse(req.body);
+      if (!id.success || !parsed.success) {
+        res.status(400).json({ error: "invalid_connection_request" });
+        return;
+      }
+      try {
+        res.json(
+          await retryChatGPTPlanQuota(
+            await dependencies.store(),
+            id.data,
+            parsed.data.expectedRevision,
+            parsed.data.pauseId,
+          ),
+        );
       } catch (error) {
         failure(res, error);
       }

@@ -199,6 +199,9 @@ export interface OperationsSnapshotInput {
     reportedCostUsd: number;
     usageEvents: number;
     costReportedEvents: number;
+    tokenReportedEvents?: number;
+    tokenUnreportedEvents?: number;
+    tokenUsageCoverage?: "no_usage" | "complete" | "partial" | "unknown";
     providerMetricsCoverage: "partial" | "complete";
   };
   fleetHealthSamples: OperationsHealthSampleInput[];

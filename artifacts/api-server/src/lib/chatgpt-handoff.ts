@@ -20,6 +20,19 @@ const bounded = (maximum = 512) =>
     .max(maximum)
     .refine((value) => !/[\r\n\0]/u.test(value));
 const instant = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
+const planPause = z
+  .object({
+    id: z.string().uuid(),
+    code: z
+      .enum([
+        "subscription_sharing_usage_limit_exceeded",
+        "rate_limit_exceeded",
+      ])
+      .nullable(),
+    pausedAt: instant,
+    retryAt: instant.nullable(),
+  })
+  .strict();
 const registration = z
   .object({
     id: z.string().uuid(),
@@ -29,6 +42,7 @@ const registration = z
     subject: bounded(),
     email: bounded().optional(),
     displayName: bounded().optional(),
+    planPause: planPause.nullable().optional(),
     credentials: z
       .object({
         accessToken: bounded(16_384),
@@ -85,6 +99,7 @@ export async function exportChatGPTSession(input: {
         const {
           revision: _revision,
           updatedAt: _updatedAt,
+          planAdmissionVersion: _admissionVersion,
           ...selected
         } = record;
         const value = {
@@ -192,6 +207,12 @@ export async function importChatGPTSession(input: {
             ? { displayName: identity.displayName }
             : {}),
           credentials: value.registration.credentials,
+          // Credential ownership moves, admission generations remain local.
+          // Preserve the stricter quota pause; transfer cannot grant new quota.
+          planPause: stricterPause(
+            current?.planPause,
+            value.registration.planPause,
+          ),
         };
         // Consume before the DB write. A crash/failed commit refuses automatic replay;
         // a successful import can never overwrite a later rotating token with this copy.
@@ -224,4 +245,14 @@ export async function importChatGPTSession(input: {
     }
     return { account, transferFileCleared };
   });
+}
+
+function stricterPause(
+  current: ChatGPTRegistrationInput["planPause"],
+  incoming: ChatGPTRegistrationInput["planPause"],
+): ChatGPTRegistrationInput["planPause"] {
+  if (!current) return incoming ?? null;
+  if (!incoming || current.retryAt === null) return current;
+  if (incoming.retryAt === null) return incoming;
+  return current.retryAt >= incoming.retryAt ? current : incoming;
 }

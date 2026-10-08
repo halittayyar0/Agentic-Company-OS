@@ -6,9 +6,11 @@ import {
   approvalRequestsTable,
   db,
   dbReady,
+  closeDatabase,
   tasksTable,
   usageEventsTable,
 } from "@workspace/db";
+test.after(() => closeDatabase());
 import app from "../app";
 import { seedDefaultOrg } from "../lib/seed";
 import { AGENT_TEMPLATES } from "../lib/agent-templates";
@@ -93,7 +95,30 @@ test("organization summary aggregates operational data in the database", async (
     completionTokens: 60,
     totalTokens: 100,
     reportedCostUsd: "0.125",
+    usageReported: true,
   });
+  await db.insert(usageEventsTable).values([
+    {
+      agentId: rootAgent.id,
+      taskId: pendingTask.id,
+      kind: "task_step",
+      modelId: "test/model",
+      provider: "test",
+      totalTokens: 50,
+      usageReported: null,
+    },
+    {
+      agentId: rootAgent.id,
+      taskId: pendingTask.id,
+      kind: "task_step",
+      modelId: "chatgpt:fixture",
+      provider: "chatgpt",
+      totalTokens: 0,
+      usageReported: false,
+      outcome: "failed",
+      failureKind: "interrupted",
+    },
+  ]);
 
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve, reject) => {
@@ -117,8 +142,11 @@ test("organization summary aggregates operational data in the database", async (
   assert.equal(summary.tasksAwaitingApproval, 1);
   assert.equal(summary.tasksCompletedToday, 1);
   assert.equal(summary.pendingApprovals, 1);
-  assert.equal(summary.tokensUsedToday, 100);
+  assert.equal(summary.tokensUsedToday, 150);
   assert.equal(summary.estimatedCostTodayUsd, 0.125);
-  assert.equal(summary.usageEventsToday, 1);
+  assert.equal(summary.usageEventsToday, 3);
   assert.equal(summary.costReportedEventsToday, 1);
+  assert.equal(summary.tokenReportedEventsToday, 1);
+  assert.equal(summary.tokenUnreportedEventsToday, 2);
+  assert.equal(summary.tokenUsageCoverageToday, "partial");
 });

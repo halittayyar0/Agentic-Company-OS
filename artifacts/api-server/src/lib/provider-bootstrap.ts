@@ -6,6 +6,8 @@ import {
   refreshModelCatalog,
 } from "@workspace/ai-server";
 import { logger } from "./logger";
+import { chatgptConnectionRuntime } from "./chatgpt-connection-runtime";
+import { configureChatGPTPlanRuntime } from "./chatgpt-plan-runtime";
 import { readRuntimeConfig, type RuntimeConfig } from "./runtime-config";
 import {
   installProviderRuntimeConfigGuard,
@@ -17,6 +19,7 @@ export interface ProviderBootstrapDependencies {
   configureOpenRouter(input: { apiKey: string | null }): void;
   configureDirectOpenAI(input: { apiKey: string | null }): void;
   configureOllama(input: { baseUrl: string | null }): void;
+  configureChatGPTProvider?(): void;
   configureRequestObserver(observer: (metadata: unknown) => void): void;
   logProviderRequest(metadata: unknown): void;
   refreshModelCatalog(): Promise<void>;
@@ -29,6 +32,15 @@ const defaultDependencies: ProviderBootstrapDependencies = {
   configureOpenRouter,
   configureDirectOpenAI,
   configureOllama,
+  configureChatGPTProvider() {
+    configureChatGPTPlanRuntime(chatgptConnectionRuntime, {
+      onQuotaPersistenceFailure() {
+        logger.warn(
+          "Could not persist ChatGPT plan quota pause; the current worker remains paused",
+        );
+      },
+    });
+  },
   configureRequestObserver(observer) {
     configureProviderRequestObserver((metadata) => observer(metadata));
   },
@@ -62,6 +74,7 @@ export async function bootstrapProviders(
       providerConfig.ollamaBaseUrl ??
       (environment.OLLAMA_BASE_URL?.trim() || null),
   });
+  dependencies.configureChatGPTProvider?.();
   dependencies.configureRequestObserver((metadata) => {
     dependencies.logProviderRequest(metadata);
   });

@@ -16,6 +16,8 @@ import { createPostgresChatGPTRegistrationStore } from "../lib/chatgpt-registrat
 import { createChatGPTSignInController } from "../lib/chatgpt-sign-in";
 import { createChatGPTSessionManager } from "../lib/chatgpt-session";
 import { createChatGPTConnectionRouter } from "./chatgpt-connection";
+import { recordChatGPTPlanQuota } from "../lib/chatgpt-plan-admission";
+import { PlanInferenceError } from "@workspace/ai-server";
 
 test("operator connection routes keep tokens private, reject remote callbacks and fence explicit account selection", async () => {
   await dbReady;
@@ -155,6 +157,63 @@ test("operator connection routes keep tokens private, reject remote callbacks an
       200,
     );
     assert.equal((await request()).value.activeRegistrationId, id);
+    const quota = new PlanInferenceError(
+      "quota",
+      null,
+      "rate_limit_exceeded",
+      429,
+    );
+    await recordChatGPTPlanQuota(
+      store,
+      (await store.readActiveRegistration())!,
+      quota,
+    );
+    const paused = (await request()).value.registrations.find(
+      (entry: { id: string }) => entry.id === id,
+    );
+    assert.equal(paused.planPause.retryAt, null);
+    assert.equal(
+      paused.canUsePlan,
+      true,
+      "consent and quota are separate states",
+    );
+    const retryPath = `/accounts/${id}/plan/retry`;
+    const retryBody = {
+      expectedRevision: paused.revision,
+      pauseId: paused.planPause.id,
+    };
+    assert.equal(
+      (await request(retryPath, "POST", retryBody, false)).status,
+      401,
+    );
+    assert.equal(
+      (
+        await request(retryPath, "POST", {
+          ...retryBody,
+          accessToken: "browser-injected-token",
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await request(retryPath, "POST", {
+          ...retryBody,
+          pauseId: randomUUID(),
+        })
+      ).status,
+      409,
+    );
+    const retry = await request(retryPath, "POST", retryBody);
+    assert.equal(retry.status, 200);
+    assert.equal(retry.value.planPause, undefined);
+    assert.equal(retry.value.revision, paused.revision + 1);
+    assert.equal((await store.readActiveRegistration())!.id, id);
+    assert.equal(
+      (await request(retryPath, "POST", retryBody)).status,
+      409,
+      "retry is revision and pause fenced",
+    );
     assert.equal((await request("/sign-in", "POST", {})).status, 400);
     assert.equal(
       (await request("/sign-in", "POST", { callbackLocation: "remote-server" }))
@@ -207,7 +266,7 @@ test("operator connection routes keep tokens private, reject remote callbacks an
     assert.equal((await store.readRegistration(id))!.credentials, null);
     assert.equal((await request()).value.registrations[0].signedIn, false);
     assert.equal(
-      (await request(`/accounts/${id}/select`, "POST", { expectedRevision: 2 }))
+      (await request(`/accounts/${id}/select`, "POST", { expectedRevision: 4 }))
         .status,
       409,
     );
