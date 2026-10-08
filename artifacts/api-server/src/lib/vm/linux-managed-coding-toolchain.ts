@@ -489,7 +489,16 @@ export async function readLinuxCodingMode(): Promise<"native" | "managed"> {
         apparmor: apparmor.bytes.toString("utf8"),
       })
     )
-      throw new Error("managed_probe_11");
+      {
+        const fields=statusFields(status.bytes.toString("utf8"));
+        const parsed=mountFields(mounts.bytes.toString("utf8"));
+        const diagnosticRows=mounts.bytes.toString("utf8").trim().split("\n").map(line=>{
+          const [before,after]=line.split(" - ");const left=before.split(" ");const right=(after??"").split(" ");
+          return {root:left[3],target:left[4],flags:left[5],type:right[0],source:right[1]};
+        }).filter(row=>row.target==="/"||row.target==="/sys"||row.target==="/proc"||row.target?.startsWith("/proc/"));
+        console.error(JSON.stringify({kind:"fixed_managed_containment_inputs",statusParsed:!!fields,mountsParsed:!!parsed,fields:Object.fromEntries(["Uid","Gid","CapInh","CapPrm","CapEff","CapBnd","CapAmb","NoNewPrivs","Seccomp"].map(key=>[key,fields?.get(key)??null])),apparmorMatches:/^agentic-coding \(enforce\)\n?$/.test(apparmor.bytes.toString("utf8")),rows:diagnosticRows}));
+        throw new Error("managed_probe_11");
+      }
     // Resolve the fixed system interpreter, then validate its file and every
     // ancestor before any helper process. No human environment is inherited.
     const python = await fs.realpath("/usr/bin/python3");
