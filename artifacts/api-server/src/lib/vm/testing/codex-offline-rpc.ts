@@ -25,6 +25,7 @@ export function codexOfflineRpc(
   let sequence = 0,
     bytes = 0,
     stderrBytes = 0,
+    fixtureStderr = "",
     failure: Error | undefined;
   const methods: string[] = [];
   const lines = createInterface({ input: child.stdout });
@@ -61,6 +62,7 @@ export function codexOfflineRpc(
   // block the owned cleanup. Retain no text, paths or credential-bearing body.
   child.stderr.on("data", (chunk: Buffer) => {
     stderrBytes += chunk.byteLength;
+    fixtureStderr = (fixtureStderr + chunk.toString("utf8").replaceAll("fixture-only-private-access", "REDACTED").replaceAll("fixture-only-private-id", "REDACTED")).slice(0, 4096);
     if (stderrBytes > 128 * 1024) fail();
   });
   child.once("error", fail);
@@ -99,7 +101,7 @@ export function codexOfflineRpc(
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           pending.delete(id);
-          reject(new Error("offline_native_request_timeout"));
+          reject(new Error("offline_native_request_timeout:" + JSON.stringify({method, stderrBytes, fixtureStderr})));
         }, 15_000);
         pending.set(id, { resolve, reject, timer });
         child.stdin.write(JSON.stringify({ id, method, params }) + "\n");
