@@ -336,7 +336,7 @@ async function protectedAncestors(file: string) {
       (stat.mode & 0o022) !== 0 ||
       (await fs.realpath(directory)) !== directory
     )
-      throw unsupported();
+      throw new Error("managed_probe_1");
     if (directory === "/") return;
   }
 }
@@ -358,9 +358,9 @@ async function protectedMetadata(
       executable,
     )
   )
-    throw unsupported();
+    throw new Error("managed_probe_2");
   await protectedAncestors(file);
-  if (!sameFile(metadata, await fs.lstat(file))) throw unsupported();
+  if (!sameFile(metadata, await fs.lstat(file))) throw new Error("managed_probe_3");
   return metadata;
 }
 async function boundedRead(
@@ -379,7 +379,7 @@ async function boundedRead(
   try {
     const first = await handle.stat();
     if (metadata && (!first.isFile() || !sameFile(first, metadata)))
-      throw unsupported();
+      throw new Error("managed_probe_4");
     const buffer = Buffer.alloc(metadata ? metadata.size + 1 : maximum + 1);
     let length = 0;
     while (length < buffer.length) {
@@ -399,7 +399,7 @@ async function boundedRead(
           !sameFile(first, await handle.stat()) ||
           !sameFile(first, await fs.lstat(file))))
     )
-      throw unsupported();
+      throw new Error("managed_probe_5");
     return {
       bytes: buffer.subarray(0, length),
       identity: fileIdentity(
@@ -419,7 +419,7 @@ export async function readLinuxCodingMode(): Promise<"native" | "managed"> {
     await fs.lstat(MANAGED_CODING_MANIFEST_PATH);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return "native";
-    throw unsupported();
+    throw new Error("managed_probe_6");
   }
   try {
     if (
@@ -428,7 +428,7 @@ export async function readLinuxCodingMode(): Promise<"native" | "managed"> {
       process.getuid?.() !== 1000 ||
       process.getgid?.() !== 1000
     )
-      throw unsupported();
+      throw new Error("managed_probe_7");
     const [manifest, outer, inner, profile] = await Promise.all([
       boundedRead(MANAGED_CODING_MANIFEST_PATH, 4096, true),
       boundedRead(OUTER, BINARY_LIMIT, true, true),
@@ -444,7 +444,7 @@ export async function readLinuxCodingMode(): Promise<"native" | "managed"> {
         profile: { ...profile.identity, sha256: sha256(profile.bytes) },
       })
     )
-      throw unsupported();
+      throw new Error("managed_probe_8");
     // The large CLI needs metadata/ancestor protection here, not a second
     // whole-binary allocation. Its runtime fingerprint is retained by ports.
     const [originalManifest, codex] = await Promise.all([
@@ -461,7 +461,7 @@ export async function readLinuxCodingMode(): Promise<"native" | "managed"> {
         },
       })
     )
-      throw unsupported();
+      throw new Error("managed_probe_9");
     const docker = await fs.lstat("/.dockerenv");
     if (
       !docker.isFile() ||
@@ -470,7 +470,7 @@ export async function readLinuxCodingMode(): Promise<"native" | "managed"> {
       (docker.mode & 0o022) !== 0 ||
       (await fs.realpath("/.dockerenv")) !== "/.dockerenv"
     )
-      throw unsupported();
+      throw new Error("managed_probe_10");
     await protectedAncestors("/.dockerenv");
     const [status, mounts, apparmor] = await Promise.all([
       boundedRead("/proc/self/status", STATUS_LIMIT),
@@ -489,7 +489,7 @@ export async function readLinuxCodingMode(): Promise<"native" | "managed"> {
         apparmor: apparmor.bytes.toString("utf8"),
       })
     )
-      throw unsupported();
+      throw new Error("managed_probe_11");
     // Resolve the fixed system interpreter, then validate its file and every
     // ancestor before any helper process. No human environment is inherited.
     const python = await fs.realpath("/usr/bin/python3");
@@ -508,7 +508,7 @@ export async function readLinuxCodingMode(): Promise<"native" | "managed"> {
       capabilities.stdout.trim() !== "NO_FILE_CAPABILITIES" ||
       capabilities.stderr
     )
-      throw unsupported();
+      throw new Error("managed_probe_12");
     for (const helper of [OUTER, INNER]) {
       const help = await execute(helper, ["--help"], {
         env: environment,
@@ -521,10 +521,13 @@ export async function readLinuxCodingMode(): Promise<"native" | "managed"> {
           help.stdout.includes(flag),
         )
       )
-        throw unsupported();
+        throw new Error("managed_probe_13");
     }
     return "managed";
-  } catch {
+  } catch (error) {
+    const code=(error as NodeJS.ErrnoException).code;
+    const message=(error as Error).message;
+    console.error(JSON.stringify({kind:"fixed_managed_admission_probe",code:typeof code==="string"&&/^[A-Z_]{1,40}$/.test(code)?code:null,refusal:typeof message==="string"&&/^managed_probe_[0-9]{1,3}$/.test(message)?message:null}));
     throw unsupported();
   }
 }
