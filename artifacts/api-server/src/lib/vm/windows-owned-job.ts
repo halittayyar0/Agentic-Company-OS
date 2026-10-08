@@ -44,6 +44,8 @@ export async function compileWindowsOwnedJob(directory: string) {
   await storage.initialize(true);
   await storage.write("owned-job.cs", WINDOWS_OWNED_JOB_SOURCE);
   const executable = path.join(directory, "owned-job.exe");
+  const diagnosticStart = performance.now();
+  let diagnosticPhase = "compiler";
   try {
     await executeFile(
       path.join(
@@ -78,10 +80,12 @@ export async function compileWindowsOwnedJob(directory: string) {
     );
     // read verifies inherited owner/SYSTEM-only metadata without exposing any
     // binary bytes. The bounded helper is then hashed as bytes for launch.
+    diagnosticPhase = "binary-protection";
     await storage.read("owned-job.exe");
     await exactFile(executable);
     return { executable, sha256: digest(await readFile(executable)) };
-  } catch {
+  } catch (error: any) {
+    console.error("ACOS_FIXED_WINDOWS_COMPILER_DIAGNOSTIC:" + JSON.stringify({ phase: diagnosticPhase, elapsedMs: performance.now() - diagnosticStart, code: error?.code ?? null, signal: error?.signal ?? null, killed: error?.killed === true, boundedPublicCompilerError: diagnosticPhase === "compiler" ? String(error?.stderr ?? "").slice(-2048) : String(error?.message ?? "").slice(-120) }));
     throw safeFailure();
   }
 }

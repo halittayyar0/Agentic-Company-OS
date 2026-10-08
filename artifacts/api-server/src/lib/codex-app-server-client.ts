@@ -302,7 +302,7 @@ export function createCodexAppServerClient(
         cancellation,
         cancel,
         timer: setTimeout(
-          () => fail(new CodexClientError("timeout")),
+          () => { console.error("ACOS_FIXED_RPC_TIMEOUT_DIAGNOSTIC:" + JSON.stringify({ method })); fail(new CodexClientError("timeout")); },
           approvalTimeoutMs,
         ),
       };

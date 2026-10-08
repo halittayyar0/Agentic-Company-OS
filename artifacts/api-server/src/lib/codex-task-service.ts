@@ -87,6 +87,9 @@ export async function runGovernedCodexTask(
   input: { prompt: string; signal?: AbortSignal },
   dependencies: Dependencies = {},
 ) {
+  const diagnosticStart = performance.now();
+  const diagnostic = (phase: string) => console.error("ACOS_FIXED_SERVICE_STARTUP_DIAGNOSTIC:" + JSON.stringify({ phase, elapsedMs: performance.now() - diagnosticStart }));
+  diagnostic("admission-start");
   const environment = dependencies.environment ?? process.env;
   if (!codexTaskConfigured(environment)) unsupported();
   if (
@@ -136,9 +139,11 @@ export async function runGovernedCodexTask(
   } catch {
     return unsupported();
   }
+  diagnostic("executable-ready");
   const workspace = await (
     dependencies.resolveWorkspace ?? resolveCodexTaskWorkspace
   )(context);
+  diagnostic("workspace-ready");
   const authority = await createCodexTaskAuthority(
     context,
     dependencies.runtime ?? chatgptConnectionRuntime,
@@ -152,6 +157,7 @@ export async function runGovernedCodexTask(
     )) !== workspace
   )
     throw new CodexTaskError("ownership_lost");
+  diagnostic("authority-ready");
   const session = await claimCodexTaskSession({
     authority,
     agentId,
@@ -159,6 +165,7 @@ export async function runGovernedCodexTask(
     storageDirectory,
     executableDigest,
   });
+  diagnostic("session-ready");
   const bridge = createCodexTaskApprovalBridge({ authority, session, locale });
   const inferenceKey =
     "codex:" +
@@ -220,7 +227,9 @@ export async function runGovernedCodexTask(
           }
         },
         launch: async (prepared, binding) => {
+  diagnostic("launch-start");
           const owned = await processPorts.launch(prepared, binding);
+  diagnostic("launch-ready");
           return {
             ...owned,
             stop: async () => {
@@ -267,6 +276,7 @@ export async function runGovernedCodexTask(
     );
     return terminalResult;
   } catch (error) {
+    diagnostic("failed-" + (error instanceof CodexTaskError ? error.kind : "unclassified"));
     await session.uncertain().catch(() => {});
     if (error instanceof CodexTaskError) {
       terminalFailure = error;
