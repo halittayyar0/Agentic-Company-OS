@@ -51,8 +51,10 @@ export function codexOfflineRpc(
       if (!item) throw new Error();
       clearTimeout(item.timer);
       pending.delete(message.id);
-      if (message.error)
+      if (message.error) {
+        console.error("ACOS_FIXED_REJECT_DIAGNOSTIC:" + JSON.stringify({ method: methods.at(-1), code: message.error.code, fixtureError: String(message.error.message ?? "").replaceAll("fixture-only-private-access", "REDACTED").replaceAll("fixture-only-private-id", "REDACTED").slice(-2048), stderrBytes, fixtureStderr }));
         item.reject(new Error("offline_native_request_rejected"));
+      }
       else item.resolve(message.result);
     } catch {
       fail();
