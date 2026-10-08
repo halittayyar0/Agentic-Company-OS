@@ -2,11 +2,38 @@
 import json
 import os
 import subprocess
+import hashlib
+import sys
+
+variant=os.environ.get('ACOS_FIXED_PRIVACY_PROFILE')
+assert variant in ('red','closed','filtered')
+selected='/opt/agentic-inner/bwrap' if variant=='filtered' else '/usr/bin/bwrap'
+owner_proof={}
+for file in dict.fromkeys(['/usr/bin/bwrap',selected]):
+    metadata=os.lstat(file)
+    assert os.path.realpath(file)==file and os.path.isfile(file) and not os.path.islink(file)
+    assert metadata.st_uid==0 and metadata.st_mode & 0o6022==0
+    try:
+        os.getxattr(file,'security.capability')
+        raise AssertionError('unexpected_file_capability')
+    except OSError as error:
+        assert error.errno==61  # ENODATA; do not accept observation failures.
+    parent=os.path.dirname(file)
+    parents=[]
+    while True:
+        current=os.lstat(parent)
+        assert os.path.isdir(parent) and not os.path.islink(parent)
+        assert current.st_uid==0 and current.st_mode & 0o022==0
+        parents.append({'path':parent,'uid':current.st_uid,'mode':current.st_mode & 0o7777})
+        if parent=='/':break
+        parent=os.path.dirname(parent)
+    owner_proof[file]={'path':file,'uid':metadata.st_uid,'mode':metadata.st_mode & 0o7777,'sha256':hashlib.sha256(open(file,'rb').read()).hexdigest(),'parents':parents,'fileCapabilitiesAbsent':True}
 
 assert os.getuid() == os.getgid() == 1000
 inner = r'''
 import errno,json,os,select,subprocess,sys
 assert os.getpid()==1
+owner_proof=json.loads(sys.argv[1])
 assert os.environ['ACOS_FIXED_PRIVACY_SENTINEL']=='synthetic-parent-only'
 variant=os.environ.get('ACOS_FIXED_PRIVACY_PROFILE')
 assert variant in ('red','closed','filtered')
@@ -113,17 +140,18 @@ inner_helper='/opt/agentic-inner/bwrap' if filtered else '/usr/bin/bwrap'
 import hashlib
 helper_hash=hashlib.sha256(open(inner_helper,'rb').read()).hexdigest()
 helper_metadata=os.stat(inner_helper)
-assert helper_metadata.st_uid==0 and helper_metadata.st_mode & 0o6022==0
+assert helper_metadata.st_mode & 0o6022==0
+assert owner_proof[inner_helper]['uid']==0 and owner_proof[inner_helper]['sha256']==helper_hash
 command=[inner_helper,'--unshare-user','--unshare-pid','--as-pid-1','--die-with-parent','--new-session','--ro-bind','/','/','--bind','/proc','/proc','--dev','/dev','--tmpfs','/tmp','--bind',workspace,workspace,'--chdir',workspace,'--unsetenv','ACOS_FIXED_PRIVACY_SENTINEL','--','/usr/bin/python3','-I','-S','-c',program,json.dumps(targets)]
 result=subprocess.run(command,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=9)
 assert len(result.stdout)<16384 and len(result.stderr)<4096
 after=controls(after=True)
 os.close(controller_read);os.close(controller_write);os.close(held)
 sibling.stdin.close();sibling.wait(timeout=2)
-print(json.dumps({'kind':'known-live-retained-proc-privacy-experiment-not-acceptance','closed':closed,'filtered':filtered,'innerHelper':inner_helper,'innerHelperSha256':helper_hash,'innerHelperRootOwnedProtected':True,'profile':expected_profile,'before':before,'after':after,'commandExit':result.returncode,'stdout':result.stdout.decode(),'stderr':result.stderr.decode(),'siblingExit':sibling.returncode}),flush=True)
+print(json.dumps({'kind':'known-live-retained-proc-privacy-experiment-not-acceptance','closed':closed,'filtered':filtered,'innerHelper':inner_helper,'innerHelperSha256':helper_hash,'initialContainerOwnerProof':owner_proof,'nestedHelperOwnerUid':helper_metadata.st_uid,'profile':expected_profile,'before':before,'after':after,'commandExit':result.returncode,'stdout':result.stdout.decode(),'stderr':result.stderr.decode(),'siblingExit':sibling.returncode}),flush=True)
 '''
 information_read,information_write=os.pipe()
-outer=subprocess.Popen(['/usr/bin/bwrap','--unshare-user','--unshare-pid','--as-pid-1','--die-with-parent','--new-session','--json-status-fd',str(information_write),'--ro-bind','/','/','--bind','/proc','/proc','--dev','/dev','--tmpfs','/tmp','--','/usr/bin/python3','-I','-S','-c',inner],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,pass_fds=(information_write,),env={**os.environ,'ACOS_FIXED_PRIVACY_SENTINEL':'synthetic-parent-only'})
+outer=subprocess.Popen(['/usr/bin/bwrap','--unshare-user','--unshare-pid','--as-pid-1','--die-with-parent','--new-session','--json-status-fd',str(information_write),'--ro-bind','/','/','--bind','/proc','/proc','--dev','/dev','--tmpfs','/tmp','--','/usr/bin/python3','-I','-S','-c',inner,json.dumps(owner_proof)],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,pass_fds=(information_write,),env={**os.environ,'ACOS_FIXED_PRIVACY_SENTINEL':'synthetic-parent-only'})
 os.close(information_write)
 stdout,stderr=outer.communicate(timeout=15)
 assert len(stdout)<32768 and len(stderr)<4096

@@ -52,7 +52,13 @@ for before,after in zip(baseline['before'],baseline['after']):
     assert before['oomValue']=='100' and after['oomValue']=='200'
 baseline_command=json.loads(baseline['stdout'])
 assert command['seccompFilters']==baseline_command['seccompFilters']+1
-assert result['innerHelperRootOwnedProtected'] and result['innerHelper']=='/opt/agentic-inner/bwrap'
+assert result['innerHelper']=='/opt/agentic-inner/bwrap'
+for path,proof in result['initialContainerOwnerProof'].items():
+    assert proof['path']==path and proof['uid']==0 and proof['mode'] & 0o6022==0
+    assert proof['fileCapabilitiesAbsent'] and proof['parents']
+    assert proof['parents'][-1]['path']=='/'
+    assert all(p['uid']==0 and p['mode'] & 0o022==0 for p in proof['parents'])
+assert result['initialContainerOwnerProof'][result['innerHelper']]['sha256']==result['innerHelperSha256']
 binary_lines=(directory/'green-binaries.txt').read_text().splitlines()
 expected_filtered=[line.split()[0] for line in binary_lines if line.split()[1]=='/source/build-filtered/bwrap']
 assert expected_filtered==[result['innerHelperSha256']]
