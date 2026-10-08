@@ -87,7 +87,7 @@ try:
     assert len(stdout) <= 32768 and len(stderr) <= 8192
     os.set_blocking(outer_read,False)
     information=os.read(outer_read,8192)
-    print(json.dumps({'kind': 'sole-conditional-vendor-probe', 'case': case, 'outerReturncode': outer.returncode, 'result': stdout.decode('utf8','replace'), 'outerStderr': stderr.decode('utf8','replace'), 'outerInformation':information.decode('utf8','replace'),'scope': 'standalone fixed experiment only; no production toolchain or permission acceptance'}))
+    print(json.dumps({'kind': 'controlled-vendor-probe', 'case': case, 'outerReturncode': outer.returncode, 'result': stdout.decode('utf8','replace'), 'outerStderr': stderr.decode('utf8','replace'), 'outerInformation':information.decode('utf8','replace'),'scope': 'standalone fixed experiment only; no production toolchain or permission acceptance'}))
 finally:
     os.close(outer_read)
     for sibling in keepers:

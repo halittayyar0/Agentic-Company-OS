@@ -26,7 +26,7 @@ for variant in ('red', 'green'):
         for line in result['informationOutput'].splitlines():
             if line.startswith('{'):
                 record = json.loads(line)
-                if 'pid-namespace' in record:
+                if 'child-pid' in record:
                     records.append(record)
         result['informationRecords'] = records
         cases[variant + '-' + case] = result
@@ -46,15 +46,28 @@ assert kernel['mountNamespace'] != green['identity']['mountNamespace']
 assert kernel['procChildren'] == green['identity']['procChildren']
 assert kernel['procChildren']  # Positive actual submount evidence; no empty-set credit.
 
-for variant in ('red','green'):
-    missing = cases[variant+'-info-missing']
-    assert missing['returncode'] == 1 and missing['timeout'] and not missing['informationRecords']
+missing = cases['red-info-missing']
+assert missing['returncode'] == 1 and missing['timeout'] and not missing['informationRecords']
+for case in ('info-missing','info-collision'):
+    refused = cases['green-'+case]
+    assert refused['returncode'] == 1 and not refused['timeout'] and not refused['informationRecords']
+    assert not refused['stdout'] and not refused['workspaceWritten']
+    assert 'mismatched procfs PID numbering' in refused['stderr']
+
+# Matching initial container PID/proc information remains functional and exact.
+outer = json.loads((directory/'green-plain.json').read_text())
+outer_records=[json.loads(line) for line in outer['outerInformation'].splitlines()]
+start=[record for record in outer_records if 'child-pid' in record]
+assert len(start)==1
+assert start[0]['pid-namespace']==int(green['identity']['pidNamespace'].split('[')[1].rstrip(']'))
+assert start[0]['mnt-namespace']==int(green['identity']['mountNamespace'].split('[')[1].rstrip(']'))
+assert {'exit-code':0} in outer_records
 
 collision = cases['green-info-collision']
 wrong_records = []
 if 'kernel' in collision:
     actual = int(collision['kernel']['pidNamespace'].split('[')[1].rstrip(']'))
-    wrong_records = [record for record in collision['informationRecords'] if record['pid-namespace'] != actual]
+    wrong_records = [record for record in collision['informationRecords'] if record.get('pid-namespace') != actual]
 report = {'kind':'controlled-vendor-lookup-experiment-not-release-acceptance','plainStartupCorrected':True,'managedProcMasksRetained':True,'uidCapsNnpProfileRootWorkspaceVerified':True,'allFixedContainersRemoved':True,'explicitInfoCollisionRefused':collision['returncode'] != 0 and not collision['informationRecords'],'wrongExplicitInformationRecords':wrong_records,'cases':cases,'scope':'kernel primitive only; no Codex named permissions, parent/sibling privacy or packaged installation proof'}
 (directory/'comparison.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps({key:value for key,value in report.items() if key not in ('cases','wrongExplicitInformationRecords')}))

@@ -34,9 +34,35 @@ original = source.read_bytes()
 anchor = b'      namespace_ids_read (pid);'
 assert original.count(anchor) == 1
 changed = original.replace(anchor, b'      if (opt_info_fd != -1 || opt_json_status_fd != -1)\n        namespace_ids_read (pid);')
+guard_anchor = b'  if (proc_fd == -1)\n    die_with_error ("Can\'t open /proc");'
+assert changed.count(guard_anchor) == 1
+guard = b'''
+
+  /* Explicit information must refer to our current proc/PID view. Refuse
+   * before cloning so a diagnostic mismatch cannot leave a setup child. */
+  if (opt_info_fd != -1 || opt_json_status_fd != -1)
+    {
+      char proc_self_pid[32];
+      char expected_proc_self_pid[32];
+      ssize_t proc_self_length = readlinkat (proc_fd, "self", proc_self_pid,
+                                           sizeof (proc_self_pid));
+      int expected_proc_self_length = snprintf (expected_proc_self_pid,
+                                               sizeof (expected_proc_self_pid),
+                                               "%ld", (long) getpid ());
+      if (proc_self_length < 0)
+        die_with_error ("Reading proc self for namespace information");
+      if (expected_proc_self_length < 0 ||
+          (size_t) expected_proc_self_length >= sizeof (expected_proc_self_pid) ||
+          proc_self_length != expected_proc_self_length ||
+          memcmp (proc_self_pid, expected_proc_self_pid,
+                  (size_t) expected_proc_self_length) != 0)
+        die ("Cannot report namespace IDs with mismatched procfs PID numbering");
+    }
+'''
+changed = changed.replace(guard_anchor, guard_anchor + guard)
 (root / 'bubblewrap.c.modified').write_bytes(changed)
 Path('/source/provenance.json').write_text(json.dumps({
-    'kind': 'sole-conditional-vendor-experiment-not-product-acceptance',
+    'kind': 'conditional-and-preclone-information-view-guard-experiment-not-product-acceptance',
     'archiveSha256': expected,
     'sourceSha256': hashlib.sha256(original).hexdigest(),
     'changedSourceSha256': hashlib.sha256(changed).hexdigest(),
