@@ -17,6 +17,7 @@ jobs:
         run: |
           docker build --pull --file deploy/coding-proc-vendor-probe.Dockerfile --target namespace-probe-red --tag acos-vendor-proc:red .
           docker build --pull --file deploy/coding-proc-vendor-probe.Dockerfile --target namespace-probe-green --tag acos-vendor-proc:green .
+          docker build --pull --file deploy/coding-proc-vendor-probe.Dockerfile --target namespace-probe-filtered --tag acos-vendor-proc:filtered .
       - name: Require enforced dedicated profile
         run: |
           docker info --format '{{json .SecurityOptions}}' | grep --quiet 'name=apparmor'
@@ -43,11 +44,13 @@ jobs:
           done
       - name: Observe known-live synthetic parent and sibling access
         run: |
-          for variant in red closed; do
+          for variant in red closed filtered; do
             profile=agentic-coding
-            if [ "$variant" = closed ]; then profile=agentic-coding-proc-probe; fi
+            image=acos-vendor-proc:green
+            if [ "$variant" != red ]; then profile=agentic-coding-proc-probe; fi
+            if [ "$variant" = filtered ]; then image=acos-vendor-proc:filtered; fi
             probe_name="acos-vendor-${GITHUB_RUN_ID}-known-live-privacy-$variant"
-            docker run --name "$probe_name" --rm --pull=never --network=none --read-only --user=1000:1000 --cap-drop=ALL --pids-limit=128 --security-opt=no-new-privileges:true --security-opt=seccomp="$GITHUB_WORKSPACE/deploy/coding-seccomp.json" --security-opt=apparmor="$profile" --tmpfs=/tmp:rw,exec,nosuid,size=64m,mode=1777 --env=HOME=/tmp --env=ACOS_FIXED_PRIVACY_PROFILE="$variant" --entrypoint=/usr/bin/python3 acos-vendor-proc:green -I -S /opt/agentic-codex/proc-privacy.py > "vendor-proc-evidence/known-live-privacy-$variant.json"
+            docker run --name "$probe_name" --rm --pull=never --network=none --read-only --user=1000:1000 --cap-drop=ALL --pids-limit=128 --security-opt=no-new-privileges:true --security-opt=seccomp="$GITHUB_WORKSPACE/deploy/coding-seccomp.json" --security-opt=apparmor="$profile" --tmpfs=/tmp:rw,exec,nosuid,size=64m,mode=1777 --env=HOME=/tmp --env=ACOS_FIXED_PRIVACY_PROFILE="$variant" --entrypoint=/usr/bin/python3 "$image" -I -S /opt/agentic-codex/proc-privacy.py > "vendor-proc-evidence/known-live-privacy-$variant.json"
             docker container ls --all --filter "name=^/$probe_name$" --format '{{json .}}' > "vendor-proc-evidence/known-live-privacy-$variant-remaining-containers.txt"
             test ! -s "vendor-proc-evidence/known-live-privacy-$variant-remaining-containers.txt"
           done

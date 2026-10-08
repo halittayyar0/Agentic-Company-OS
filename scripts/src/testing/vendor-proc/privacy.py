@@ -8,7 +8,10 @@ inner = r'''
 import errno,json,os,select,subprocess,sys
 assert os.getpid()==1
 assert os.environ['ACOS_FIXED_PRIVACY_SENTINEL']=='synthetic-parent-only'
-closed=os.environ.get('ACOS_FIXED_PRIVACY_PROFILE')=='closed'
+variant=os.environ.get('ACOS_FIXED_PRIVACY_PROFILE')
+assert variant in ('red','closed','filtered')
+closed=variant!='red'
+filtered=variant=='filtered'
 expected_profile='agentic-coding-proc-probe (enforce)' if closed else 'agentic-coding (enforce)'
 assert open('/proc/self/attr/current').read().strip()==expected_profile
 private='/tmp/fixed-private'
@@ -54,7 +57,7 @@ def controls(after=False):
     return observed
 before=controls()
 program=r"""
-import errno,json,os,subprocess,sys
+import ctypes,errno,json,os,subprocess,sys,threading
 targets=json.loads(sys.argv[1])
 def read_probe(file,sentinel):
     try:
@@ -96,15 +99,28 @@ assert str(fd) in os.listdir('/proc/self/fd')
 assert os.readlink('/proc/self/fd/'+str(fd)).endswith('workspace-marker')
 os.close(fd)
 open('written','w').write('positive-workspace-write')
-print(json.dumps({'pid':os.getpid(),'procSelf':os.readlink('/proc/self'),'profile':open('/proc/self/attr/current').read().strip(),'uidMap':open('/proc/self/uid_map').read().strip(),'gidMap':open('/proc/self/gid_map').read().strip(),'selfFdEnumerationAndClose':True,'workspaceRead':open('workspace-marker').read(),'workspaceWritten':True,'directPrivate':read_probe('/tmp/fixed-private/private-marker','synthetic-private-file'),'targets':observed}),flush=True)
+thread_result=[]
+thread=threading.Thread(target=lambda:thread_result.append('ordinary-thread-complete'))
+thread.start();thread.join(timeout=2)
+assert thread_result==['ordinary-thread-complete'] and not thread.is_alive()
+child_program="import ctypes,errno,json,os;lib=ctypes.CDLL(None,use_errno=True);r=lib.unshare(0x10000000);status=dict(line.strip().split(':',1) for line in open('/proc/self/status') if ':' in line);print(json.dumps({'unshareResult':r,'unshareErrno':ctypes.get_errno(),'seccompFilters':int(status['Seccomp_filters'].strip())}),flush=True)"
+inherited=subprocess.run(['/usr/bin/python3','-I','-S','-c',child_program],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=2)
+assert inherited.returncode==0 and not inherited.stderr and len(inherited.stdout)<1024
+status=dict(line.strip().split(':',1) for line in open('/proc/self/status') if ':' in line)
+print(json.dumps({'pid':os.getpid(),'uid':os.getuid(),'gid':os.getgid(),'procSelf':os.readlink('/proc/self'),'profile':open('/proc/self/attr/current').read().strip(),'uidMap':open('/proc/self/uid_map').read().strip(),'gidMap':open('/proc/self/gid_map').read().strip(),'selfFdEnumerationAndClose':True,'workspaceRead':open('workspace-marker').read(),'workspaceWritten':True,'ordinaryThreadPositive':True,'ordinaryForkExecPositive':True,'seccompFilters':int(status['Seccomp_filters'].strip()),'descendantFilter':json.loads(inherited.stdout),'directPrivate':read_probe('/tmp/fixed-private/private-marker','synthetic-private-file'),'targets':observed}),flush=True)
 """
-command=['/usr/bin/bwrap','--unshare-user','--unshare-pid','--as-pid-1','--die-with-parent','--new-session','--ro-bind','/','/','--bind','/proc','/proc','--dev','/dev','--tmpfs','/tmp','--bind',workspace,workspace,'--chdir',workspace,'--unsetenv','ACOS_FIXED_PRIVACY_SENTINEL','--','/usr/bin/python3','-I','-S','-c',program,json.dumps(targets)]
+inner_helper='/opt/agentic-inner/bwrap' if filtered else '/usr/bin/bwrap'
+import hashlib
+helper_hash=hashlib.sha256(open(inner_helper,'rb').read()).hexdigest()
+helper_metadata=os.stat(inner_helper)
+assert helper_metadata.st_uid==0 and helper_metadata.st_mode & 0o6022==0
+command=[inner_helper,'--unshare-user','--unshare-pid','--as-pid-1','--die-with-parent','--new-session','--ro-bind','/','/','--bind','/proc','/proc','--dev','/dev','--tmpfs','/tmp','--bind',workspace,workspace,'--chdir',workspace,'--unsetenv','ACOS_FIXED_PRIVACY_SENTINEL','--','/usr/bin/python3','-I','-S','-c',program,json.dumps(targets)]
 result=subprocess.run(command,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=9)
 assert len(result.stdout)<16384 and len(result.stderr)<4096
 after=controls(after=True)
 os.close(controller_read);os.close(controller_write);os.close(held)
 sibling.stdin.close();sibling.wait(timeout=2)
-print(json.dumps({'kind':'known-live-retained-proc-privacy-experiment-not-acceptance','closed':closed,'profile':expected_profile,'before':before,'after':after,'commandExit':result.returncode,'stdout':result.stdout.decode(),'stderr':result.stderr.decode(),'siblingExit':sibling.returncode}),flush=True)
+print(json.dumps({'kind':'known-live-retained-proc-privacy-experiment-not-acceptance','closed':closed,'filtered':filtered,'innerHelper':inner_helper,'innerHelperSha256':helper_hash,'innerHelperRootOwnedProtected':True,'profile':expected_profile,'before':before,'after':after,'commandExit':result.returncode,'stdout':result.stdout.decode(),'stderr':result.stderr.decode(),'siblingExit':sibling.returncode}),flush=True)
 '''
 information_read,information_write=os.pipe()
 outer=subprocess.Popen(['/usr/bin/bwrap','--unshare-user','--unshare-pid','--as-pid-1','--die-with-parent','--new-session','--json-status-fd',str(information_write),'--ro-bind','/','/','--bind','/proc','/proc','--dev','/dev','--tmpfs','/tmp','--','/usr/bin/python3','-I','-S','-c',inner],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,pass_fds=(information_write,),env={**os.environ,'ACOS_FIXED_PRIVACY_SENTINEL':'synthetic-parent-only'})

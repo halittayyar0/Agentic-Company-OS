@@ -61,11 +61,22 @@ guard = b'''
 '''
 changed = changed.replace(guard_anchor, guard_anchor + guard)
 (root / 'bubblewrap.c.modified').write_bytes(changed)
+command_filter = Path('/source/command-filter.c').read_bytes()
+function_anchor = b'static void\nseccomp_programs_apply (void)'
+assert changed.count(function_anchor) == 1
+filtered = changed.replace(function_anchor, command_filter + b'\n' + function_anchor)
+filter_anchor = b'  SeccompProgram *program;\n\n  for (program = seccomp_programs;'
+assert filtered.count(filter_anchor) == 1
+filtered = filtered.replace(filter_anchor, b'  SeccompProgram *program;\n\n  acos_command_filter_apply ();\n\n  for (program = seccomp_programs;')
+(root / 'bubblewrap.c.filtered').write_bytes(filtered)
 Path('/source/provenance.json').write_text(json.dumps({
     'kind': 'conditional-and-preclone-information-view-guard-experiment-not-product-acceptance',
     'archiveSha256': expected,
     'sourceSha256': hashlib.sha256(original).hexdigest(),
     'changedSourceSha256': hashlib.sha256(changed).hexdigest(),
+    'filteredSourceSha256': hashlib.sha256(filtered).hexdigest(),
+    'commandFilterSha256': hashlib.sha256(command_filter).hexdigest(),
+    'filterScope': 'mandatory inner helper only; after namespace setup before execution; no opt-out',
     'license': 'LGPL-2.0-or-later',
     'scope': 'same source/toolchain; no production digest or admission modification',
 }, indent=2))
