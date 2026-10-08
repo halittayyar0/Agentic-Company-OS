@@ -133,7 +133,7 @@ test("ordinary, root, replaced and wrong-version toolchains cannot satisfy the c
 
 test("a successful process exit or skipped native cases never become acceptance", () => {
   const tap =
-    "# tests 22\n# pass 22\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n";
+    "# tests 23\n# pass 23\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n";
   assertNativeTestSummary(0, tap);
   assert.throws(() => assertNativeTestSummary(1, tap));
   assert.throws(() => assertNativeTestSummary(0, "all good"));
@@ -141,9 +141,9 @@ test("a successful process exit or skipped native cases never become acceptance"
     assertNativeTestSummary(0, tap.replace("# skipped 0", "# skipped 1")),
   );
   assert.throws(() =>
-    assertNativeTestSummary(0, tap.replace("# pass 22", "# pass 21")),
+    assertNativeTestSummary(0, tap.replace("# pass 23", "# pass 22")),
   );
-  assert.throws(() => assertNativeTestSummary(0, tap + "# pass 22\n"));
+  assert.throws(() => assertNativeTestSummary(0, tap + "# pass 23\n"));
 });
 
 test("native tests use immutable image-owned tools, confinement and only one read-only fixture bind", () => {

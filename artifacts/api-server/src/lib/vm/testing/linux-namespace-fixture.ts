@@ -30,7 +30,8 @@ def identity(pid):
     except FileNotFoundError:
         return None
 
-def namespace_members(namespace):
+def namespace_members(namespace, owned_identities=None):
+    owned_identities = owned_identities or {}
     result = []
     for entry in Path('/proc').iterdir():
         if not entry.name.isdigit():
@@ -42,6 +43,12 @@ def namespace_members(namespace):
                 result.append(int(entry.name))
         except (FileNotFoundError, ProcessLookupError):
             pass
+        except PermissionError:
+            # Unrelated nondumpable host processes can share our UID. Never
+            # treat an inaccessible captured owned identity as retired.
+            if (entry.name in owned_identities and
+                identity(int(entry.name)) == owned_identities[entry.name]):
+                raise
     return result
 
 role = sys.argv[1]
@@ -94,6 +101,7 @@ if role == 'worker':
         initial = {'initPid': init_pid, 'initIdentity': identity(init_pid),
             'namespace': kernel_namespace, 'outerPid': child.pid,
             'outerIdentity': identity(child.pid), 'runId': run_id}
+        initial['members'] = {str(init_pid): initial['initIdentity']}
         record(root, 'created.json', initial)
     if scenario == 'early-owner-killed':
         record(root, 'ready.json', initial)
@@ -109,7 +117,13 @@ if role == 'worker':
         message = json.loads(receipts.split(b'\n')[0])
         assert message['runId'] == run_id and message['kind'] == 'ready'
         assert message['initPid'] == 1 and message['targetPid'] > 1
-        wait_for(lambda: len(namespace_members(kernel_namespace)) >= 3)
+        def ready_members():
+            members = namespace_members(kernel_namespace, initial['members'])
+            return members if len(members) >= 3 else None
+        members = wait_for(ready_members)
+        initial['members'].update({str(pid): identity(pid) for pid in members})
+        assert all(value is not None for value in initial['members'].values())
+        record(root, 'created.json', initial)
         record(root, 'ready.json', initial)
         if scenario == 'owner-eof':
             wait_for(lambda: (root / 'stop').exists())
@@ -153,7 +167,8 @@ try:
             assert stopped['kind'] == 'stopped' and stopped['activeProcesses'] == 0
             assert stopped['targetExitCode'] == (7 if scenario == 'target-crash' else 0 if scenario == 'target-normal' else -9)
     if owned:
-        wait_for(lambda: not namespace_members(owned['namespace']))
+        wait_for(lambda: not namespace_members(owned['namespace'], owned['members']))
+        wait_for(lambda: all(identity(int(pid)) != value for pid, value in owned['members'].items()))
         wait_for(lambda: identity(owned['initPid']) != owned['initIdentity'])
         wait_for(lambda: identity(owned['outerPid']) != owned['outerIdentity'])
     if scenario == 'early-owner-killed':
@@ -169,5 +184,5 @@ finally:
     if owned and identity(owned['initPid']) == owned['initIdentity']:
         assert os.readlink('/proc/%s/ns/pid' % owned['initPid']) == owned['namespace']
         os.kill(owned['initPid'], signal.SIGKILL)
-        wait_for(lambda: not namespace_members(owned['namespace']))
+        wait_for(lambda: not namespace_members(owned['namespace'], owned['members']))
 `;

@@ -52,6 +52,12 @@ jobs:
           pnpm test:coding:container "$image_id"
       - name: Prove actual coding installation, stopped-service resume and database restore
         run: pnpm exec tsx scripts/src/setup/container-install-smoke.ts --coding-source
+      - name: Preserve dedicated profile denials on failure
+        if: failure()
+        run: >-
+          sudo journalctl --kernel --since '-30 minutes' --no-pager
+          | grep -E 'apparmor=.*DENIED.*profile="agentic-coding"'
+          > "$RUNNER_TEMP/coding-apparmor-denials.log" || true
       - name: Preserve offline container evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -59,7 +65,9 @@ jobs:
           name: coding-container-offline-evidence
           path: |
             /tmp/acos-coding-container-*/evidence.json
+            /tmp/acos-coding-container-*/native-tests.log
             /tmp/acos-container-install-proof-*/evidence.json
+            ${{ runner.temp }}/coding-apparmor-denials.log
           if-no-files-found: warn
 
   linux-owned-namespace:

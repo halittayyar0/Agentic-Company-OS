@@ -299,21 +299,32 @@ export async function runCodingContainerSmoke(image: string) {
         "coding_apparmor_must_be_enforced",
       );
     proof.identity = identity;
-    const result = await docker(
-      [
-        ...common,
-        inspected.Id,
-        "node",
-        "--no-wasm-code-gc",
-        "--test",
-        "--test-reporter=tap",
-        "--test-concurrency=1",
-        ...ENTRIES.filter(([, name]) => name.endsWith(".test.mjs")).map(
-          ([, name]) => `/fixture/${name}`,
-        ),
-      ],
-      120_000,
-    );
+    let result: { stdout: string; stderr: string };
+    try {
+      result = await docker(
+        [
+          ...common,
+          inspected.Id,
+          "node",
+          "--no-wasm-code-gc",
+          "--test",
+          "--test-reporter=tap",
+          "--test-concurrency=1",
+          ...ENTRIES.filter(([, name]) => name.endsWith(".test.mjs")).map(
+            ([, name]) => `/fixture/${name}`,
+          ),
+        ],
+        120_000,
+      );
+    } catch (error) {
+      const failure = error as { stdout?: string; stderr?: string };
+      await writeFile(
+        path.join(directory, "native-tests.log"),
+        (failure.stdout ?? "") + (failure.stderr ?? ""),
+        { mode: 0o600 },
+      );
+      throw error;
+    }
     await writeFile(
       path.join(directory, "native-tests.log"),
       result.stdout + result.stderr,
@@ -326,7 +337,7 @@ export async function runCodingContainerSmoke(image: string) {
       "coding_container_source_changed_during_test",
     );
     proof.sourceStable = true;
-    proof.tests = 22;
+    proof.tests = 23;
     proof.passed = true;
   } finally {
     if (attempted) {

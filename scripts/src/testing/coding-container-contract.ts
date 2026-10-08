@@ -89,8 +89,8 @@ export function assertNativeTestSummary(
 ): void {
   assert.equal(exitCode, 0, "coding_container_native_process_failed");
   for (const [label, count] of Object.entries({
-    tests: 22,
-    pass: 22,
+    tests: 23,
+    pass: 23,
     fail: 0,
     cancelled: 0,
     skipped: 0,
