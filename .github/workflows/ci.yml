@@ -87,6 +87,16 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
+      - name: Install pinned pnpm for private storage regression
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          run_install: false
+      - name: Set up Node 24 for private storage regression
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - name: Install frozen private storage test dependencies
+        run: pnpm install --frozen-lockfile
       - name: Exercise exact protection script on newly owned empty fixtures
         shell: pwsh
         run: |
@@ -118,6 +128,8 @@ jobs:
           Get-Content -LiteralPath "$env:RUNNER_TEMP/acos-fixed-owner-probe.json"
           # Every file is an empty uniquely owned runner fixture. No secret data.
           $global:LASTEXITCODE = 0
+      - name: Run actual elevated Windows private storage regressions
+        run: node --import tsx --test lib/ai-server/src/owner-private-storage.test.ts
       - name: Preserve observations without waiving private storage validation
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

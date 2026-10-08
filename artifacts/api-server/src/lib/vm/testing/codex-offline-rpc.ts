@@ -30,7 +30,7 @@ export function codexOfflineRpc(
   const methods: string[] = [];
   const lines = createInterface({ input: child.stdout });
   function fail() {
-    failure ??= new Error("offline_native_protocol_failed");
+    failure ??= new Error("offline_native_protocol_failed:" + JSON.stringify({methods, stderrBytes, fixtureStderr}));
     for (const item of pending.values()) {
       clearTimeout(item.timer);
       item.reject(failure);

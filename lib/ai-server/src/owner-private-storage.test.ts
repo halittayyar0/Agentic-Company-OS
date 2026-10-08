@@ -119,6 +119,24 @@ test("Unix owner protection rejects wrong owners, public bits and links", () => 
   );
 });
 
+test("private storage owns its new lock before entering the protected action", async () => {
+  const parent = await mkdtemp(path.join(tmpdir(), "acos-private-lock-owner-"));
+  try {
+    const storage = new OwnerPrivateStorage(path.join(parent, "vault"));
+    await storage.initialize();
+    let entered = 0;
+    await storage.withLock(async () => {
+      entered++;
+      // The lock itself must pass the same private-file checks as records.
+      assert.equal(await storage.read("registration.lock"), "");
+    });
+    assert.equal(entered, 1);
+    assert.equal(await storage.read("registration.lock"), null);
+  } finally {
+    await rm(parent, { recursive: true, force: true });
+  }
+});
+
 test("Windows owner parsing accepts Entra accounts and rejects ambiguous identity", () => {
   assert.equal(
     windowsOwnerSid('"azuread\\operator","S-1-12-1-123-456-789-10"'),
