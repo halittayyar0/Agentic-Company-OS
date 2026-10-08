@@ -253,6 +253,46 @@ test("observed managed containment accepts Docker's twelve preserved proc masks"
   );
 });
 
+test("admission validates initial Docker masks before Bubblewrap adds recursive mount flags", () => {
+  // Actual image-owned backend observations, run37826250826. Docker's empty
+  // directory masks and /dev/null masks do not yet have Bubblewrap's nodev.
+  const initial = `1 0 0:1 / / ro,relatime - overlay overlay rw
+2 1 0:2 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw
+3 1 0:3 / /sys ro,nosuid,nodev,noexec,relatime - sysfs sysfs ro
+4 2 0:2 /bus /proc/bus ro,nosuid,nodev,noexec,relatime - proc proc rw
+5 2 0:2 /fs /proc/fs ro,nosuid,nodev,noexec,relatime - proc proc rw
+6 2 0:2 /irq /proc/irq ro,nosuid,nodev,noexec,relatime - proc proc rw
+7 2 0:2 /sys /proc/sys ro,nosuid,nodev,noexec,relatime - proc proc rw
+8 2 0:2 /sysrq-trigger /proc/sysrq-trigger ro,nosuid,nodev,noexec,relatime - proc proc rw
+9 2 0:4 / /proc/acpi ro,relatime - tmpfs tmpfs ro
+10 2 0:5 /null /proc/interrupts rw,nosuid - tmpfs tmpfs rw
+11 2 0:5 /null /proc/kcore rw,nosuid - tmpfs tmpfs rw
+12 2 0:5 /null /proc/keys rw,nosuid - tmpfs tmpfs rw
+13 2 0:5 /null /proc/latency_stats rw,nosuid - tmpfs tmpfs rw
+14 2 0:5 /null /proc/timer_list rw,nosuid - tmpfs tmpfs rw
+15 2 0:6 / /proc/scsi ro,relatime - tmpfs tmpfs ro
+`;
+  assert.equal(
+    hasManagedCodingContainment({ ...containment(), mounts: initial }),
+    true,
+  );
+  for (const changed of [
+    initial.replace("/proc/acpi ro,", "/proc/acpi rw,"),
+    initial.replace("/proc/scsi ro,", "/proc/scsi rw,"),
+    initial.replace("/proc/keys rw,nosuid", "/proc/keys rw"),
+    initial.replace("/null /proc/keys", "/keys /proc/keys"),
+    initial.replace(
+      "/proc/acpi ro,relatime - tmpfs tmpfs",
+      "/proc/acpi ro,relatime - proc proc",
+    ),
+    initial.replace("/proc rw,nosuid,nodev,noexec", "/proc rw,nosuid,noexec"),
+  ])
+    assert.equal(
+      hasManagedCodingContainment({ ...containment(), mounts: changed }),
+      false,
+    );
+});
+
 test("managed containment refuses unsupported platform, identities and AppArmor state", () => {
   for (const change of [
     { platform: "win32" },

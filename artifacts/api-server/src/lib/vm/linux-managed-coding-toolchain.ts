@@ -300,7 +300,11 @@ export function hasManagedCodingContainment(input: {
       mount?.type !== "tmpfs" ||
       mount.source !== "tmpfs" ||
       mount.root !== (directory ? "/" : "/null") ||
-      ![directory ? "ro" : "rw", "nosuid", "nodev"].every((flag) =>
+      // Admission runs in the backend's initial Docker mount namespace.
+      // Bubblewrap adds nosuid/nodev recursively only after this check. The
+      // directory masks are read-only tmpfs and file masks are /dev/null;
+      // requiring the later helper flags here refuses the correct image.
+      !(directory ? ["ro"] : ["rw", "nosuid"]).every((flag) =>
         mount.options.has(flag),
       )
     )
