@@ -244,7 +244,19 @@ except OSError:r['executableWritable']=False
 try:
  s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.close();r['socketPermissionDenied']=False
 except OSError as e:r['socketPermissionDenied']=e.errno in (errno.EPERM,errno.EACCES)
-r['seccompFilters']=int(next(line.split(':',1)[1] for line in open('/proc/self/status') if line.startswith('Seccomp_filters:')))
+import ctypes,subprocess,threading
+lib=ctypes.CDLL(None,use_errno=True)
+ctypes.set_errno(0)
+ns_result=lib.unshare(0x10000000)
+r['commandBarrier']={'result':ns_result,'errno':ctypes.get_errno(),'uid':os.getuid(),'gid':os.getgid(),'nnp':lib.prctl(39,0,0,0,0)}
+thread_result=[]
+thread=threading.Thread(target=lambda:thread_result.append('ordinary-thread-complete'))
+thread.start();thread.join(timeout=2)
+r['ordinaryThreadPositive']=thread_result==['ordinary-thread-complete'] and not thread.is_alive()
+child_program="import ctypes,json,os;lib=ctypes.CDLL(None,use_errno=True);ctypes.set_errno(0);result=lib.unshare(0x10000000);print(json.dumps({'result':result,'errno':ctypes.get_errno(),'tokenPresent':'ACOS_CODEX_ACCESS_TOKEN' in os.environ}))"
+descendant=subprocess.run(['/usr/bin/python3','-I','-S','-c',child_program],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=2)
+assert descendant.returncode==0 and not descendant.stderr and len(descendant.stdout)<1024
+r['descendantBarrier']=json.loads(descendant.stdout)
 r['procTokenReadable']=False
 r['procPrivateReadable']=False
 for p in os.listdir('/proc'):
@@ -284,11 +296,23 @@ print(json.dumps(r))
         assert.equal(response.exitCode, 0);
         assert.equal(typeof response.stdout, "string");
         const observed = JSON.parse(response.stdout as string);
-        assert.ok(
-          observed.seccompFilters >= 3,
+        assert.deepEqual(
+          observed.commandBarrier,
+          { result: -1, errno: 1, uid: 1000, gid: 1000, nnp: 1 },
           "mandatory_inner_filter_must_be_used_by_actual_codex_command",
         );
-        const { seccompFilters, ...originalObserved } = observed;
+        assert.equal(observed.ordinaryThreadPositive, true);
+        assert.deepEqual(observed.descendantBarrier, {
+          result: -1,
+          errno: 1,
+          tokenPresent: false,
+        });
+        const {
+          commandBarrier,
+          ordinaryThreadPositive,
+          descendantBarrier,
+          ...originalObserved
+        } = observed;
         assert.deepEqual(originalObserved, {
           read: "workspace-readable",
           tokenPresent: false,
