@@ -287,7 +287,7 @@ export async function runCodingContainerSmoke(image: string) {
           inspected.Id,
           "node",
           "-e",
-          "const fs=require('fs'),crypto=require('crypto');console.log(JSON.stringify({uid:process.getuid(),node:process.version,bwrapSha256:crypto.createHash('sha256').update(fs.readFileSync('/usr/bin/bwrap')).digest('hex'),manifest:JSON.parse(fs.readFileSync('/opt/agentic-codex/fixture-owner.json','utf8')),apparmor:fs.existsSync('/proc/self/attr/current')?fs.readFileSync('/proc/self/attr/current','utf8').trim():null}));",
+          "const fs=require('fs'),crypto=require('crypto');console.log(JSON.stringify({uid:process.getuid(),node:process.version,bwrapSha256:crypto.createHash('sha256').update(fs.readFileSync('/usr/bin/bwrap')).digest('hex'),innerBwrapSha256:crypto.createHash('sha256').update(fs.readFileSync('/opt/agentic-inner/bwrap')).digest('hex'),manifest:JSON.parse(fs.readFileSync('/opt/agentic-codex/fixture-owner.json','utf8')),apparmor:fs.existsSync('/proc/self/attr/current')?fs.readFileSync('/proc/self/attr/current','utf8').trim():null}));",
         ])
       ).stdout,
     );

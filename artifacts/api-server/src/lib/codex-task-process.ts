@@ -1,3 +1,4 @@
+import { verifyPrototypeCodingToolchain } from "./vm/prototype-coding-toolchain";
 import {
   execFile,
   type ChildProcessWithoutNullStreams,
@@ -285,6 +286,7 @@ export function createCodexTaskProcessPorts(
     await exact(workspace, true);
     const native = injectedNative ?? defaultNative();
     await systemPreflight(native);
+    if (process.platform === "linux") await verifyPrototypeCodingToolchain();
     const executableFingerprint = await fingerprint(executable);
     const base = new OwnerPrivateStorage(storageDirectory);
     await base.initialize();
@@ -371,7 +373,11 @@ export function createCodexTaskProcessPorts(
     const environment =
       process.platform === "win32"
         ? windowsEnvironment(home)
-        : { PATH: "/usr/bin:/bin", HOME: home, USERPROFILE: home };
+        : {
+            PATH: "/opt/agentic-inner:/usr/bin:/bin",
+            HOME: home,
+            USERPROFILE: home,
+          };
     return {
       ...environment,
       CODEX_HOME: home,

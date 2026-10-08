@@ -123,6 +123,7 @@ export function buildCodexTaskConfiguration(input: Input) {
     // The app-server alone receives the credential. Commands cannot inherit it.
     shell_environment_policy: {
       inherit: "none",
+      set: { PATH: "/opt/agentic-inner:/usr/bin:/bin" },
       experimental_use_profile: false,
     },
     analytics: { enabled: false },

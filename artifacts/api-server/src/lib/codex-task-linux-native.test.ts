@@ -244,6 +244,7 @@ except OSError:r['executableWritable']=False
 try:
  s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.close();r['socketPermissionDenied']=False
 except OSError as e:r['socketPermissionDenied']=e.errno in (errno.EPERM,errno.EACCES)
+r['seccompFilters']=int(next(line.split(':',1)[1] for line in open('/proc/self/status') if line.startswith('Seccomp_filters:')))
 r['procTokenReadable']=False
 r['procPrivateReadable']=False
 for p in os.listdir('/proc'):
@@ -267,7 +268,12 @@ print(json.dumps(r))
         assert.equal(response.exitCode, 0);
         assert.equal(typeof response.stdout, "string");
         const observed = JSON.parse(response.stdout as string);
-        assert.deepEqual(observed, {
+        assert.ok(
+          observed.seccompFilters >= 3,
+          "mandatory_inner_filter_must_be_used_by_actual_codex_command",
+        );
+        const { seccompFilters, ...originalObserved } = observed;
+        assert.deepEqual(originalObserved, {
           read: "workspace-readable",
           tokenPresent: false,
           privateReadable: false,

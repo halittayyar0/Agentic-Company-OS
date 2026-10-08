@@ -1,3 +1,4 @@
+import { verifyPrototypeCodingToolchain } from "./prototype-coding-toolchain";
 import {
   spawn,
   execFile,
@@ -66,6 +67,7 @@ async function systemTool(file: string) {
 }
 export async function prepareLinuxOwnedNamespace(directory: string) {
   if (process.platform !== "linux" || !process.getuid) throw unsupported();
+  await verifyPrototypeCodingToolchain();
   const bwrap = await systemTool("/usr/bin/bwrap"),
     python = await systemTool("/usr/bin/python3");
   const environment = {
@@ -185,6 +187,7 @@ export async function launchLinuxOwnedNamespace(input: Input): Promise<{
     )
   )
     throw unsupported();
+  await verifyPrototypeCodingToolchain();
   await exact(input.cwd, true);
   await exact(input.workspace, true);
   await exact(input.executable);
@@ -257,7 +260,8 @@ export async function launchLinuxOwnedNamespace(input: Input): Promise<{
       input.workspace,
       "--dev",
       "/dev",
-      "--proc",
+      "--bind",
+      "/proc",
       "/proc",
       "--chdir",
       input.cwd,

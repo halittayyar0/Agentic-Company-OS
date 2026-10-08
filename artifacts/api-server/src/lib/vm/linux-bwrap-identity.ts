@@ -1,3 +1,4 @@
+import { PROTOTYPE_OUTER } from "./prototype-coding-toolchain";
 // Derived from the SHA-512 verified official Codex0.159.2 linux-x64 package.
 // A vendor version string alone is never accepted as a compatible system tool.
 export const PINNED_CODEX_BWRAP_SHA256 =
@@ -9,12 +10,9 @@ export function acceptsLinuxBwrapIdentity(input: {
   sha256: string;
   architecture: string;
 }): boolean {
-  if (!/--argv0\s+VALUE\b/u.test(input.help)) return false;
-  if (/^bubblewrap 0\.(?:[6-9]|[1-9]\d+)\.\d+\s*$/u.test(input.version))
-    return true;
   return (
-    input.version.trim() === "bubblewrap built for Codex" &&
     input.architecture === "x64" &&
-    input.sha256 === PINNED_CODEX_BWRAP_SHA256
+    input.sha256 === PROTOTYPE_OUTER &&
+    /--argv0\s+VALUE\b/u.test(input.help)
   );
 }

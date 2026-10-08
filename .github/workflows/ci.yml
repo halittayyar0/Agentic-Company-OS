@@ -1,67 +1,76 @@
-name: Controlled vendor proc lookup experiment
+name: Nonrelease filtered Codex experiment
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  vendor-proc:
-    name: Controlled kernel experiment (not release acceptance)
+  coding-container:
+    name: Nonrelease actual all23 Codex and installation proof
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
-      - name: Check out fixed source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - name: Build original and guarded variants with the same toolchain
-        run: |
-          docker build --pull --file deploy/coding-proc-vendor-probe.Dockerfile --target namespace-probe-red --tag acos-vendor-proc:red .
-          docker build --pull --file deploy/coding-proc-vendor-probe.Dockerfile --target namespace-probe-green --tag acos-vendor-proc:green .
-          docker build --pull --file deploy/coding-proc-vendor-probe.Dockerfile --target namespace-probe-filtered --tag acos-vendor-proc:filtered .
-      - name: Require enforced dedicated profile
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install frozen test dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build optional coding image
+        run: docker build --pull --target coding-runtime --tag agentic-company-os:coding-ci .
+      - name: Require AppArmor and load only the dedicated coding profile
         run: |
           docker info --format '{{json .SecurityOptions}}' | grep --quiet 'name=apparmor'
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends apparmor
           sudo apparmor_parser -r -W deploy/agentic-coding.apparmor
-          sudo apparmor_parser -r -W deploy/agentic-coding-proc-probe.apparmor
-      - name: Compare six fixed probes under identical container confinement
+      - name: Prove image-owned CLI permissions and cleanup without inference or skips
+        env:
+          ACOS_CODING_CONTAINER_SMOKE: "1"
+          ACOS_CODING_REQUIRE_APPARMOR: "1"
         run: |
-          mkdir vendor-proc-evidence
-          confinement=(--rm --pull=never --network=none --read-only --user=1000:1000 --cap-drop=ALL --pids-limit=128 --security-opt=no-new-privileges:true --security-opt=seccomp="$GITHUB_WORKSPACE/deploy/coding-seccomp.json" --security-opt=apparmor=agentic-coding --tmpfs=/tmp:rw,exec,nosuid,size=64m,mode=1777 --env=HOME=/tmp)
-          for variant in red green; do
-            docker run "${confinement[@]}" --entrypoint /usr/bin/cat "acos-vendor-proc:$variant" /usr/share/doc/acos-proc-vendor-probe/provenance.json > "vendor-proc-evidence/$variant-source.json"
-            docker run "${confinement[@]}" --entrypoint /usr/bin/cat "acos-vendor-proc:$variant" /usr/share/doc/acos-proc-vendor-probe/binary-sha256.txt > "vendor-proc-evidence/$variant-binaries.txt"
-            docker run "${confinement[@]}" --entrypoint /usr/bin/cat "acos-vendor-proc:$variant" /usr/share/doc/acos-proc-vendor-probe/build-packages.txt > "vendor-proc-evidence/$variant-build-packages.txt"
-            docker run "${confinement[@]}" --entrypoint /usr/bin/cat "acos-vendor-proc:$variant" /usr/share/doc/acos-proc-vendor-probe/compiler-version.txt > "vendor-proc-evidence/$variant-compiler-version.txt"
-            for case in plain info-missing info-collision; do
-              probe_name="acos-vendor-${GITHUB_RUN_ID}-$variant-$case"
-              docker run --name "$probe_name" "${confinement[@]}" \
-                "acos-vendor-proc:$variant" "$case" > "vendor-proc-evidence/$variant-$case.json"
-              docker container ls --all --filter "name=^/$probe_name$" --format '{{json .}}' > "vendor-proc-evidence/$variant-$case-remaining-containers.txt"
-              test ! -s "vendor-proc-evidence/$variant-$case-remaining-containers.txt"
-            done
-          done
-      - name: Observe known-live synthetic parent and sibling access
+          image_id=$(docker image inspect --format '{{.Id}}' agentic-company-os:coding-ci)
+          pnpm test:coding:container "$image_id"
+      - name: Prove actual coding installation, stopped-service resume and database restore
+        run: pnpm exec tsx scripts/src/setup/container-install-smoke.ts --coding-source
+      - name: Diagnose namespace setup under the unchanged coding boundary
+        if: failure()
         run: |
-          for variant in red closed filtered; do
-            profile=agentic-coding
-            image=acos-vendor-proc:green
-            if [ "$variant" != red ]; then profile=agentic-coding-proc-probe; fi
-            if [ "$variant" = filtered ]; then image=acos-vendor-proc:filtered; fi
-            probe_name="acos-vendor-${GITHUB_RUN_ID}-known-live-privacy-$variant"
-            docker run --name "$probe_name" --rm --pull=never --network=none --read-only --user=1000:1000 --cap-drop=ALL --pids-limit=128 --security-opt=no-new-privileges:true --security-opt=seccomp="$GITHUB_WORKSPACE/deploy/coding-seccomp.json" --security-opt=apparmor="$profile" --tmpfs=/tmp:rw,exec,nosuid,size=64m,mode=1777 --env=HOME=/tmp --env=ACOS_FIXED_PRIVACY_PROFILE="$variant" --entrypoint=/usr/bin/python3 "$image" -I -S /opt/agentic-codex/proc-privacy.py > "vendor-proc-evidence/known-live-privacy-$variant.json"
-            docker container ls --all --filter "name=^/$probe_name$" --format '{{json .}}' > "vendor-proc-evidence/known-live-privacy-$variant-remaining-containers.txt"
-            test ! -s "vendor-proc-evidence/known-live-privacy-$variant-remaining-containers.txt"
-          done
-      - name: Independently reject incorrect explicit namespace information
-        run: python3 scripts/src/testing/vendor-proc/check.py
-      - name: Require real denial of private parent and sibling process access
-        run: python3 scripts/src/testing/vendor-proc/check-privacy.py
-      - name: Preserve exact fixed evidence even on refusal
+          docker run --rm --pull=never --network=none --read-only --user=1000:1000 \
+            --cap-drop=ALL --pids-limit=128 --security-opt=no-new-privileges:true \
+            --security-opt=seccomp="$GITHUB_WORKSPACE/deploy/coding-seccomp.json" \
+            --security-opt=apparmor=agentic-coding \
+            --tmpfs=/tmp:rw,exec,nosuid,size=64m,mode=1777 --env=HOME=/tmp \
+            agentic-company-os:coding-ci \
+            /usr/bin/bwrap --unshare-user --unshare-pid --die-with-parent \
+            --as-pid-1 --new-session --ro-bind / / --bind /proc /proc --dev /dev --tmpfs /tmp \
+            -- /usr/bin/python3 -I -S -c 'import json,os; print(json.dumps({"pid":os.getpid()}))' \
+            > "$RUNNER_TEMP/coding-namespace-probe.log" 2>&1 || true
+          cat "$RUNNER_TEMP/coding-namespace-probe.log"
+      - name: Preserve dedicated profile denials on failure
+        if: failure()
+        run: >-
+          sudo journalctl -k --since '-30 minutes' --no-pager
+          | grep -E 'apparmor=.*DENIED.*(profile|peer)="agentic-coding[^"]*"'
+          > "$RUNNER_TEMP/coding-apparmor-denials.log" || true
+      - name: Preserve offline container evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: vendor-proc-kernel-evidence
-          path: vendor-proc-evidence
+          name: coding-container-offline-evidence
+          path: |
+            /tmp/acos-coding-container-*/evidence.json
+            /tmp/acos-coding-container-*/native-tests.log
+            /tmp/acos-container-install-proof-*/evidence.json
+            ${{ runner.temp }}/coding-apparmor-denials.log
+            ${{ runner.temp }}/coding-namespace-probe.log
           if-no-files-found: warn
