@@ -55,8 +55,8 @@ jobs:
       - name: Preserve dedicated profile denials on failure
         if: failure()
         run: >-
-          sudo journalctl --kernel --since '-30 minutes' --no-pager
-          | grep -E 'apparmor=.*DENIED.*profile="agentic-coding"'
+          sudo journalctl -k --since '-30 minutes' --no-pager
+          | grep -E 'apparmor=.*DENIED.*(profile|peer)="agentic-coding[^"]*"'
           > "$RUNNER_TEMP/coding-apparmor-denials.log" || true
       - name: Preserve offline container evidence
         if: always()
