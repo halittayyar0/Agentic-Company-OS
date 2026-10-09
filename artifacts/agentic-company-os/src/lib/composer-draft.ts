@@ -17,6 +17,15 @@ const projectSchema = z.strictObject({
 });
 export type ComposerDraft =
   z.infer<typeof homeSchema> | z.infer<typeof projectSchema>;
+export function hasComposerDraftInput(draft: ComposerDraft): boolean {
+  return draft.kind === "home"
+    ? draft.prompt.length > 0 || draft.mode !== "team"
+    : draft.title.length > 0 ||
+        draft.brief.length > 0 ||
+        draft.priority !== "normal" ||
+        draft.autonomyMode !== "finite" ||
+        draft.cadenceSeconds !== 3600;
+}
 function parseDraft(value: unknown): ComposerDraft {
   return (
     value !== null &&

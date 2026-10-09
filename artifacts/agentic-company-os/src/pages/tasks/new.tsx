@@ -36,7 +36,11 @@ import {
   type ProjectCadence,
 } from "@/lib/new-project-copy";
 import { cn } from "@/lib/utils";
-import { readSkillDraft } from "@/lib/skill-draft";
+import {
+  consumeProjectPreparation,
+  hasProjectDraftInput,
+  readProjectPreparation,
+} from "@/lib/project-preparation";
 import { useComposerDraft } from "@/hooks/use-composer-draft";
 import type { ComposerDraft } from "@/lib/composer-draft";
 import type {
@@ -45,6 +49,9 @@ import type {
 } from "@/components/studio/project-start-recovery";
 const ProjectStartRecovery = lazy(
   () => import("@/components/studio/project-start-recovery"),
+);
+const ProjectPreparationChoice = lazy(
+  () => import("@/components/studio/project-preparation-choice"),
 );
 
 const AUTONOMY_OPTIONS = ["finite", "continuous"] as const;
@@ -160,21 +167,19 @@ function NewTaskForm({
   const taskStartBlocked = isScopeBlocked("task_scheduler");
   const activeAgents = agents ?? [];
 
-  const [initialSkillDraft] = useState(() =>
-    readSkillDraft(window.history.state),
+  const [incoming, setIncoming] = useState(() =>
+    readProjectPreparation(window.history.state),
   );
-  const draft = useComposerDraft<Extract<ComposerDraft, { kind: "project" }>>(
-    {
-      version: 1,
-      kind: "project",
-      title: initialSkillDraft?.title ?? "",
-      brief: initialSkillDraft?.brief ?? "",
-      priority: "normal",
-      autonomyMode: "finite",
-      cadenceSeconds: 3600,
-    },
-    !!initialSkillDraft,
-  );
+  const [choiceError, setChoiceError] = useState(false);
+  const draft = useComposerDraft<Extract<ComposerDraft, { kind: "project" }>>({
+    version: 1,
+    kind: "project",
+    title: "",
+    brief: "",
+    priority: "normal",
+    autonomyMode: "finite",
+    cadenceSeconds: 3600,
+  });
   const { title, brief, priority, autonomyMode, cadenceSeconds } = draft.value;
   const setTitle = (value: string) =>
     draft.change({ ...draft.current.current, title: value });
@@ -186,17 +191,56 @@ function NewTaskForm({
     draft.change({ ...draft.current.current, autonomyMode: value });
   const setCadenceSeconds = (value: ProjectCadence) =>
     draft.change({ ...draft.current.current, cadenceSeconds: value });
-  useEffect(() => {
-    if (!initialSkillDraft) return;
-    // Consume deliberate skill-prefill navigation once; a reload must preserve
-    // the user's later edits rather than reapply the old library seed.
-    const { acosSkillDraft: _seed, ...state } = window.history.state ?? {};
-    window.history.replaceState(state, "");
-    draft.change(draft.current.current);
-  }, [initialSkillDraft]);
   const [validationError, setValidationError] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
+  function resolveIncoming(use: boolean) {
+    if (!incoming) return;
+    const saved =
+      !use ||
+      draft.change({
+        version: 1,
+        kind: "project",
+        title: incoming.title,
+        brief: incoming.brief,
+        priority: "normal",
+        autonomyMode: "finite",
+        cadenceSeconds: 3600,
+      });
+    const consumed =
+      saved && consumeProjectPreparation(incoming, window.history);
+    setChoiceError(!consumed);
+    if (consumed) {
+      setIncoming(null);
+      (use
+        ? titleRef
+        : draft.current.current.title
+          ? briefRef
+          : titleRef
+      ).current?.focus();
+    }
+  }
+  function reloadIncomingCopy() {
+    // A failed dynamic import can remain cached until this document reloads.
+    // Verify the current editable text before offering that recovery action.
+    if (!draft.change(draft.current.current)) {
+      setChoiceError(true);
+      return;
+    }
+    window.location.reload();
+  }
+  const attemptedPrefill = useRef(false);
+  useEffect(() => {
+    if (attemptedPrefill.current) return;
+    attemptedPrefill.current = true;
+    if (
+      incoming &&
+      !draft.error &&
+      !draft.hasRestoredInput &&
+      !hasProjectDraftInput(draft.current.current)
+    )
+      resolveIncoming(true);
+  }, []);
   const startRequest = useRef<ProjectStartHandle>(null);
   const [startState, setStartState] = useState<ProjectStartState>({
     ready: false,
@@ -208,6 +252,7 @@ function NewTaskForm({
     event.preventDefault();
     if (
       taskStartBlocked ||
+      incoming ||
       !startState.ready ||
       startState.busy ||
       startState.pending
@@ -301,6 +346,17 @@ function NewTaskForm({
         noValidate
         className="mx-auto mt-8 max-w-3xl"
       >
+        {incoming && (
+          <Suspense fallback={null}>
+            <ProjectPreparationChoice
+              incoming={incoming}
+              error={choiceError}
+              onKeep={() => resolveIncoming(false)}
+              onUse={() => resolveIncoming(true)}
+              onReload={reloadIncomingCopy}
+            />
+          </Suspense>
+        )}
         {draft.error && (
           <p role="alert" className="mb-3 break-words text-sm leading-6">
             {copy.draftStorageError}
@@ -457,6 +513,7 @@ function NewTaskForm({
               <button
                 type="submit"
                 disabled={
+                  !!incoming ||
                   !startState.ready ||
                   !!startState.busy ||
                   startState.pending ||
