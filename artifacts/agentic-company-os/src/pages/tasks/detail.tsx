@@ -58,6 +58,9 @@ const CodingSessionRecovery = lazy(
 const InferenceAccountingPanel = lazy(
   () => import("@/components/tasks/inference-accounting-panel"),
 );
+const ProjectReuseActions = lazy(
+  () => import("@/components/studio/project-reuse-actions"),
+);
 
 function hasBudgetResumeRecovery(taskId: number) {
   try {
@@ -361,6 +364,14 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
             >
               {projectBrief.outcome}
             </p>
+            {isRootProject && (
+              <Suspense fallback={null}>
+                <ProjectReuseActions
+                  project={project}
+                  sourceUnavailable={isError || isFetching}
+                />
+              </Suspense>
+            )}
             {project.blockedReason === "budget" ||
             budgetSeenFor.current === taskId ||
             hasBudgetResumeRecovery(taskId) ? (

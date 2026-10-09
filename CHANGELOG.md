@@ -5,6 +5,16 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+- Prepare a fresh project or an editable personal guide from a saved root-project
+  brief, with explicit draft choices and exact text. A saved personal guide can
+  prepare another project without enabling it for agent discovery. Preparation
+  and guide saving spend no model tokens and start no work. Current execution
+  settings remain authoritative; the workflow copies instructions, not learned
+  success evidence. Final runtime and publication checks remain pending.
+- Preserve personal editor input and uncertain save identity through reload,
+  explicit contents checks, revision review and manual identical retries. Keep
+  later edits and show validation instead of silently shortening long text.
+
 - Recover New-project starts after response loss with a saved request identity,
   read-only checks and an explicit same-request retry. Seven authored languages
   preserve later edited drafts and distinguish workspace creation from work

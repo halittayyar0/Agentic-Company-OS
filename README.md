@@ -101,6 +101,18 @@ The built-in library covers **research, software, data, documents and operations
 
 [Browse the skills and tools guide →](./docs/skills-and-tools.md)
 
+### Reuse a brief you have already written
+
+In the upcoming source workflow, a project's **Saved brief** offers **Use brief
+again** and **Prepare personal guide**. Review and save the guide, then choose
+**Prepare a project** when you need that brief again. Existing drafts are kept
+until you choose to replace them. Preparing text starts no work; **Start project**
+creates a separate job using your current settings.
+
+This copies your saved instructions; it does not extract a proven method from an
+agent's result. The workflow is under final validation and is **not in the
+v0.4.0 setup bundle**. [Workflow and recovery details →](./docs/skills-and-tools.md#reuse-a-saved-project-brief)
+
 ## Work that fits its size
 
 Routine tasks start on the economical route. Additional tool definitions load on demand. Existing agents can be reused, and delegation is checked by the server: the default limit is **four active tasks per task family**, including the parent.

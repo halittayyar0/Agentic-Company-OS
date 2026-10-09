@@ -3,6 +3,8 @@ import { installStudioFixtures } from "./helpers/studio-fixtures";
 import { getCapabilityCatalog } from "../../artifacts/api-server/src/lib/capabilities/catalog";
 import type { Page } from "@playwright/test";
 import { loadExtensionEditorCopy } from "../../artifacts/agentic-company-os/src/lib/extension-editor-copy";
+import { loadNewProjectCopy } from "../../artifacts/agentic-company-os/src/lib/new-project-copy";
+import { loadReusableWorkCopy } from "../../artifacts/agentic-company-os/src/lib/reusable-work-copy";
 import {
   LOCALES,
   type Locale,
@@ -14,6 +16,452 @@ type Row = {
   enabled: boolean;
   manifest: Record<string, unknown>;
 };
+async function savedProjectFixture(
+  page: Page,
+  locale: Locale = "en",
+  patch: Record<string, unknown> = {},
+) {
+  await page.addInitScript(
+    (value) => localStorage.setItem("acos.locale.v1", value),
+    locale,
+  );
+  const fixture = await installStudioFixtures(page);
+  await page.route("**/api/skills?*", (route) =>
+    route.fulfill({ json: getCapabilityCatalog(locale) }),
+  );
+  const rows: Row[] = [],
+    writes: unknown[] = [];
+  await page.route("**/api/skills/extensions", (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ json: rows });
+    const body = route.request().postDataJSON();
+    writes.push(body);
+    const old = rows.find((row) => row.id === body.manifest.id);
+    if (body.expectedRevision !== (old?.revision ?? 0))
+      return route.fulfill({
+        status: 409,
+        json: { code: "CAPABILITY_REVISION_CONFLICT" },
+      });
+    const row = {
+      id: body.manifest.id,
+      manifest: body.manifest,
+      revision: body.expectedRevision + 1,
+      enabled: body.enabled,
+    };
+    if (old) Object.assign(old, row);
+    else rows.push(row);
+    return route.fulfill({ json: row });
+  });
+  const project = {
+    id: 101,
+    title: "  Saved source brief — 分析  ",
+    brief: " First source line\n\n第二行 😀  ",
+    status: "completed",
+    priority: "normal",
+    ownerAgentId: 1,
+    assignedByAgentId: null,
+    createdByUser: true,
+    parentTaskId: null,
+    progressPercent: 100,
+    tokensUsed: 12640,
+    estimatedCostUsd: "0.31",
+    resultSummary: "Old delivery must not become new instructions",
+    executionModelId: "old-provider/model",
+    lastModelId: "old-provider/model",
+    lastModelProvider: "old-provider",
+    modelFallbackCount: 0,
+    autonomyMode: "continuous",
+    cadenceSeconds: 3600,
+    lastHeartbeatAt: null,
+    recoveryCount: 0,
+    cycleCount: 1,
+    lastCycleCompletedAt: null,
+    lastSteppedAt: null,
+    stepAttempts: 2,
+    consecutiveFailures: 0,
+    nextAttemptAt: null,
+    lastError: null,
+    blockedReason: null,
+    dueAt: null,
+    createdAt: "2026-10-09T05:00:00.000Z",
+    updatedAt: "2026-10-09T06:00:00.000Z",
+    completedAt: "2026-10-09T06:00:00.000Z",
+    ...patch,
+  };
+  await page.route("**/api/tasks/101", (route) =>
+    route.fulfill({ json: project }),
+  );
+  await page.route(
+    /\/api\/tasks\/101\/(subtasks|activity|members)(?:\?|$)/u,
+    (route) => route.fulfill({ json: [] }),
+  );
+  await page.goto("/projects/101");
+  await expect(
+    page.getByRole("heading", { name: project.title.trim(), exact: true }),
+  ).toBeVisible();
+  return { fixture, project, rows, writes };
+}
+
+test("a saved root project prepares only its exact brief for fresh work without starting a task", async ({
+  page,
+}) => {
+  const f = await savedProjectFixture(page);
+  const copy = await loadNewProjectCopy("en");
+  const reuse = page.getByRole("button", {
+    name: "Use brief again",
+    exact: true,
+  });
+  await expect(reuse).toBeVisible();
+  await reuse.click();
+  await expect(page).toHaveURL(/\/projects\/new$/u);
+  await expect(
+    page.getByRole("textbox", { name: copy.projectName, exact: true }),
+  ).toHaveValue(f.project.title);
+  await expect(
+    page.getByRole("textbox", { name: copy.brief, exact: true }),
+  ).toHaveValue(f.project.brief);
+  expect(f.fixture.requests).toHaveLength(0);
+});
+
+test("a saved root brief becomes a reviewed disabled personal guide and prepares fresh text only", async ({
+  page,
+}) => {
+  const f = await savedProjectFixture(page),
+    c = (
+      await import("../../artifacts/agentic-company-os/src/lib/customization-copy/customization-en")
+    ).default,
+    reuse = await loadReusableWorkCopy("en"),
+    editor = await loadExtensionEditorCopy("en"),
+    fresh = await loadNewProjectCopy("en");
+  const prepare = page.getByRole("button", {
+    name: reuse.prepareGuide,
+    exact: true,
+  });
+  await expect(prepare).toBeVisible();
+  await prepare.click();
+  await expect(page).toHaveURL(/\/skills$/u);
+  const panel = page.getByRole("region", { name: c.extensions[0] });
+  await expect(panel.getByLabel(c.extensions[8], { exact: true })).toHaveValue(
+    f.project.brief,
+  );
+  await expect(
+    panel.getByRole("checkbox", { name: editor.availability, exact: true }),
+  ).not.toBeChecked();
+  expect(f.writes).toHaveLength(0);
+  expect(f.fixture.requests).toHaveLength(0);
+  const draft = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("acos.extension-editor.v1")!),
+  );
+  expect(draft.manifest.id).toMatch(/^user-[a-f0-9-]+$/u);
+  await panel
+    .getByRole("button", { name: c.extensions[11], exact: true })
+    .click();
+  await expect.poll(() => f.rows.length).toBe(1);
+  expect(f.rows[0].id).toBe(draft.manifest.id);
+  expect(f.rows[0].enabled).toBe(false);
+  expect(f.writes).toHaveLength(1);
+  await panel
+    .getByRole("button", { name: reuse.prepareProject, exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/projects\/new$/u);
+  await expect(
+    page.getByRole("textbox", { name: fresh.brief, exact: true }),
+  ).toHaveValue(f.project.brief);
+  await expect(
+    page.getByText(reuse.runtimeHelp, { exact: true }),
+  ).toBeVisible();
+  expect(f.rows[0].enabled).toBe(false);
+  expect(f.writes).toHaveLength(1);
+  expect(f.fixture.requests).toHaveLength(0);
+});
+
+for (const use of [false, true])
+  test(`an incoming prepared guide ${use ? "replaces" : "keeps"} an earlier editor only after a retained choice`, async ({
+    page,
+  }) => {
+    const old = await editorFixture(page),
+      f = await savedProjectFixture(page),
+      c = await loadReusableWorkCopy("en");
+    await page
+      .getByRole("button", { name: c.prepareGuide, exact: true })
+      .click();
+    await expect(
+      old.region.getByText(old.recovery.incomingHelp, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      old.region.getByLabel(old.copy.extensions[3], { exact: true }),
+    ).toHaveValue("Recoverable guide");
+    const seed = await page.evaluate(() => history.state.acosGuideDraft);
+    await page.reload();
+    expect(
+      await page.evaluate(() => history.state.acosGuideDraft.manifest.id),
+    ).toBe(seed.manifest.id);
+    await old.region
+      .getByRole("button", {
+        name: use ? old.recovery.use : old.recovery.keep,
+        exact: true,
+      })
+      .click();
+    await expect(
+      old.region.getByLabel(old.copy.extensions[3], { exact: true }),
+    ).toHaveValue(use ? f.project.title : "Recoverable guide");
+    expect(
+      await page.evaluate(() => history.state.acosGuideDraft),
+    ).toBeUndefined();
+    await page.reload();
+    await expect(
+      old.region.getByLabel(old.copy.extensions[3], { exact: true }),
+    ).toHaveValue(use ? f.project.title : "Recoverable guide");
+    expect(f.writes).toHaveLength(0);
+    expect(f.fixture.requests).toHaveLength(0);
+  });
+
+test("an earlier uncertain save keeps its ID while the incoming guide waits", async ({
+  page,
+}) => {
+  const old = await editorFixture(page);
+  await old.region
+    .getByRole("button", { name: old.copy.extensions[11], exact: true })
+    .click();
+  await expect(old.region.getByRole("status")).toContainText(
+    old.recovery.uncertain,
+  );
+  const f = await savedProjectFixture(page),
+    c = await loadReusableWorkCopy("en");
+  f.rows.push(structuredClone(old.rows[0]));
+  await page.getByRole("button", { name: c.prepareGuide, exact: true }).click();
+  await expect(
+    old.region.getByText(c.waitingGuide, { exact: true }),
+  ).toBeVisible();
+  const seed = await page.evaluate(() => history.state.acosGuideDraft);
+  const pending = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("acos.extension-save.v1")!),
+  );
+  expect(pending.manifest.id).toBe(old.rows[0].id);
+  expect(seed.manifest.id).not.toBe(pending.manifest.id);
+  await old.region
+    .getByRole("button", { name: old.recovery.check, exact: true })
+    .click();
+  await expect(
+    old.region.getByRole("status").filter({ hasText: old.recovery.matching }),
+  ).toBeVisible();
+  await old.region
+    .getByRole("button", { name: old.recovery.continue, exact: true })
+    .click();
+  await expect(
+    old.region.getByLabel(old.copy.extensions[2], { exact: true }),
+  ).toHaveValue(seed.manifest.id);
+  await expect(
+    old.region.getByLabel(old.copy.extensions[8], { exact: true }),
+  ).toHaveValue(f.project.brief);
+  expect(f.writes).toHaveLength(0);
+  expect(old.writes).toHaveLength(1);
+  expect(f.fixture.requests).toHaveLength(0);
+});
+
+for (const fault of ["storage", "history"])
+  test(`${fault} refusal keeps the same prepared guide and prevents dispatch`, async ({
+    page,
+  }) => {
+    await page.addInitScript((value) => {
+      if (value === "history") history.replaceState = () => {};
+      else {
+        const set = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (key, data) {
+          if (key === "acos.extension-editor.v1") return;
+          return set.call(this, key, data);
+        };
+      }
+    }, fault);
+    const f = await savedProjectFixture(page),
+      reuse = await loadReusableWorkCopy("en"),
+      recovery = await loadExtensionEditorCopy("en"),
+      c = (
+        await import("../../artifacts/agentic-company-os/src/lib/customization-copy/customization-en")
+      ).default;
+    await page
+      .getByRole("button", { name: reuse.prepareGuide, exact: true })
+      .click();
+    const panel = page.getByRole("region", { name: c.extensions[0] });
+    await expect(
+      panel.getByLabel(c.extensions[8], { exact: true }),
+    ).toHaveValue(f.project.brief);
+    const id = await page.evaluate(
+      () => history.state.acosGuideDraft.manifest.id,
+    );
+    await expect(
+      panel.getByRole("button", { name: c.extensions[11], exact: true }),
+    ).toBeDisabled();
+    await panel
+      .getByRole("button", { name: recovery.use, exact: true })
+      .click();
+    await expect(
+      panel.getByText(reuse.choiceError, { exact: true }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(() => history.state.acosGuideDraft.manifest.id),
+    ).toBe(id);
+    expect(f.writes).toHaveLength(0);
+    expect(f.fixture.requests).toHaveLength(0);
+  });
+
+test("child tasks offer no saved-root brief preparation", async ({ page }) => {
+  const f = await savedProjectFixture(page, "en", { parentTaskId: 55 }),
+    reuse = await loadReusableWorkCopy("en");
+  await expect(
+    page.getByRole("button", { name: reuse.useBrief, exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: reuse.prepareGuide, exact: true }),
+  ).toHaveCount(0);
+  expect(f.fixture.requests).toHaveLength(0);
+});
+
+test("source read failure prevents preparing retained stale project text", async ({
+  page,
+}) => {
+  const f = await savedProjectFixture(page),
+    c = await loadReusableWorkCopy("en");
+  await page.route("**/api/tasks/101", (route) =>
+    route.fulfill({ status: 500, json: { error: "controlled read failure" } }),
+  );
+  const button = page.getByRole("button", { name: c.useBrief, exact: true });
+  await expect(button).toBeDisabled({ timeout: 15000 });
+  await expect(
+    page.getByRole("button", { name: c.prepareGuide, exact: true }),
+  ).toBeDisabled();
+  expect(f.fixture.requests).toHaveLength(0);
+  expect(f.writes).toHaveLength(0);
+});
+
+test("a prepared source snapshot stays exact after the source changes and an overlong title needs deliberate correction", async ({
+  page,
+}) => {
+  const f = await savedProjectFixture(page, "en", {
+      title: "x".repeat(300),
+      brief: '"'.repeat(8000),
+    }),
+    c = (
+      await import("../../artifacts/agentic-company-os/src/lib/customization-copy/customization-en")
+    ).default,
+    reuse = await loadReusableWorkCopy("en"),
+    editor = await loadExtensionEditorCopy("en");
+  await page
+    .getByRole("button", { name: reuse.prepareGuide, exact: true })
+    .click();
+  const panel = page.getByRole("region", { name: c.extensions[0] });
+  f.project.title = "Changed title";
+  f.project.brief = "Changed source";
+  await expect(panel.getByLabel(c.extensions[3], { exact: true })).toHaveValue(
+    "x".repeat(300),
+  );
+  await expect(panel.getByLabel(c.extensions[8], { exact: true })).toHaveValue(
+    '"'.repeat(8000),
+  );
+  await panel
+    .getByRole("button", { name: c.extensions[11], exact: true })
+    .click();
+  await expect(
+    panel.getByText(editor.validation, { exact: true }),
+  ).toBeVisible();
+  await panel
+    .getByLabel(c.extensions[3], { exact: true })
+    .fill("x".repeat(120));
+  await panel
+    .getByRole("button", { name: c.extensions[11], exact: true })
+    .click();
+  await expect(
+    panel.getByText(editor.validation, { exact: true }),
+  ).toBeVisible();
+  expect(f.writes).toHaveLength(0);
+  await panel
+    .getByLabel(c.extensions[8], { exact: true })
+    .fill("Reviewed source instructions");
+  await panel
+    .getByRole("button", { name: c.extensions[11], exact: true })
+    .click();
+  await expect.poll(() => f.rows.length).toBe(1);
+  expect(f.rows[0].manifest.title).toBe("x".repeat(120));
+  expect(f.rows[0].enabled).toBe(false);
+  expect(f.fixture.requests).toHaveLength(0);
+});
+
+for (const locale of LOCALES)
+  for (const mode of ["light", "dark"] as const)
+    test(`${locale} ${mode} source guide journey preserves text and deliberate phone controls`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.emulateMedia({ colorScheme: mode, reducedMotion: "reduce" });
+      await page.addInitScript(
+        (value) => localStorage.setItem("acos.color-mode.v2", value),
+        mode,
+      );
+      const f = await savedProjectFixture(page, locale),
+        reuse = await loadReusableWorkCopy(locale),
+        editor = await loadExtensionEditorCopy(locale),
+        c = (
+          await import(
+            `../../artifacts/agentic-company-os/src/lib/customization-copy/customization-${locale}.ts`
+          )
+        ).default,
+        fresh = await loadNewProjectCopy(locale);
+      if (locale === "ar")
+        await page.addStyleTag({ content: "html {font-size:200%}" });
+      const prepare = page.getByRole("button", {
+        name: reuse.prepareGuide,
+        exact: true,
+      });
+      await prepare.focus();
+      await expect(prepare).toBeFocused();
+      await page.keyboard.press("Enter");
+      const panel = page.getByRole("region", { name: c.extensions[0] });
+      await expect(
+        panel.getByLabel(c.extensions[3], { exact: true }),
+      ).toBeFocused();
+      await expect(
+        panel.getByLabel(c.extensions[8], { exact: true }),
+      ).toHaveValue(f.project.brief);
+      await expect(
+        panel.getByRole("checkbox", { name: editor.availability, exact: true }),
+      ).not.toBeChecked();
+      await panel
+        .getByRole("button", { name: c.extensions[11], exact: true })
+        .click();
+      await expect.poll(() => f.rows.length).toBe(1);
+      const use = panel.getByRole("button", {
+        name: reuse.prepareProject,
+        exact: true,
+      });
+      const box = await use.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: test.info().outputPath(`source-guide-${locale}-${mode}.png`),
+        fullPage: true,
+      });
+      await use.focus();
+      await page.keyboard.press("Enter");
+      await expect(
+        page.getByRole("textbox", { name: fresh.brief, exact: true }),
+      ).toHaveValue(f.project.brief);
+      await expect(
+        page.getByText(reuse.runtimeHelp, { exact: true }),
+      ).toBeVisible();
+      expect(f.rows[0].enabled).toBe(false);
+      expect(f.writes).toHaveLength(1);
+      expect(f.fixture.requests).toHaveLength(0);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    });
 async function editorFixture(page: Page, locale: Locale = "en") {
   await page.addInitScript(
     (language) => localStorage.setItem("acos.locale.v1", language),

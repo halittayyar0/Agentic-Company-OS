@@ -26,6 +26,7 @@
     "test": "tsx ./scripts/src/run-tests.ts",
     "test:installation:native": "tsx ./scripts/src/setup/native-install-smoke.ts",
     "test:connection:native": "tsx ./scripts/src/testing/guided-local-connection-smoke.ts",
+    "test:guides:native": "tsx ./scripts/src/testing/reusable-project-guides-smoke.ts",
     "test:coding:container": "tsx ./scripts/src/testing/coding-container-smoke.ts",
     "test:ui": "node ./artifacts/agentic-company-os/node_modules/vite/bin/vite.js build --config ./artifacts/agentic-company-os/vite.config.ts && playwright test --config playwright.config.ts",
     "typecheck:libs": "tsc --build",

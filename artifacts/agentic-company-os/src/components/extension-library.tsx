@@ -1,6 +1,7 @@
 import { useCustomizationCopy } from "@/lib/customization-copy";
 import { LanguagePackStatus } from "@/components/i18n/language-pack-status";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { useLocale } from "@/components/i18n/locale-provider";
@@ -10,6 +11,12 @@ import {
   useExtensionEditor,
 } from "@/hooks/use-extension-editor";
 import { loadExtensionEditorCopy } from "@/lib/extension-editor-copy";
+import { loadReusableWorkCopy } from "@/lib/reusable-work-copy";
+import {
+  consumePersonalGuidePreparation,
+  readPersonalGuidePreparation,
+  preparePersonalGuideProject,
+} from "@/lib/project-reuse";
 import {
   prepareExtensionSave,
   type EditableManifest as Manifest,
@@ -93,6 +100,14 @@ function ExtensionLibraryBody({
 }) {
   const { t, locale } = useLocale(),
     cache = useQueryClient();
+  const [, navigate] = useLocation();
+  const [preparedGuide, setPreparedGuide] = useState(() =>
+    readPersonalGuidePreparation(window.history.state),
+  );
+  const [guideContext, setGuideContext] = useState(preparedGuide);
+  const [preparationError, setPreparationError] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const focusAfterPreparation = useRef(false);
   const list = useQuery({
     queryKey: ["personal-capabilities"],
     queryFn: () => call<Entry[]>("extensions"),
@@ -125,6 +140,68 @@ function ExtensionLibraryBody({
     revision = editor.draft?.revision ?? 0,
     defaults = editor.draft?.defaults ?? "{}",
     busy = mutationBusy || !!editor.busy;
+  const reuseCopy = useQuery({
+    queryKey: ["reusable-work-copy", locale],
+    queryFn: () => loadReusableWorkCopy(locale),
+    staleTime: Infinity,
+    retry: false,
+    enabled:
+      !!preparedGuide ||
+      !!guideContext ||
+      !!list.data?.some((row) => row.manifest.kind === "skill"),
+  });
+  const visibleGuide =
+    preparedGuide ??
+    (draft?.id === guideContext?.manifest.id ? guideContext : null);
+  function preparedDraft() {
+    return preparedGuide
+      ? {
+          version: 1 as const,
+          manifest: preparedGuide.manifest,
+          revision: 0,
+          defaults: "{}",
+          enabled: false,
+        }
+      : null;
+  }
+  function consumePreparedGuide(use: boolean) {
+    if (!preparedGuide) return false;
+    const consumed = consumePersonalGuidePreparation(
+      preparedGuide,
+      window.history,
+    );
+    setPreparationError(!consumed);
+    if (consumed) {
+      focusAfterPreparation.current = true;
+      setPreparedGuide(null);
+      if (!use) setGuideContext(null);
+    }
+    return consumed;
+  }
+  function resolvePrepared(use: boolean) {
+    if (editor.pending || editor.busy) return;
+    const next = preparedDraft();
+    const retained = editor.incoming
+      ? editor.resolveIncoming(use)
+      : !!editor.current.current &&
+        editor.change(use && next ? next : editor.current.current);
+    if (retained) consumePreparedGuide(use);
+    else setPreparationError(true);
+  }
+  const attemptedPreparation = useRef(false);
+  useEffect(() => {
+    if (!preparedGuide || editor.pending || attemptedPreparation.current)
+      return;
+    attemptedPreparation.current = true;
+    const next = preparedDraft();
+    if (next && editor.prepare(next)) consumePreparedGuide(true);
+  }, [preparedGuide, editor.pending]);
+  useEffect(() => {
+    if (focusAfterPreparation.current && !preparedGuide && titleRef.current) {
+      focusAfterPreparation.current = false;
+      titleRef.current.focus();
+    }
+  }, [preparedGuide, draft?.id]);
   function setDraft(value: Manifest | null) {
     if (!value) editor.discard();
     else if (editor.current.current)
@@ -175,7 +252,10 @@ function ExtensionLibraryBody({
         {c[27]}
       </p>
       <div className="flex flex-wrap gap-3">
-        <Button disabled={busy || !!editor.pending} onClick={() => edit()}>
+        <Button
+          disabled={busy || !!editor.pending || !!preparedGuide}
+          onClick={() => edit()}
+        >
           {c[1]}
         </Button>
         <label className="inline-flex min-h-11 cursor-pointer items-center rounded-xl border border-border px-4 text-sm">
@@ -185,7 +265,7 @@ function ExtensionLibraryBody({
             className="sr-only"
             type="file"
             accept="application/json,.json"
-            disabled={busy || !!editor.pending}
+            disabled={busy || !!editor.pending || !!preparedGuide}
             onChange={async (event) => {
               const file = event.target.files?.[0];
               event.target.value = "";
@@ -247,6 +327,58 @@ function ExtensionLibraryBody({
           {ec.validation}
         </p>
       )}
+      {visibleGuide &&
+        (reuseCopy.data ? (
+          <section
+            aria-labelledby="prepared-guide-title"
+            className="space-y-3 rounded-xl border border-border p-4 text-sm leading-6 [overflow-wrap:anywhere]"
+          >
+            <h3 id="prepared-guide-title" className="font-semibold">
+              {reuseCopy.data.preparedGuide}
+            </h3>
+            <p>
+              <bdi>{visibleGuide.manifest.title}</bdi> ·{" "}
+              <bdi>#{visibleGuide.source.id}</bdi> ·{" "}
+              <time dateTime={visibleGuide.source.updatedAt}>
+                {new Intl.DateTimeFormat(locale, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(new Date(visibleGuide.source.updatedAt))}
+              </time>
+            </p>
+            <p>{reuseCopy.data.guideTitleHelp}</p>
+            {editor.pending && preparedGuide && (
+              <p role="status">{reuseCopy.data.waitingGuide}</p>
+            )}
+            {preparationError && (
+              <p role="alert">{reuseCopy.data.choiceError}</p>
+            )}
+            {preparedGuide && !editor.incoming && !editor.pending && ec && (
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  className="min-h-11 max-w-full whitespace-normal"
+                  variant="outline"
+                  onClick={() => resolvePrepared(false)}
+                >
+                  {ec.keep}
+                </Button>
+                <Button
+                  type="button"
+                  className="min-h-11 max-w-full whitespace-normal"
+                  onClick={() => resolvePrepared(true)}
+                >
+                  {ec.use}
+                </Button>
+              </div>
+            )}
+          </section>
+        ) : (
+          <LanguagePackStatus
+            error={reuseCopy.isError}
+            onRetry={() => void reuseCopy.refetch()}
+          />
+        ))}
       {ec && editor.incoming && (
         <div className="space-y-3 rounded-xl border border-border p-4 text-sm leading-6">
           <p>{ec.incomingHelp}</p>
@@ -258,14 +390,22 @@ function ExtensionLibraryBody({
               type="button"
               className="min-h-11 max-w-full whitespace-normal"
               variant="outline"
-              onClick={() => editor.resolveIncoming(false)}
+              onClick={() =>
+                preparedGuide
+                  ? resolvePrepared(false)
+                  : editor.resolveIncoming(false)
+              }
             >
               {ec.keep}
             </Button>
             <Button
               type="button"
               className="min-h-11 max-w-full whitespace-normal"
-              onClick={() => editor.resolveIncoming(true)}
+              onClick={() =>
+                preparedGuide
+                  ? resolvePrepared(true)
+                  : editor.resolveIncoming(true)
+              }
             >
               {ec.use}
             </Button>
@@ -379,6 +519,7 @@ function ExtensionLibraryBody({
                 className={fieldClass}
                 required
                 value={draft[key]}
+                ref={key === "title" ? titleRef : undefined}
                 readOnly={key === "id" && (revision > 0 || !!editor.pending)}
                 onChange={(event) =>
                   setDraft({ ...draft, [key]: event.target.value })
@@ -505,7 +646,13 @@ function ExtensionLibraryBody({
           )}
           <div className="flex flex-wrap gap-3">
             <Button
-              disabled={!ec || busy || !!editor.pending || !!editor.incoming}
+              disabled={
+                !ec ||
+                busy ||
+                !!editor.pending ||
+                !!editor.incoming ||
+                !!preparedGuide
+              }
               type="submit"
             >
               {c[11]}
@@ -540,8 +687,34 @@ function ExtensionLibraryBody({
                 <small>{row.id}</small>
               </div>
               <div className="flex flex-wrap gap-2">
+                {reuseCopy.data && preparePersonalGuideProject(row) && (
+                  <div className="w-full space-y-2 text-sm">
+                    {!row.enabled && <p>{reuseCopy.data.disabledGuideHelp}</p>}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-11 max-w-full whitespace-normal"
+                      disabled={
+                        busy ||
+                        list.isFetching ||
+                        list.isError ||
+                        !!editor.pending ||
+                        !!preparedGuide
+                      }
+                      onClick={() => {
+                        const text = preparePersonalGuideProject(row);
+                        if (text && !list.isError && !list.isFetching)
+                          navigate("/projects/new", {
+                            state: { acosSkillDraft: text },
+                          });
+                      }}
+                    >
+                      {reuseCopy.data.prepareProject}
+                    </Button>
+                  </div>
+                )}
                 <Button
-                  disabled={busy || !!editor.pending}
+                  disabled={busy || !!editor.pending || !!preparedGuide}
                   variant="outline"
                   onClick={() => edit(row)}
                 >

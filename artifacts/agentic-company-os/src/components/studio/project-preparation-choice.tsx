@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { LanguagePackStatus } from "@/components/i18n/language-pack-status";
@@ -31,6 +32,7 @@ export default function ProjectPreparationChoice({
     readProjectPreparation(window.history.state),
   );
   const [choiceError, setChoiceError] = useState(false);
+  const [hasSource] = useState(() => !!incoming?.source);
   function resolveIncoming(use: boolean) {
     if (!incoming) return;
     const saved =
@@ -79,15 +81,48 @@ export default function ProjectPreparationChoice({
     )
       resolveIncoming(true);
   }, []);
-  return incoming ? (
-    <IncomingChoice
-      incoming={incoming}
-      error={choiceError}
-      onKeep={() => resolveIncoming(false)}
-      onUse={() => resolveIncoming(true)}
-      onReload={reloadIncomingCopy}
-    />
-  ) : null;
+  return (
+    <>
+      {incoming ? (
+        <IncomingChoice
+          incoming={incoming}
+          error={choiceError}
+          onKeep={() => resolveIncoming(false)}
+          onUse={() => resolveIncoming(true)}
+          onReload={reloadIncomingCopy}
+        />
+      ) : null}
+      {hasSource && !incoming && (
+        <RuntimePreparationHelp onReload={reloadIncomingCopy} />
+      )}
+    </>
+  );
+}
+
+function RuntimePreparationHelp({ onReload }: { onReload: () => void }) {
+  const { locale, t } = useLocale();
+  const copy = useQuery({
+    queryKey: ["reusable-work-copy", locale],
+    queryFn: () => loadReusableWorkCopy(locale),
+    staleTime: Infinity,
+    retry: false,
+  });
+  if (!copy.data)
+    return <LanguagePackStatus error={copy.isError} onRetry={onReload} />;
+  return (
+    <section
+      id="prepared-project-runtime"
+      className="mb-5 space-y-2 text-sm leading-6 [overflow-wrap:anywhere]"
+    >
+      <p>{copy.data.runtimeHelp}</p>
+      <Link
+        href="/settings"
+        className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-4"
+      >
+        {t("settings")}
+      </Link>
+    </section>
+  );
 }
 
 function IncomingChoice({

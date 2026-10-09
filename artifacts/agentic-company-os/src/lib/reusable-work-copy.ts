@@ -7,6 +7,17 @@ export type ReusableWorkCopy = {
   useIncoming: string;
   choiceError: string;
   preparationOnly: string;
+  savedBrief: string;
+  useBrief: string;
+  prepareGuide: string;
+  sourceHelp: string;
+  guideSource: string;
+  preparedGuide: string;
+  guideTitleHelp: string;
+  prepareProject: string;
+  disabledGuideHelp: string;
+  runtimeHelp: string;
+  waitingGuide: string;
 };
 const loaders = {
   tr: () => import("./reusable-work-copy/reuse-tr"),

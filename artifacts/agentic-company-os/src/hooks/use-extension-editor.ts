@@ -97,6 +97,14 @@ export function useExtensionEditor(onSaved: () => void) {
     setInvalid(false);
     return saved;
   }
+  function prepare(candidate: ExtensionEditorDraft) {
+    if (!mounted.current || flight.current || request.current) return false;
+    if (current.current && !same(current.current, candidate)) {
+      setIncoming(candidate);
+      return false;
+    }
+    return change(candidate);
+  }
   function edit(value?: EditableManifest, revision = 0, enabled = true) {
     if (!mounted.current || flight.current || request.current) return false;
     const candidate: ExtensionEditorDraft = {
@@ -117,15 +125,15 @@ export function useExtensionEditor(onSaved: () => void) {
         instructions: "",
       },
     };
-    if (current.current && !same(current.current, candidate)) {
-      setIncoming(candidate);
-      return false;
-    }
-    return change(candidate);
+    return prepare(candidate);
   }
   function resolveIncoming(use: boolean) {
-    if (!incoming || flight.current || request.current) return;
-    if (!use || change(incoming)) setIncoming(null);
+    if (!incoming || flight.current || request.current) return false;
+    const retained = use
+      ? change(incoming)
+      : !!current.current && change(current.current);
+    if (retained) setIncoming(null);
+    return retained;
   }
   function finish(expected: ExtensionSaveRequest) {
     if (!mounted.current || !same(request.current, expected)) return;
@@ -323,6 +331,7 @@ export function useExtensionEditor(onSaved: () => void) {
     dirty: !!draft,
     change,
     edit,
+    prepare,
     resolveIncoming,
     save,
     check,
