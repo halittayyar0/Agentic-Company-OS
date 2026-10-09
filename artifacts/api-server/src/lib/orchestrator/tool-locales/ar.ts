@@ -1,6 +1,12 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolAr: ToolCopy = {
+  inferenceAccountingPending:
+    "بانتظار سجل الاستخدام لاستدعاء النموذج ({id}). ستنتظر الاستدعاءات التالية لهذه المهمة حتى اكتمال التسجيل.",
+  inferenceAccountingRecovery:
+    "سجل الاستخدام للاستدعاء {id} مفقود أو غير مكتمل. أُوقفت استدعاءات النموذج التالية لهذه المهمة لمنع الإنفاق غير المسجل. راجع تفاصيل استعادة سجل الاستخدام.",
+  inferenceAccountingReady:
+    "اكتمل سجل الاستخدام للاستدعاء {id}. ستتابع هذه المهمة تلقائيًا.",
   budgetFamilyResumed:
     "تم التحقق من حد الاستخدام وإعادة {count} من المهام إلى قائمة الانتظار.",
   schedulerClaimed: "تم تولي المهمة",

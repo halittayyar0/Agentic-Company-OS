@@ -26,10 +26,7 @@ import {
 import { resolveCompanyMeetingLeaseMs } from "./run-company-meeting";
 import { selectModel } from "./model-select";
 import { buildChatSystemPrompt } from "./system-prompt";
-import {
-  recordCompletionUsage,
-  withCompletionFailureAccounting,
-} from "./usage-ledger";
+import { runAccountedCompletion } from "./inference-accounting";
 import { readWorkspaceLocale } from "../workspace-locale";
 import { toolMessage } from "./tool-localization";
 
@@ -57,6 +54,8 @@ type TextCompletionRunner = (params: {
   projectId: number;
   messages: Array<{ role: "system" | "user"; content: string }>;
   maxTokens: number;
+  agentLeaseOwner?: string;
+  assertOwnership?: () => Promise<void>;
 }) => Promise<{ content: string; modelId: string }>;
 
 async function defaultTextCompletionRunner(params: {
@@ -64,6 +63,8 @@ async function defaultTextCompletionRunner(params: {
   projectId: number;
   messages: Array<{ role: "system" | "user"; content: string }>;
   maxTokens: number;
+  agentLeaseOwner?: string;
+  assertOwnership?: () => Promise<void>;
 }): Promise<{ content: string; modelId: string }> {
   const selection = selectModel({
     purpose: "chat",
@@ -73,29 +74,22 @@ async function defaultTextCompletionRunner(params: {
       modelId: params.agent.modelId,
     },
   });
-  const result = await withCompletionFailureAccounting(
-    () =>
-      createChatCompletion({
-        model: selection.modelId,
-        messages: params.messages,
-        ...completionTokenControl(selection.modelId, params.maxTokens),
-      }),
+  const result = await runAccountedCompletion(
     {
       provider: selection.provider ?? "unknown",
       modelId: selection.modelId,
       agentId: params.agent.id,
       taskId: params.projectId,
       kind: "chat",
+      agentLeaseOwner: params.agentLeaseOwner,
+      assertOwnership: params.assertOwnership,
+    },
+    {
+      model: selection.modelId,
+      messages: params.messages,
+      ...completionTokenControl(selection.modelId, params.maxTokens),
     },
   );
-  await recordCompletionUsage({
-    completion: result.completion,
-    provider: result.provider,
-    modelId: selection.modelId,
-    agentId: params.agent.id,
-    taskId: params.projectId,
-    kind: "chat",
-  });
   return {
     content: result.completion.choices[0]?.message?.content?.trim() ?? "",
     modelId: selection.modelId,
@@ -287,6 +281,14 @@ export async function runProjectMeetingTurn(params: {
       completion = await textCompletionRunner({
         agent: params.agent,
         projectId: params.project.id,
+        agentLeaseOwner: leaseOwner,
+        assertOwnership: async () => {
+          const live = await db.transaction(async (tx) => {
+            await lockAndAssertExecutionAllowed(tx);
+            return lockLiveMeetingTurn(tx, params.fence);
+          });
+          if (!live) throw new Error("Project meeting turn ownership was lost");
+        },
         messages: [
           { role: "system", content: systemPrompt },
           {

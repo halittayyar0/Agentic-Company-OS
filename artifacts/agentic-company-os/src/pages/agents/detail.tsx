@@ -1,5 +1,5 @@
 import { LanguagePackStatus } from "../../components/i18n/language-pack-status";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useVisibleTab } from "@/components/ui/tabs";
 import { Link, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -57,6 +57,9 @@ import { TASK_STATUS_META, PRIORITY_META, taskStatusLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const panel = "min-w-0 space-y-4 rounded-panel border bg-card p-[16px] sm:p-5";
+const InferenceAccountingPanel = lazy(
+  () => import("@/components/tasks/inference-accounting-panel"),
+);
 const tabs = ["chat", "computer", "tasks", "stats", "settings"] as const;
 type Tab = (typeof tabs)[number];
 type Notice =
@@ -540,6 +543,13 @@ function Detail({
           )}
         </div>
       </header>
+      <Suspense fallback={null}>
+        <InferenceAccountingPanel
+          key={agentId}
+          scopeType="agent"
+          scopeId={agentId}
+        />
+      </Suspense>
       {(query.isError || needsReview) && (
         <div role="alert" className={panel}>
           <p>{c.stale}</p>

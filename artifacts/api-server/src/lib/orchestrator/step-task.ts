@@ -49,13 +49,12 @@ import {
   type TaskStepFailureKind,
 } from "./task-retry-policy";
 import {
-  recordCompletionUsage,
-  withCompletionFailureAccounting,
-} from "./usage-ledger";
+  runAccountedCompletion,
+  InferenceAccountingError,
+  lockInferenceAccountingStatus,
+} from "./inference-accounting";
 import { executionComplexity } from "./execution-economy";
 import {
-  readTaskSpendBlockReason,
-  executionSpendLimits,
   TaskSpendBudgetError,
   assertTaskInferenceAdmission,
 } from "./task-spend-admission";
@@ -591,6 +590,9 @@ export async function stepTask(
   let toolUsed = false;
   let stepError: string | null = null;
   let spendBudgetExceeded = false;
+  let accountingStatus: "pending" | "recovery_required" | "resolved" | null =
+    null;
+  let inferenceAttemptId: string | null = null;
   let stepFailureKind: TaskStepFailureKind | null = null;
   let planFailureKind: PlanInferenceError["kind"] | null = null;
   let planRetryAt: number | null = null;
@@ -733,12 +735,7 @@ export async function stepTask(
     };
 
     for (let round = 0; round < maxToolRounds; round++) {
-      const spendBlock = await readTaskSpendBlockReason(
-        task,
-        { ...executionSpendLimits(), maxSteps: null },
-        locale,
-      );
-      if (spendBlock) throw new TaskSpendBudgetError(spendBlock);
+      await assertTaskInferenceAdmission(task.id, locale);
       await leaseHeartbeat.assertOwned(
         toolMessage(locale, "taskPlanning", {
           round: round + 1,
@@ -755,38 +752,29 @@ export async function stepTask(
           await assertTaskInferenceAdmission(task.id, locale);
           attemptModelId = route.modelId;
           attemptProvider = route.provider;
-          const result = await withCompletionFailureAccounting(
-            () =>
-              createCompletion({
-                model: route.modelId,
-                messages,
-                tools: toolCatalog?.tools ?? authorizedTools,
-                ...completionTokenControl(
-                  route.modelId,
-                  DEFAULT_MAX_COMPLETION_TOKENS,
-                ),
-              }),
+          const result = await runAccountedCompletion(
             {
               provider: route.provider,
               modelId: route.modelId,
               agentId: agent.id,
               taskId: task.id,
               kind: "task_step",
+              locale,
+              agentLeaseOwner: task.leaseOwner,
+              taskLeaseOwner: task.leaseOwner,
+              assertOwnership: () => leaseHeartbeat.assertOwned(),
             },
+            {
+              model: route.modelId,
+              messages,
+              tools: toolCatalog?.tools ?? authorizedTools,
+              ...completionTokenControl(
+                route.modelId,
+                DEFAULT_MAX_COMPLETION_TOKENS,
+              ),
+            },
+            createCompletion,
           );
-          try {
-            await leaseHeartbeat.assertOwned();
-          } catch (error) {
-            await recordCompletionUsage({
-              completion: result.completion,
-              provider: result.provider,
-              modelId: route.modelId,
-              agentId: agent.id,
-              taskId: task.id,
-              kind: "task_step",
-            });
-            throw error;
-          }
           if (!result.completion.choices[0]?.message) {
             const compatibilityError = new Error(
               "Unsupported empty model completion response",
@@ -873,14 +861,7 @@ export async function stepTask(
         routed.route,
         ...modelPlan.routes.slice(Math.max(0, originalRouteIndex + 1)),
       ];
-      const usage = await recordCompletionUsage({
-        completion,
-        provider,
-        modelId: model,
-        agentId: agent.id,
-        taskId: task.id,
-        kind: "task_step",
-      });
+      const usage = routed.value.usage;
       promptTokens += usage.promptTokens;
       completionTokens += usage.completionTokens;
       totalTokens += usage.totalTokens;
@@ -1211,6 +1192,25 @@ export async function stepTask(
         },
         "Task step stopped after durable ownership loss",
       );
+    } else if (
+      error instanceof InferenceAccountingError ||
+      (error instanceof TaskSpendBudgetError && error.accountingStatus)
+    ) {
+      accountingStatus = error.accountingStatus;
+      inferenceAttemptId =
+        error instanceof InferenceAccountingError
+          ? error.attemptId
+          : error.inferenceAttemptId;
+      stepFailureKind = "inference_accounting";
+      stepError = inferenceAttemptId
+        ? toolMessage(
+            locale,
+            accountingStatus === "pending"
+              ? "inferenceAccountingPending"
+              : "inferenceAccountingRecovery",
+            { id: inferenceAttemptId },
+          )
+        : error.message;
     } else if (error instanceof TaskSpendBudgetError) {
       spendBudgetExceeded = true;
       stepError = error.message;
@@ -1247,59 +1247,82 @@ export async function stepTask(
   } finally {
     try {
       if (!ownershipLost) {
-        const finishedAt = new Date();
-        const failureCount = stepError ? task.consecutiveFailures + 1 : 0;
-        const persistentProviderFailure =
-          stepFailureKind === "model_routes_exhausted" ||
-          stepFailureKind === "provider_setup_required" ||
-          stepFailureKind === "chatgpt_plan";
-        const retryDecision = stepError
-          ? taskRetryDecision({
-              autonomyMode: task.autonomyMode,
-              failureKind: stepFailureKind ?? "runtime",
-              consecutiveFailures: failureCount,
-              maxConsecutiveRuntimeFailures: MAX_CONSECUTIVE_FAILURES,
-              planRetryAt,
-              now: finishedAt.getTime(),
-            })
-          : null;
-        const shouldBlock =
-          spendBudgetExceeded || (retryDecision?.shouldBlock ?? false);
-        const retryDelayMs = retryDecision?.retryDelayMs ?? 0;
-        const nextRetryAt =
-          stepError && !shouldBlock
-            ? new Date(finishedAt.getTime() + retryDelayMs)
-            : operationDeferred
-              ? new Date(
-                  finishedAt.getTime() +
-                    dependencies.runtimeOperationsConfig.schedulerTickMs,
-                )
-              : null;
-        const safeLastError = stepError
-          ? redactAuditText(
-              persistentProviderFailure && exhaustedModelFailures.length > 0
-                ? exhaustedModelFailures
-                    .map((failure) => toolModelFailureText(locale, failure))
-                    .join("; ")
-                : stepError,
-              2_000,
-            )
-          : operationOutcomeUnknown
-            ? `${terminalMessage(locale, "taskUnknownStopped")}${operationUnknownReceiptId ? ` ${toolMessage(locale, "receiptLabel", { id: operationUnknownReceiptId })}.` : ""}`
-            : operationDeferred
-              ? `${terminalMessage(locale, "taskDeferred")}${operationDeferredReceiptId ? ` ${toolMessage(locale, "receiptLabel", { id: operationDeferredReceiptId })}.` : ""}`
-              : null;
-        const attemptState = stepError
-          ? shouldBlock
-            ? ("blocked" as const)
-            : ("retrying" as const)
-          : operationDeferred
-            ? ("retrying" as const)
-            : (attemptDisposition ?? "succeeded");
-
         await leaseHeartbeat.assertOwned();
         await db.transaction(async (tx) => {
           await lockAndAssertExecutionAllowed(tx);
+          if (accountingStatus && inferenceAttemptId) {
+            accountingStatus =
+              (await lockInferenceAccountingStatus(tx, inferenceAttemptId)) ??
+              "resolved";
+            stepError = toolMessage(
+              locale,
+              accountingStatus === "resolved"
+                ? "inferenceAccountingReady"
+                : accountingStatus === "pending"
+                  ? "inferenceAccountingPending"
+                  : "inferenceAccountingRecovery",
+              { id: inferenceAttemptId },
+            );
+          }
+          const finishedAt = new Date();
+          const failureCount = accountingStatus
+            ? task.consecutiveFailures
+            : stepError
+              ? task.consecutiveFailures + 1
+              : 0;
+          const persistentProviderFailure =
+            stepFailureKind === "model_routes_exhausted" ||
+            stepFailureKind === "provider_setup_required" ||
+            stepFailureKind === "chatgpt_plan";
+          const retryDecision = accountingStatus
+            ? {
+                shouldBlock: accountingStatus === "recovery_required",
+                retryDelayMs: 5000,
+              }
+            : stepError
+              ? taskRetryDecision({
+                  autonomyMode: task.autonomyMode,
+                  failureKind: stepFailureKind ?? "runtime",
+                  consecutiveFailures: failureCount,
+                  maxConsecutiveRuntimeFailures: MAX_CONSECUTIVE_FAILURES,
+                  planRetryAt,
+                  now: finishedAt.getTime(),
+                })
+              : null;
+          const shouldBlock =
+            spendBudgetExceeded || (retryDecision?.shouldBlock ?? false);
+          const retryDelayMs = retryDecision?.retryDelayMs ?? 0;
+          const nextRetryAt =
+            stepError && !shouldBlock
+              ? new Date(finishedAt.getTime() + retryDelayMs)
+              : operationDeferred
+                ? new Date(
+                    finishedAt.getTime() +
+                      dependencies.runtimeOperationsConfig.schedulerTickMs,
+                  )
+                : null;
+          const safeLastError = stepError
+            ? redactAuditText(
+                persistentProviderFailure && exhaustedModelFailures.length > 0
+                  ? exhaustedModelFailures
+                      .map((failure) => toolModelFailureText(locale, failure))
+                      .join("; ")
+                  : stepError,
+                2_000,
+              )
+            : operationOutcomeUnknown
+              ? `${terminalMessage(locale, "taskUnknownStopped")}${operationUnknownReceiptId ? ` ${toolMessage(locale, "receiptLabel", { id: operationUnknownReceiptId })}.` : ""}`
+              : operationDeferred
+                ? `${terminalMessage(locale, "taskDeferred")}${operationDeferredReceiptId ? ` ${toolMessage(locale, "receiptLabel", { id: operationDeferredReceiptId })}.` : ""}`
+                : null;
+          const attemptState = stepError
+            ? shouldBlock
+              ? ("blocked" as const)
+              : ("retrying" as const)
+            : operationDeferred
+              ? ("retrying" as const)
+              : (attemptDisposition ?? "succeeded");
+
           const lifecycleFinalization =
             pendingLifecycleIntent?.operationFinalization;
           let lifecycleLocale = locale;
@@ -1494,8 +1517,9 @@ export async function stepTask(
               agentId: agent.id,
               taskId: task.id,
               type: "error",
-              summary:
-                stepFailureKind === "chatgpt_plan"
+              summary: accountingStatus
+                ? stepError
+                : stepFailureKind === "chatgpt_plan"
                   ? stepError
                   : shouldBlock
                     ? toolMessage(locale, "taskBlocked", {
@@ -1509,8 +1533,9 @@ export async function stepTask(
                           at: nextRetryAt!.toISOString(),
                         }),
               detail: {
-                runtimeEvent:
-                  stepFailureKind === "chatgpt_plan"
+                runtimeEvent: accountingStatus
+                  ? `inference_accounting_${accountingStatus}`
+                  : stepFailureKind === "chatgpt_plan"
                     ? shouldBlock
                       ? "chatgpt_plan_paused"
                       : "chatgpt_plan_retry_scheduled"
@@ -1519,6 +1544,8 @@ export async function stepTask(
                       : "task_retry_scheduled",
                 attemptId: task.runtimeAttemptId,
                 failureKind: stepFailureKind,
+                accountingStatus,
+                inferenceAttemptId,
                 ...(planFailureKind ? { planFailureKind, planRetryAt } : {}),
                 consecutiveFailures: failureCount,
                 nextAttemptAt: nextRetryAt?.toISOString() ?? null,

@@ -46,6 +46,22 @@ export async function installStudioFixtures(page: Page) {
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+    if (path === "/api/inference-accounting" && request.method() === "GET") {
+      const params = new URL(request.url()).searchParams;
+      return json(route, {
+        scopeType: params.get("scopeType"),
+        scopeId: Number(params.get("scopeId")),
+        rootTaskId:
+          params.get("scopeType") === "task"
+            ? Number(params.get("scopeId"))
+            : null,
+        status: "clear",
+        observedAt: Date.now(),
+        unsettledCount: 0,
+        hasMore: false,
+        attempts: [],
+      });
+    }
     if (path === "/api/auth/status")
       return json(route, {
         enabled: false,

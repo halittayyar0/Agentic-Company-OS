@@ -9,10 +9,12 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { agentsTable } from "./agents";
 import { tasksTable } from "./tasks";
+import { inferenceAttemptsTable } from "./inference-attempts";
 
 /** Immutable per-completion accounting ledger used for honest daily metrics. */
 export const usageEventsTable = pgTable(
@@ -31,6 +33,12 @@ export const usageEventsTable = pgTable(
     /** Backend-generated correlation for the optional native coding inference.
      * Null preserves ordinary completions and historical immutable receipts. */
     inferenceKey: text("inference_key"),
+    /** Ordinary inference correlation is separate from the restricted native
+     * Codex key. Null keeps historical receipts and native accounting intact. */
+    ordinaryInferenceId: uuid("ordinary_inference_id").references(
+      () => inferenceAttemptsTable.id,
+      { onDelete: "restrict" },
+    ),
     // Null retains unknown provenance for receipts written before this field.
     usageReported: boolean("usage_reported"),
     outcome: text("outcome").notNull().default("completed"),
@@ -44,6 +52,13 @@ export const usageEventsTable = pgTable(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("usage_events_ordinary_inference_unique")
+      .on(table.ordinaryInferenceId)
+      .where(sql`${table.ordinaryInferenceId} IS NOT NULL`),
+    check(
+      "usage_events_correlation_kind_check",
+      sql`${table.inferenceKey} IS NULL OR ${table.ordinaryInferenceId} IS NULL`,
+    ),
     uniqueIndex("usage_events_inference_key_unique")
       .on(table.inferenceKey)
       .where(sql`${table.inferenceKey} IS NOT NULL`),

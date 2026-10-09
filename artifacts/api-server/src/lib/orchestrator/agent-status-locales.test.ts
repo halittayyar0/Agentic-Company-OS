@@ -249,6 +249,7 @@ for (const locale of WORKSPACE_LOCALES) {
           throw Object.assign(new Error("private upstream detail"), {
             status: 401,
           });
+        await params.beforeRequest?.();
         return reply(params.model);
       },
     };
@@ -515,6 +516,7 @@ for (const locale of WORKSPACE_LOCALES) {
         runtimeOperationsConfig: config,
         selectModelPlan: plan,
         createCompletion: async (params) => {
+          await params.beforeRequest?.();
           sent.push(
             ...params.messages
               .filter((message) => message.role === "user")
@@ -604,6 +606,7 @@ for (const locale of WORKSPACE_LOCALES) {
       let prompt = "";
       let calls = 0;
       const createCompletion: typeof createChatCompletion = async (params) => {
+        await params.beforeRequest?.();
         calls++;
         prompt = String(params.messages[0].content);
         assert.ok(

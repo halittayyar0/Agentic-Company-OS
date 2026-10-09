@@ -12,9 +12,54 @@ import { PlanInferenceError } from "@workspace/ai-server";
 import {
   recordCompletionUsage,
   withCompletionFailureAccounting,
+  normalizeCompletionUsage,
 } from "./usage-ledger";
 import type OpenAI from "openai";
 test.after(() => closeDatabase());
+
+test("contradictory usage cannot certify zero spend below its reported components", () => {
+  const usage = normalizeCompletionUsage(
+    {
+      agentId: 1,
+      taskId: null,
+      provider: "openrouter",
+      modelId: "fixture",
+      kind: "chat",
+    },
+    { prompt_tokens: 2, completion_tokens: 3, total_tokens: 0 },
+  );
+  assert.equal(usage.totalTokens, 5);
+  assert.equal(usage.usageReported, false);
+});
+
+test("a failed durable usage append must not return successful accounting", async (t) => {
+  await dbReady;
+  const insertion = db.insert.bind(db);
+  t.mock.method(db, "insert", (table: unknown) => {
+    if (table !== usageEventsTable) return insertion(table as never);
+    return {
+      values: () => Promise.reject(new Error("owned synthetic ledger outage")),
+    };
+  });
+  await assert.rejects(
+    recordCompletionUsage({
+      agentId: 1,
+      taskId: null,
+      modelId: "fixture",
+      provider: "openrouter",
+      kind: "chat",
+      completion: {
+        id: "owned-fixture",
+        object: "chat.completion",
+        created: 1,
+        model: "fixture",
+        choices: [],
+        usage: { prompt_tokens: 2, completion_tokens: 3, total_tokens: 5 },
+      },
+    }),
+    /usage accounting/u,
+  );
+});
 
 test("failed plan calls retain reported usage; an absent report is recorded as unknown and never completed", async (t) => {
   await dbReady;

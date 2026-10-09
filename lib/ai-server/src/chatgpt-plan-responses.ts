@@ -1,4 +1,5 @@
 import type OpenAI from "openai";
+import { observeCompletionResponseUsage } from "./completion-usage-observer";
 import type { ChatGPTRegistration } from "./chatgpt-plan-types";
 import type {
   UnifiedChatCompletionParams,
@@ -155,6 +156,8 @@ function requestBody(
     "responseFormat",
     "signal",
     "disableRetries",
+    "beforeRequest",
+    "onResponseUsage",
   ]);
   if (
     Object.keys(params).some(
@@ -762,6 +765,9 @@ export async function completeChatGPTPlanResponse(
   };
   return deadline(
     async (signal) => {
+      signal.throwIfAborted();
+      await params.beforeRequest?.();
+      signal.throwIfAborted();
       observation.inferenceStarted = true;
       const response = await (options.fetch ?? globalThis.fetch)(
         RESPONSES_URL,
@@ -838,6 +844,11 @@ export async function completeChatGPTPlanResponse(
               output: normalized.output,
               requestId: observation.requestId,
             });
+            await observeCompletionResponseUsage(
+              params,
+              normalized.completion,
+              "chatgpt",
+            );
             return normalized.completion;
           }
         }

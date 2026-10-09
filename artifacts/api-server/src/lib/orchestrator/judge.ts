@@ -11,9 +11,9 @@ import { db, activityEventsTable, type Agent } from "@workspace/db";
 import { logger } from "../logger";
 import { redactAuditText } from "../audit-redaction";
 import {
-  recordCompletionUsage,
-  withCompletionFailureAccounting,
-} from "./usage-ledger";
+  runAccountedCompletion,
+  InferenceAccountingError,
+} from "./inference-accounting";
 import { selectModelPlan } from "./model-select";
 import {
   runWithModelFallback,
@@ -25,6 +25,7 @@ import {
 } from "./task-spend-admission";
 import type { ModelRouteCandidate } from "./model-select";
 import type { CompletionEvidence } from "./completion-evidence";
+import { EmergencyStopError } from "./runtime-emergency-stop";
 
 export type JudgeVerdict = "pass" | "warn" | "block";
 
@@ -97,19 +98,22 @@ export function selectJudgeModelPlan(params: {
  * requests degrade to a visible warning because they still require an
  * independent human decision before the scoped action can execute.
  */
-export async function runJudge(params: {
-  locale?: WorkspaceLocale;
-  agent: Agent;
-  taskId: number | null;
-  purpose: "completion" | "approval";
-  originalBrief: string;
-  actionSummary: string;
-  completionEvidence?: CompletionEvidence;
-  taskExecutionModelId?: string | null;
-  redactActionSummaryInActivity?: boolean;
-  beforeAttempt?: (route: ModelRouteCandidate) => Promise<void>;
-  persistReview?: (review: JudgeReviewRecord) => Promise<void>;
-}): Promise<JudgeResult> {
+export async function runJudge(
+  params: {
+    locale?: WorkspaceLocale;
+    agent: Agent;
+    taskId: number | null;
+    purpose: "completion" | "approval";
+    originalBrief: string;
+    actionSummary: string;
+    completionEvidence?: CompletionEvidence;
+    taskExecutionModelId?: string | null;
+    redactActionSummaryInActivity?: boolean;
+    beforeAttempt?: (route: ModelRouteCandidate) => Promise<void>;
+    persistReview?: (review: JudgeReviewRecord) => Promise<void>;
+  },
+  dependencies: { createCompletion?: typeof createChatCompletion } = {},
+): Promise<JudgeResult> {
   const locale = params.locale ?? "tr";
   const copy = getToolCopy(locale);
   const text = toolMessage.bind(null, locale);
@@ -182,51 +186,29 @@ ${
       execute: async (route) => {
         await assertJudgeOwnership(beforeAttempt, route);
         if (taskId !== null) await assertTaskInferenceAdmission(taskId, locale);
-        const result = await withCompletionFailureAccounting(
-          () =>
-            createChatCompletion({
-              model: route.modelId,
-              messages: [
-                { role: "system", content: policy },
-                { role: "user", content: prompt },
-              ],
-              // Some providers count reasoning inside this ceiling. A tiny cap
-              // can consume tokens without producing any verdict, forcing retries.
-              ...completionTokenControl(route.modelId, 4096),
-              responseFormat: { type: "json_object" },
-            }),
+        const result = await runAccountedCompletion(
           {
             provider: route.provider,
             modelId: route.modelId,
             agentId: agent.id,
             taskId,
             kind: "judge",
+            locale,
+            assertOwnership: () => assertJudgeOwnership(beforeAttempt, route),
           },
+          {
+            model: route.modelId,
+            messages: [
+              { role: "system", content: policy },
+              { role: "user", content: prompt },
+            ],
+            // Some providers count reasoning inside this ceiling. A tiny cap
+            // can consume tokens without producing any verdict, forcing retries.
+            ...completionTokenControl(route.modelId, 4096),
+            responseFormat: { type: "json_object" },
+          },
+          dependencies.createCompletion,
         );
-        try {
-          await assertJudgeOwnership(beforeAttempt, route);
-        } catch (error) {
-          // Usage is the sole write allowed to survive a late provider
-          // response. Preserve accounting, then propagate the exact ownership
-          // or emergency-stop failure without parsing the response.
-          await recordCompletionUsage({
-            completion: result.completion,
-            provider: result.provider,
-            modelId: route.modelId,
-            agentId: agent.id,
-            taskId,
-            kind: "judge",
-          });
-          throw error;
-        }
-        await recordCompletionUsage({
-          completion: result.completion,
-          provider: result.provider,
-          modelId: route.modelId,
-          agentId: agent.id,
-          taskId,
-          kind: "judge",
-        });
 
         let parsed: Partial<JudgeResult>;
         try {
@@ -296,7 +278,12 @@ ${
     return { verdict, reasoning: safeReasoning };
   } catch (error) {
     if (error instanceof JudgeOwnershipBoundaryError) throw error.original;
-    if (error instanceof TaskSpendBudgetError) throw error;
+    if (
+      error instanceof TaskSpendBudgetError ||
+      error instanceof InferenceAccountingError ||
+      error instanceof EmergencyStopError
+    )
+      throw error;
     logger.error({ error, agentId: agent.id, taskId }, "Judge review failed");
     const verdict: JudgeVerdict = purpose === "completion" ? "block" : "warn";
     const reasoning =

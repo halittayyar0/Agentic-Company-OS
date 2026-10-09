@@ -5,6 +5,112 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+export type InferenceAccountingSnapshotScopeType = typeof InferenceAccountingSnapshotScopeType[keyof typeof InferenceAccountingSnapshotScopeType];
+
+
+export const InferenceAccountingSnapshotScopeType = {
+  task: 'task',
+  agent: 'agent',
+} as const;
+
+export type InferenceAccountingSnapshotStatus = typeof InferenceAccountingSnapshotStatus[keyof typeof InferenceAccountingSnapshotStatus];
+
+
+export const InferenceAccountingSnapshotStatus = {
+  clear: 'clear',
+  pending: 'pending',
+  recovery_required: 'recovery_required',
+} as const;
+
+export type InferenceAccountingAttemptKind = typeof InferenceAccountingAttemptKind[keyof typeof InferenceAccountingAttemptKind];
+
+
+export const InferenceAccountingAttemptKind = {
+  chat: 'chat',
+  task_step: 'task_step',
+  judge: 'judge',
+} as const;
+
+export type InferenceAccountingAttemptState = typeof InferenceAccountingAttemptState[keyof typeof InferenceAccountingAttemptState];
+
+
+export const InferenceAccountingAttemptState = {
+  reserved: 'reserved',
+  dispatched: 'dispatched',
+  uncertain: 'uncertain',
+  accounted: 'accounted',
+  not_dispatched: 'not_dispatched',
+} as const;
+
+export interface InferenceAccountingUsage {
+  /** @minimum 0 */
+  promptTokens: number;
+  /** @minimum 0 */
+  completionTokens: number;
+  /** @minimum 0 */
+  totalTokens: number;
+  usageReported: boolean;
+  /**
+     * @nullable
+     * @pattern ^\d+(\.\d+)?$
+     */
+  reportedCostUsd: string | null;
+}
+
+export interface InferenceAccountingAttempt {
+  id: string;
+  /** @minimum 1 */
+  agentId: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  taskId: number | null;
+  /** @maxLength 256 */
+  modelId: string;
+  /** @maxLength 32 */
+  provider: string;
+  kind: InferenceAccountingAttemptKind;
+  state: InferenceAccountingAttemptState;
+  /** @minimum 0 */
+  createdAt: number;
+  /** @minimum 0 */
+  requestDeadlineAt: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  dispatchedAt: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  settledAt: number | null;
+  usage: InferenceAccountingUsage | null;
+}
+
+export interface InferenceAccountingSnapshot {
+  scopeType: InferenceAccountingSnapshotScopeType;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  scopeId: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  rootTaskId: number | null;
+  status: InferenceAccountingSnapshotStatus;
+  /** @minimum 0 */
+  observedAt: number;
+  /** @minimum 0 */
+  unsettledCount: number;
+  hasMore: boolean;
+  /** @maxItems 20 */
+  attempts: InferenceAccountingAttempt[];
+}
+
 export interface ChatGPTExpectedRevision {
   /**
      * @minimum 0
@@ -3833,6 +3939,23 @@ export type PageLimitParameter = number;
  * Return rows with an id lower than this cursor.
  */
 export type BeforeIdParameter = number;
+
+export type GetInferenceAccountingStatusParams = {
+scopeType: GetInferenceAccountingStatusScopeType;
+/**
+ * @minimum 1
+ * @maximum 2147483647
+ */
+scopeId: number;
+};
+
+export type GetInferenceAccountingStatusScopeType = typeof GetInferenceAccountingStatusScopeType[keyof typeof GetInferenceAccountingStatusScopeType];
+
+
+export const GetInferenceAccountingStatusScopeType = {
+  task: 'task',
+  agent: 'agent',
+} as const;
 
 export type BeginChatGPTSignInBodyCallbackLocation = typeof BeginChatGPTSignInBodyCallbackLocation[keyof typeof BeginChatGPTSignInBodyCallbackLocation];
 

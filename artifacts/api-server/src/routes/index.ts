@@ -19,6 +19,7 @@ import { createChatGPTConnectionRouter } from "./chatgpt-connection";
 import { chatgptConnectionRuntime } from "../lib/chatgpt-connection-runtime";
 import { createCodexTaskStatusRouter } from "./codex-task-status";
 import { createCodexSessionRecoveryRouter } from "./codex-session-recovery";
+import { createInferenceAccountingRouter } from "./inference-accounting";
 
 const router: IRouter = Router();
 
@@ -41,5 +42,6 @@ router.use(sourceChangesRouter);
 router.use(createChatGPTConnectionRouter(chatgptConnectionRuntime));
 router.use(createCodexTaskStatusRouter());
 router.use(createCodexSessionRecoveryRouter());
+router.use(createInferenceAccountingRouter());
 
 export default router;

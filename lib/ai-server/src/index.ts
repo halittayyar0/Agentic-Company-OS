@@ -7,6 +7,7 @@ export {
 } from "./batch";
 export * from "./model-router";
 export * from "./openrouter";
+export * from "./completion-usage-observer";
 export * from "./first-party-providers";
 export * from "./chatgpt-plan-provider";
 export * from "./chatgpt-plan-responses";

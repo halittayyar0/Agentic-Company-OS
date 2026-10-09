@@ -267,35 +267,38 @@ async function finalizeClaimedTool(
     .update(taskAttemptsTable)
     .set({ state: "claimed" })
     .where(eq(taskAttemptsTable.id, ctx.runtimeAttemptId!));
-  const createCompletion: typeof createChatCompletion = async (params) => ({
-    provider: "replit",
-    completion: {
-      id: randomUUID(),
-      object: "chat.completion",
-      created: 1,
-      model: params.model,
-      choices: [
-        {
-          index: 0,
-          finish_reason: "tool_calls",
-          logprobs: null,
-          message: {
-            role: "assistant",
-            content: null,
-            refusal: null,
-            tool_calls: [
-              {
-                id: randomUUID(),
-                type: "function",
-                function: { name, arguments: JSON.stringify(args) },
-              },
-            ],
+  const createCompletion: typeof createChatCompletion = async (params) => {
+    await params.beforeRequest?.();
+    return {
+      provider: "replit",
+      completion: {
+        id: randomUUID(),
+        object: "chat.completion",
+        created: 1,
+        model: params.model,
+        choices: [
+          {
+            index: 0,
+            finish_reason: "tool_calls",
+            logprobs: null,
+            message: {
+              role: "assistant",
+              content: null,
+              refusal: null,
+              tool_calls: [
+                {
+                  id: randomUUID(),
+                  type: "function",
+                  function: { name, arguments: JSON.stringify(args) },
+                },
+              ],
+            },
           },
-        },
-      ],
-      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-    },
-  });
+        ],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      },
+    };
+  };
   await stepTask(
     {
       ...task,

@@ -71,8 +71,14 @@ const script = String.raw`
       }
     }
   });
+  if(process.argv[3]==='ready') process.stderr.write('ACOS_FIXTURE_READY\n');
 `;
-function setup(t: TestContext, mode = "ok", startupDelayMs = 0) {
+function setup(
+  t: TestContext,
+  mode = "ok",
+  startupDelayMs = 0,
+  readyBeforeProtocol = mode === "cleared_approval",
+) {
   let fixtureChild: ReturnType<typeof spawn> | undefined;
   let current = { ...binding },
     launches = 0,
@@ -99,6 +105,7 @@ function setup(t: TestContext, mode = "ok", startupDelayMs = 0) {
             : script,
           mode,
           JSON.stringify(prepared),
+          readyBeforeProtocol ? "ready" : "cold",
         ],
         {
           shell: false,
@@ -109,6 +116,43 @@ function setup(t: TestContext, mode = "ok", startupDelayMs = 0) {
       );
       fixtureChild = child;
       t.after(() => child.kill());
+      // These tests exercise approval withdrawal or receipt persistence.
+      // A fixture-owned readiness signal keeps the unchanged request/turn
+      // deadlines independent of native runner load. Other modes retain
+      // their existing startup and timeout behavior.
+      if (readyBeforeProtocol) {
+        await new Promise<void>((resolve, reject) => {
+          let bytes = "",
+            settled = false;
+          const finish = (error?: Error) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            child.stderr.off("data", onData);
+            child.off("close", onClose);
+            child.off("error", onError);
+            error ? reject(error) : resolve();
+          };
+          const onClose = () =>
+            finish(new Error("owned_fixture_closed_before_ready"));
+          const onError = () =>
+            finish(new Error("owned_fixture_launch_failed"));
+          const onData = (chunk: Buffer) => {
+            bytes += chunk.toString("utf8");
+            if (bytes === "ACOS_FIXTURE_READY\n") finish();
+            else if (Buffer.byteLength(bytes) > 128)
+              finish(new Error("owned_fixture_readiness_invalid"));
+          };
+          const timer = setTimeout(
+            () => finish(new Error("owned_fixture_readiness_timeout")),
+            5000,
+          );
+          timer.unref();
+          child.stderr.on("data", onData);
+          child.once("close", onClose);
+          child.once("error", onError);
+        });
+      }
       return {
         child,
         stop: async () => {
@@ -299,7 +343,7 @@ test("a terminal native receipt is durably acknowledged before the completed tur
 for (const startupDelayMs of [0, 300])
   for (const stuck of [false, true])
     test(`a ${stuck ? "stalled" : "failed"} receipt store cannot create a completed checkpoint or discard an observed item${startupDelayMs ? " after a delayed child start" : ""}`, async (t) => {
-      const fixture = setup(t, "patch_receipt", startupDelayMs);
+      const fixture = setup(t, "patch_receipt", startupDelayMs, true);
       fixture.ports.approve = async () => "accept";
       const ports = {
         ...fixture.ports,
@@ -309,8 +353,8 @@ for (const startupDelayMs of [0, 300])
         },
       };
       await assert.rejects(
-        // Use the normal bounded fixture deadline. A 200ms startup race can
-        // expire during initialize, before this receipt-store failure is tested.
+        // Owned startup readiness is bounded separately. Keep normal protocol
+        // deadlines so a stuck receipt store still expires after the effect.
         runCodexTask(input, ports),
         (error: unknown) => {
           assert.ok(

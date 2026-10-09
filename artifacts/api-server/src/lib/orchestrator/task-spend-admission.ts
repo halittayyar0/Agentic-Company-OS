@@ -3,7 +3,7 @@ import {
   db,
   taskAttemptsTable,
   tasksTable,
-  usageEventsTable,
+  effectiveUsageEventsView as usageEventsTable,
   type Task,
 } from "@workspace/db";
 import {
@@ -15,11 +15,20 @@ import type { WorkspaceLocale } from "../workspace-locale";
 import {
   readFamilySpendAdmission,
   type SpendReaderClient,
+  type InferenceAccountingStatus,
 } from "./family-spend-admission";
 import { ModelAdmissionDeniedError } from "./model-fallback";
 import { tokenUsageEvidence } from "../usage-coverage";
 
-export class TaskSpendBudgetError extends ModelAdmissionDeniedError {}
+export class TaskSpendBudgetError extends ModelAdmissionDeniedError {
+  constructor(
+    message: string,
+    readonly accountingStatus: InferenceAccountingStatus = null,
+    readonly inferenceAttemptId: string | null = null,
+  ) {
+    super(message);
+  }
+}
 
 export async function assertTaskInferenceAdmission(
   taskId: number,
@@ -30,12 +39,17 @@ export async function assertTaskInferenceAdmission(
     .from(tasksTable)
     .where(eq(tasksTable.id, taskId));
   if (!task) throw new Error("Task no longer exists");
-  const reason = await readTaskSpendBlockReason(
+  const admission = await readTaskSpendAdmission(
     task,
     { ...executionSpendLimits(), maxSteps: null },
     locale,
   );
-  if (reason) throw new TaskSpendBudgetError(reason);
+  if (admission.reason)
+    throw new TaskSpendBudgetError(
+      admission.reason,
+      admission.accountingStatus,
+      admission.inferenceAttemptId,
+    );
 }
 
 function costEvidence(
@@ -102,6 +116,7 @@ export async function readIndividualTaskSpendAdmission(
   locale: WorkspaceLocale = "tr",
   now = new Date(),
   client: SpendReaderClient = db,
+  _ignoreInferenceAttemptId?: string,
 ) {
   const recurring = task.autonomyMode === "continuous";
   const cycleStart = task.lastCycleCompletedAt ?? task.createdAt;
@@ -239,16 +254,29 @@ export async function readTaskSpendAdmission(
 ) {
   const individual = await readIndividualTaskSpendAdmission(...args);
   if (individual.reason)
-    return { ...individual, budgetScope: "task", rootTaskId: null };
+    return {
+      ...individual,
+      budgetScope: "task",
+      rootTaskId: null,
+      accountingStatus: null as InferenceAccountingStatus,
+      inferenceAttemptId: null,
+    };
   const family = await readFamilySpendAdmission(
     args[0].id,
     args[2] ?? "tr",
     args[3],
     args[4],
+    args[5],
   );
   return family.reason
     ? { ...family, budgetScope: "family" }
-    : { ...individual, budgetScope: "task", rootTaskId: family.rootTaskId };
+    : {
+        ...individual,
+        budgetScope: "task",
+        rootTaskId: family.rootTaskId,
+        accountingStatus: family.accountingStatus,
+        inferenceAttemptId: family.inferenceAttemptId,
+      };
 }
 
 export async function readTaskSpendBlockReason(

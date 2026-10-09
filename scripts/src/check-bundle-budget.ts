@@ -6,6 +6,7 @@ import { measureUsageReportingBundleGrowth } from "./usage-reporting-bundle-budg
 import { measureCodingRecoveryBundle } from "./coding-recovery-bundle-budget";
 import { measureComposerDraftBundle } from "./composer-draft-bundle-budget";
 import { measureConnectionBundle } from "./connection-bundle-budget";
+import { measureInferenceAccountingBundle } from "./inference-accounting-bundle-budget";
 
 const outputDirectory = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -260,7 +261,17 @@ const connectionLocaleAssets = languagePackAssets(
   "connection-",
   "guided connection",
 );
+const inferenceLocaleAssets = languagePackAssets(
+  "inference-copy-",
+  "model usage records",
+);
 const connection = measureConnectionBundle(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+);
+const inferenceAccounting = measureInferenceAccountingBundle(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
     contents: readFileSync(resolve(outputDirectory, asset.fileName)),
@@ -269,7 +280,11 @@ const connection = measureConnectionBundle(
 const codingRecovery = measureCodingRecoveryBundle(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
-    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+    // New accounting JSX must not also receive older project recovery credit.
+    contents:
+      inferenceAccounting.routes.find(
+        (route) => route.fileName === asset.fileName,
+      )?.contents ?? readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
 );
 const usageReportingGrowth = measureUsageReportingBundleGrowth(
@@ -337,6 +352,7 @@ const localeAssetNames = new Set(
     ...operationsLocaleAssets,
     ...codingRecoveryLocaleAssets,
     ...connectionLocaleAssets,
+    ...inferenceLocaleAssets,
     ...computerLocaleAssets,
     ...fileLocaleAssets,
     ...browserLocaleAssets,
@@ -368,6 +384,7 @@ const sharedCodeGzipBytes = sharedCodeAssets.reduce(
 );
 const totalCodeRawBytes =
   sharedCodeRawBytes +
+  Math.max(...inferenceLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...connectionLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...codingRecoveryLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...studioLocaleAssets.map((asset) => asset.rawBytes)) +
@@ -396,6 +413,7 @@ const totalCodeRawBytes =
   Math.max(...shellLocaleAssets.map((asset) => asset.rawBytes));
 const totalCodeGzipBytes =
   sharedCodeGzipBytes +
+  Math.max(...inferenceLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...connectionLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...codingRecoveryLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...studioLocaleAssets.map((asset) => asset.gzipBytes)) +
@@ -818,10 +836,17 @@ for (const surface of keeperSurfaces) {
   // Draft's measured entry growth belongs to its own strict feature cap.
   // Remove it from Keeper and resume overlap before applying either credit.
   const isEntry = /^index-[^/]+\.js$/u.test(matches[0].fileName);
+  const accountingRoute = inferenceAccounting.routes.find(
+    (route) => route.fileName === matches[0].fileName,
+  );
   const accountedRaw =
-    matches[0].rawBytes - (isEntry ? composerDraft.entryRaw : 0);
+    matches[0].rawBytes -
+    (isEntry ? composerDraft.entryRaw : 0) -
+    (accountingRoute?.raw ?? 0);
   const accountedGzip =
-    matches[0].gzipBytes - (isEntry ? composerDraft.entryGzip : 0);
+    matches[0].gzipBytes -
+    (isEntry ? composerDraft.entryGzip : 0) -
+    (accountingRoute?.gzip ?? 0);
   keeperLiveRawBytes += Math.max(0, accountedRaw - surface.raw);
   keeperLiveGzipBytes += Math.max(0, accountedGzip - surface.gzip);
   sharedResumeRawBytes += Math.max(0, accountedRaw - surface.keeperReleaseRaw);
@@ -846,6 +871,7 @@ const budgetResumeGlobalGzipBytes =
   budgetResumeGzipBytes - Math.min(900, sharedResumeGzipBytes);
 if (
   totalCodeGzipBytes -
+    inferenceAccounting.gzip -
     connection.gzip -
     composerDraft.gzip -
     codingRecovery.gzip -
@@ -862,12 +888,13 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code after bounded feature accounting (${totalCodeGzipBytes - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - inferenceAccounting.gzip - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
 if (
   totalCodeRawBytes -
+    inferenceAccounting.raw -
     connection.raw -
     composerDraft.raw -
     codingRecovery.raw -
@@ -878,12 +905,13 @@ if (
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `raw code after bounded feature accounting (${totalCodeRawBytes - connection.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - inferenceAccounting.raw - connection.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
 if (
   totalCodeGzipBytes -
+    inferenceAccounting.gzip -
     connection.gzip -
     composerDraft.gzip -
     codingRecovery.gzip -
@@ -894,7 +922,7 @@ if (
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `gzip code after bounded feature accounting (${totalCodeGzipBytes - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - inferenceAccounting.gzip - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -1032,6 +1060,9 @@ console.log(
 );
 console.log(
   `Guided connection: ${connection.raw} raw / ${connection.gzip} gzip bytes (28 KB / 10.5 KB exclusive feature cap); all authored packs ${connection.allLocaleRaw} raw / ${connection.allLocaleGzip} gzip bytes (40 KB / 16 KB cap).`,
+);
+console.log(
+  `Model usage records: ${inferenceAccounting.raw} raw / ${inferenceAccounting.gzip} gzip bytes (8 KB / 3.5 KB independent cap), exact reader wiring including verified sole agent preload metadata ${inferenceAccounting.integrationRaw} raw / ${inferenceAccounting.integrationGzip} gzip (1 KB / 500 bytes cap); all seven packs ${inferenceAccounting.allLocaleRaw} raw / ${inferenceAccounting.allLocaleGzip} gzip (11 KB / 6 KB cap). Exact wiring excluded from older recovery/Keeper credit; no vendor, SDK, CSS or project dependency-array credit. Existing ceilings retained.`,
 );
 if (violations.length > 0) {
   throw new Error(

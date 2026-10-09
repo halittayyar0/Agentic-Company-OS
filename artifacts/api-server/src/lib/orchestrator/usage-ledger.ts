@@ -25,46 +25,58 @@ function nonNegativeInteger(value: unknown): number {
  * cost directly; for other providers cost stays null instead of inventing a
  * per-token price.
  */
-interface UsageContext {
+export interface UsageContext {
   provider: string;
   modelId: string;
   agentId: number;
   taskId: number | null;
   kind: UsageKind;
 }
-async function appendUsage(
+export function normalizeCompletionUsage(
   params: UsageContext,
   usage: (OpenAI.Completions.CompletionUsage & { cost?: unknown }) | undefined,
-  outcome: "completed" | "failed",
-  failureKind: string | null,
-): Promise<RecordedUsage> {
+): RecordedUsage {
   const promptTokens = nonNegativeInteger(usage?.prompt_tokens);
   const completionTokens = nonNegativeInteger(usage?.completion_tokens);
-  const totalTokens = nonNegativeInteger(
-    usage?.total_tokens ?? promptTokens + completionTokens,
+  const componentTokens = promptTokens + completionTokens;
+  const totalTokens = Math.max(
+    nonNegativeInteger(usage?.total_tokens),
+    componentTokens,
   );
   const rawCost = params.provider === "openrouter" ? usage?.cost : null;
   const reportedCostUsd =
     typeof rawCost === "number" && Number.isFinite(rawCost) && rawCost >= 0
       ? rawCost
       : null;
-  const usageReported = [
-    usage?.prompt_tokens,
-    usage?.completion_tokens,
-    usage?.total_tokens,
-  ].every(
-    (value) =>
-      typeof value === "number" && Number.isSafeInteger(value) && value >= 0,
-  );
+  const usageReported =
+    [usage?.prompt_tokens, usage?.completion_tokens, usage?.total_tokens].every(
+      (value) =>
+        typeof value === "number" && Number.isSafeInteger(value) && value >= 0,
+    ) && Number(usage?.total_tokens) >= componentTokens;
 
-  const normalized = {
+  return {
     promptTokens,
     completionTokens,
     totalTokens,
     reportedCostUsd,
     usageReported,
   };
+}
 
+async function appendUsage(
+  params: UsageContext,
+  usage: (OpenAI.Completions.CompletionUsage & { cost?: unknown }) | undefined,
+  outcome: "completed" | "failed",
+  failureKind: string | null,
+): Promise<RecordedUsage> {
+  const normalized = normalizeCompletionUsage(params, usage);
+  const {
+    usageReported,
+    promptTokens,
+    completionTokens,
+    totalTokens,
+    reportedCostUsd,
+  } = normalized;
   await db
     .insert(usageEventsTable)
     .values({
@@ -82,11 +94,12 @@ async function appendUsage(
       reportedCostUsd:
         reportedCostUsd === null ? null : reportedCostUsd.toFixed(6),
     })
-    .catch((error) => {
+    .catch(() => {
       logger.error(
-        { error, agentId: params.agentId, taskId: params.taskId },
+        { agentId: params.agentId, taskId: params.taskId },
         "Usage ledger append failed",
       );
+      throw new Error("Durable usage accounting failed");
     });
 
   return normalized;

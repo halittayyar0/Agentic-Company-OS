@@ -5,7 +5,7 @@ import {
   agentsTable,
   tasksTable,
   approvalRequestsTable,
-  usageEventsTable,
+  effectiveUsageEventsView as usageEventsTable,
 } from "@workspace/db";
 import { GetOrgSummaryResponse } from "@workspace/api-zod";
 import { tokenUsageEvidence } from "../lib/usage-coverage";

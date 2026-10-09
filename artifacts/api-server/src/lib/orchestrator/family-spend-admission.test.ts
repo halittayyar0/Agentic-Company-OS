@@ -116,7 +116,7 @@ test("delegated inference shares one durable family budget", async (t) => {
     return { root, child, grandchild };
   }
   async function receipt(
-    taskId: number,
+    taskId: number | null,
     tokens: number,
     cost: string | null = null,
     createdAt = new Date(),
@@ -277,7 +277,7 @@ test("delegated inference shares one durable family budget", async (t) => {
   );
 
   await t.test(
-    "expired daily receipts and operator chat do not consume a task-family budget",
+    "expired daily receipts and taskless operator chat do not consume a task-family budget",
     async () => {
       limits(100, 100, 100);
       const f = await family(true);
@@ -292,7 +292,7 @@ test("delegated inference shares one durable family budget", async (t) => {
         "99",
         new Date(now.getTime() - 86_400_001),
       );
-      await receipt(f.child.id, 1000, "99", now, "chat");
+      await receipt(null, 1000, "99", now, "chat");
       assert.equal(
         (await readTaskSpendAdmission(f.root, localLimits, "en", now)).reason,
         null,

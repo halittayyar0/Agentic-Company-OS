@@ -7,6 +7,7 @@ import { unreportedTokenUsageBlockReason } from "./task-budget-policy";
 
 /** A transaction reader keeps admission and its queue transition in one scope. */
 export type SpendReaderClient = Pick<typeof db, "select" | "execute">;
+export type InferenceAccountingStatus = "pending" | "recovery_required" | null;
 
 function positive(name: string, fallback: number): number {
   const value = Number(process.env[name]);
@@ -31,6 +32,8 @@ export function familySpendLimits() {
 }
 
 interface FamilyRow {
+  accounting_id: string | null;
+  accounting_recovery: boolean | null;
   roots: number;
   root_id: number | null;
   recurring: boolean | null;
@@ -105,6 +108,7 @@ export async function readFamilySpendAdmission(
   locale: WorkspaceLocale,
   now = new Date(),
   client: SpendReaderClient = db,
+  ignoreInferenceAttemptId?: string,
 ) {
   const dayStart = new Date(now.getTime() - 86_400_000);
   const result = await client.execute(sql`
@@ -137,10 +141,19 @@ export async function readFamilySpendAdmission(
         count(u.id) FILTER (WHERE u.created_at >= ${dayStart} AND u.usage_reported IS TRUE) AS day_token_reported,
         count(u.id) FILTER (WHERE u.created_at >= ${dayStart} AND u.reported_cost_usd IS NULL) AS day_unknown
       FROM family f CROSS JOIN root r
-      LEFT JOIN usage_events u ON u.task_id = f.id AND u.kind IN ('task_step', 'judge')
+      LEFT JOIN effective_usage_events u ON u.task_id = f.id AND u.kind IN ('task_step', 'judge', 'chat')
       GROUP BY f.id
+    ), unsettled AS (
+      SELECT i.id,i.state,i.request_deadline_at,i.created_at,i.evidence_conflict_at
+      FROM inference_attempts i
+      WHERE (i.state IN ('reserved','dispatched','uncertain') OR i.evidence_conflict_at IS NOT NULL)
+        AND (i.scope_key = 'task:' || (SELECT id FROM root LIMIT 1)::text
+          OR i.agent_id = (SELECT owner_agent_id FROM tasks WHERE id=${taskId}))
+        AND ${ignoreInferenceAttemptId ? sql`i.id <> ${ignoreInferenceAttemptId}::uuid` : sql`true`}
     )
     SELECT (SELECT count(*)::int FROM root) AS roots,
+      (SELECT id::text FROM unsettled ORDER BY created_at,id LIMIT 1) AS accounting_id,
+      (SELECT state='uncertain' OR evidence_conflict_at IS NOT NULL OR request_deadline_at <= ${now} FROM unsettled ORDER BY created_at,id LIMIT 1) AS accounting_recovery,
       (SELECT id FROM root LIMIT 1) AS root_id,
       (SELECT autonomy_mode = 'continuous' FROM root LIMIT 1) AS recurring,
       coalesce(sum(greatest(f.tokens_used, p.all_tokens)), 0)::text AS lifetime_tokens,
@@ -172,6 +185,11 @@ export async function readFamilySpendAdmission(
     throw new Error("Inference requires a valid rooted task family");
   }
   const rootTaskId = row.root_id!;
+  const accountingStatus: InferenceAccountingStatus = row.accounting_id
+    ? row.accounting_recovery
+      ? "recovery_required"
+      : "pending"
+    : null;
   const limits = familySpendLimits();
   const current = row.recurring
     ? evidence(
@@ -192,24 +210,34 @@ export async function readFamilySpendAdmission(
         row.legacy_incomplete_token_members,
       );
   const currentReason =
-    current.tokensUsed >= limits.tokens
-      ? toolMessage(locale, "schedulerFamilyTokenBudget", {
-          rootTaskId,
-          used: current.tokensUsed,
-          limit: limits.tokens,
-        })
-      : Number(current.reportedCostUsd ?? 0) >= limits.cost
-        ? toolMessage(locale, "schedulerFamilyCostBudget", {
+    row.accounting_id !== null
+      ? toolMessage(
+          locale,
+          row.accounting_recovery
+            ? "inferenceAccountingRecovery"
+            : "inferenceAccountingPending",
+          { id: row.accounting_id },
+        )
+      : current.tokensUsed >= limits.tokens
+        ? toolMessage(locale, "schedulerFamilyTokenBudget", {
             rootTaskId,
-            used: current.reportedCostUsd!,
-            limit: limits.cost,
+            used: current.tokensUsed,
+            limit: limits.tokens,
           })
-        : unreportedTokenUsageBlockReason(current.tokenUsageCoverage, locale);
+        : Number(current.reportedCostUsd ?? 0) >= limits.cost
+          ? toolMessage(locale, "schedulerFamilyCostBudget", {
+              rootTaskId,
+              used: current.reportedCostUsd!,
+              limit: limits.cost,
+            })
+          : unreportedTokenUsageBlockReason(current.tokenUsageCoverage, locale);
   if (currentReason || !row.recurring)
     return {
       ...current,
       reason: currentReason,
       rootTaskId,
+      accountingStatus,
+      inferenceAttemptId: row.accounting_id,
       usageSource: row.recurring
         ? "task_family_current_cycle"
         : "task_family_lifetime",
@@ -225,6 +253,8 @@ export async function readFamilySpendAdmission(
   return {
     ...daily,
     rootTaskId,
+    accountingStatus,
+    inferenceAttemptId: row.accounting_id,
     usageSource: "task_family_rolling_24h",
     reason:
       daily.tokensUsed >= limits.dailyTokens

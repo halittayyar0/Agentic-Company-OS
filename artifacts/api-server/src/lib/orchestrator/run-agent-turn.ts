@@ -34,10 +34,7 @@ import { getToolsForAgent } from "./tools";
 import { executeTool } from "./execute-tool";
 import { buildChatSystemPrompt } from "./system-prompt";
 import { selectModel, type ModelOverrideInput } from "./model-select";
-import {
-  recordCompletionUsage,
-  withCompletionFailureAccounting,
-} from "./usage-ledger";
+import { runAccountedCompletion } from "./inference-accounting";
 import {
   computerSurfaceForTool,
   deferredComputerToolMessage,
@@ -327,33 +324,27 @@ export async function runAgentTurn(
       if (!heartbeat) throw new AgentBusyError("Agent chat lease was lost");
       let completion;
       try {
-        const { completion: result, provider } =
-          await withCompletionFailureAccounting(
-            () =>
-              createCompletion({
-                model,
-                messages,
-                tools: tools.length > 0 ? tools : undefined,
-                ...completionTokenControl(model, DEFAULT_MAX_COMPLETION_TOKENS),
-              }),
-            {
-              provider: selection.provider ?? "unknown",
-              modelId: model,
-              agentId: agent.id,
-              taskId,
-              kind: "chat",
-            },
-          );
+        const { completion: result, provider } = await runAccountedCompletion(
+          {
+            provider: selection.provider ?? "unknown",
+            modelId: model,
+            agentId: agent.id,
+            taskId,
+            kind: "chat",
+            locale,
+            agentLeaseOwner: leaseOwner,
+            assertOwnership: assertExecutionAllowed,
+          },
+          {
+            model,
+            messages,
+            tools: tools.length > 0 ? tools : undefined,
+            ...completionTokenControl(model, DEFAULT_MAX_COMPLETION_TOKENS),
+          },
+          createCompletion,
+        );
         usedModel = result.model?.trim() || model;
         usedProvider = provider;
-        await recordCompletionUsage({
-          completion: result,
-          provider,
-          modelId: model,
-          agentId: agent.id,
-          taskId,
-          kind: "chat",
-        });
         completion = result;
       } catch (error) {
         logger.error({ error, agentId: agent.id }, "LLM chat call failed");

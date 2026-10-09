@@ -61,6 +61,40 @@ function route(
   };
 }
 
+test("the machine emergency-stop boundary is never classified or retried from operator reason text", async () => {
+  for (const reason of [
+    "provider outage",
+    "timeout",
+    "quota",
+    "API key unavailable",
+  ]) {
+    const stop = Object.assign(
+      new Error(`Emergency stop is active: ${reason}`),
+      { code: "EMERGENCY_STOP_ACTIVE", name: "EmergencyStopError" },
+    );
+    assert.equal(classifyRecoverableModelError(stop), null);
+    let attempts = 0;
+    await assert.rejects(
+      runWithModelFallback({
+        routes: [
+          route("fixture-primary", "openrouter"),
+          route("fixture-fallback", "openai", true),
+        ],
+        attemptsPerRoute: 3,
+        execute: async () => {
+          attempts++;
+          throw stop;
+        },
+        sleep: async () => {
+          throw new Error("Emergency stop must not wait for a model retry");
+        },
+      }),
+      (error) => error === stop,
+    );
+    assert.equal(attempts, 1);
+  }
+});
+
 function providerError(message: string, status: number): Error {
   return Object.assign(new Error(message), { status });
 }

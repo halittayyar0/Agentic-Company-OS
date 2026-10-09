@@ -62,9 +62,11 @@ import type {
   ExecutionPolicy,
   GetAgentAvatarParams,
   GetCapabilityCatalogParams,
+  GetInferenceAccountingStatusParams,
   GetOperationsOverviewParams,
   GetProjectOperationsParams,
   HealthStatus,
+  InferenceAccountingSnapshot,
   ListActivityParams,
   ListAgentMessagesParams,
   ListAgentTemplatesParams,
@@ -183,6 +185,91 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetInferenceAccountingStatusUrl = (params: GetInferenceAccountingStatusParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/inference-accounting?${stringifiedParams}` : `/api/inference-accounting`
+}
+
+/**
+ * Authenticated read-only snapshot. Task scope includes its rooted family and the current owner's unresolved requests. Agent scope includes that agent's requests. Pending means the recorded response window has not elapsed, not verified worker liveness. Clear means no unresolved accounting marker, not task success, budget eligibility or permission to execute. Unknown usage never becomes zero and this endpoint never clears a fence.
+ * @summary Inspect model usage accounting without starting or retrying work
+ */
+export const getInferenceAccountingStatus = async (params: GetInferenceAccountingStatusParams, options?: Parameters<typeof customFetch>[1]): Promise<InferenceAccountingSnapshot> => {
+
+  return customFetch<InferenceAccountingSnapshot>(getGetInferenceAccountingStatusUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInferenceAccountingStatusQueryKey = (params?: GetInferenceAccountingStatusParams,) => {
+    return [
+    `/api/inference-accounting`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetInferenceAccountingStatusQueryOptions = <TData = Awaited<ReturnType<typeof getInferenceAccountingStatus>>, TError = ErrorType<void>>(params: GetInferenceAccountingStatusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInferenceAccountingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInferenceAccountingStatusQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInferenceAccountingStatus>>> = ({ signal }) => getInferenceAccountingStatus(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInferenceAccountingStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetInferenceAccountingStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getInferenceAccountingStatus>>>
+export type GetInferenceAccountingStatusQueryError = ErrorType<void>
+
+
+/**
+ * @summary Inspect model usage accounting without starting or retrying work
+ */
+
+export function useGetInferenceAccountingStatus<TData = Awaited<ReturnType<typeof getInferenceAccountingStatus>>, TError = ErrorType<void>>(
+ params: GetInferenceAccountingStatusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInferenceAccountingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetInferenceAccountingStatusQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetCodexSessionRecoveryUrl = (taskId: number,) => {
 

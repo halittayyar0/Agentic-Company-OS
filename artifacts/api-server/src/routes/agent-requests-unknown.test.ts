@@ -94,10 +94,11 @@ for (const { locale, mode } of scenarios) {
       .returning();
     let providers = 0,
       dispatches = 0;
-    const createCompletion: typeof createChatCompletion = async () => {
+    const createCompletion: typeof createChatCompletion = async (params) => {
+      await params.beforeRequest?.();
       providers++;
       return {
-        provider: "ollama",
+        provider: "openrouter",
         completion: {
           id: randomUUID(),
           object: "chat.completion",
@@ -125,6 +126,7 @@ for (const { locale, mode } of scenarios) {
               },
             },
           ],
+          usage: { prompt_tokens: 2, completion_tokens: 3, total_tokens: 5 },
         },
       };
     };

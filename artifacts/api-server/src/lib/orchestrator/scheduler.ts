@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { reconcileSavedInferenceEvidence } from "./inference-usage-correction";
 import { approvePolicyActions } from "./policy-approvals";
 import {
   and,
@@ -38,6 +39,7 @@ import {
 import { recoverInterruptedOperation } from "./operation-receipts";
 import { scrubExpiredApprovals } from "./sudo-approval-retention";
 import { readTaskSpendAdmission } from "./task-spend-admission";
+import { lockInferenceAccountingStatus } from "./inference-accounting";
 import { readWorkspaceLocale } from "../workspace-locale";
 import { getToolCopy, toolMessage } from "./tool-localization";
 import {
@@ -395,45 +397,79 @@ export async function enforceTaskBudgets(): Promise<void> {
     );
     const reason = admission.reason;
     if (!reason) continue;
+    await db.transaction(async (tx) => {
+      // Claims and dispatch use control -> marker (if any) -> agent -> task.
+      // Lock before UPDATE so the later activity FK cannot invert that order.
+      await lockRuntimeControlState(tx);
+      const accountingStatus = admission.inferenceAttemptId
+        ? await lockInferenceAccountingStatus(tx, admission.inferenceAttemptId)
+        : null;
+      if (admission.accountingStatus && !accountingStatus) return;
+      await tx.execute(
+        sql`SELECT id FROM agents WHERE id=${task.ownerAgentId} FOR UPDATE`,
+      );
+      if (accountingStatus === "pending") {
+        // A live request in the same scope is waiting, not a failed task. The
+        // ordinary claim gate observes this short delay; no provider is polled.
+        const nextAttemptAt = new Date(now.getTime() + 5000);
+        await tx
+          .update(tasksTable)
+          .set({ nextAttemptAt, lastError: reason })
+          .where(
+            and(
+              eq(tasksTable.id, task.id),
+              activeStatusCondition(),
+              leaseAvailable(now),
+              or(
+                isNull(tasksTable.nextAttemptAt),
+                lte(tasksTable.nextAttemptAt, now),
+              ),
+            ),
+          );
+        return;
+      }
 
-    const [blocked] = await db
-      .update(tasksTable)
-      .set({
-        status: "blocked",
-        blockedReason: "budget",
-        lastError: reason,
-        nextAttemptAt: null,
-        leaseOwner: null,
-        leaseExpiresAt: null,
-      })
-      .where(
-        and(
-          eq(tasksTable.id, task.id),
-          activeStatusCondition(),
-          leaseAvailable(now),
-        ),
-      )
-      .returning({ id: tasksTable.id });
-    if (blocked) {
-      await db.insert(activityEventsTable).values({
-        agentId: task.ownerAgentId,
-        taskId: task.id,
-        type: "error",
-        summary: toolMessage(locale, "schedulerBudgetStopped", { reason }),
-        detail: {
-          stepAttempts: task.stepAttempts,
-          tokensUsed: admission.tokensUsed,
-          reportedCostUsd: admission.reportedCostUsd,
-          costCoverage: admission.costCoverage,
-          materializedTokensUsed: task.tokensUsed,
-          materializedReportedCostUsd: task.estimatedCostUsd,
-          usageSource: admission.usageSource,
-          budgetScope: admission.budgetScope,
-          rootTaskId: admission.rootTaskId,
-        },
-        severity: "critical",
-      });
-    }
+      const [blocked] = await tx
+        .update(tasksTable)
+        .set({
+          status: "blocked",
+          blockedReason: "budget",
+          lastError: reason,
+          nextAttemptAt: null,
+          leaseOwner: null,
+          leaseExpiresAt: null,
+        })
+        .where(
+          and(
+            eq(tasksTable.id, task.id),
+            activeStatusCondition(),
+            leaseAvailable(now),
+          ),
+        )
+        .returning({ id: tasksTable.id });
+      if (blocked) {
+        await tx.insert(activityEventsTable).values({
+          agentId: task.ownerAgentId,
+          taskId: task.id,
+          type: "error",
+          summary: toolMessage(locale, "schedulerBudgetStopped", { reason }),
+          detail: {
+            stepAttempts: task.stepAttempts,
+            tokensUsed: admission.tokensUsed,
+            reportedCostUsd: admission.reportedCostUsd,
+            costCoverage: admission.costCoverage,
+            materializedTokensUsed: task.tokensUsed,
+            materializedReportedCostUsd: task.estimatedCostUsd,
+            usageSource: admission.usageSource,
+            budgetScope: admission.budgetScope,
+            rootTaskId: admission.rootTaskId,
+            accountingStatus,
+            inferenceAttemptId: admission.inferenceAttemptId,
+          },
+          severity: "critical",
+        });
+      }
+    });
   }
 }
 
@@ -1308,6 +1344,7 @@ async function runTick(context: SchedulerContext): Promise<void> {
     // Each replica independently observes the persisted stop and extinguishes
     // its own process-local browser/child-process state before returning.
     await synchronizeEmergencyStopForThisProcess();
+    await reconcileSavedInferenceEvidence();
     await assertExecutionAllowed();
     await recordStaleRuntimeIncidents(context.config);
     await reviveAndReleaseStaleWorkCore(context.config.workerStaleAfterMs);

@@ -1,6 +1,11 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolZhCN: ToolCopy = {
+  inferenceAccountingPending:
+    "正在等待模型调用的用量记录（{id}）。此项工作的后续模型调用将等待记录完成。",
+  inferenceAccountingRecovery:
+    "调用 {id} 的用量记录缺失或不完整。为防止无法追踪的支出，此项工作的后续模型调用已暂停。请查看用量记录恢复详情。",
+  inferenceAccountingReady: "调用 {id} 的用量记录已完成。此任务将自动继续。",
   budgetFamilyResumed: "已检查使用额度，重新排队的任务数：{count}。",
   schedulerClaimed: "已领取任务",
   projectMeetingRunning: "正在准备项目会议回复：{title}",

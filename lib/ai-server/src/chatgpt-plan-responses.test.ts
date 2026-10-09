@@ -62,6 +62,33 @@ function sse(events: unknown[]) {
     .map((event) => `data: ${JSON.stringify(event)}\r\n\r\n`)
     .join("");
 }
+
+test("a call-local dispatch guard can refuse plan inference before any transport call", async () => {
+  let requests = 0,
+    guards = 0;
+  await assert.rejects(
+    completeChatGPTPlanResponse(
+      {
+        ...params,
+        beforeRequest: async () => {
+          guards++;
+          throw new Error("owned accounting dispatch refusal");
+        },
+      },
+      account,
+      {
+        fetch: async () => {
+          requests++;
+          return new Response(sse([terminal()]), {
+            headers: { "Content-Type": "text/event-stream" },
+          });
+        },
+      },
+    ),
+  );
+  assert.equal(guards, 1);
+  assert.equal(requests, 0);
+});
 async function fixture(
   t: test.TestContext,
   handler: (
@@ -101,6 +128,36 @@ async function fixture(
   };
   return { fetch: request, calls };
 }
+
+test("parsed plan completion emits the internal usage hook inside its deadline, without serializing it", async (t) => {
+  const network = await fixture(t, (body, response) => {
+    assert.equal("onResponseUsage" in body, false);
+    response.writeHead(200, { "Content-Type": "text/event-stream" });
+    response.end(sse([terminal()]));
+  });
+  let usage: unknown;
+  await completeChatGPTPlanResponse(
+    {
+      ...params,
+      onResponseUsage: async (value) => {
+        usage = value;
+      },
+    },
+    account,
+    network,
+  );
+  assert.deepEqual(usage, {
+    provider: "chatgpt",
+    model: params.model,
+    responseId: "resp_fixture",
+    usage: {
+      prompt_tokens: 17,
+      completion_tokens: 9,
+      total_tokens: 26,
+      cost: undefined,
+    },
+  });
+});
 
 test("public Responses transport consumes fragmented UTF-8 SSE and only terminal output", async (t) => {
   const network = await fixture(t, (_body, response) => {

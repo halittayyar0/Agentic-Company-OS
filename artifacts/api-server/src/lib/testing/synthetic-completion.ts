@@ -258,15 +258,28 @@ export function createSyntheticCompletion(
     if (fault.outcome === "rate_limit") {
       throw new SyntheticRateLimitError();
     }
-    if (fault.outcome === "malformed") {
-      return malformedCompletion(options, params.model);
-    }
-    const delegation = delegationCompletion(
-      options,
-      params.model,
-      params.messages,
-    );
-    if (delegation) return delegation;
-    return deterministicCompletion(options, params.model);
+    // Local fixture failures above occur during preparation. A produced
+    // synthetic response uses the same owned dispatch/accounting contract.
+    const model = params.model;
+    if (params.signal?.aborted) throw abortError(params.signal);
+    await params.beforeRequest?.();
+    const result =
+      fault.outcome === "malformed"
+        ? malformedCompletion(options, model)
+        : (delegationCompletion(options, model, params.messages) ??
+          deterministicCompletion(options, model));
+    const usage = result.completion.usage;
+    if (!usage) throw new Error("synthetic_completion_usage_missing");
+    await params.onResponseUsage?.({
+      provider: result.provider,
+      model,
+      responseId: result.completion.id,
+      usage: {
+        prompt_tokens: usage.prompt_tokens,
+        completion_tokens: usage.completion_tokens,
+        total_tokens: usage.total_tokens,
+      },
+    });
+    return result;
   };
 }

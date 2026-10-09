@@ -12,6 +12,7 @@ import {
   type Locale,
 } from "../../artifacts/agentic-company-os/src/lib/i18n";
 import { loadCompanyRoomCopy } from "../../artifacts/agentic-company-os/src/lib/company-room-copy";
+import { loadAgentDirectoryCopy } from "../../artifacts/agentic-company-os/src/lib/agent-directory-copy";
 
 function message(
   id: number,
@@ -485,6 +486,7 @@ test("a response arriving after navigation leaves its recovery identity for the 
   page,
 }) => {
   const { state, c } = await setup(page, "en");
+  const directory = await loadAgentDirectoryCopy("en");
   let release!: () => void;
   state.holdReply = new Promise<void>((resolve) => {
     release = resolve;
@@ -502,6 +504,15 @@ test("a response arriving after navigation leaves its recovery identity for the 
       .getByRole("link", { name: "Experts", exact: true })
       .click();
     await expect(page).toHaveURL(/\/agents$/);
+    // A lazy route may update the address before the old room unmounts.
+    // Release the reply only after the destination actually rendered.
+    await expect(
+      page.getByRole("heading", {
+        name: directory.title,
+        level: 1,
+        exact: true,
+      }),
+    ).toBeVisible();
     const response = page.waitForResponse(
       (response) =>
         response.url().endsWith("/api/company-chat/messages") &&
@@ -532,6 +543,87 @@ test("a response arriving after navigation leaves its recovery identity for the 
     ).toHaveLength(1);
   } finally {
     release();
+  }
+});
+
+test("held destination chunk preserves a late room receipt recovery identity", async ({
+  page,
+}) => {
+  const { state, c } = await setup(page, "en");
+  const directory = await loadAgentDirectoryCopy("en");
+  let releaseReply!: () => void, releaseChunk!: () => void;
+  state.holdReply = new Promise<void>((r) => (releaseReply = r));
+  const chunkGate = new Promise<void>((r) => (releaseChunk = r));
+  let chunkRequests = 0;
+  await page.route("**/assets/list-*.js", async (route) => {
+    chunkRequests++;
+    await chunkGate;
+    await route.continue();
+  });
+  try {
+    await page.goto("/company-chat");
+    await page
+      .getByRole("textbox", { name: c.compose })
+      .fill("Late receipt while destination is loading 原文");
+    await page.getByRole("button", { name: c.send, exact: true }).click();
+    await expect.poll(() => state.sends.length).toBe(1);
+    const requestId = state.sends[0].requestId;
+    await page
+      .getByRole("navigation", { name: "Main menu" })
+      .getByRole("link", { name: "Experts", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/agents$/);
+    await expect.poll(() => chunkRequests).toBe(1);
+    const response = page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/api/company-chat/messages") &&
+        r.request().method() === "POST",
+    );
+    const refreshed = page.waitForResponse(
+      (r) =>
+        r.url().includes("/api/company-chat/messages?") &&
+        r.request().method() === "GET",
+    );
+    releaseReply();
+    await response;
+    await refreshed;
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    expect(
+      await page.evaluate(() => {
+        const raw = sessionStorage.getItem("acos.room-send.v1");
+        return raw ? JSON.parse(raw).requestId : null;
+      }),
+    ).toBe(requestId);
+    releaseChunk();
+    await expect(
+      page.getByRole("heading", {
+        name: directory.title,
+        level: 1,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole("navigation", { name: "Main menu" })
+      .getByRole("link", { name: c.title, exact: true })
+      .click();
+    await page.getByRole("button", { name: c.recover, exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: new RegExp(c.stored) }),
+    ).toBeVisible();
+    expect(state.sends.map((x) => x.requestId)).toEqual([requestId, requestId]);
+    expect(
+      state.messages.filter(
+        (x) => x.content === "Late receipt while destination is loading 原文",
+      ),
+    ).toHaveLength(1);
+  } finally {
+    releaseReply();
+    releaseChunk();
   }
 });
 

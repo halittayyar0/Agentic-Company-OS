@@ -42,6 +42,32 @@ tags:
   - name: vm
     description: Per-agent virtual computer (sandbox filesystem + terminal)
 paths:
+  /inference-accounting:
+    get:
+      operationId: getInferenceAccountingStatus
+      tags: [operations]
+      summary: Inspect model usage accounting without starting or retrying work
+      description: Authenticated read-only snapshot. Task scope includes its rooted family and the current owner's unresolved requests. Agent scope includes that agent's requests. Pending means the recorded response window has not elapsed, not verified worker liveness. Clear means no unresolved accounting marker, not task success, budget eligibility or permission to execute. Unknown usage never becomes zero and this endpoint never clears a fence.
+      parameters:
+        - name: scopeType
+          in: query
+          required: true
+          schema: { type: string, enum: [task, agent] }
+        - name: scopeId
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      responses:
+        "200":
+          description: Consistent bounded accounting snapshot
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/InferenceAccountingSnapshot" }
+        "400": { description: Invalid scope }
+        "401": { description: Operator authentication required }
+        "404": { description: Scope missing }
+        "503": { description: Status cannot be verified }
   /tasks/{taskId}/coding-session:
     get:
       operationId: getCodexSessionRecovery
@@ -2755,6 +2781,87 @@ components:
       in: cookie
       name: agentic_os_session
   schemas:
+    InferenceAccountingSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          scopeType,
+          scopeId,
+          rootTaskId,
+          status,
+          observedAt,
+          unsettledCount,
+          hasMore,
+          attempts,
+        ]
+      properties:
+        scopeType: { type: string, enum: [task, agent] }
+        scopeId: { type: integer, minimum: 1, maximum: 2147483647 }
+        rootTaskId: { type: [integer, "null"], minimum: 1 }
+        status: { type: string, enum: [clear, pending, recovery_required] }
+        observedAt: { type: integer, minimum: 0 }
+        unsettledCount: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+        attempts:
+          type: array
+          maxItems: 20
+          items: { $ref: "#/components/schemas/InferenceAccountingAttempt" }
+    InferenceAccountingAttempt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          agentId,
+          taskId,
+          modelId,
+          provider,
+          kind,
+          state,
+          createdAt,
+          requestDeadlineAt,
+          dispatchedAt,
+          settledAt,
+          usage,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        agentId: { type: integer, minimum: 1 }
+        taskId: { type: [integer, "null"], minimum: 1 }
+        modelId: { type: string, maxLength: 256 }
+        provider: { type: string, maxLength: 32 }
+        kind: { type: string, enum: [chat, task_step, judge] }
+        state:
+          {
+            type: string,
+            enum: [reserved, dispatched, uncertain, accounted, not_dispatched],
+          }
+        createdAt: { type: integer, minimum: 0 }
+        requestDeadlineAt: { type: integer, minimum: 0 }
+        dispatchedAt: { type: [integer, "null"], minimum: 0 }
+        settledAt: { type: [integer, "null"], minimum: 0 }
+        usage:
+          anyOf:
+            - { $ref: "#/components/schemas/InferenceAccountingUsage" }
+            - { type: "null" }
+    InferenceAccountingUsage:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          promptTokens,
+          completionTokens,
+          totalTokens,
+          usageReported,
+          reportedCostUsd,
+        ]
+      properties:
+        promptTokens: { type: integer, minimum: 0 }
+        completionTokens: { type: integer, minimum: 0 }
+        totalTokens: { type: integer, minimum: 0 }
+        usageReported: { type: boolean }
+        reportedCostUsd: { type: [string, "null"], pattern: '^\d+(\.\d+)?$' }
     ChatGPTExpectedRevision:
       type: object
       additionalProperties: false

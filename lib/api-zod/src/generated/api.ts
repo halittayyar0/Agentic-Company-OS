@@ -9,6 +9,82 @@ import * as zod from 'zod';
 
 
 /**
+ * Authenticated read-only snapshot. Task scope includes its rooted family and the current owner's unresolved requests. Agent scope includes that agent's requests. Pending means the recorded response window has not elapsed, not verified worker liveness. Clear means no unresolved accounting marker, not task success, budget eligibility or permission to execute. Unknown usage never becomes zero and this endpoint never clears a fence.
+ * @summary Inspect model usage accounting without starting or retrying work
+ */
+export const getInferenceAccountingStatusQueryScopeIdMax = 2147483647;
+
+
+
+export const GetInferenceAccountingStatusQueryParams = zod.object({
+  "scopeType": zod.enum(['task', 'agent']),
+  "scopeId": zod.coerce.number().int().min(1).max(getInferenceAccountingStatusQueryScopeIdMax)
+})
+
+export const getInferenceAccountingStatusResponseScopeIdMax = 2147483647;
+
+
+export const getInferenceAccountingStatusResponseObservedAtMin = 0;
+
+export const getInferenceAccountingStatusResponseUnsettledCountMin = 0;
+
+
+
+export const getInferenceAccountingStatusResponseAttemptsItemModelIdMax = 256;
+
+export const getInferenceAccountingStatusResponseAttemptsItemProviderMax = 32;
+
+export const getInferenceAccountingStatusResponseAttemptsItemCreatedAtMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemRequestDeadlineAtMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemDispatchedAtMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemSettledAtMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemUsageOnePromptTokensMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemUsageOneCompletionTokensMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemUsageOneTotalTokensMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemUsageOneReportedCostUsdRegExp = new RegExp('^\\d+(\\.\\d+)?$');
+export const getInferenceAccountingStatusResponseAttemptsMax = 20;
+
+
+
+export const GetInferenceAccountingStatusResponse = zod.object({
+  "scopeType": zod.enum(['task', 'agent']),
+  "scopeId": zod.number().int().min(1).max(getInferenceAccountingStatusResponseScopeIdMax),
+  "rootTaskId": zod.number().int().min(1).nullable(),
+  "status": zod.enum(['clear', 'pending', 'recovery_required']),
+  "observedAt": zod.number().int().min(getInferenceAccountingStatusResponseObservedAtMin),
+  "unsettledCount": zod.number().int().min(getInferenceAccountingStatusResponseUnsettledCountMin),
+  "hasMore": zod.boolean(),
+  "attempts": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "agentId": zod.number().int().min(1),
+  "taskId": zod.number().int().min(1).nullable(),
+  "modelId": zod.string().max(getInferenceAccountingStatusResponseAttemptsItemModelIdMax),
+  "provider": zod.string().max(getInferenceAccountingStatusResponseAttemptsItemProviderMax),
+  "kind": zod.enum(['chat', 'task_step', 'judge']),
+  "state": zod.enum(['reserved', 'dispatched', 'uncertain', 'accounted', 'not_dispatched']),
+  "createdAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemCreatedAtMin),
+  "requestDeadlineAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemRequestDeadlineAtMin),
+  "dispatchedAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemDispatchedAtMin).nullable(),
+  "settledAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemSettledAtMin).nullable(),
+  "usage": zod.union([zod.object({
+  "promptTokens": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOnePromptTokensMin),
+  "completionTokens": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOneCompletionTokensMin),
+  "totalTokens": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOneTotalTokensMin),
+  "usageReported": zod.boolean(),
+  "reportedCostUsd": zod.string().regex(getInferenceAccountingStatusResponseAttemptsItemUsageOneReportedCostUsdRegExp).nullable()
+}),zod.null()])
+})).max(getInferenceAccountingStatusResponseAttemptsMax)
+})
+
+
+/**
  * @summary Read coding-session recovery eligibility without starting work
  */
 

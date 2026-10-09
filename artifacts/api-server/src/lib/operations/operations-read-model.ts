@@ -12,7 +12,7 @@ import {
   runtimeInstancesTable,
   taskAttemptsTable,
   tasksTable,
-  usageEventsTable,
+  effectiveUsageEventsView as usageEventsTable,
   type AgentStatus,
   type OperationExecutionKind,
   type OperationInvocationState,
@@ -410,8 +410,44 @@ async function loadHealthSamples(start: Date): Promise<{
     .where(gte(runtimeHealthSamplesTable.bucketAt, start))
     .orderBy(desc(runtimeHealthSamplesTable.bucketAt))
     .limit(SAMPLE_LIMIT + 1);
+  // Only buckets with an accepted correction are overlaid. Preserve preexisting
+  // sample health/outage facts and untouched historical usage observations.
+  const corrected = await db.execute(sql`WITH corrected_buckets AS (
+    SELECT DISTINCT date_trunc('minute',u.created_at) AS bucket_at
+    FROM inference_usage_corrections c JOIN usage_events u ON u.id=c.receipt_id
+    WHERE u.kind='task_step' AND u.created_at >= ${start}
+  ) SELECT b.bucket_at,coalesce(sum(u.total_tokens),0)::text AS tokens,
+    coalesce(sum(u.reported_cost_usd),0)::text AS cost,
+    count(*) FILTER (WHERE u.outcome='completed')::int AS successes
+    FROM corrected_buckets b JOIN effective_usage_events u
+      ON u.kind='task_step' AND u.created_at >= b.bucket_at AND u.created_at < b.bucket_at+interval '1 minute'
+    GROUP BY b.bucket_at`);
+  const correctionByBucket = new Map(
+    corrected.rows.map((row) => [
+      new Date(String(row.bucket_at)).getTime(),
+      row,
+    ]),
+  );
+  const projected = rows
+    .slice(0, SAMPLE_LIMIT)
+    .reverse()
+    .map((row) => {
+      const sample = healthSample(row),
+        correction = correctionByBucket.get(row.bucketAt.getTime());
+      return correction
+        ? {
+            ...sample,
+            taskTokens: numberValue(correction.tokens),
+            reportedCostUsd: numberValue(correction.cost),
+            providerSuccessCount: Math.min(
+              sample.providerSuccessCount,
+              numberValue(correction.successes),
+            ),
+          }
+        : sample;
+    });
   return {
-    samples: rows.slice(0, SAMPLE_LIMIT).reverse().map(healthSample),
+    samples: projected,
     truncated: rows.length > SAMPLE_LIMIT,
   };
 }

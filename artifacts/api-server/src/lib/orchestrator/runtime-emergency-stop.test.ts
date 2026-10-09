@@ -378,6 +378,7 @@ test("emergency stop during a deferred provider loses the attempt without post-r
   const providerResult =
     deferred<Awaited<ReturnType<typeof createChatCompletion>>>();
   const createCompletion: typeof createChatCompletion = async (params) => {
+    await params.beforeRequest?.();
     providerStarted.resolve();
     return providerResult.promise.then((result) => ({
       ...result,

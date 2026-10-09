@@ -23,10 +23,7 @@ import {
 } from "./runtime-emergency-stop";
 import { selectModel } from "./model-select";
 import { buildChatSystemPrompt } from "./system-prompt";
-import {
-  recordCompletionUsage,
-  withCompletionFailureAccounting,
-} from "./usage-ledger";
+import { runAccountedCompletion } from "./inference-accounting";
 
 const MIN_MEETING_LEASE_MS = 5 * 60_000;
 const MEETING_LEASE_BUFFER_MS = 60_000;
@@ -178,41 +175,35 @@ export async function runCompanyMeetingTurn(params: {
 
     let completion;
     try {
-      const result = await withCompletionFailureAccounting(
-        () =>
-          createChatCompletion({
-            model: selection.modelId,
-            messages: [
-              { role: "system", content: systemPrompt },
-              {
-                role: "user",
-                content: meetingPrompt(founderContent, responseMode),
-              },
-            ],
-            ...completionTokenControl(
-              selection.modelId,
-              Math.max(
-                100,
-                Math.min(MEETING_MAX_COMPLETION_TOKENS, Math.floor(maxTokens)),
-              ),
-            ),
-          }),
+      const result = await runAccountedCompletion(
         {
           provider: selection.provider ?? "unknown",
           modelId: selection.modelId,
           agentId: agent.id,
           taskId: null,
           kind: "chat",
+          locale,
+          agentLeaseOwner: leaseOwner,
+          assertOwnership: assertExecutionAllowed,
+        },
+        {
+          model: selection.modelId,
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: meetingPrompt(founderContent, responseMode),
+            },
+          ],
+          ...completionTokenControl(
+            selection.modelId,
+            Math.max(
+              100,
+              Math.min(MEETING_MAX_COMPLETION_TOKENS, Math.floor(maxTokens)),
+            ),
+          ),
         },
       );
-      await recordCompletionUsage({
-        completion: result.completion,
-        provider: result.provider,
-        modelId: selection.modelId,
-        agentId: agent.id,
-        taskId: null,
-        kind: "chat",
-      });
       completion = result.completion;
     } catch (error) {
       logger.error(

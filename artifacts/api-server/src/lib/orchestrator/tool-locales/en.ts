@@ -1,6 +1,12 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolEn: ToolCopy = {
+  inferenceAccountingPending:
+    "A model call is awaiting its usage receipt ({id}). Further model calls for this work will wait until accounting completes.",
+  inferenceAccountingRecovery:
+    "The usage receipt for call {id} is missing or incomplete. Further model calls for this work are paused to prevent untracked spending; review the accounting recovery details.",
+  inferenceAccountingReady:
+    "The usage record for call {id} is complete. This task will continue automatically.",
   budgetFamilyResumed: "Allowance checked; {count} tasks queued again.",
   schedulerClaimed: "Task claimed",
   projectMeetingRunning: "Preparing a project meeting reply: {title}",

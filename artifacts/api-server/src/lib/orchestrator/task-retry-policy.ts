@@ -2,6 +2,7 @@ export type TaskStepFailureKind =
   | "model_routes_exhausted"
   | "provider_setup_required"
   | "chatgpt_plan"
+  | "inference_accounting"
   | "runtime";
 
 export interface TaskRetryDecision {

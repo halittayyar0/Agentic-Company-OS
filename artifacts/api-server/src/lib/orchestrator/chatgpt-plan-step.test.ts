@@ -8,6 +8,7 @@ import {
   tasksTable,
   taskAttemptsTable,
   usageEventsTable,
+  inferenceAttemptsTable,
   db,
   dbReady,
   closeDatabase,
@@ -20,9 +21,9 @@ import {
 import { stepTask } from "./step-task";
 
 for (const scenario of [
-  "unknown_quota",
-  "known_quota",
-  "interrupted",
+  "reported_quota",
+  "quota_retry_without_usage",
+  "interrupted_without_usage",
 ] as const) {
   test(`owned plan task persists ${scenario} without success, paid fallback or automatic replay`, async (t) => {
     await dbReady;
@@ -55,8 +56,9 @@ for (const scenario of [
         status: "in_progress",
         leaseOwner,
         leaseExpiresAt,
-        autonomyMode: scenario === "known_quota" ? "continuous" : "finite",
-        cadenceSeconds: scenario === "known_quota" ? 3600 : null,
+        autonomyMode:
+          scenario === "quota_retry_without_usage" ? "continuous" : "finite",
+        cadenceSeconds: scenario === "quota_retry_without_usage" ? 3600 : null,
       })
       .returning();
     t.after(async () => {
@@ -64,6 +66,9 @@ for (const scenario of [
       await db
         .delete(usageEventsTable)
         .where(eq(usageEventsTable.agentId, agent.id));
+      await db
+        .delete(inferenceAttemptsTable)
+        .where(eq(inferenceAttemptsTable.agentId, agent.id));
       await db
         .delete(taskAttemptsTable)
         .where(eq(taskAttemptsTable.taskId, task.id));
@@ -119,7 +124,7 @@ for (const scenario of [
         });
       assert.equal(String(input), "https://api.openai.com/v1/responses");
       inferenceCalls++;
-      if (scenario === "known_quota")
+      if (scenario === "quota_retry_without_usage")
         return Response.json(
           { error: { code: "rate_limit_exceeded" } },
           {
@@ -128,7 +133,7 @@ for (const scenario of [
           },
         );
       const response =
-        scenario === "unknown_quota"
+        scenario === "reported_quota"
           ? {
               type: "response.failed",
               response: {
@@ -177,31 +182,46 @@ for (const scenario of [
     assert.equal(inferenceCalls, 1);
     assert.equal(toolCalls, 0);
     assert.equal(saved.leaseOwner, null);
-    assert.equal(attempt.failureKind, "chatgpt_plan");
+    assert.equal(
+      attempt.failureKind,
+      scenario === "reported_quota" ? "chatgpt_plan" : "inference_accounting",
+    );
     assert.equal(attempt.provider, "chatgpt");
     assert.equal(attempt.modelId, "chatgpt:fixture-step");
     assert.ok(!saved.lastError?.includes("private fixture"));
-    if (scenario === "known_quota") {
-      assert.equal(saved.status, "in_progress");
-      assert.equal(attempt.state, "retrying");
-      assert.ok(
-        saved.nextAttemptAt &&
-          saved.nextAttemptAt.getTime() >= Math.floor(retryAt / 1000) * 1000,
-      );
-    } else {
-      assert.equal(saved.status, "blocked");
-      assert.equal(attempt.state, "blocked");
-      assert.equal(saved.nextAttemptAt, null);
+    assert.equal(saved.status, "blocked");
+    assert.equal(attempt.state, "blocked");
+    assert.equal(saved.nextAttemptAt, null);
+    if (scenario === "reported_quota")
       assert.match(saved.lastError ?? "", /resume|retry/i);
+    else {
+      // Retry-After limits quota admission; it does not establish the missing
+      // usage receipt or permit another potentially billed request.
+      assert.equal(saved.blockedReason, "runtime_failure");
+      assert.match(
+        saved.lastError ?? "",
+        /usage receipt.*missing or incomplete/i,
+      );
+      assert.equal(saved.consecutiveFailures, 0);
     }
     const [usage] = await db
       .select()
       .from(usageEventsTable)
       .where(eq(usageEventsTable.taskId, task.id));
+    const [inference] = await db
+      .select()
+      .from(inferenceAttemptsTable)
+      .where(eq(inferenceAttemptsTable.agentId, agent.id));
+    assert.equal(
+      inference.state,
+      scenario === "reported_quota" ? "accounted" : "uncertain",
+    );
+    assert.equal(usage.ordinaryInferenceId, inference.id);
+    assert.equal(usage.reportedCostUsd, null);
     assert.equal(usage.outcome, "failed");
-    assert.equal(usage.usageReported, scenario === "unknown_quota");
-    assert.equal(saved.tokensUsed, scenario === "unknown_quota" ? 27 : 0);
-    assert.equal(attempt.totalTokens, scenario === "unknown_quota" ? 27 : 0);
+    assert.equal(usage.usageReported, scenario === "reported_quota");
+    assert.equal(saved.tokensUsed, scenario === "reported_quota" ? 27 : 0);
+    assert.equal(attempt.totalTokens, scenario === "reported_quota" ? 27 : 0);
   });
 }
 test.after(() => closeDatabase());

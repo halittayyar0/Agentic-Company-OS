@@ -300,6 +300,23 @@ async function installApiMocks(page: Page) {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
+    if (
+      path === "/api/inference-accounting" &&
+      request.method() === "GET" &&
+      url.searchParams.get("scopeType") === "agent" &&
+      url.searchParams.get("scopeId") === "1"
+    ) {
+      return json(route, {
+        scopeType: "agent",
+        scopeId: 1,
+        rootTaskId: null,
+        status: "clear",
+        observedAt: Date.now(),
+        unsettledCount: 0,
+        hasMore: false,
+        attempts: [],
+      });
+    }
 
     if (path === "/api/auth/status") {
       return json(route, {

@@ -1334,6 +1334,23 @@ async function installProjectStudioMocks(
     const url = new URL(request.url());
     const path = url.pathname;
     const method = request.method();
+    if (
+      path === "/api/inference-accounting" &&
+      method === "GET" &&
+      url.searchParams.get("scopeType") === "task" &&
+      ["101", "102"].includes(url.searchParams.get("scopeId") ?? "")
+    ) {
+      return json(route, {
+        scopeType: "task",
+        scopeId: Number(url.searchParams.get("scopeId")),
+        rootTaskId: 101,
+        status: "clear",
+        observedAt: Date.now(),
+        unsettledCount: 0,
+        hasMore: false,
+        attempts: [],
+      });
+    }
 
     if (path === "/api/auth/status") {
       return json(route, {

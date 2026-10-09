@@ -271,6 +271,15 @@ jobs:
           node --import tsx --test
           artifacts/api-server/src/lib/operator-requests-postgres.test.ts
 
+      - name: Prove PostgreSQL inference accounting across workers and process loss
+        env:
+          DATABASE_URL: postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_os_ci
+          POSTGRES_RACE_TEST_DISPOSABLE: "1"
+          POSTGRES_RACE_TEST_FAIL_IF_SKIPPED: "1"
+        run: >-
+          node --import tsx --test --test-concurrency=1 --test-timeout=60000
+          artifacts/api-server/src/lib/orchestrator/inference-accounting-postgres.test.ts
+
       - name: Prove PostgreSQL source-check and native-session admission serialization
         env:
           DATABASE_URL: postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_os_ci

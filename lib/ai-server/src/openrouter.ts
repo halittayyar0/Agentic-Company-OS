@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import OpenAI from "openai";
+import { observeCompletionResponseUsage } from "./completion-usage-observer";
 import {
   createChatGPTPlanCompletion,
   getChatGPTPlanCatalogSnapshot,
@@ -480,6 +481,13 @@ export interface UnifiedChatCompletionParams {
   signal?: AbortSignal;
   /** Diagnostics can opt out of SDK retries to bound billable attempts. */
   disableRetries?: boolean;
+  /** Host-owned, call-local durable admission. Awaited once immediately before
+   * inference transport, after local provider/credential validation. */
+  beforeRequest?: () => Promise<void>;
+  /** Host-owned parsed usage observer; never serialized or globally shared. */
+  onResponseUsage?: (
+    evidence: import("./completion-usage-observer").ResponseUsageEvidence,
+  ) => Promise<void>;
 }
 
 /** Plan preview rejects an output-token ceiling. The host retains its own
@@ -675,9 +683,16 @@ export async function createChatCompletion(
   }
   return withChatCompletionTimeout(async (boundedSignal) => {
     await providerRequestGuard?.();
+    const dispatch = async () => {
+      boundedSignal.throwIfAborted();
+      await params.beforeRequest?.();
+      boundedSignal.throwIfAborted();
+    };
     // Legacy fleet always wins for known Replit model ids.
     if (isKnownModelId(model)) {
-      const completion = await openai.chat.completions.create(
+      const client = openai.chat.completions;
+      await dispatch();
+      const completion = await client.create(
         {
           model,
           messages,
@@ -691,11 +706,13 @@ export async function createChatCompletion(
           maxRetries: params.disableRetries ? 0 : undefined,
         },
       );
+      await observeCompletionResponseUsage(params, completion, "replit");
       return { completion, provider: "replit" as const };
     }
 
     if (resolveModelProvider(model) === "openrouter") {
       const client = getOpenRouterClient();
+      await dispatch();
       const completion = await client.chat.completions.create(
         {
           model,
@@ -709,6 +726,7 @@ export async function createChatCompletion(
           maxRetries: params.disableRetries ? 0 : undefined,
         },
       );
+      await observeCompletionResponseUsage(params, completion, "openrouter");
       return { completion, provider: "openrouter" as const };
     }
 
@@ -716,6 +734,7 @@ export async function createChatCompletion(
     if (directOpenAIModel) {
       const client = getDirectOpenAIClient();
       const clientRequestId = randomUUID();
+      await dispatch();
       try {
         const result = await client.chat.completions
           .create(
@@ -744,6 +763,7 @@ export async function createChatCompletion(
           clientRequestId,
           outcome: "success",
         });
+        await observeCompletionResponseUsage(params, result.data, "openai");
         return { completion: result.data, provider: "openai" as const };
       } catch (error) {
         observeProviderRequest({
@@ -760,6 +780,7 @@ export async function createChatCompletion(
     const ollamaModel = resolveOllamaModelId(model);
     if (ollamaModel) {
       const client = getOllamaClient();
+      await dispatch();
       const completion = await client.chat.completions.create(
         {
           model: ollamaModel,
@@ -773,6 +794,7 @@ export async function createChatCompletion(
           maxRetries: params.disableRetries ? 0 : undefined,
         },
       );
+      await observeCompletionResponseUsage(params, completion, "ollama");
       return { completion, provider: "ollama" as const };
     }
 

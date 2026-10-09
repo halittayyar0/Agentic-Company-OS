@@ -1,6 +1,11 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolZhTW: ToolCopy = {
+  inferenceAccountingPending:
+    "正在等待模型呼叫的用量記錄（{id}）。此項工作的後續模型呼叫將等待記錄完成。",
+  inferenceAccountingRecovery:
+    "呼叫 {id} 的用量記錄遺失或不完整。為防止無法追蹤的支出，此項工作的後續模型呼叫已暫停。請查看用量記錄復原詳情。",
+  inferenceAccountingReady: "呼叫 {id} 的用量記錄已完成。此任務將自動繼續。",
   budgetFamilyResumed: "已檢查使用額度，重新排入佇列的任務數：{count}。",
   schedulerClaimed: "已領取任務",
   projectMeetingRunning: "正在準備專案會議回覆：{title}",

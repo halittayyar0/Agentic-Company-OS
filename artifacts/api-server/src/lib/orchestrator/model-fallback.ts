@@ -124,6 +124,9 @@ export function classifyRecoverableModelError(
     return null;
   }
   const shaped = error as ProviderErrorShape;
+  // Operator stop reasons are free text and may mention a provider failure.
+  // Machine authority boundaries must escape before provider text matching.
+  if (shaped.code === "EMERGENCY_STOP_ACTIVE") return null;
   const status = numericStatus(shaped);
   const text = errorText(shaped);
 

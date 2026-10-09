@@ -414,6 +414,12 @@ export const toolTr = {
   schedulerTokenBudget: "Token bütçesi aşıldı ({used}/{limit}).",
   schedulerUnreportedTokenUsage:
     "Bu işin token kullanımı eksik raporlandı. Ölçülemeyen harcamayı önlemek için yeni model çağrıları durduruldu. Kayıtlı çağrıları inceleyin; devam etmek için token kullanımını raporlayan bir sağlayıcıyla yeni bir iş başlatın. Mevcut kayıtlar korunur.",
+  inferenceAccountingPending:
+    "Bir model çağrısının kullanım kaydı bekleniyor ({id}). Bu işin yeni model çağrıları kayıt tamamlanana kadar bekleyecek.",
+  inferenceAccountingRecovery:
+    "{id} çağrısının kullanım kaydı eksik veya tamamlanmamış. Ölçülemeyen harcamayı önlemek için bu işin model çağrıları durduruldu; muhasebe kurtarma ayrıntılarını inceleyin.",
+  inferenceAccountingReady:
+    "{id} çağrısının kullanım kaydı tamamlandı. Bu görev otomatik olarak devam edecek.",
   schedulerCostBudget:
     "Sağlayıcı-raporlu maliyet bütçesi aşıldı (${used}/{limit}).",
   schedulerFamilyTokenBudget:

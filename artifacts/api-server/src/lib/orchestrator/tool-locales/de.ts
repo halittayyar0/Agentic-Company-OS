@@ -1,6 +1,12 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolDe: ToolCopy = {
+  inferenceAccountingPending:
+    "Für einen Modellaufruf fehlt noch der Nutzungsbeleg ({id}). Weitere Modellaufrufe für diese Arbeit warten, bis die Abrechnung abgeschlossen ist.",
+  inferenceAccountingRecovery:
+    "Der Nutzungsbeleg für Aufruf {id} fehlt oder ist unvollständig. Weitere Modellaufrufe für diese Arbeit sind angehalten, um unkontrollierte Ausgaben zu verhindern. Prüfen Sie die Details zur Wiederherstellung der Abrechnung.",
+  inferenceAccountingReady:
+    "Der Nutzungsbeleg für Aufruf {id} ist vollständig. Diese Aufgabe wird automatisch fortgesetzt.",
   budgetFamilyResumed:
     "Nutzungslimit geprüft; {count} Aufgaben erneut eingereiht.",
   schedulerClaimed: "Aufgabe übernommen",
