@@ -11,6 +11,7 @@ import {
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { createOperatorAuth } from "../lib/operator-auth";
+import { createRateLimiter } from "../lib/rate-limit";
 import { createInferenceAccountingRouter } from "./inference-accounting";
 import { GetInferenceAccountingStatusResponse } from "@workspace/api-zod";
 
@@ -37,6 +38,12 @@ test("accounting inspection authenticates before reading, rejects ambiguous scop
     });
   app.use(
     "/api",
+    createRateLimiter({
+      namespace: "test-accounting",
+      max: 7,
+      windowMs: 60_000,
+      now: () => 0,
+    }),
     auth.requireAuthentication,
     createInferenceAccountingRouter({
       readStatus: async () => {
@@ -73,6 +80,10 @@ test("accounting inspection authenticates before reading, rejects ambiguous scop
     ).status,
     404,
   );
+  assert.equal(reads, 1);
+  const limited = await fetch(base + "?scopeType=task&scopeId=1", { headers });
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get("retry-after"), "60");
   assert.equal(reads, 1);
 });
 test("the real app mounts the read-only accounting scope behind operator authentication", async (t) => {
