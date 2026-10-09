@@ -88,6 +88,57 @@ test("an incoming guide must leave an existing saved draft intact until the oper
   ).toHaveValue("Unfinished source analysis");
 });
 
+test("loading preparation code keeps Start blocked and never replaces late input", async ({
+  page,
+}) => {
+  await page.addInitScript((seed) => {
+    localStorage.setItem("acos.locale.v1", "en");
+    history.replaceState({ ...history.state, acosSkillDraft: seed }, "");
+  }, incoming);
+  const fixture = await installStudioFixtures(page);
+  const copy = await loadNewProjectCopy("en"),
+    reuse = await loadReusableWorkCopy("en");
+  let release!: () => void, arrived!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const requested = new Promise<void>((resolve) => (arrived = resolve));
+  await page.route(
+    "**/assets/project-preparation-choice-*.js",
+    async (route) => {
+      arrived();
+      await gate;
+      await route.continue();
+    },
+  );
+  try {
+    await page.goto("/projects/new");
+    await requested;
+    const title = page.getByRole("textbox", {
+      name: copy.projectName,
+      exact: true,
+    });
+    const brief = page.getByRole("textbox", { name: copy.brief, exact: true });
+    await title.fill(oldTitle);
+    await brief.fill(oldBrief);
+    await expect(
+      page.getByRole("button", { name: copy.start, exact: true }),
+    ).toBeDisabled();
+    release();
+    await expect(
+      page.getByRole("button", { name: reuse.keepCurrent, exact: true }),
+    ).toBeVisible();
+    await expect(title).toHaveValue(oldTitle);
+    await expect(brief).toHaveValue(oldBrief);
+    await page
+      .getByRole("button", { name: reuse.keepCurrent, exact: true })
+      .click();
+    await expect(brief).toBeFocused();
+    await expect(title).toHaveValue(oldTitle);
+    expect(fixture.requests).toHaveLength(0);
+  } finally {
+    release();
+  }
+});
+
 for (const locale of LOCALES)
   for (const mode of ["light", "dark"] as const) {
     test(`${locale} ${mode} phone keeps the draft across reload and resolves incoming text deliberately`, async ({

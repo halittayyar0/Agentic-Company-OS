@@ -17,6 +17,33 @@ const source = {
   updatedAt: "2026-10-09T05:00:00.000Z",
 };
 
+test("source timestamps are bounded valid instants and preserve offsets", () => {
+  for (const updatedAt of [
+    "2024-02-29T23:59:59.999Z",
+    "2026-10-09T08:00:00.000+03:00",
+    "2026-10-09T05:00Z",
+  ])
+    assert.deepEqual(
+      readProjectPreparation({
+        acosSkillDraft: { ...text, source: { ...source, updatedAt } },
+      }),
+      { ...text, source: { ...source, updatedAt } },
+    );
+  for (const updatedAt of [
+    "2026-02-29T05:00:00.000Z",
+    "2026-02-30T05:00:00.000Z",
+    "2026-10-09T25:00:00.000Z",
+    "2026-10-09T05:00:00.000",
+    `2026-10-09T05:00:00.${"0".repeat(65)}Z`,
+  ])
+    assert.equal(
+      readProjectPreparation({
+        acosSkillDraft: { ...text, source: { ...source, updatedAt } },
+      }),
+      null,
+    );
+});
+
 test("legacy and attributed preparation preserve exact text without execution fields", () => {
   assert.deepEqual(readProjectPreparation({ acosSkillDraft: text }), text);
   assert.deepEqual(

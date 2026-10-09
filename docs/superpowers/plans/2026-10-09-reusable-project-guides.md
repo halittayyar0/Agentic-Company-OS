@@ -1,6 +1,6 @@
 # Reusable Project Guides Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. The human's standing authorization permits routine implementation without another approval question.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking. The human's standing authorization permits routine implementation without another approval question.
 
 **Goal:** Let people reuse a saved project brief, prepare it as a personal guide, and prepare another project from that guide without losing drafts or starting work during preparation.
 
@@ -56,7 +56,7 @@
 - `ReusableWorkCopy` contains named preparation/conflict/editor/action strings and `loadReusableWorkCopy(locale: Locale): Promise<ReusableWorkCopy>`.
 - Task1 copy keys: `incomingTitle`, `incomingHelp`, `keepCurrent`, `useIncoming`, `choiceError`, `preparationOnly`. Later tasks extend all seven packs together; no implicit English fallback. Choice load failure retains input/history and offers a real reload action.
 
-- [ ] Retain the real incoming-guide browser characterization as `tests/ui/project-preparation.spec.ts`: create title `Unfinished source analysis` and exact two-line brief, choose csv-quality, assert old text remains and zero task POST; run and observe the actual RED before product edits.
+- [x] Retain the real incoming-guide browser characterization as `tests/ui/project-preparation.spec.ts`: create title `Unfinished source analysis` and exact two-line brief, choose csv-quality, assert old text remains and zero task POST; run and observe the actual RED before product edits.
 
 ```ts
 await expect(
@@ -65,11 +65,11 @@ await expect(
 expect(harness.requests).toHaveLength(0);
 ```
 
-- [ ] Add history helper tests: old seed compatibility, bounds300/8000, malformed source, preserved sibling history keys, changed seed refused, Unicode/whitespace retained. Run `pnpm exec tsx --test artifacts/agentic-company-os/src/lib/project-preparation.test.ts` and observe RED.
-- [ ] Implement helpers/copy and composer interface. In NewTaskForm restore current input first; an incoming seed with existing information shows Keep current draft / Use incoming brief. Empty healthy input may apply a valid seed once. A denied/corrupt store retains history and editable text with recovery-limit feedback. Only consume a matching seed after verified application or explicit Keep. Do not autoapply again on edits or locale reload.
-- [ ] Disable fresh Start while a choice is unresolved; existing request inspection/open/retry retains its frozen scope. Apply explicit Use with finite/normal/3600, focus the title/brief, preserve later edits and matching clear rules.
-- [ ] Expand retained browser cases for Keep/Use, before/after-choice reload, storage denial/corruption, old seed/new source metadata, pending start, late edits, no repeated prefill and keyboard focus; run actual GREEN. Run existing composer/skill/start state tests and project-start-recovery browser suite for regressions.
-- [ ] Commit Task1 runtime/copy/tests/docs with `feat: preserve project drafts when preparing reusable work`. Record passed commands, failures, scope and BASE in ledger; later tasks remain incomplete.
+- [x] Add history helper tests: old seed compatibility, bounds300/8000, malformed source, preserved sibling history keys, changed seed refused, Unicode/whitespace retained. Run `pnpm exec tsx --test artifacts/agentic-company-os/src/lib/project-preparation.test.ts` and observe RED.
+- [x] Implement helpers/copy and composer interface. In NewTaskForm restore current input first; an incoming seed with existing information shows Keep current draft / Use incoming brief. Empty healthy input may apply a valid seed once. A denied/corrupt store retains history and editable text with recovery-limit feedback. Only consume a matching seed after verified application or explicit Keep. Do not autoapply again on edits or locale reload.
+- [x] Disable fresh Start while a choice is unresolved; existing request inspection/open/retry retains its frozen scope. Apply explicit Use with finite/normal/3600, focus the title/brief, preserve later edits and matching clear rules.
+- [x] Expand retained browser cases for Keep/Use, before/after-choice reload, storage denial/corruption, old seed/new source metadata, pending start, late edits, no repeated prefill and keyboard focus; run actual GREEN. Run existing composer/skill/start state tests and project-start-recovery browser suite for regressions.
+- [x] Commit Task1 runtime/copy/tests/docs with `feat: preserve project drafts when preparing reusable work`. Record passed commands, failures, scope and BASE in ledger; later tasks remain incomplete.
 
 ### Task 2: Recover personal-guide editing and uncertain Save
 

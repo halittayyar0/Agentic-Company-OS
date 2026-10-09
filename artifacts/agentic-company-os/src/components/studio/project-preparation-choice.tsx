@@ -1,11 +1,96 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { LanguagePackStatus } from "@/components/i18n/language-pack-status";
 import { Button } from "@/components/ui/button";
 import { loadReusableWorkCopy } from "@/lib/reusable-work-copy";
-import type { ProjectPreparation } from "@/lib/project-preparation";
+import {
+  consumeProjectPreparation,
+  hasProjectDraftInput,
+  readProjectPreparation,
+  type ProjectPreparation,
+} from "@/lib/project-preparation";
+import type { useComposerDraft } from "@/hooks/use-composer-draft";
+import type { ProjectDraft } from "@/lib/project-start-request";
 
 export default function ProjectPreparationChoice({
+  draft,
+  titleRef,
+  briefRef,
+  onBlockedChange,
+}: {
+  draft: Pick<
+    ReturnType<typeof useComposerDraft<ProjectDraft>>,
+    "current" | "change" | "error" | "hasRestoredInput"
+  >;
+  titleRef: RefObject<HTMLInputElement | null>;
+  briefRef: RefObject<HTMLTextAreaElement | null>;
+  onBlockedChange: (blocked: boolean) => void;
+}) {
+  const [incoming, setIncoming] = useState(() =>
+    readProjectPreparation(window.history.state),
+  );
+  const [choiceError, setChoiceError] = useState(false);
+  function resolveIncoming(use: boolean) {
+    if (!incoming) return;
+    const saved =
+      !use ||
+      draft.change({
+        version: 1,
+        kind: "project",
+        title: incoming.title,
+        brief: incoming.brief,
+        priority: "normal",
+        autonomyMode: "finite",
+        cadenceSeconds: 3600,
+      });
+    const consumed =
+      saved && consumeProjectPreparation(incoming, window.history);
+    setChoiceError(!consumed);
+    if (consumed) {
+      setIncoming(null);
+      (use
+        ? titleRef
+        : draft.current.current.title
+          ? briefRef
+          : titleRef
+      ).current?.focus();
+    }
+  }
+  function reloadIncomingCopy() {
+    // A failed dynamic import can remain cached until this document reloads.
+    // Verify the current editable text before offering that recovery action.
+    if (!draft.change(draft.current.current)) {
+      setChoiceError(true);
+      return;
+    }
+    window.location.reload();
+  }
+  useEffect(() => onBlockedChange(!!incoming), [incoming, onBlockedChange]);
+  const attemptedPrefill = useRef(false);
+  useEffect(() => {
+    if (attemptedPrefill.current) return;
+    attemptedPrefill.current = true;
+    if (
+      incoming &&
+      !draft.error &&
+      !draft.hasRestoredInput &&
+      !hasProjectDraftInput(draft.current.current)
+    )
+      resolveIncoming(true);
+  }, []);
+  return incoming ? (
+    <IncomingChoice
+      incoming={incoming}
+      error={choiceError}
+      onKeep={() => resolveIncoming(false)}
+      onUse={() => resolveIncoming(true)}
+      onReload={reloadIncomingCopy}
+    />
+  ) : null;
+}
+
+function IncomingChoice({
   incoming,
   error,
   onKeep,

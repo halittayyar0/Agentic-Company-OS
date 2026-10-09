@@ -71,3 +71,5 @@ Specify typed handoff fields and one-time consumption order; distinguish source 
 - Model/agent limits remain the existing execution policy. The incoming draft defaults to finite/normal and does not inherit recurrence, owner permissions, old spend or approval. Any displayed costs must come from current authoritative data; unknown provider price/usage stays unknown. Do not invent a per-project budget selector or an estimated savings claim.
 
 These rulings require the adjacent implementation plan and RED/GREEN acceptance in this separate feature workspace. PR44 acceptance is a publication dependency, not a reason to stop independent local implementation. They are not completed features.
+
+Task1 implementation ruling: preparation resolves in its own lazy component; fresh Start remains blocked until it has checked incoming state. Late edits are read before automatic prefill. Source timestamps retain valid ISO offsets and calendar dates within64characters; oversized/malformed attribution is rejected, never truncated. Exact original and final acceptance scopes remain in the plan ledger.

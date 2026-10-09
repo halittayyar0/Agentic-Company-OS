@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -36,11 +36,6 @@ import {
   type ProjectCadence,
 } from "@/lib/new-project-copy";
 import { cn } from "@/lib/utils";
-import {
-  consumeProjectPreparation,
-  hasProjectDraftInput,
-  readProjectPreparation,
-} from "@/lib/project-preparation";
 import { useComposerDraft } from "@/hooks/use-composer-draft";
 import type { ComposerDraft } from "@/lib/composer-draft";
 import type {
@@ -167,10 +162,7 @@ function NewTaskForm({
   const taskStartBlocked = isScopeBlocked("task_scheduler");
   const activeAgents = agents ?? [];
 
-  const [incoming, setIncoming] = useState(() =>
-    readProjectPreparation(window.history.state),
-  );
-  const [choiceError, setChoiceError] = useState(false);
+  const [preparationBlocked, setPreparationBlocked] = useState(true);
   const draft = useComposerDraft<Extract<ComposerDraft, { kind: "project" }>>({
     version: 1,
     kind: "project",
@@ -194,53 +186,6 @@ function NewTaskForm({
   const [validationError, setValidationError] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
-  function resolveIncoming(use: boolean) {
-    if (!incoming) return;
-    const saved =
-      !use ||
-      draft.change({
-        version: 1,
-        kind: "project",
-        title: incoming.title,
-        brief: incoming.brief,
-        priority: "normal",
-        autonomyMode: "finite",
-        cadenceSeconds: 3600,
-      });
-    const consumed =
-      saved && consumeProjectPreparation(incoming, window.history);
-    setChoiceError(!consumed);
-    if (consumed) {
-      setIncoming(null);
-      (use
-        ? titleRef
-        : draft.current.current.title
-          ? briefRef
-          : titleRef
-      ).current?.focus();
-    }
-  }
-  function reloadIncomingCopy() {
-    // A failed dynamic import can remain cached until this document reloads.
-    // Verify the current editable text before offering that recovery action.
-    if (!draft.change(draft.current.current)) {
-      setChoiceError(true);
-      return;
-    }
-    window.location.reload();
-  }
-  const attemptedPrefill = useRef(false);
-  useEffect(() => {
-    if (attemptedPrefill.current) return;
-    attemptedPrefill.current = true;
-    if (
-      incoming &&
-      !draft.error &&
-      !draft.hasRestoredInput &&
-      !hasProjectDraftInput(draft.current.current)
-    )
-      resolveIncoming(true);
-  }, []);
   const startRequest = useRef<ProjectStartHandle>(null);
   const [startState, setStartState] = useState<ProjectStartState>({
     ready: false,
@@ -252,7 +197,7 @@ function NewTaskForm({
     event.preventDefault();
     if (
       taskStartBlocked ||
-      incoming ||
+      preparationBlocked ||
       !startState.ready ||
       startState.busy ||
       startState.pending
@@ -346,17 +291,14 @@ function NewTaskForm({
         noValidate
         className="mx-auto mt-8 max-w-3xl"
       >
-        {incoming && (
-          <Suspense fallback={null}>
-            <ProjectPreparationChoice
-              incoming={incoming}
-              error={choiceError}
-              onKeep={() => resolveIncoming(false)}
-              onUse={() => resolveIncoming(true)}
-              onReload={reloadIncomingCopy}
-            />
-          </Suspense>
-        )}
+        <Suspense fallback={null}>
+          <ProjectPreparationChoice
+            draft={draft}
+            titleRef={titleRef}
+            briefRef={briefRef}
+            onBlockedChange={setPreparationBlocked}
+          />
+        </Suspense>
         {draft.error && (
           <p role="alert" className="mb-3 break-words text-sm leading-6">
             {copy.draftStorageError}
@@ -513,7 +455,7 @@ function NewTaskForm({
               <button
                 type="submit"
                 disabled={
-                  !!incoming ||
+                  preparationBlocked ||
                   !startState.ready ||
                   !!startState.busy ||
                   startState.pending ||
