@@ -3125,7 +3125,14 @@ export interface ProjectMeetingCompleteInput {
   actionItems?: ProjectMeetingActionItemFields[];
 }
 
+/**
+ * Saved caller request identity; matching retries never create another project. Omission retains legacy creation without recovery.
+ * @pattern ^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-8][a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$
+ */
+export type TaskCreationRequestId = string;
+
 export interface TaskInput {
+  requestId?: TaskCreationRequestId;
   /**
      * @minLength 1
      * @maxLength 300
@@ -3146,6 +3153,36 @@ export interface TaskInput {
      * @maximum 604800
      */
   cadenceSeconds?: number;
+}
+
+export type TaskCreationReceiptState = typeof TaskCreationReceiptState[keyof typeof TaskCreationReceiptState];
+
+
+export const TaskCreationReceiptState = {
+  created: 'created',
+  rejected: 'rejected',
+} as const;
+
+export type TaskCreationReceiptFailureCode = typeof TaskCreationReceiptFailureCode[keyof typeof TaskCreationReceiptFailureCode] | null;
+
+
+export const TaskCreationReceiptFailureCode = {
+  EMERGENCY_STOP_ACTIVE: 'EMERGENCY_STOP_ACTIVE',
+  AGENT_UNAVAILABLE: 'AGENT_UNAVAILABLE',
+  RUNTIME_CAPACITY_EXCEEDED: 'RUNTIME_CAPACITY_EXCEEDED',
+  EXECUTION_POLICY_DENIED: 'EXECUTION_POLICY_DENIED',
+} as const;
+
+export interface TaskCreationReceipt {
+  requestId: TaskCreationRequestId;
+  state: TaskCreationReceiptState;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  taskId: number | null;
+  failureCode: TaskCreationReceiptFailureCode;
+  createdAt: string;
 }
 
 export type ProjectMemberRole = typeof ProjectMemberRole[keyof typeof ProjectMemberRole];
