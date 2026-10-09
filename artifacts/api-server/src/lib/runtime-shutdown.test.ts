@@ -138,14 +138,7 @@ test("the explicit drain deadline closes a real browser session after, never bef
     },
     100,
   );
-
-  await new Promise<void>((resolve) => setImmediate(resolve));
-  assert.equal(
-    (await inspectBrowserSession(agentId)).active,
-    true,
-    "the in-flight browser step must retain its real session before deadline",
-  );
-  await assert.rejects(
+  const deadlineFailure = assert.rejects(
     draining,
     (error) =>
       error instanceof AggregateError &&
@@ -153,6 +146,18 @@ test("the explicit drain deadline closes a real browser session after, never bef
         /shutdown deadline exceeded/iu.test(String(failure)),
       ),
   );
+  // A real browser title lookup can outlast the deadline on a busy runner.
+  // Observe both promises before yielding; the final await still checks the
+  // original rejection rather than hiding an unexpected drain outcome.
+  void deadlineFailure.catch(() => undefined);
+
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(
+    (await inspectBrowserSession(agentId)).active,
+    true,
+    "the in-flight browser step must retain its real session before deadline",
+  );
+  await deadlineFailure;
   assert.equal((await inspectBrowserSession(agentId)).active, false);
   activeBrowserStep.resolve();
 });
