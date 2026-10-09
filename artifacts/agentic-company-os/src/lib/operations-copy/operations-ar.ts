@@ -1,5 +1,10 @@
 import type { OperationsCopy } from "../operations-copy";
 const copy = {
+  tokensAtLeast: "{count} على الأقل",
+  tokenUsageUnknown: "استخدام الرموز غير معروف",
+  tokenCoveragePartial:
+    "لم تُبلّغ بعض الاستدعاءات عن استخدام الرموز؛ الإجماليات تمثل الحد الأدنى المعروف.",
+  noRecordedUsage: "لا توجد سجلات استخدام خلال هذه الفترة.",
   recoveryTitle: "قرار التسوية المحفوظ يحتاج إلى مراجعة",
   recoveryHelp:
     "تحتفظ علامة التبويب هذه بقرار واحد غير محسوم لهذا المشروع، حتى خارج نطاق السجل. إعادة تحميلها تحفظه؛ إغلاقها أو تغيير الجهاز قد لا يحفظه.",

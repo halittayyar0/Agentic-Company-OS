@@ -15,6 +15,7 @@ import {
   TaskSpendBudgetError,
 } from "./task-spend-admission";
 import { runJudge } from "./judge";
+import { readFamilySpendAdmission } from "./family-spend-admission";
 
 const localLimits = {
   maxSteps: null,
@@ -115,7 +116,7 @@ test("delegated inference shares one durable family budget", async (t) => {
     return { root, child, grandchild };
   }
   async function receipt(
-    taskId: number,
+    taskId: number | null,
     tokens: number,
     cost: string | null = null,
     createdAt = new Date(),
@@ -129,6 +130,7 @@ test("delegated inference shares one durable family budget", async (t) => {
       provider: "fixture",
       totalTokens: tokens,
       reportedCostUsd: cost,
+      usageReported: true,
       createdAt,
     });
   }
@@ -275,7 +277,7 @@ test("delegated inference shares one durable family budget", async (t) => {
   );
 
   await t.test(
-    "expired daily receipts and operator chat do not consume a task-family budget",
+    "expired daily receipts and taskless operator chat do not consume a task-family budget",
     async () => {
       limits(100, 100, 100);
       const f = await family(true);
@@ -290,7 +292,7 @@ test("delegated inference shares one durable family budget", async (t) => {
         "99",
         new Date(now.getTime() - 86_400_001),
       );
-      await receipt(f.child.id, 1000, "99", now, "chat");
+      await receipt(null, 1000, "99", now, "chat");
       assert.equal(
         (await readTaskSpendAdmission(f.root, localLimits, "en", now)).reason,
         null,
@@ -425,6 +427,33 @@ test("delegated inference shares one durable family budget", async (t) => {
         readTaskSpendAdmission(f.child, localLimits, "en"),
         /rooted task family/i,
       );
+    },
+  );
+
+  await t.test(
+    "family token reporting is independent of legacy missing-price evidence",
+    async () => {
+      limits(1000, 100);
+      const f = await family();
+      await db
+        .update(tasksTable)
+        .set({ estimatedCostUsd: "5" })
+        .where(eq(tasksTable.id, f.root.id));
+      await db.insert(usageEventsTable).values({
+        agentId: agent.id,
+        taskId: f.child.id,
+        kind: "task_step",
+        modelId: "fixture",
+        provider: "fixture",
+        totalTokens: 10,
+        usageReported: true,
+        reportedCostUsd: null,
+      });
+      const result = await readFamilySpendAdmission(f.root.id, "en");
+      assert.equal(result.tokenUsageCoverage, "complete");
+      assert.equal(result.tokenReportedEvents, 1);
+      assert.equal(result.tokenUnreportedEvents, 0);
+      assert.notEqual(result.costCoverage, "complete");
     },
   );
 });

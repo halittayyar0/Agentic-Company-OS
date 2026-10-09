@@ -35,6 +35,7 @@ export interface InstallationInput {
   provider: (typeof PROVIDERS)[number];
   phoneAccess: (typeof PHONE_ACCESS)[number];
   toolPacks: readonly (typeof TOOL_PACKS)[number][];
+  codingRuntime?: boolean;
   customPermissions?: Readonly<{
     files: boolean;
     terminal: boolean;
@@ -85,9 +86,15 @@ export function validateInstallationInput(value: unknown): InstallationInput {
     "phoneAccess",
     "toolPacks",
     "customPermissions",
+    "codingRuntime",
   ]);
   if (Object.keys(input).some((key) => !keys.has(key)))
     throw new TypeError("Unknown installation setting");
+  if (
+    input.codingRuntime !== undefined &&
+    typeof input.codingRuntime !== "boolean"
+  )
+    throw new TypeError("Invalid coding runtime selection");
   if (
     typeof input.port !== "number" ||
     !Number.isInteger(input.port) ||
@@ -129,6 +136,9 @@ export function validateInstallationInput(value: unknown): InstallationInput {
     provider: option(input.provider, PROVIDERS, "provider"),
     phoneAccess: option(input.phoneAccess, PHONE_ACCESS, "phone access"),
     port: input.port,
+    ...(input.codingRuntime !== undefined
+      ? { codingRuntime: input.codingRuntime }
+      : {}),
     ...(customPermissions ? { customPermissions } : {}),
     toolPacks: [
       ...new Set(
@@ -143,6 +153,18 @@ export function planInstallation(
   capabilities: InstallCapabilities,
 ): InstallationPlan {
   const settings = validateInstallationInput(value);
+  if (
+    settings.codingRuntime &&
+    (settings.mode !== "container" ||
+      !capabilities.coding?.ready ||
+      capabilities.coding.apparmor !== true ||
+      settings.accessMode === "read_only" ||
+      (settings.accessMode === "custom" &&
+        settings.customPermissions?.terminal !== true))
+  )
+    throw new Error(
+      `coding_runtime_unavailable: ${capabilities.coding?.issues.join(", ") || "container_and_terminal_permission_required"}`,
+    );
   if (settings.phoneAccess === "private_network" && !capabilities.phone?.ready)
     throw new Error(
       "Private phone access requires a connected Tailscale installation",

@@ -5,6 +5,396 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+export type InferenceAccountingSnapshotScopeType = typeof InferenceAccountingSnapshotScopeType[keyof typeof InferenceAccountingSnapshotScopeType];
+
+
+export const InferenceAccountingSnapshotScopeType = {
+  task: 'task',
+  agent: 'agent',
+} as const;
+
+export type InferenceAccountingSnapshotStatus = typeof InferenceAccountingSnapshotStatus[keyof typeof InferenceAccountingSnapshotStatus];
+
+
+export const InferenceAccountingSnapshotStatus = {
+  clear: 'clear',
+  pending: 'pending',
+  recovery_required: 'recovery_required',
+} as const;
+
+export type InferenceAccountingAttemptKind = typeof InferenceAccountingAttemptKind[keyof typeof InferenceAccountingAttemptKind];
+
+
+export const InferenceAccountingAttemptKind = {
+  chat: 'chat',
+  task_step: 'task_step',
+  judge: 'judge',
+} as const;
+
+export type InferenceAccountingAttemptState = typeof InferenceAccountingAttemptState[keyof typeof InferenceAccountingAttemptState];
+
+
+export const InferenceAccountingAttemptState = {
+  reserved: 'reserved',
+  dispatched: 'dispatched',
+  uncertain: 'uncertain',
+  accounted: 'accounted',
+  not_dispatched: 'not_dispatched',
+} as const;
+
+export interface InferenceAccountingUsage {
+  /** @minimum 0 */
+  promptTokens: number;
+  /** @minimum 0 */
+  completionTokens: number;
+  /** @minimum 0 */
+  totalTokens: number;
+  usageReported: boolean;
+  /**
+     * @nullable
+     * @pattern ^\d+(\.\d+)?$
+     */
+  reportedCostUsd: string | null;
+}
+
+export interface InferenceAccountingAttempt {
+  id: string;
+  /** @minimum 1 */
+  agentId: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  taskId: number | null;
+  /** @maxLength 256 */
+  modelId: string;
+  /** @maxLength 32 */
+  provider: string;
+  kind: InferenceAccountingAttemptKind;
+  state: InferenceAccountingAttemptState;
+  /** @minimum 0 */
+  createdAt: number;
+  /** @minimum 0 */
+  requestDeadlineAt: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  dispatchedAt: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  settledAt: number | null;
+  usage: InferenceAccountingUsage | null;
+}
+
+export interface InferenceAccountingSnapshot {
+  scopeType: InferenceAccountingSnapshotScopeType;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  scopeId: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  rootTaskId: number | null;
+  status: InferenceAccountingSnapshotStatus;
+  /** @minimum 0 */
+  observedAt: number;
+  /** @minimum 0 */
+  unsettledCount: number;
+  hasMore: boolean;
+  /** @maxItems 20 */
+  attempts: InferenceAccountingAttempt[];
+}
+
+export interface ChatGPTExpectedRevision {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  expectedRevision: number;
+}
+
+/**
+ * @nullable
+ */
+export type ChatGPTPlanPauseCode = typeof ChatGPTPlanPauseCode[keyof typeof ChatGPTPlanPauseCode] | null;
+
+
+export const ChatGPTPlanPauseCode = {
+  subscription_sharing_usage_limit_exceeded: 'subscription_sharing_usage_limit_exceeded',
+  rate_limit_exceeded: 'rate_limit_exceeded',
+} as const;
+
+export interface ChatGPTPlanPause {
+  id: string;
+  /** @nullable */
+  code: ChatGPTPlanPauseCode;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  pausedAt: number;
+  /**
+     * Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown
+     * @minimum 1
+     * @maximum 9007199254740991
+     * @nullable
+     */
+  retryAt: number | null;
+}
+
+export interface ChatGPTAccount {
+  id: string;
+  /** @maxLength 512 */
+  accountId: string;
+  /** @maxLength 512 */
+  email?: string;
+  /** @maxLength 512 */
+  displayName?: string;
+  /** @minimum 1 */
+  revision: number;
+  signedIn: boolean;
+  /** Granted permission only; does not imply a tested inference request or available quota */
+  canUsePlan: boolean;
+  /**
+     * Access token expiry in Unix milliseconds
+     * @nullable
+     */
+  expiresAt: number | null;
+  planPause?: ChatGPTPlanPause;
+}
+
+export interface CodexSessionRecoveryInput {
+  requestId: string;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  expectedRevision: number;
+  acknowledgeUncertainEffects: true;
+}
+
+export type CodexSessionRecoveryReason = typeof CodexSessionRecoveryReason[keyof typeof CodexSessionRecoveryReason];
+
+
+export const CodexSessionRecoveryReason = {
+  task_missing: 'task_missing',
+  session_missing: 'session_missing',
+  revision_changed: 'revision_changed',
+  revision_exhausted: 'revision_exhausted',
+  task_active: 'task_active',
+  session_running: 'session_running',
+  cleanup_unknown: 'cleanup_unknown',
+  native_pending: 'native_pending',
+  already_reset: 'already_reset',
+} as const;
+
+export type CodexSessionRecoveryStatusSessionState = typeof CodexSessionRecoveryStatusSessionState[keyof typeof CodexSessionRecoveryStatusSessionState];
+
+
+export const CodexSessionRecoveryStatusSessionState = {
+  none: 'none',
+  running: 'running',
+  ready: 'ready',
+  uncertain: 'uncertain',
+  reset: 'reset',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CodexSessionRecoveryStatusCleanupState = typeof CodexSessionRecoveryStatusCleanupState[keyof typeof CodexSessionRecoveryStatusCleanupState] | null;
+
+
+export const CodexSessionRecoveryStatusCleanupState = {
+  unknown: 'unknown',
+  not_launched: 'not_launched',
+  verified: 'verified',
+} as const;
+
+export interface CodexSessionRecoveryStatus {
+  /** @minimum 1 */
+  taskId: number;
+  sessionState: CodexSessionRecoveryStatusSessionState;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     * @nullable
+     */
+  revision: number | null;
+  /** @nullable */
+  cleanupState: CodexSessionRecoveryStatusCleanupState;
+  canReset: boolean;
+  reason: CodexSessionRecoveryReason | null;
+  requiresRevalidation: true;
+}
+
+export type CodexSessionRecoveryReceiptOutcome = typeof CodexSessionRecoveryReceiptOutcome[keyof typeof CodexSessionRecoveryReceiptOutcome];
+
+
+export const CodexSessionRecoveryReceiptOutcome = {
+  accepted: 'accepted',
+  rejected: 'rejected',
+} as const;
+
+export interface CodexSessionRecoveryReceipt {
+  requestId: string;
+  /** @minimum 1 */
+  taskId: number;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  expectedRevision: number;
+  outcome: CodexSessionRecoveryReceiptOutcome;
+  reason: CodexSessionRecoveryReason | null;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     * @nullable
+     */
+  revision: number | null;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  recordedAt: number;
+  taskResumed: false;
+  effectsReconciled: false;
+}
+
+export type CodexTaskStatusState = typeof CodexTaskStatusState[keyof typeof CodexTaskStatusState];
+
+
+export const CodexTaskStatusState = {
+  no_worker: 'no_worker',
+  unknown: 'unknown',
+  unavailable: 'unavailable',
+  preflight_required: 'preflight_required',
+} as const;
+
+export type CodexTaskStatusProofScope = typeof CodexTaskStatusProofScope[keyof typeof CodexTaskStatusProofScope];
+
+
+export const CodexTaskStatusProofScope = {
+  worker_configuration: 'worker_configuration',
+} as const;
+
+export type CodexWorkerConfigurationRole = typeof CodexWorkerConfigurationRole[keyof typeof CodexWorkerConfigurationRole];
+
+
+export const CodexWorkerConfigurationRole = {
+  worker: 'worker',
+  combined: 'combined',
+} as const;
+
+export type CodexWorkerConfigurationConfigurationState = typeof CodexWorkerConfigurationConfigurationState[keyof typeof CodexWorkerConfigurationConfigurationState];
+
+
+export const CodexWorkerConfigurationConfigurationState = {
+  disabled: 'disabled',
+  configuration_required: 'configuration_required',
+  unsupported_platform: 'unsupported_platform',
+  preflight_required: 'preflight_required',
+  not_reported: 'not_reported',
+} as const;
+
+export interface CodexWorkerConfiguration {
+  runtimeInstanceId: string;
+  role: CodexWorkerConfigurationRole;
+  configurationState: CodexWorkerConfigurationConfigurationState;
+  /**
+     * Startup configuration observation, not a successful native coding check
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  configurationAt: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  heartbeatAt: number;
+  /**
+     * This heartbeat observation must not be treated as fresh after this time
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  staleAt: number;
+}
+
+export interface CodexTaskStatus {
+  state: CodexTaskStatusState;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  sampledAt: number;
+  /** Some workers are omitted; absence from this list cannot establish fleet-wide unavailability */
+  truncated: boolean;
+  proofScope: CodexTaskStatusProofScope;
+  requiresTaskPreflight: true;
+  /** @maxItems 128 */
+  workers: CodexWorkerConfiguration[];
+}
+
+export interface ChatGPTConnection {
+  /** @maxItems 64 */
+  registrations: ChatGPTAccount[];
+  /** @nullable */
+  activeRegistrationId: string | null;
+}
+
+export interface ChatGPTSignInStart {
+  attemptId: string;
+  /** Official one-time authorization URL. May contain an ID-token hint; never log, persist or send to analytics. */
+  authorizeUrl: string;
+  expiresAt: number;
+}
+
+export type ChatGPTSignInStatusState = typeof ChatGPTSignInStatusState[keyof typeof ChatGPTSignInStatusState];
+
+
+export const ChatGPTSignInStatusState = {
+  pending: 'pending',
+  exchanging: 'exchanging',
+  review: 'review',
+  confirming: 'confirming',
+  connected: 'connected',
+  denied: 'denied',
+  cancelled: 'cancelled',
+  expired: 'expired',
+  failed: 'failed',
+} as const;
+
+export type ChatGPTSignInStatusFailureKind = typeof ChatGPTSignInStatusFailureKind[keyof typeof ChatGPTSignInStatusFailureKind];
+
+
+export const ChatGPTSignInStatusFailureKind = {
+  temporary: 'temporary',
+  client_missing: 'client_missing',
+  client_mismatch: 'client_mismatch',
+  identity_invalid: 'identity_invalid',
+  token_invalid: 'token_invalid',
+  invalid_grant: 'invalid_grant',
+  invalid_client: 'invalid_client',
+  authorization_failed: 'authorization_failed',
+} as const;
+
+export interface ChatGPTSignInStatus {
+  attemptId: string;
+  state: ChatGPTSignInStatusState;
+  expiresAt: number;
+  /** @minimum 0 */
+  expectedRevision?: number;
+  proposedAccount?: ChatGPTAccount;
+  failureKind?: ChatGPTSignInStatusFailureKind;
+}
+
 export type SourceChangeState = typeof SourceChangeState[keyof typeof SourceChangeState];
 
 
@@ -411,6 +801,15 @@ export interface DirectOpenAISettings {
   baseUrl: DirectOpenAISettingsBaseUrl;
 }
 
+export type OllamaSettingsAddressSource = typeof OllamaSettingsAddressSource[keyof typeof OllamaSettingsAddressSource];
+
+
+export const OllamaSettingsAddressSource = {
+  runtime: 'runtime',
+  environment: 'environment',
+  none: 'none',
+} as const;
+
 /**
  * @nullable
  */
@@ -430,6 +829,8 @@ export interface OllamaSettings {
      * @nullable
      */
   baseUrl: string | null;
+  hasAddressInEnv: boolean;
+  addressSource: OllamaSettingsAddressSource;
   /** @minimum 0 */
   modelCount: number;
   /** @minimum 0 */
@@ -460,6 +861,7 @@ export const ModelProviderId = {
   openrouter: 'openrouter',
   openai: 'openai',
   ollama: 'ollama',
+  chatgpt: 'chatgpt',
 } as const;
 
 export interface ModelCatalogProvider {
@@ -525,6 +927,12 @@ export interface UpdateLlmSettingsInput {
      * @nullable
      */
   openaiApiKey?: string | null;
+  /**
+     * Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.
+     * @maxLength 2048
+     * @nullable
+     */
+  ollamaBaseUrl?: string | null;
 }
 
 export interface UpdateLlmSettingsResult {
@@ -823,6 +1231,19 @@ export interface OperationsReceiptCounts {
   unresolvedUnknown: number;
 }
 
+/**
+ * Token totals are lower bounds unless every call has reported usage.
+ */
+export type TokenUsageCoverage = typeof TokenUsageCoverage[keyof typeof TokenUsageCoverage];
+
+
+export const TokenUsageCoverage = {
+  no_usage: 'no_usage',
+  complete: 'complete',
+  partial: 'partial',
+  unknown: 'unknown',
+} as const;
+
 export interface OperationsUsageSummary {
   /** @minimum 0 */
   taskTokens: number;
@@ -832,6 +1253,11 @@ export interface OperationsUsageSummary {
   usageEvents: number;
   /** @minimum 0 */
   costReportedEvents: number;
+  /** @minimum 0 */
+  tokenReportedEvents?: number;
+  /** @minimum 0 */
+  tokenUnreportedEvents?: number;
+  tokenUsageCoverage?: TokenUsageCoverage;
   providerMetricsCoverage: OperationsProviderMetricsCoverage;
 }
 
@@ -1831,7 +2257,7 @@ export interface AgentMessageResponse {
      */
   usedModel?: string | null;
   /**
-     * Provider that served this turn (replit, openrouter, openai, or ollama).
+     * Provider that served this turn (replit, openrouter, openai, ollama, or chatgpt).
      * @nullable
      */
   usedProvider?: string | null;
@@ -3005,6 +3431,11 @@ export interface OrgSummary {
   estimatedCostTodayUsd: number;
   usageEventsToday: number;
   costReportedEventsToday: number;
+  /** @minimum 0 */
+  tokenReportedEventsToday?: number;
+  /** @minimum 0 */
+  tokenUnreportedEventsToday?: number;
+  tokenUsageCoverageToday?: TokenUsageCoverage;
 }
 
 export type VmEntryType = typeof VmEntryType[keyof typeof VmEntryType];
@@ -3508,6 +3939,53 @@ export type PageLimitParameter = number;
  * Return rows with an id lower than this cursor.
  */
 export type BeforeIdParameter = number;
+
+export type GetInferenceAccountingStatusParams = {
+scopeType: GetInferenceAccountingStatusScopeType;
+/**
+ * @minimum 1
+ * @maximum 2147483647
+ */
+scopeId: number;
+};
+
+export type GetInferenceAccountingStatusScopeType = typeof GetInferenceAccountingStatusScopeType[keyof typeof GetInferenceAccountingStatusScopeType];
+
+
+export const GetInferenceAccountingStatusScopeType = {
+  task: 'task',
+  agent: 'agent',
+} as const;
+
+export type BeginChatGPTSignInBodyCallbackLocation = typeof BeginChatGPTSignInBodyCallbackLocation[keyof typeof BeginChatGPTSignInBodyCallbackLocation];
+
+
+export const BeginChatGPTSignInBodyCallbackLocation = {
+  'same-computer': 'same-computer',
+} as const;
+
+export type BeginChatGPTSignInBody = {
+  callbackLocation: BeginChatGPTSignInBodyCallbackLocation;
+  registrationId?: string;
+  retryAttemptId?: string;
+  /** Explicitly request fresh plan consent for a selected saved account or retry; ordinary sign-in never forces consent */
+  requestPlanPermission?: boolean;
+};
+
+export type RetryChatGPTPlanBody = {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  expectedRevision: number;
+  pauseId: string;
+};
+
+export type SignOutChatGPTAccount200 = {
+  localSignedOut: true;
+  /** @nullable */
+  revocationConfirmed: boolean | null;
+};
 
 export type PrepareSourceChangeBody = {
   id: string;

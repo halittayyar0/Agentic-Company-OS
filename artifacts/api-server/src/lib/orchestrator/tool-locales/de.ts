@@ -1,6 +1,12 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolDe: ToolCopy = {
+  inferenceAccountingPending:
+    "Für einen Modellaufruf fehlt noch der Nutzungsbeleg ({id}). Weitere Modellaufrufe für diese Arbeit warten, bis die Abrechnung abgeschlossen ist.",
+  inferenceAccountingRecovery:
+    "Der Nutzungsbeleg für Aufruf {id} fehlt oder ist unvollständig. Weitere Modellaufrufe für diese Arbeit sind angehalten, um unkontrollierte Ausgaben zu verhindern. Prüfen Sie die Details zur Wiederherstellung der Abrechnung.",
+  inferenceAccountingReady:
+    "Der Nutzungsbeleg für Aufruf {id} ist vollständig. Diese Aufgabe wird automatisch fortgesetzt.",
   budgetFamilyResumed:
     "Nutzungslimit geprüft; {count} Aufgaben erneut eingereiht.",
   schedulerClaimed: "Aufgabe übernommen",
@@ -17,6 +23,8 @@ export const toolDe: ToolCopy = {
     "Die Zuständigkeit für die unterbrochene Arbeit wurde freigegeben; die Aufgabe wurde erneut eingereiht.",
   schedulerStepBudget: "Schrittlimit des Betreibers erreicht ({used}/{limit}).",
   schedulerTokenBudget: "Tokenbudget erreicht ({used}/{limit}).",
+  schedulerUnreportedTokenUsage:
+    "Der Tokenverbrauch für diesen Auftrag wurde nicht vollständig gemeldet. Weitere Modellaufrufe sind angehalten, damit keine ungemessenen Kosten entstehen. Prüfen Sie die protokollierten Aufrufe; starten Sie zum Fortfahren einen neuen Auftrag mit einem Anbieter, der den Tokenverbrauch meldet. Die bisherigen Aufzeichnungen bleiben erhalten.",
   schedulerCostBudget:
     "Vom Anbieter gemeldetes Kostenbudget erreicht (${used}/{limit}).",
   schedulerFamilyTokenBudget:

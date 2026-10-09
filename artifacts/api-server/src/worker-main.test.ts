@@ -160,7 +160,17 @@ test("worker registers scheduler-only capability and drains owned runtime resour
         assert.deepEqual(input, {
           role: "worker",
           schedulerEnabled: true,
-          capabilities: { http: false, scheduler: true },
+          capabilities: {
+            http: false,
+            scheduler: true,
+            codexConfigurationV1: true,
+            codexOptIn: false,
+            codexNonApi: true,
+            codexProcessExecution: false,
+            codexExecutableConfigured: false,
+            codexNativeController:
+              process.platform === "win32" || process.platform === "linux",
+          },
         });
         assert.equal(config, operationsConfig);
         events.push("runtime-registered");

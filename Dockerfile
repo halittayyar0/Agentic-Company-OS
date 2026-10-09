@@ -1,3 +1,31 @@
+FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS compiler
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libc6-dev meson ninja-build pkg-config libcap-dev python3 \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /source
+COPY deploy/codex-attribution/bubblewrap-source.tar.gz /source/
+COPY scripts/src/testing/vendor-proc/prepare-source.py /source/
+COPY scripts/src/testing/vendor-proc/command-filter.c /source/
+COPY scripts/src/testing/vendor-proc/proc-info-guard.c scripts/src/testing/vendor-proc/proc-info-guard-test.c /source/
+COPY deploy/coding-helpers.json /source/helpers-expected.json
+RUN gcc -Wall -Wextra -Werror /source/proc-info-guard-test.c -o /source/proc-info-guard-test \
+    && /source/proc-info-guard-test \
+    && python3 /source/prepare-source.py \
+    && python3 -c 'import json; expected=json.load(open("/source/helpers-expected.json")); actual=json.load(open("/source/provenance.json")); fields=["archiveSha256","changedSourceSha256","filteredSourceSha256","commandFilterSha256","procInformationGuardSha256"]; assert all(actual[key]==expected[key] for key in fields)' \
+    && (meson setup /source/build-red /source/tree/bubblewrap --buildtype=release -Dtests=false -Dsupport_setuid=false -Dselinux=disabled -Dman=disabled -Dbash_completion=disabled -Dzsh_completion=disabled || { cat /source/build-red/meson-logs/meson-log.txt; exit 1; }) \
+    && ninja -C /source/build-red \
+    && cp /source/tree/bubblewrap.c.modified /source/tree/bubblewrap/bubblewrap.c \
+    && (meson setup /source/build-green /source/tree/bubblewrap --buildtype=release -Dtests=false -Dsupport_setuid=false -Dselinux=disabled -Dman=disabled -Dbash_completion=disabled -Dzsh_completion=disabled || { cat /source/build-green/meson-logs/meson-log.txt; exit 1; }) \
+    && ninja -C /source/build-green \
+    && cp /source/tree/bubblewrap.c.filtered /source/tree/bubblewrap/bubblewrap.c \
+    && (meson setup /source/build-filtered /source/tree/bubblewrap --buildtype=release -Dtests=false -Dsupport_setuid=false -Dselinux=disabled -Dman=disabled -Dbash_completion=disabled -Dzsh_completion=disabled || { cat /source/build-filtered/meson-logs/meson-log.txt; exit 1; }) \
+    && ninja -C /source/build-filtered \
+    && sha256sum /source/build-red/bwrap /source/build-green/bwrap /source/build-filtered/bwrap > /source/binary-sha256.txt \
+    && gcc --version > /source/compiler-version.txt \
+    && dpkg-query -W gcc libc6-dev libcap-dev libcap2 meson ninja-build pkg-config python3 > /source/build-packages.txt
+
+
 FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS build
 
 WORKDIR /app
@@ -31,7 +59,7 @@ WORKDIR /app
 COPY --from=build --chown=node:node /prod/api/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/package.json /app/pnpm-workspace.yaml ./
 COPY --from=build --chown=node:node /app/artifacts/api-server/package.json ./artifacts/api-server/package.json
-COPY --from=build --chown=node:node /app/artifacts/api-server/start.mjs /app/artifacts/api-server/start-worker.mjs /app/artifacts/api-server/load-workspace-env.mjs /app/artifacts/api-server/load-secret-env.mjs ./artifacts/api-server/
+COPY --from=build --chown=node:node /app/artifacts/api-server/start.mjs /app/artifacts/api-server/start-worker.mjs /app/artifacts/api-server/start-chatgpt.mjs /app/artifacts/api-server/load-workspace-env.mjs /app/artifacts/api-server/load-secret-env.mjs ./artifacts/api-server/
 COPY --from=build --chown=node:node /app/artifacts/api-server/dist ./artifacts/api-server/dist
 COPY --from=build --chown=node:node /app/artifacts/agentic-company-os/dist/public ./ui
 
@@ -51,6 +79,32 @@ HEALTHCHECK --interval=15s --timeout=3s --start-period=30s --retries=3 \
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "artifacts/api-server/start.mjs"]
+
+# Explicit optional x64 coding image. Ordinary builds keep the smaller runtime
+# and the native capability disabled. Archive scripts/authentication never run.
+FROM runtime AS coding-runtime
+
+USER root
+COPY scripts/src/testing/install-codex-linux-fixture.py /tmp/install-codex-linux.py
+COPY deploy/codex-attribution /usr/share/doc/agentic-codex
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 libcap2 \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3 /tmp/install-codex-linux.py --image-runtime \
+    && install -o root -g root -m 0555 /opt/agentic-codex/codex-resources/bwrap /usr/bin/bwrap \
+    && rm /tmp/install-codex-linux.py
+COPY --from=compiler --chmod=0555 /source/build-green/bwrap /usr/bin/bwrap
+COPY --from=compiler --chmod=0555 /source/build-filtered/bwrap /opt/agentic-inner/bwrap
+COPY --from=compiler /source/provenance.json /source/binary-sha256.txt /source/compiler-version.txt /source/build-packages.txt /usr/share/doc/acos-proc-vendor-probe/
+COPY deploy/coding-helpers.json /usr/share/doc/acos-proc-vendor-probe/helpers.json
+COPY deploy/agentic-coding.apparmor /usr/share/doc/acos-proc-vendor-probe/agentic-coding.apparmor
+COPY scripts/src/testing/vendor-proc/prepare-source.py scripts/src/testing/vendor-proc/command-filter.c scripts/src/testing/vendor-proc/proc-info-guard.c /usr/share/doc/acos-proc-vendor-probe/
+COPY scripts/src/testing/vendor-proc/proc-info-guard-test.c /usr/share/doc/acos-proc-vendor-probe/
+RUN chmod 0444 /usr/share/doc/acos-proc-vendor-probe/helpers.json \
+    && echo 'd614afff26b5f4f2250f432876399dc95ed2e8c04dbf6dbece3a067d9c7cacb7  /usr/bin/bwrap' | sha256sum --check --strict \
+    && echo '9f5789651eb95860fe3242745513a177029983e7a208854529ae7dc23aaf0eb9  /opt/agentic-inner/bwrap' | sha256sum --check --strict
+ENV ACOS_CODEX_EXECUTABLE=/opt/agentic-codex/bin/codex
+USER node
 
 # Synthetic endurance execution is deliberately unavailable in the ordinary
 # production image. The dedicated target carries a root-owned, immutable build

@@ -118,6 +118,7 @@ async function probeBudget(t: TestContext, shared: boolean) {
     {
       runtimeOperationsConfig: config,
       createCompletion: async (params) => {
+        await params.beforeRequest?.();
         calls++;
         return {
           provider: "replit",

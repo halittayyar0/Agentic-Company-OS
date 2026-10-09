@@ -5,6 +5,7 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+import type { TokenUsageCoverage } from './tokenUsageCoverage';
 
 export interface OrgSummary {
   totalAgents: number;
@@ -18,4 +19,9 @@ export interface OrgSummary {
   estimatedCostTodayUsd: number;
   usageEventsToday: number;
   costReportedEventsToday: number;
+  /** @minimum 0 */
+  tokenReportedEventsToday?: number;
+  /** @minimum 0 */
+  tokenUnreportedEventsToday?: number;
+  tokenUsageCoverageToday?: TokenUsageCoverage;
 }

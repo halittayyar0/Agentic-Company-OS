@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod/v4-mini";
@@ -29,6 +29,8 @@ import { cn } from "@/lib/utils";
 import type { HomeCopy, HomeMode } from "@/lib/home-copy";
 import type { Locale } from "@/lib/i18n";
 import { composeProjectBrief } from "@/lib/project-brief";
+import { useComposerDraft } from "@/hooks/use-composer-draft";
+import type { ComposerDraft } from "@/lib/composer-draft";
 
 const ProviderSetupNotice = lazy(() => import("./provider-setup-notice"));
 
@@ -55,7 +57,13 @@ export function HomeProjectComposer({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const createTask = useCreateTask();
-  const [mode, setMode] = useState<HomeMode>("team");
+  const draft = useComposerDraft<Extract<ComposerDraft, { kind: "home" }>>({
+    version: 1,
+    kind: "home",
+    prompt: "",
+    mode: "team",
+  });
+  const [mode, setMode] = useState<HomeMode>(draft.value.mode);
   const [failure, setFailure] = useState(false);
   const schema = useMemo(
     () =>
@@ -72,13 +80,37 @@ export function HomeProjectComposer({
   );
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { prompt: "" },
+    defaultValues: { prompt: draft.value.prompt },
   });
   const prompt = form.watch("prompt");
   const busy = createTask.isPending || form.formState.isSubmitting;
+  useEffect(() => {
+    draft.change({
+      version: 1,
+      kind: "home",
+      mode,
+      prompt: form.getValues("prompt"),
+    });
+    const subscription = form.watch((values) =>
+      draft.change({
+        version: 1,
+        kind: "home",
+        mode,
+        prompt: values.prompt ?? "",
+      }),
+    );
+    return () => subscription.unsubscribe();
+  }, [form, mode]);
   const submit = async ({ prompt: outcome }: Values) => {
     if (!agents.length || blocked || createTask.isPending) return;
     setFailure(false);
+    const submittedDraft = {
+      version: 1 as const,
+      kind: "home" as const,
+      mode,
+      prompt: form.getValues("prompt"),
+    };
+    draft.change(submittedDraft);
     const definition = copy.modes[mode];
     const oneLine = outcome.replace(/\s+/g, " ");
     const projectInput: TaskInput = {
@@ -94,6 +126,9 @@ export function HomeProjectComposer({
     };
     try {
       const task = await createTask.mutateAsync({ data: projectInput });
+      if (!Number.isInteger(task?.id) || task.id <= 0 || task.id > 2147483647)
+        throw new Error("Unconfirmed task receipt");
+      draft.finish(submittedDraft);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getListAgentsQueryKey() }),
@@ -221,6 +256,11 @@ export function HomeProjectComposer({
       <Suspense fallback={null}>
         <ProviderSetupNotice onReady={() => form.setFocus("prompt")} />
       </Suspense>
+      {draft.error && (
+        <p role="alert" className="mt-3 break-words text-sm leading-6">
+          {copy.draftStorageError}
+        </p>
+      )}
       {failure ? (
         <p
           role="alert"

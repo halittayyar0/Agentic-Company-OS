@@ -1,6 +1,8 @@
 import type { NewProjectCopy } from "../new-project-copy";
 
 const copy = {
+  draftStorageError:
+    "Bu sekme taslağı sayfa yenileme için kaydedemiyor. Metninizi burada düzenleyebilirsiniz; sayfayı yenilemeden veya sekmeyi kapatmadan önce bir kopyasını alın.",
   back: "Projelere dön",
   eyebrow: "Yeni proje · tüm ekip",
   title: "Fikri içeri al. Ekibin birlikte hayata geçirsin.",

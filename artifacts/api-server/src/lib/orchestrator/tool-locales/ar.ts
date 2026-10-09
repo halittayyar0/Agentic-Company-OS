@@ -1,6 +1,12 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolAr: ToolCopy = {
+  inferenceAccountingPending:
+    "بانتظار سجل الاستخدام لاستدعاء النموذج ({id}). ستنتظر الاستدعاءات التالية لهذه المهمة حتى اكتمال التسجيل.",
+  inferenceAccountingRecovery:
+    "سجل الاستخدام للاستدعاء {id} مفقود أو غير مكتمل. أُوقفت استدعاءات النموذج التالية لهذه المهمة لمنع الإنفاق غير المسجل. راجع تفاصيل استعادة سجل الاستخدام.",
+  inferenceAccountingReady:
+    "اكتمل سجل الاستخدام للاستدعاء {id}. ستتابع هذه المهمة تلقائيًا.",
   budgetFamilyResumed:
     "تم التحقق من حد الاستخدام وإعادة {count} من المهام إلى قائمة الانتظار.",
   schedulerClaimed: "تم تولي المهمة",
@@ -15,6 +21,8 @@ export const toolAr: ToolCopy = {
     "تم تحرير ملكية تنفيذ العمل المنقطع وإعادة المهمة إلى قائمة الانتظار.",
   schedulerStepBudget: "تم بلوغ حد الخطوات الذي حدده المشغّل ({used}/{limit}).",
   schedulerTokenBudget: "تم بلوغ ميزانية الرموز ({used}/{limit}).",
+  schedulerUnreportedTokenUsage:
+    "لم يُبلّغ عن استخدام الرموز لهذه المهمة بصورة كاملة. أُوقفت استدعاءات النموذج التالية لمنع الإنفاق غير المقاس. راجع الاستدعاءات المسجلة؛ للمتابعة، ابدأ مهمة جديدة مع مزود يبلّغ عن استخدام الرموز. تبقى السجلات الحالية محفوظة.",
   schedulerCostBudget:
     "تم بلوغ ميزانية التكلفة التي أبلغ عنها المزوّد (${used}/{limit}).",
   schedulerFamilyTokenBudget:

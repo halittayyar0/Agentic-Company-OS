@@ -109,6 +109,7 @@ for (const toolName of ["vm_run_command", "vm_read_file"] as const) {
         runtimeHandle: runtime,
         runtimeOperationsConfig: config,
         createCompletion: (async (params) => {
+          await params.beforeRequest?.();
           prompts.push(String(params.messages[0].content));
           deferred.push(
             ...params.messages
@@ -121,7 +122,7 @@ for (const toolName of ["vm_run_command", "vm_read_file"] as const) {
           );
           deps.locale = "ar";
           return {
-            provider: "replit",
+            provider: mode === "chat" ? "openrouter" : "replit",
             completion: {
               id: randomUUID(),
               object: "chat.completion",

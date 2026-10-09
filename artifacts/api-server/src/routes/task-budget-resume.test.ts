@@ -106,7 +106,18 @@ async function fixture() {
     modelId: "fixture",
     provider: "fixture",
     totalTokens: 20,
+    usageReported: true,
     reportedCostUsd: "0.01",
+  });
+  await db.insert(usageEventsTable).values({
+    agentId: owner.id,
+    taskId: child.id,
+    kind: "task_step",
+    modelId: "fixture",
+    provider: "fixture",
+    totalTokens: 10,
+    usageReported: true,
+    reportedCostUsd: null,
   });
   return {
     owner,
@@ -366,6 +377,10 @@ test("individual allowance stays authoritative when the shared allowance is avai
     .update(tasksTable)
     .set({ tokensUsed: 100_000 })
     .where(eq(tasksTable.id, f.child.id));
+  await db
+    .update(usageEventsTable)
+    .set({ totalTokens: 100_000 })
+    .where(eq(usageEventsTable.taskId, f.child.id));
   const reply = await request(port, "POST", f.path, f.input);
   assert.equal(reply.data.outcome, "accepted");
   assert.deepEqual(reply.data.queuedTaskIds, [f.root.id]);
@@ -375,6 +390,34 @@ test("individual allowance stays authoritative when the shared allowance is avai
       .tokensUsed,
     100_000,
   );
+});
+
+test("allowance checks cannot resume unreported usage or erase its receipts", async (t) => {
+  const f = await fixture(),
+    port = await listen(t);
+  await db
+    .update(usageEventsTable)
+    .set({ usageReported: false })
+    .where(eq(usageEventsTable.taskId, f.root.id));
+  const reply = await request(port, "POST", f.path, f.input);
+  assert.equal(reply.status, 200);
+  assert.equal(reply.data.outcome, "rejected");
+  assert.equal(reply.data.reason, "allowance_exhausted");
+  assert.equal(reply.data.stillPausedCount, 2);
+  for (const task of [f.root, f.child]) {
+    const [saved] = await db
+      .select()
+      .from(tasksTable)
+      .where(eq(tasksTable.id, task.id));
+    assert.equal(saved.status, "blocked");
+    assert.equal(saved.tokensUsed, task.tokensUsed);
+  }
+  const [receipt] = await db
+    .select()
+    .from(usageEventsTable)
+    .where(eq(usageEventsTable.taskId, f.root.id));
+  assert.equal(receipt.usageReported, false);
+  assert.equal(receipt.totalTokens, 20);
 });
 
 test("rolling-day renewal admits work without resetting its lifetime counters", async (t) => {

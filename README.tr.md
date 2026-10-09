@@ -142,6 +142,10 @@ Her taşınabilir sürüm sabit bir Linux amd64/arm64 imajına bağlanır; kurul
 
 Teknik belgelerin bir bölümü İngilizcedir. Tekrarlanabilir bir hata bildirimi, daha anlaşılır bir çeviri, faydalı bir rehber veya test edilmiş küçük bir düzeltme de değerli bir katkıdır.
 
+**Model bağlantısı, v0.4.0 ve sonrası:** [bağlantı rehberi](./docs/model-connections.tr.md) yerel modelleri, ChatGPT’yi, API anahtarlarını ve ilk iş taslağının korunmasını anlatır. Önceki kurulum paketlerinde bu akış bulunmaz.
+
+Kesintiden sonra bir isteği incelemek için proje veya ajan sayfasında **Model kullanım kayıtları** bölümünü aç. Kontrol model tokenı harcamaz ve isteği yeniden göndermez; bilinmeyen kullanım sıfır sayılmaz. [Kullanım kayıtlarını anlama →](./docs/inference-accounting.md)
+
 ---
 
 **[MIT lisansıyla](./LICENSE) açık kaynak.** Paketteki IBM Plex yazı tipleri SIL Open Font License 1.1 kapsamındadır; [üçüncü taraf bildirimlerine](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt) bakabilirsin.

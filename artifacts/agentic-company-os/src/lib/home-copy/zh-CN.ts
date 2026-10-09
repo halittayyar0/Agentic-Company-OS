@@ -1,6 +1,8 @@
 import type { HomeCopy } from "../home-copy";
 
 const copy = {
+  draftStorageError:
+    "此标签页无法保存供重新加载后恢复的草稿。你仍可在此编辑文字；重新加载或关闭标签页前，请先复制保存。",
   deskKicker: "你的工作区",
   heroTitle: "今天我们一起完成什么？",
   heroDescription:

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  configureChatGPTPlan,
   configureDirectOpenAI,
   configureOllama,
   configureOpenRouter,
@@ -8,6 +9,7 @@ import {
   getFullModelCatalog,
   normalizeOpenRouterModels,
   refreshOllamaCatalog,
+  refreshChatGPTPlanCatalog,
   resolveModelProvider,
 } from "@workspace/ai-server";
 import {
@@ -24,7 +26,76 @@ const original = {
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL,
 };
 
+test("a selected ChatGPT plan remains an explicit billing boundary even when disconnected", () => {
+  configureDirectOpenAI({ apiKey: "fixture-paid-api" });
+  const selected = selectModel({
+    purpose: "execution_step",
+    agentDepth: 1,
+    agent: { modelMode: "manual", modelId: "chatgpt:gpt-fixture" },
+  });
+  assert.deepEqual(selected, {
+    modelId: "chatgpt:gpt-fixture",
+    provider: "chatgpt",
+    usedFallback: false,
+  });
+  const plan = selectModelPlan({
+    purpose: "execution_step",
+    agentDepth: 1,
+    agent: { modelMode: "manual", modelId: "chatgpt:gpt-fixture" },
+  });
+  assert.deepEqual(
+    plan.routes.map((candidate) => candidate.provider),
+    ["chatgpt"],
+  );
+  assert.equal(plan.freeOnly, false);
+});
+
+test("an installation with only an eligible ChatGPT account can select its first server-ordered model", async () => {
+  configureChatGPTPlan({
+    resolveAccount: async () => ({
+      id: "c1c94b4d-7ce4-4e95-a0d8-ea289080b445",
+      hostId: "urn:uuid:712b4d81-573e-47fc-8e03-66c44670b2a1",
+      clientId: "fixture-client",
+      accountId: "fixture-profile",
+      subject: "fixture-subject",
+      revision: 1,
+      updatedAt: 1,
+      credentials: {
+        accessToken: "fixture-plan-token",
+        idToken: "fixture-id",
+        grants: ["resource.invoke", "chatgpt.tokens.use.direct"],
+        expiresAt: Date.now() + 3600_000,
+      },
+    }),
+    fetch: async () =>
+      Response.json({
+        models: [
+          {
+            slug: "gpt-first-fixture",
+            display_name: "First",
+            visibility: "list",
+          },
+          {
+            slug: "gpt-next-fixture",
+            display_name: "Next",
+            visibility: "list",
+          },
+        ],
+      }),
+  });
+  await refreshChatGPTPlanCatalog();
+  const plan = selectModelPlan({
+    purpose: "execution_step",
+    agentDepth: 1,
+    agent: { modelMode: "auto", modelId: null },
+  });
+  assert.equal(plan.primary.modelId, "chatgpt:gpt-first-fixture");
+  assert.equal(plan.primary.provider, "chatgpt");
+  assert.equal(plan.routes.length, 1);
+});
+
 test.beforeEach(() => {
+  configureChatGPTPlan(null);
   delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
   delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
   delete process.env.OPENROUTER_API_KEY;
@@ -36,6 +107,7 @@ test.beforeEach(() => {
 });
 
 test.after(() => {
+  configureChatGPTPlan(null);
   if (original.key === undefined)
     delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
   else process.env.AI_INTEGRATIONS_OPENAI_API_KEY = original.key;

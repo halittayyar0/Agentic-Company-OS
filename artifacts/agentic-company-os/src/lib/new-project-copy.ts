@@ -4,6 +4,7 @@ import type { TaskPriority } from "@workspace/api-client-react";
 export type ProjectCadence = 900 | 3600 | 21600 | 86400 | 604800;
 
 export type NewProjectCopy = {
+  draftStorageError: string;
   back: string;
   eyebrow: string;
   title: string;

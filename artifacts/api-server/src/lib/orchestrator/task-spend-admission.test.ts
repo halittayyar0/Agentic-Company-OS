@@ -4,9 +4,11 @@ import {
   agentsTable,
   db,
   dbReady,
+  closeDatabase,
   tasksTable,
   usageEventsTable,
 } from "@workspace/db";
+test.after(() => closeDatabase());
 import {
   readTaskSpendBlockReason,
   readTaskSpendAdmission,
@@ -32,6 +34,7 @@ test("reported cost coverage distinguishes empty, unknown and partial provider r
     let result = await readTaskSpendAdmission(task, limits, "en");
     assert.equal(result.reportedCostUsd, null);
     assert.equal(result.costCoverage, "no_usage");
+    assert.equal(result.tokenUsageCoverage, "no_usage");
     await db.insert(usageEventsTable).values({
       agentId: agent.id,
       taskId: task.id,
@@ -40,14 +43,18 @@ test("reported cost coverage distinguishes empty, unknown and partial provider r
       provider: "test",
       totalTokens: 2,
       reportedCostUsd: null,
+      usageReported: false,
     });
     result = await readTaskSpendAdmission(task, limits, "en");
     assert.equal(result.reportedCostUsd, null);
     assert.equal(result.costCoverage, "unknown");
+    assert.equal(result.tokenUsageCoverage, "unknown");
+    assert.equal(result.tokenUnreportedEvents, 1);
     await db.insert(usageEventsTable).values({
       agentId: agent.id,
       taskId: task.id,
       kind: "judge",
+      usageReported: true,
       modelId: "test",
       provider: "test",
       totalTokens: 2,
@@ -56,6 +63,8 @@ test("reported cost coverage distinguishes empty, unknown and partial provider r
     result = await readTaskSpendAdmission(task, limits, "en");
     assert.equal(Number(result.reportedCostUsd), 0.2);
     assert.equal(result.costCoverage, "partial");
+    assert.equal(result.tokenUsageCoverage, "partial");
+    assert.equal(result.tokenReportedEvents, 1);
   }
 });
 
@@ -87,6 +96,7 @@ test("recurring budgets use current-cycle usage and durable rolling usage separa
       modelId: "test",
       provider: "test",
       totalTokens: tokens,
+      usageReported: true,
       createdAt: date,
     });
   const limits = { maxSteps: null, maxTokens: 100, maxReportedCostUsd: 1 };

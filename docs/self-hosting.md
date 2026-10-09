@@ -22,6 +22,44 @@ Install Node.js 24 and start a Docker Linux engine with Compose v2. Extract the 
 
 The wizard checks the selected installation mode and names missing local requirements. It distinguishes Docker missing from an installed but stopped engine, Windows containers, and missing Compose v2. Follow the indicated step and choose **Check again** without losing your choices. The guide opens in a separate tab so the private setup session stays open. This check does not test provider credentials or guarantee the later installation; the reviewed plan rechecks prerequisites before it runs.
 
+## Optional coding workers
+
+**v0.4.0 and later.** In the container
+wizard, **Codex coding worker** is a separate, unchecked option. It needs a
+Linux x64 Docker engine, Compose **2.24.4 or later**, terminal permission and
+an installer containing a separate pinned coding image. Selecting the Code
+tool pack or connecting a model does not enable it. The ordinary application
+and ARM64 container installation remain available without this option.
+
+The API stays on the ordinary image. Only the two existing workers use the
+optional image with Codex CLI 0.159.2 and its pinned namespace helper; this adds
+no agents. A portable installation pulls immutable image digests and needs no
+host CLI installation. Source installation builds the optional Docker target.
+Read-only access disables this option; custom access requires terminal permission.
+Connect an eligible account after installation. Model tasks still need account
+permission, task authority and budgets; setup makes no inference request.
+
+The optional coding image requires AppArmor on the **Docker host**. Its
+administrator must load the bundled profile there before installation, from
+the extracted bundle or checkout:
+
+```sh
+sudo apparmor_parser -r -W deploy/agentic-coding.apparmor
+```
+
+For a remote Docker engine, run this on that engine's host. The installer does
+not silently change host policy or request elevated access. An unloaded or
+refused profile stops the coding workers. Keep the bundled security profiles
+with the installer so resume uses the same files. Do not disable AppArmor,
+use privileged containers or mount your personal Codex home to work around a
+refusal. The coding overlay replaces only worker security options, while the
+API retains the ordinary Chromium profile.
+
+The offline container gate checks the image-owned toolchain and
+native permission/lifetime cases without login or inference. Enforced AppArmor,
+the complete published container installer and generated coding deliverables
+require their own accepted evidence; a green offline gate is not that proof.
+
 ## Source installation prerequisites
 
 - 64-bit host supported by Node.js 24 and the repository's native dependencies
@@ -146,6 +184,12 @@ Connection tests require an explicit catalog model and a separate confirmation. 
 For a first project, Settings prefers a tool-capable catalog model for this test, favoring a free identifier and then an economy-tier option. You can choose another model. A successful chat-only test does not establish that agent tasks can run; even a successful tool-capable model test verifies only a short reply, not tool execution or future worker availability. Return to Projects to inspect the saved project's next attempt.
 
 ### Local Ollama
+
+In v0.4.0 and later, Home, New project and Settings can
+save a validated address override without leaving the job composer. Removing
+the override restores `OLLAMA_BASE_URL`; discovery does not download a model or
+send inference. See the [seven-language walkthrough](./model-connections.md).
+The released v0.3.13 package uses the environment configuration below.
 
 Set `OLLAMA_BASE_URL` to an Ollama endpoint such as `http://127.0.0.1:11434/v1`. Docker Compose can reach a host Ollama instance through `http://host.docker.internal:11434/v1`. The endpoint is server-side only and must use HTTP(S), contain no credentials/query/hash, use an empty or `/v1` path, and target exact localhost, `host.docker.internal`, an RFC1918/loopback IPv4 literal, or an IPv6 ULA/loopback literal. Public hosts, link-local/cloud-metadata ranges, redirects, and arbitrary DNS names are rejected.
 

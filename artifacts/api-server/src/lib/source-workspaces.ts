@@ -8,6 +8,7 @@ import {
   sourceChangesTable,
   agentsTable,
   activityEventsTable,
+  codexTaskSessionsTable,
 } from "@workspace/db";
 import {
   ensureSandbox,
@@ -184,6 +185,33 @@ async function claim(
   z.number().int().positive().parse(revision);
   return db.transaction(async (tx) => {
     await lockAndAssertExecutionAllowed(tx);
+    const [current] = await tx
+      .select({ taskId: sourceChangesTable.taskId })
+      .from(sourceChangesTable)
+      .where(
+        and(
+          eq(sourceChangesTable.id, idSchema.parse(id)),
+          eq(sourceChangesTable.revision, revision),
+          inArray(sourceChangesTable.state, states),
+        ),
+      )
+      .for("update");
+    if (!current) throw new Error("SOURCE_REVISION_CONFLICT");
+    if (current.taskId !== null) {
+      const [native] = await tx
+        .select({
+          state: codexTaskSessionsTable.state,
+          cleanupState: codexTaskSessionsTable.cleanupState,
+        })
+        .from(codexTaskSessionsTable)
+        .where(eq(codexTaskSessionsTable.taskId, current.taskId))
+        .for("update");
+      if (
+        native &&
+        (native.state === "running" || native.cleanupState === "unknown")
+      )
+        throw new Error("SOURCE_CODING_ACTIVE");
+    }
     const [saved] = await tx
       .update(sourceChangesTable)
       .set({

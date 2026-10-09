@@ -1,5 +1,9 @@
 import type { OperationsCopy } from "../operations-copy";
 const copy = {
+  tokensAtLeast: "至少 {count}",
+  tokenUsageUnknown: "Token 用量未知",
+  tokenCoveragePartial: "部分呼叫未回報 Token 用量；總數僅表示已知下限。",
+  noRecordedUsage: "此時段內沒有用量紀錄。",
   recoveryTitle: "需要檢查已儲存的核對決定",
   recoveryHelp:
     "此分頁為本專案保留一項結果未確認的決定，即使它已超出歷史記錄範圍。重新整理分頁會保留它；關閉分頁或更換裝置可能不會。",

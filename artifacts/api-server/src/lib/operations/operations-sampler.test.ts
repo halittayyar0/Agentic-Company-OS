@@ -3,11 +3,13 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 import {
   activityEventsTable,
+  agentsTable,
   databaseBackend,
   db,
   dbReady,
   runtimeHealthSamplesTable,
   runtimeInstancesTable,
+  tasksTable,
 } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import type { RuntimeInstanceHandle } from "../orchestrator/runtime-instance-registry";
@@ -176,64 +178,94 @@ test(
     const bucketOffset = Number.parseInt(suffix.slice(0, 8), 16) % 500_000;
     const bucketAt = new Date(Date.UTC(2040, 0, 1) + bucketOffset * 60_000);
     const now = new Date(bucketAt.getTime() + 60_001);
-    const runtimeIds = [`sampler-a-${suffix}`, `sampler-b-${suffix}`];
-    await db.insert(runtimeInstancesTable).values(
-      runtimeIds.map((id) => ({
-        id,
-        role: "worker" as const,
-        state: "healthy" as const,
-        hostname: "redacted-test-host",
-        processId: 321,
-        buildVersion: "test",
-        schedulerEnabled: true,
-        startedAt: new Date(now.getTime() - 60_000),
-        lastHeartbeatAt: now,
-        lastSchedulerTickAt: now,
-      })),
-    );
-    const config = readRuntimeOperationsConfig({
-      RUNTIME_ROLE: "worker",
-      OPS_SAMPLE_RETENTION_DAYS: "3650",
-    });
-
-    const results = await Promise.all(
-      runtimeIds.map((runtimeInstanceId) =>
-        sampler.recordOperationsHealthSample({
-          runtimeInstanceId,
-          now,
-          config,
-        }),
-      ),
-    );
-    assert.equal(results.filter((result) => result).length, 1);
-    assert.equal(results.filter((result) => !result).length, 1);
-
-    const samples = await db
-      .select({
-        sampledByInstanceId: runtimeHealthSamplesTable.sampledByInstanceId,
+    const dueAge = 30 * 24 * 60 * 60 * 1000;
+    const [agent] = await db
+      .insert(agentsTable)
+      .values({
+        name: `sampler-age-${suffix}`,
+        role: "Fixture",
+        systemPrompt: "Fixture",
+        isActive: true,
       })
-      .from(runtimeHealthSamplesTable)
-      .where(eq(runtimeHealthSamplesTable.bucketAt, bucketAt));
-    assert.equal(samples.length, 1);
-    assert.ok(runtimeIds.includes(samples[0]?.sampledByInstanceId ?? ""));
+      .returning({ id: agentsTable.id });
+    assert.ok(agent);
+    const [task] = await db
+      .insert(tasksTable)
+      .values({
+        title: "Owned sampler age fixture",
+        brief: "No inference or task execution",
+        ownerAgentId: agent.id,
+        status: "pending",
+        nextAttemptAt: new Date(now.getTime() - dueAge),
+      })
+      .returning({ id: tasksTable.id });
+    assert.ok(task);
+    try {
+      const runtimeIds = [`sampler-a-${suffix}`, `sampler-b-${suffix}`];
+      await db.insert(runtimeInstancesTable).values(
+        runtimeIds.map((id) => ({
+          id,
+          role: "worker" as const,
+          state: "healthy" as const,
+          hostname: "redacted-test-host",
+          processId: 321,
+          buildVersion: "test",
+          schedulerEnabled: true,
+          startedAt: new Date(now.getTime() - 60_000),
+          lastHeartbeatAt: now,
+          lastSchedulerTickAt: now,
+        })),
+      );
+      const config = readRuntimeOperationsConfig({
+        RUNTIME_ROLE: "worker",
+        OPS_SAMPLE_RETENTION_DAYS: "3650",
+      });
 
-    const events = await db
-      .select({ id: activityEventsTable.id })
-      .from(activityEventsTable)
-      .where(
-        and(
-          eq(activityEventsTable.type, "operations_changed"),
-          eq(
-            activityEventsTable.summary,
-            "Operational health sample recorded.",
-          ),
-          eq(
-            sql`${activityEventsTable.detail} ->> 'bucketAt'`,
-            bucketAt.toISOString(),
-          ),
+      const results = await Promise.all(
+        runtimeIds.map((runtimeInstanceId) =>
+          sampler.recordOperationsHealthSample({
+            runtimeInstanceId,
+            now,
+            config,
+          }),
         ),
       );
-    assert.equal(events.length, 1);
+      assert.equal(results.filter((result) => result).length, 1);
+      assert.equal(results.filter((result) => !result).length, 1);
+
+      const samples = await db
+        .select({
+          sampledByInstanceId: runtimeHealthSamplesTable.sampledByInstanceId,
+          oldestDueAgeMs: runtimeHealthSamplesTable.oldestDueAgeMs,
+        })
+        .from(runtimeHealthSamplesTable)
+        .where(eq(runtimeHealthSamplesTable.bucketAt, bucketAt));
+      assert.equal(samples.length, 1);
+      assert.ok(runtimeIds.includes(samples[0]?.sampledByInstanceId ?? ""));
+      assert.equal(typeof samples[0]?.oldestDueAgeMs, "number");
+      assert.ok((samples[0]?.oldestDueAgeMs ?? 0) >= dueAge);
+
+      const events = await db
+        .select({ id: activityEventsTable.id })
+        .from(activityEventsTable)
+        .where(
+          and(
+            eq(activityEventsTable.type, "operations_changed"),
+            eq(
+              activityEventsTable.summary,
+              "Operational health sample recorded.",
+            ),
+            eq(
+              sql`${activityEventsTable.detail} ->> 'bucketAt'`,
+              bucketAt.toISOString(),
+            ),
+          ),
+        );
+      assert.equal(events.length, 1);
+    } finally {
+      await db.delete(tasksTable).where(eq(tasksTable.id, task.id));
+      await db.delete(agentsTable).where(eq(agentsTable.id, agent.id));
+    }
   },
 );
 

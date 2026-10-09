@@ -5,6 +5,7 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+import type { OllamaSettingsAddressSource } from './ollamaSettingsAddressSource';
 import type { OllamaSettingsError } from './ollamaSettingsError';
 
 export interface OllamaSettings {
@@ -15,6 +16,8 @@ export interface OllamaSettings {
      * @nullable
      */
   baseUrl: string | null;
+  hasAddressInEnv: boolean;
+  addressSource: OllamaSettingsAddressSource;
   /** @minimum 0 */
   modelCount: number;
   /** @minimum 0 */

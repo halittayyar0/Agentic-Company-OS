@@ -205,6 +205,17 @@ test("summary strip answers queue, wake, work, intervention and usage at a glanc
   }
   assert.match(html, /5/);
   assert.match(html, /12\.345/);
+  assert.match(html, /En az 12\.345/);
+  const unknown = renderToStaticMarkup(
+    <OperationsSummaryStrip
+      model={{
+        ...model,
+        usage: { ...model.usage, taskTokens: 0, tokenUsageCoverage: "unknown" },
+      }}
+      now={new Date("2026-09-01T12:00:00Z")}
+    />,
+  );
+  assert.match(unknown, /Token kullanımı bilinmiyor/);
 });
 
 test("team constellation keeps every member and their current evidence visible", () => {

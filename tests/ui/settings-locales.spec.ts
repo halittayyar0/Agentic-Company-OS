@@ -147,6 +147,35 @@ async function setup(page: Page, locale: Locale = "en") {
   return { ...harness, state, c: await loadSettingsCopy(locale) };
 }
 
+test("Settings opens the same guided local connection without inference or a write on viewing", async ({
+  page,
+}) => {
+  const harness = await setup(page, "en");
+  await page.goto("/settings");
+  const opener = page.getByRole("button", {
+    name: "Connect a model",
+    exact: true,
+  });
+  await opener.click();
+  const dialog = page.getByRole("dialog", {
+    name: "Connect a model",
+    exact: true,
+  });
+  await dialog
+    .getByRole("button", { name: "Local model", exact: true })
+    .click();
+  await expect(
+    dialog.getByRole("textbox", { name: "Ollama address", exact: true }),
+  ).toHaveValue("http://127.0.0.1:11434");
+  await page.keyboard.press("Escape");
+  await expect(opener).toBeFocused();
+  await expect(page).toHaveURL(/\/settings$/);
+  expect(harness.state.writes).toEqual([]);
+  expect(harness.state.tests).toEqual([]);
+  expect(harness.requests).toEqual([]);
+  expect([...harness.unexpected]).toEqual([]);
+});
+
 test("execution permissions save explicit custom rights and recover a stale revision", async ({
   page,
 }) => {

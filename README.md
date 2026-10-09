@@ -148,6 +148,10 @@ A 24-hour soak, physical-phone/carrier acceptance and native-speaker review are 
 
 Small, focused contributions are welcome: a reproducible bug report, a clearer translation, a useful guide or a tested fix.
 
+**Model connection, v0.4.0 and later:** the [connection walkthrough](./docs/model-connections.md) explains local models, ChatGPT, API keys and keeping your first-job draft. Earlier setup bundles do not include this flow.
+
+Open **Model usage records** on a project or agent to inspect a request after an interruption. Checking spends no model tokens and never resends the request; unknown usage is not treated as zero. [Reading usage records →](./docs/inference-accounting.md)
+
 ---
 
 **Open source under the [MIT License](./LICENSE).** Bundled IBM Plex fonts use SIL Open Font License 1.1; see [third-party notices](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt).

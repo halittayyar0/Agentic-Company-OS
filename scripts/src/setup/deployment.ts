@@ -60,6 +60,8 @@ function commonEnvironment(
     SYNTHETIC_RUNTIME_ENABLED: undefined,
     ENDURANCE_MODE: undefined,
     ENDURANCE_RUN_ID: undefined,
+    ALLOW_AGENT_CODEX_TASKS: "false",
+    ACOS_CODEX_EXECUTABLE: undefined,
     ALLOW_REMOTE_ACCESS: "false",
     ALLOW_AGENT_PROCESS_EXEC:
       plan.settings.accessMode === "read_only" ? "false" : "true",
@@ -143,6 +145,7 @@ export function buildContainerDeployment(
   credentials: InstallationCredentials,
   phoneUrl?: string,
   prebuiltImage?: string,
+  coding?: { image?: string; apparmor: boolean },
 ) {
   validateRoots(source, resources);
   if (
@@ -156,6 +159,20 @@ export function buildContainerDeployment(
     );
   if (plan.settings.mode !== "container")
     throw new Error("Container deployment requires container mode");
+  if (
+    plan.settings.codingRuntime &&
+    (!coding ||
+      coding.apparmor !== true ||
+      (prebuiltImage && !coding.image) ||
+      (coding.image &&
+        (!/^ghcr\.io\/[a-z0-9_.-]+\/[a-z0-9_.-]+@sha256:[a-f0-9]{64}$/u.test(
+          coding.image,
+        ) ||
+          coding.image === prebuiltImage)))
+  )
+    throw new Error(
+      "coding_runtime_requires_separate_immutable_image_and_host_policy",
+    );
   const common: Record<string, string> = {
     ALLOW_AGENT_PROCESS_EXEC:
       plan.settings.accessMode === "read_only" ? "false" : "true",
@@ -180,8 +197,22 @@ export function buildContainerDeployment(
   > = {};
   for (const name of ["app", "worker-1", "worker-2"])
     services[name] = {
-      ...(prebuiltImage ? { image: prebuiltImage } : {}),
-      environment: { ...common },
+      ...(prebuiltImage
+        ? {
+            image:
+              name !== "app" && plan.settings.codingRuntime
+                ? coding!.image
+                : prebuiltImage,
+          }
+        : {}),
+      environment: {
+        ...common,
+        ALLOW_AGENT_CODEX_TASKS:
+          name !== "app" && plan.settings.codingRuntime ? "true" : "false",
+        ...(name !== "app" && plan.settings.codingRuntime
+          ? { ACOS_CODEX_EXECUTABLE: "/opt/agentic-codex/bin/codex" }
+          : {}),
+      },
       secrets: [
         "database_url",
         "runtime_control_key",
@@ -203,6 +234,15 @@ export function buildContainerDeployment(
       path.join(resources.directory, "compose.env"),
       "--file",
       path.join(source, "compose.yaml"),
+      ...(plan.settings.codingRuntime
+        ? [
+            "--file",
+            path.join(source, "compose.coding.yaml"),
+            ...(coding!.apparmor
+              ? ["--file", path.join(source, "compose.coding-apparmor.yaml")]
+              : []),
+          ]
+        : []),
       "--file",
       path.join(resources.directory, "compose.override.json"),
       "up",

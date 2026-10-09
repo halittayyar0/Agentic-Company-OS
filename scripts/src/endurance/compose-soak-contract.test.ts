@@ -12,17 +12,21 @@ test("soak compose uses an attested image and one read-only run-scoped control m
     readFile(path.join(workspaceRoot, "compose.soak.yaml"), "utf8"),
   ]);
 
-  assert.match(
-    dockerfile,
-    /FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS build/u,
-  );
-  assert.equal(
-    (
-      dockerfile.match(
-        /node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e/gu,
-      ) ?? []
-    ).length,
-    2,
+  const pinnedNode =
+    "node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e";
+  assert.deepEqual(
+    [...dockerfile.matchAll(/^[\t ]*FROM[\t ]+([^\r\n]+)$/gimu)].map(
+      ([, stage]) => stage.trim().split(/\s+/u),
+    ),
+    [
+      [pinnedNode, "AS", "compiler"],
+      [pinnedNode, "AS", "build"],
+      [pinnedNode, "AS", "runtime"],
+      ["runtime", "AS", "coding-runtime"],
+      ["runtime", "AS", "endurance-runtime"],
+      ["runtime", "AS", "production-runtime"],
+    ],
+    "every external build stage must use the pinned base; optional runtimes inherit the ordinary runtime",
   );
   assert.match(
     baseCompose,

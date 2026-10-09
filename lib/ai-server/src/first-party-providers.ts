@@ -217,7 +217,19 @@ function isPrivateIPv4(hostname: string): boolean {
 export function configureOllama(params: {
   baseUrl: string | null | undefined;
 }): void {
-  providerState.ollamaBaseUrl = params.baseUrl?.trim() || null;
+  const next = params.baseUrl?.trim() || null;
+  if (providerState.ollamaBaseUrl !== next) {
+    ollamaCatalogGeneration += 1;
+    ollamaCatalog.models = [];
+    ollamaCatalog.fetchedAt = 0;
+    ollamaCatalog.lastAttemptAt = 0;
+    ollamaCatalog.reachable = false;
+    ollamaCatalog.error = null;
+    // A previous endpoint's discovery remains bounded by its request deadlines,
+    // but cannot own the new endpoint's refresh or publish into its catalog.
+    ollamaRefreshPromise = null;
+  }
+  providerState.ollamaBaseUrl = next;
   ollamaClient = null;
   ollamaClientBaseUrl = null;
 }
@@ -302,6 +314,7 @@ const OLLAMA_CATALOG_TTL_MS = 5 * 60_000;
 const OLLAMA_CATALOG_RETRY_MS = 30_000;
 const OLLAMA_MAX_MODELS = 100;
 let ollamaRefreshPromise: Promise<OllamaCatalogSnapshot> | null = null;
+let ollamaCatalogGeneration = 0;
 
 export function getOllamaCatalogSnapshot(): OllamaCatalogSnapshot {
   const configurationError = getOllamaConfigurationError();
@@ -334,7 +347,7 @@ export async function refreshOllamaCatalog(
   }
   if (ollamaRefreshPromise) return ollamaRefreshPromise;
 
-  const refresh = refreshOllamaCatalogFromEndpoint();
+  const refresh = refreshOllamaCatalogFromEndpoint(ollamaCatalogGeneration);
   ollamaRefreshPromise = refresh;
   try {
     return await refresh;
@@ -343,7 +356,9 @@ export async function refreshOllamaCatalog(
   }
 }
 
-async function refreshOllamaCatalogFromEndpoint(): Promise<OllamaCatalogSnapshot> {
+async function refreshOllamaCatalogFromEndpoint(
+  generation: number,
+): Promise<OllamaCatalogSnapshot> {
   ollamaCatalog.lastAttemptAt = Date.now();
   const endpoint = resolveOllamaEndpoint();
   if (!endpoint) return getOllamaCatalogSnapshot();
@@ -359,6 +374,8 @@ async function refreshOllamaCatalogFromEndpoint(): Promise<OllamaCatalogSnapshot
       throw new Error(`Ollama tags endpoint returned ${tagsResponse.status}`);
     }
     const payload = (await tagsResponse.json()) as OllamaTagsPayload;
+    if (generation !== ollamaCatalogGeneration)
+      return getOllamaCatalogSnapshot();
     if (!Array.isArray(payload.models)) {
       throw new Error("Ollama tags response is invalid.");
     }
@@ -369,6 +386,8 @@ async function refreshOllamaCatalogFromEndpoint(): Promise<OllamaCatalogSnapshot
     const entries = await Promise.all(
       rows.map((row) => limit(() => normalizeOllamaModel(endpoint, row))),
     );
+    if (generation !== ollamaCatalogGeneration)
+      return getOllamaCatalogSnapshot();
     ollamaCatalog.models = entries
       .filter(
         (model): model is ModelCatalogEntry & { provider: "ollama" } =>
@@ -379,6 +398,8 @@ async function refreshOllamaCatalogFromEndpoint(): Promise<OllamaCatalogSnapshot
     ollamaCatalog.reachable = true;
     ollamaCatalog.error = null;
   } catch {
+    if (generation !== ollamaCatalogGeneration)
+      return getOllamaCatalogSnapshot();
     // Preserve the last known-good catalog without exposing upstream response
     // bodies, URLs, or model-provided text through the Settings contract.
     ollamaCatalog.reachable = false;

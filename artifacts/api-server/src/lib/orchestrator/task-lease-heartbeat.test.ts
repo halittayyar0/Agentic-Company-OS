@@ -9,6 +9,7 @@ import {
   approvalRequestsTable,
   db,
   dbReady,
+  inferenceAttemptsTable,
   operationInvocationsTable,
   runtimeInstancesTable,
   taskAttemptsTable,
@@ -26,6 +27,7 @@ import {
   reserveOperation,
 } from "./operation-receipts";
 import { stepTask } from "./step-task";
+import type { ToolRuntimeContext } from "./execute-tool";
 import {
   startTaskLeaseHeartbeat,
   TaskLeaseOwnershipLostError,
@@ -502,7 +504,12 @@ test("two deterministic heartbeat ticks renew task, agent, and running attempt d
   const providerStarted = createDeferred<void>();
   const providerResult =
     createDeferred<Awaited<ReturnType<typeof createChatCompletion>>>();
+  let selectedModel: string | undefined;
+  let dispatchedTools = 0;
+  let dispatchedContext: ToolRuntimeContext | undefined;
   const createCompletion: typeof createChatCompletion = async (params) => {
+    await params.beforeRequest?.();
+    selectedModel = params.model;
     providerStarted.resolve();
     return providerResult.promise.then((result) => ({
       ...result,
@@ -511,7 +518,11 @@ test("two deterministic heartbeat ticks renew task, agent, and running attempt d
   };
   const dependencies = {
     createCompletion,
-    runTool: async () => suspendedToolResult(),
+    runTool: async (context: ToolRuntimeContext) => {
+      dispatchedTools++;
+      dispatchedContext = context;
+      return suspendedToolResult();
+    },
     leaseHeartbeatRuntime: fixture.clock.runtime,
     runtimeOperationsConfig: workerConfig,
   };
@@ -548,6 +559,13 @@ test("two deterministic heartbeat ticks renew task, agent, and running attempt d
     providerResult.resolve(lifecycleCompletion("test-model"));
     await stepping;
   }
+  assert.equal(dispatchedTools, 1);
+  assert.ok(dispatchedContext);
+  assert.equal(dispatchedContext.turnModelId, selectedModel);
+  assert.equal(
+    dispatchedContext.runtimeAttemptId,
+    fixture.claimed.runtimeAttemptId,
+  );
 });
 
 test("provider completion during a persistence outage stays fail closed", async (t) => {
@@ -558,7 +576,10 @@ test("provider completion during a persistence outage stays fail closed", async 
   const providerStarted = createDeferred<void>();
   const providerResult =
     createDeferred<Awaited<ReturnType<typeof createChatCompletion>>>();
+  let providerCalls = 0;
   const createCompletion: typeof createChatCompletion = async (params) => {
+    await params.beforeRequest?.();
+    providerCalls += 1;
     providerStarted.resolve();
     return providerResult.promise.then((result) => ({
       ...result,
@@ -639,7 +660,19 @@ test("provider completion during a persistence outage stays fail closed", async 
         .where(eq(approvalRequestsTable.taskId, fixture.task.id)),
     ]);
   assert.equal(toolCalls, 0);
-  assert.equal(usage.length, 1);
+  // The database rejected every settlement transaction. A best-effort receipt
+  // would falsely claim that accounting succeeded; the acknowledged dispatch
+  // reservation must remain durable and prevent another request instead.
+  assert.equal(providerCalls, 1);
+  assert.equal(usage.length, 0);
+  const markers = await db
+    .select()
+    .from(inferenceAttemptsTable)
+    .where(eq(inferenceAttemptsTable.taskId, fixture.task.id));
+  assert.equal(markers.length, 1);
+  assert.equal(markers[0].state, "dispatched");
+  assert.ok(markers[0].dispatchedAt);
+  assert.equal(markers[0].settledAt, null);
   assert.equal(task.tokensUsed, 0);
   assert.equal(task.leaseOwner, fixture.claimed.leaseOwner);
   assert.equal(attempt.state, "running");
@@ -655,6 +688,7 @@ test("revoking the exact owner after provider completion prevents the injected t
   let toolCalls = 0;
   const replacementOwner = `replacement:${randomUUID()}`;
   const createCompletion: typeof createChatCompletion = async (params) => {
+    await params.beforeRequest?.();
     await db
       .update(tasksTable)
       .set({ leaseOwner: replacementOwner })
@@ -698,6 +732,7 @@ test("step shutdown awaits an in-flight renewal, clears its unref'd timer, and c
   const providerResult =
     createDeferred<Awaited<ReturnType<typeof createChatCompletion>>>();
   const createCompletion: typeof createChatCompletion = async (params) => {
+    await params.beforeRequest?.();
     providerStarted.resolve();
     return providerResult.promise.then((result) => ({
       ...result,

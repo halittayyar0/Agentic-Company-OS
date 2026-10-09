@@ -14,6 +14,136 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  coding-container:
+    name: Packaged Codex container permission and lifetime proof
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install frozen test dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build optional coding image
+        run: docker build --pull --target coding-runtime --tag agentic-company-os:coding-ci .
+      - name: Require AppArmor and load only the dedicated coding profile
+        run: |
+          docker info --format '{{json .SecurityOptions}}' | grep --quiet 'name=apparmor'
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends apparmor
+          sudo apparmor_parser -r -W deploy/agentic-coding.apparmor
+      - name: Prove image-owned CLI permissions and cleanup without inference or skips
+        env:
+          ACOS_CODING_CONTAINER_SMOKE: "1"
+          ACOS_CODING_REQUIRE_APPARMOR: "1"
+        run: |
+          image_id=$(docker image inspect --format '{{.Id}}' agentic-company-os:coding-ci)
+          pnpm test:coding:container "$image_id"
+      - name: Prove actual coding installation, stopped-service resume and database restore
+        run: pnpm exec tsx scripts/src/setup/container-install-smoke.ts --coding-source
+      - name: Diagnose namespace setup under the unchanged coding boundary
+        if: failure()
+        run: |
+          docker run --rm --pull=never --network=none --read-only --user=1000:1000 \
+            --cap-drop=ALL --pids-limit=128 --security-opt=no-new-privileges:true \
+            --security-opt=seccomp="$GITHUB_WORKSPACE/deploy/coding-seccomp.json" \
+            --security-opt=apparmor=agentic-coding \
+            --tmpfs=/tmp:rw,exec,nosuid,size=64m,mode=1777 --env=HOME=/tmp \
+            agentic-company-os:coding-ci \
+            /usr/bin/bwrap --unshare-user --unshare-pid --die-with-parent \
+            --as-pid-1 --new-session --ro-bind / / --bind /proc /proc --dev /dev --tmpfs /tmp \
+            -- /usr/bin/python3 -I -S -c 'import json,os; print(json.dumps({"pid":os.getpid()}))' \
+            > "$RUNNER_TEMP/coding-namespace-probe.log" 2>&1 || true
+          cat "$RUNNER_TEMP/coding-namespace-probe.log"
+      - name: Preserve dedicated profile denials on failure
+        if: failure()
+        run: >-
+          sudo journalctl -k --since '-30 minutes' --no-pager
+          | grep -E 'apparmor=.*DENIED.*(profile|peer)="agentic-coding[^"]*"'
+          > "$RUNNER_TEMP/coding-apparmor-denials.log" || true
+      - name: Preserve offline container evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: coding-container-offline-evidence
+          path: |
+            /tmp/acos-coding-container-*/evidence.json
+            /tmp/acos-coding-container-*/native-tests.log
+            /tmp/acos-container-install-proof-*/evidence.json
+            ${{ runner.temp }}/coding-apparmor-denials.log
+            ${{ runner.temp }}/coding-namespace-probe.log
+          if-no-files-found: warn
+
+  linux-owned-namespace:
+    name: Linux owned PID namespace lifetime
+    # Ubuntu22's user namespace defaults allow a real unprivileged proof.
+    # Never weaken AppArmor or host namespace policy to turn a refusal green.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install namespace test prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes bubblewrap python3
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Refuse legacy system sandbox before private helper creation
+        env:
+          ACOS_LINUX_LEGACY_BWRAP_TESTS: "1"
+        run: >-
+          node --import tsx --test
+          artifacts/api-server/src/lib/vm/linux-owned-namespace-preflight.test.ts
+      - name: Prepare integrity-pinned disposable Codex fixture
+        run: |
+          python3 scripts/src/testing/install-codex-linux-fixture.py > "$RUNNER_TEMP/acos-codex-fixture.json"
+          python3 - "$RUNNER_TEMP/acos-codex-fixture.json" "$GITHUB_ENV" <<'PY'
+          import json, sys
+          import hashlib, subprocess
+          from pathlib import Path
+          value = json.loads(Path(sys.argv[1]).read_text())
+          helper = Path(value['root']) / 'codex-resources/bwrap'
+          if helper.is_symlink() or hashlib.sha256(helper.read_bytes()).hexdigest() != '77360cb751ccedc5971391444ac86a8a33c15b04d6b4a6fe45f5d25496e62c4c':
+              raise ValueError('pinned_system_helper_invalid')
+          subprocess.run(['sudo', 'install', '-o', 'root', '-g', 'root', '-m', '0555', str(helper), '/usr/bin/bwrap'], check=True)
+          with Path(sys.argv[2]).open('a') as output:
+              output.write('ACOS_LINUX_CODEX_EXECUTABLE=' + value['executable'] + '\n')
+          PY
+      - name: Prove actual owner and helper loss cleanup without skips
+        env:
+          ACOS_LINUX_NAMESPACE_TESTS: "1"
+          ACOS_LINUX_CODEX_TESTS: "1"
+        run: >-
+          node --import tsx --test --test-concurrency=1
+          artifacts/api-server/src/lib/vm/linux-owned-namespace.test.ts
+          artifacts/api-server/src/lib/vm/linux-owned-launcher.test.ts
+          artifacts/api-server/src/lib/codex-task-linux-process.test.ts
+          artifacts/api-server/src/lib/codex-task-linux-native.test.ts
+
   verify:
     name: Format, audit, test, typecheck, and build
     runs-on: ubuntu-latest
@@ -64,6 +194,9 @@ jobs:
       - name: Audit production dependencies
         run: pnpm run security:audit
 
+      - name: Audit development and build dependencies
+        run: pnpm run security:audit:all
+
       - name: Check production dependency licenses
         run: pnpm --filter @workspace/scripts run check:licenses
 
@@ -104,6 +237,14 @@ jobs:
           DATABASE_URL: postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_os_ci
         run: pnpm --filter @workspace/db run migrate
 
+      - name: Prove PostgreSQL account renewal and protected session handoff
+        env:
+          DATABASE_URL: postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_os_ci
+        run: >-
+          node --import tsx --test --test-concurrency=1 --test-timeout=120000
+          artifacts/api-server/src/lib/chatgpt-registration-postgres.test.ts
+          artifacts/api-server/src/lib/chatgpt-handoff-postgres.test.ts
+
       - name: Prove PostgreSQL task-lease lock ordering
         env:
           DATABASE_URL: postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_os_ci
@@ -129,6 +270,24 @@ jobs:
         run: >-
           node --import tsx --test
           artifacts/api-server/src/lib/operator-requests-postgres.test.ts
+
+      - name: Prove PostgreSQL inference accounting across workers and process loss
+        env:
+          DATABASE_URL: postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_os_ci
+          POSTGRES_RACE_TEST_DISPOSABLE: "1"
+          POSTGRES_RACE_TEST_FAIL_IF_SKIPPED: "1"
+        run: >-
+          node --import tsx --test --test-concurrency=1 --test-timeout=60000
+          artifacts/api-server/src/lib/orchestrator/inference-accounting-postgres.test.ts
+
+      - name: Prove PostgreSQL source-check and native-session admission serialization
+        env:
+          DATABASE_URL: postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_os_ci
+          POSTGRES_RACE_TEST_DISPOSABLE: "1"
+          POSTGRES_RACE_TEST_FAIL_IF_SKIPPED: "1"
+        run: >-
+          node --import tsx --test --test-concurrency=1 --test-timeout=60000
+          artifacts/api-server/src/lib/codex-source-workspace-postgres.test.ts
 
       - name: Prove PostgreSQL sampler ownership and cross-connection file locks
         env:
@@ -240,6 +399,11 @@ jobs:
 
       - name: Prove native installation resume and binary backup restoration
         run: pnpm test:installation:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
+
+      - name: Prove seven-language first-job connection through real API and workers
+        env:
+          ACOS_GUIDED_LOCAL_SMOKE: "1"
+        run: pnpm test:connection:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
 
       - name: Exercise native PostgreSQL process topology
         run: >-

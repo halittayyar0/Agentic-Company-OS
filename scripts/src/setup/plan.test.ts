@@ -22,6 +22,55 @@ const input = {
   toolPacks: ["data", "documents"],
 };
 
+test("coding workers are an explicit compatible container choice, never a side effect of a tool pack", () => {
+  const compatible = {
+    ...capabilities,
+    coding: { ready: true, issues: [], apparmor: true },
+  };
+  const selected = { ...input, mode: "container", codingRuntime: true };
+  assert.equal(
+    planInstallation(selected, compatible).settings.codingRuntime,
+    true,
+  );
+  assert.equal(
+    planInstallation({ ...input, toolPacks: ["code"] }, compatible).settings
+      .codingRuntime,
+    undefined,
+  );
+  for (const patch of [
+    { mode: "native" },
+    { accessMode: "read_only" },
+    {
+      accessMode: "custom",
+      customPermissions: {
+        files: true,
+        terminal: false,
+        browser: false,
+        delegation: false,
+        sudo: false,
+      },
+    },
+  ]) {
+    assert.throws(
+      () => planInstallation({ ...selected, ...patch }, compatible),
+      /coding/u,
+    );
+  }
+  assert.throws(() => planInstallation(selected, capabilities), /coding/u);
+  assert.throws(
+    () =>
+      planInstallation(selected, {
+        ...compatible,
+        coding: { ...compatible.coding, apparmor: false },
+      }),
+    /coding/u,
+  );
+  assert.throws(
+    () => validateInstallationInput({ ...selected, codingRuntime: "true" }),
+    /coding/u,
+  );
+});
+
 test("custom permissions remain explicit and immutable in the reviewed plan", () => {
   const customPermissions = {
     files: true,

@@ -7,7 +7,7 @@ import {
   runtimeInstancesTable,
   taskAttemptsTable,
   tasksTable,
-  usageEventsTable,
+  effectiveUsageEventsView as usageEventsTable,
 } from "@workspace/db";
 import {
   and,
@@ -127,6 +127,7 @@ async function collectSample(
   const [usage] = await executor
     .select({
       events: sql<number>`count(*)`,
+      successes: sql<number>`count(*) filter (where ${usageEventsTable.outcome}='completed')`,
       tokens: sql<number>`coalesce(sum(${usageEventsTable.totalTokens}), 0)`,
       reportedCost: sql<string>`coalesce(sum(${usageEventsTable.reportedCostUsd}), 0)`,
     })
@@ -162,9 +163,9 @@ async function collectSample(
     recoveringTaskCount: numberValue(tasks?.recovering),
     blockedTaskCount: numberValue(tasks?.blocked),
     approvalWaitingTaskCount: numberValue(tasks?.awaitingApproval),
-    // The usage ledger records successful task completions but not provider
-    // errors or latency, so these metrics must remain explicitly partial.
-    providerSuccessCount: numberValue(usage?.events),
+    // Failed billing receipts contribute cost/tokens, never provider success.
+    // This ledger still does not provide latency or complete error coverage.
+    providerSuccessCount: numberValue(usage?.successes),
     providerErrorCount: 0,
     providerP50LatencyMs: null,
     providerP95LatencyMs: null,

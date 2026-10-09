@@ -5,9 +5,10 @@ import {
   agentsTable,
   tasksTable,
   approvalRequestsTable,
-  usageEventsTable,
+  effectiveUsageEventsView as usageEventsTable,
 } from "@workspace/db";
 import { GetOrgSummaryResponse } from "@workspace/api-zod";
+import { tokenUsageEvidence } from "../lib/usage-coverage";
 
 const router: IRouter = Router();
 
@@ -44,6 +45,7 @@ router.get("/org/summary", async (_req, res): Promise<void> => {
           tokens: sum(usageEventsTable.totalTokens),
           reportedCost: sum(usageEventsTable.reportedCostUsd),
           costReportedEvents: count(usageEventsTable.reportedCostUsd),
+          tokenReportedEvents: sql<number>`count(*) filter (where ${usageEventsTable.usageReported} is true)`,
         })
         .from(usageEventsTable)
         .where(gte(usageEventsTable.createdAt, startOfToday)),
@@ -51,6 +53,10 @@ router.get("/org/summary", async (_req, res): Promise<void> => {
 
   const tokensUsedToday = Number(usageStats?.tokens ?? 0);
   const reportedCostTodayUsd = Number(usageStats?.reportedCost ?? 0);
+  const tokenEvidence = tokenUsageEvidence(
+    usageStats?.events,
+    usageStats?.tokenReportedEvents,
+  );
 
   const summary = {
     totalAgents: Number(agentStats?.total ?? 0),
@@ -64,6 +70,9 @@ router.get("/org/summary", async (_req, res): Promise<void> => {
     estimatedCostTodayUsd: Number(reportedCostTodayUsd.toFixed(6)),
     usageEventsToday: Number(usageStats?.events ?? 0),
     costReportedEventsToday: Number(usageStats?.costReportedEvents ?? 0),
+    tokenReportedEventsToday: tokenEvidence.tokenReportedEvents,
+    tokenUnreportedEventsToday: tokenEvidence.tokenUnreportedEvents,
+    tokenUsageCoverageToday: tokenEvidence.tokenUsageCoverage,
   };
 
   res.json(GetOrgSummaryResponse.parse(summary));

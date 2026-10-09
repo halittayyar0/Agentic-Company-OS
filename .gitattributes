@@ -22,3 +22,7 @@ lib/api-client-react/src/generated/api.schemas.ts whitespace=-blank-at-eof
 lib/api-client-react/src/generated/api.ts whitespace=-blank-at-eof
 lib/api-zod/src/generated/api.ts whitespace=-blank-at-eof
 lib/db/src/generated-sql/0019_workforce_installations.sql whitespace=-blank-at-eof
+
+# Keep the integrity-verified upstream license verbatim, including its blank line.
+deploy/codex-attribution/BUBBLEWRAP-COPYING whitespace=-blank-at-eol
+deploy/codex-attribution/bubblewrap-source.tar.gz binary

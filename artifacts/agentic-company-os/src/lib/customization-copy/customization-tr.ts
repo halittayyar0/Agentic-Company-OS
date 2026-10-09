@@ -32,6 +32,8 @@ export default {
     "Başarısız",
     "Sonuç belirsiz",
     "Hazırlanıyor",
+    "Codex hâlâ çalışıyor veya sürecin temizlendiği doğrulanmadı. Kaynak kontrollerinden önce görevi açıp kodlama oturumunu incele.",
+    "Görevi aç",
   ],
   policy: [
     "Ajan erişimi",

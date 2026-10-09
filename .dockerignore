@@ -14,7 +14,10 @@ tmp
 data
 agent-sandboxes
 .conversation
+.superpowers
 .codex-pnpm-shim
 artifacts/endurance-reports
 *.log
 *.tsbuildinfo
+**/*.tsbuildinfo
+**/__pycache__

@@ -1,0 +1,13 @@
+# Load deploy/agentic-coding.apparmor on an AppArmor-enabled Linux host first.
+# Use this ONLY with compose.yaml and compose.coding.yaml (Compose >=2.24.4).
+services:
+  worker-1:
+    security_opt: !override
+      - no-new-privileges:true
+      - seccomp=./deploy/coding-seccomp.json
+      - apparmor=agentic-coding
+  worker-2:
+    security_opt: !override
+      - no-new-privileges:true
+      - seccomp=./deploy/coding-seccomp.json
+      - apparmor=agentic-coding

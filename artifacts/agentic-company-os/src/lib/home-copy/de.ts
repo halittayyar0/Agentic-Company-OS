@@ -1,6 +1,8 @@
 import type { HomeCopy } from "../home-copy";
 
 const copy = {
+  draftStorageError:
+    "Dieser Tab kann den Entwurf beim Neuladen nicht wiederherstellen. Sie können den Text hier weiter bearbeiten; kopieren Sie ihn vor dem Neuladen oder Schließen des Tabs.",
   deskKicker: "Dein Arbeitsbereich",
   heroTitle: "Was wollen wir heute gemeinsam erreichen?",
   heroDescription:

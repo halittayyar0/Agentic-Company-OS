@@ -3,6 +3,69 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [0.4.0] - 2026-10-09
+
+Connect a model without losing your first-job draft, and inspect durable usage
+records when a provider request is interrupted. Earlier v0.3.13 setup bundles
+do not include these flows. Downloadable packages are published only after
+the exact source passes the required checks and distribution acceptance.
+
+### Added
+
+- In-place local, ChatGPT and API connection choices keep the first-job composer
+  open. Seven authored language packs and validated tab drafts preserve input
+  through navigation, reload and denied sign-in; only explicit Start submits it.
+- Revision-guarded local model addresses, protected ChatGPT registrations,
+  serialized rotating credentials and protected server handoff. Saved accounts
+  require explicit selection; identity-only consent cannot enable inference.
+- A separate streamed plan transport preserves reported usage on failures,
+  unknown costs and selected-provider boundaries. Optional Codex coding uses
+  owned task sessions, exact action approval scopes and explicit uncertain-session
+  recovery; model output alone is not verified delivery.
+- Linux PID namespace lifetime control and an offline gate using the actual
+  pinned Codex CLI. Fixed commands verify workspace permissions and private-data
+  denial; a separate driver case refuses final admission before any model turn.
+  Ordinary Windows/macOS application installation is separate from the optional
+  coding runtime. Its supported container path needs Linux x64 and the enforced
+  bundled AppArmor profile. Native macOS coding is unsupported; the tested
+  Windows named-profile setup stops before inference. Offline tests do not
+  establish live account inference or a 24-hour result.
+- [Connection walkthroughs](./docs/model-connections.md) in all seven languages
+  explain connection states, server addresses and phone handoff.
+
+- Durable ordinary model reservations acknowledge dispatch before transport.
+  Keyed immutable receipts and invocation-owned evidence survive lost writes,
+  response loss and worker restart; storage retries never resend inference.
+- Project and agent **Model usage records** panels in all seven languages expose
+  pending, uncertain and verified status without model calls. Unknown usage stays
+  unknown and blocks more inference in the affected scope; a saved status does
+  not authorize execution or prove task completion.
+- Three forward accounting migrations (0041–0043) preserve original receipts
+  while budgets, operations and history share effective usage. Late matching
+  evidence can reconcile in bounded restart batches without recovering task
+  output or clearing conflicting evidence.
+- Both Mac architectures now run the seven-language first-job acceptance with
+  the real native installer, PostgreSQL, API and two workers. Only the model
+  HTTP peer is an offline fixture. Windows runs the same first-job gate.
+
+### Security
+
+- Replace preview discovery's vulnerable glob dependency with Node 24's native
+  file discovery. Pin fixed source-map and build-copy dependencies, and audit
+  development dependencies alongside production dependencies in verification
+  and CI. Preserve upstream toolchain licenses and source bytes verbatim.
+
+### Fixed
+
+- New Windows private records and locks receive the installation owner's private
+  permissions before credentials are written or a protected action starts,
+  including installations running with administrator privileges.
+- Windows process controllers reserve their private compiler output and create
+  protected control receipts with the owner's permissions under elevated tokens.
+- Operational health sampling stores scheduler and waiting-task ages beyond
+  25 days without an integer overflow. Migration 0040 preserves existing
+  observations, missing values and checks against negative durations.
+
 ## [0.3.13] - 2026-10-03
 
 ### Fixed

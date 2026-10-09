@@ -89,6 +89,7 @@ test("malformed nonterminal tools use bounded fallback then durable backoff", as
 
   let attempts = 0;
   const fakeCompletion: typeof createChatCompletion = async (params) => {
+    await params.beforeRequest?.();
     attempts += 1;
     return {
       provider: "replit",
@@ -313,6 +314,7 @@ test("an unknown operation stops the batch and blocks before another model call"
 
   let providerCalls = 0;
   const fakeCompletion: typeof createChatCompletion = async (params) => {
+    await params.beforeRequest?.();
     providerCalls += 1;
     return {
       provider: "replit",

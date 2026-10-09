@@ -1,5 +1,9 @@
 export type TaskStepFailureKind =
-  "model_routes_exhausted" | "provider_setup_required" | "runtime";
+  | "model_routes_exhausted"
+  | "provider_setup_required"
+  | "chatgpt_plan"
+  | "inference_accounting"
+  | "runtime";
 
 export interface TaskRetryDecision {
   shouldBlock: boolean;
@@ -17,8 +21,25 @@ export function taskRetryDecision(params: {
   failureKind: TaskStepFailureKind;
   consecutiveFailures: number;
   maxConsecutiveRuntimeFailures: number;
+  planRetryAt?: number | null;
+  now?: number;
 }): TaskRetryDecision {
   const failureCount = Math.max(1, Math.floor(params.consecutiveFailures));
+  const backoff = Math.min(
+    15 * 60_000,
+    30_000 * 2 ** Math.min(10, Math.max(0, failureCount - 1)),
+  );
+  if (params.failureKind === "chatgpt_plan") {
+    // An unknown quota reset or unfinished response requires explicit review.
+    // Only a quota's actual Retry-After allows automatic plan admission.
+    const floor = params.planRetryAt;
+    if (floor == null || !Number.isSafeInteger(floor) || floor <= 0)
+      return { shouldBlock: true, retryDelayMs: 0 };
+    return {
+      shouldBlock: false,
+      retryDelayMs: Math.max(backoff, floor - (params.now ?? Date.now())),
+    };
+  }
   const shouldBlock =
     params.failureKind !== "model_routes_exhausted" &&
     params.failureKind !== "provider_setup_required" &&
@@ -26,9 +47,6 @@ export function taskRetryDecision(params: {
     failureCount >= Math.max(1, params.maxConsecutiveRuntimeFailures);
   return {
     shouldBlock,
-    retryDelayMs: Math.min(
-      15 * 60_000,
-      30_000 * 2 ** Math.min(10, Math.max(0, failureCount - 1)),
-    ),
+    retryDelayMs: backoff,
   };
 }

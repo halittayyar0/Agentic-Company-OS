@@ -8,6 +8,485 @@
 import * as zod from 'zod';
 
 
+/**
+ * Authenticated read-only snapshot. Task scope includes its rooted family and the current owner's unresolved requests. Agent scope includes that agent's requests. Pending means the recorded response window has not elapsed, not verified worker liveness. Clear means no unresolved accounting marker, not task success, budget eligibility or permission to execute. Unknown usage never becomes zero and this endpoint never clears a fence.
+ * @summary Inspect model usage accounting without starting or retrying work
+ */
+export const getInferenceAccountingStatusQueryScopeIdMax = 2147483647;
+
+
+
+export const GetInferenceAccountingStatusQueryParams = zod.object({
+  "scopeType": zod.enum(['task', 'agent']),
+  "scopeId": zod.coerce.number().int().min(1).max(getInferenceAccountingStatusQueryScopeIdMax)
+})
+
+export const getInferenceAccountingStatusResponseScopeIdMax = 2147483647;
+
+
+export const getInferenceAccountingStatusResponseObservedAtMin = 0;
+
+export const getInferenceAccountingStatusResponseUnsettledCountMin = 0;
+
+
+
+export const getInferenceAccountingStatusResponseAttemptsItemModelIdMax = 256;
+
+export const getInferenceAccountingStatusResponseAttemptsItemProviderMax = 32;
+
+export const getInferenceAccountingStatusResponseAttemptsItemCreatedAtMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemRequestDeadlineAtMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemDispatchedAtMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemSettledAtMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemUsageOnePromptTokensMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemUsageOneCompletionTokensMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemUsageOneTotalTokensMin = 0;
+
+export const getInferenceAccountingStatusResponseAttemptsItemUsageOneReportedCostUsdRegExp = new RegExp('^\\d+(\\.\\d+)?$');
+export const getInferenceAccountingStatusResponseAttemptsMax = 20;
+
+
+
+export const GetInferenceAccountingStatusResponse = zod.object({
+  "scopeType": zod.enum(['task', 'agent']),
+  "scopeId": zod.number().int().min(1).max(getInferenceAccountingStatusResponseScopeIdMax),
+  "rootTaskId": zod.number().int().min(1).nullable(),
+  "status": zod.enum(['clear', 'pending', 'recovery_required']),
+  "observedAt": zod.number().int().min(getInferenceAccountingStatusResponseObservedAtMin),
+  "unsettledCount": zod.number().int().min(getInferenceAccountingStatusResponseUnsettledCountMin),
+  "hasMore": zod.boolean(),
+  "attempts": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "agentId": zod.number().int().min(1),
+  "taskId": zod.number().int().min(1).nullable(),
+  "modelId": zod.string().max(getInferenceAccountingStatusResponseAttemptsItemModelIdMax),
+  "provider": zod.string().max(getInferenceAccountingStatusResponseAttemptsItemProviderMax),
+  "kind": zod.enum(['chat', 'task_step', 'judge']),
+  "state": zod.enum(['reserved', 'dispatched', 'uncertain', 'accounted', 'not_dispatched']),
+  "createdAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemCreatedAtMin),
+  "requestDeadlineAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemRequestDeadlineAtMin),
+  "dispatchedAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemDispatchedAtMin).nullable(),
+  "settledAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemSettledAtMin).nullable(),
+  "usage": zod.union([zod.object({
+  "promptTokens": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOnePromptTokensMin),
+  "completionTokens": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOneCompletionTokensMin),
+  "totalTokens": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOneTotalTokensMin),
+  "usageReported": zod.boolean(),
+  "reportedCostUsd": zod.string().regex(getInferenceAccountingStatusResponseAttemptsItemUsageOneReportedCostUsdRegExp).nullable()
+}),zod.null()])
+})).max(getInferenceAccountingStatusResponseAttemptsMax)
+})
+
+
+/**
+ * @summary Read coding-session recovery eligibility without starting work
+ */
+
+
+
+export const GetCodexSessionRecoveryParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1)
+})
+
+
+export const getCodexSessionRecoveryResponseRevisionMax = 9007199254740991;
+
+
+
+export const GetCodexSessionRecoveryResponse = zod.object({
+  "taskId": zod.number().int().min(1),
+  "sessionState": zod.enum(['none', 'running', 'ready', 'uncertain', 'reset']),
+  "revision": zod.number().int().min(1).max(getCodexSessionRecoveryResponseRevisionMax).nullable(),
+  "cleanupState": zod.union([zod.literal('unknown'),zod.literal('not_launched'),zod.literal('verified'),zod.literal(null)]).nullable(),
+  "canReset": zod.boolean(),
+  "reason": zod.union([zod.enum(['task_missing', 'session_missing', 'revision_changed', 'revision_exhausted', 'task_active', 'session_running', 'cleanup_unknown', 'native_pending', 'already_reset']),zod.null()]),
+  "requiresRevalidation": zod.literal(true)
+})
+
+
+/**
+ * Operator-only metadata transition. Requires a unique request identity, exact observed revision and explicit acknowledgement that uncertain effects remain unresolved. Does not start or resume a task, reconcile effects, delete files, reuse a private home or grant native permissions. Running sessions, unknown cleanup, active task ownership and live native approvals are refused. Repeating a committed request returns its original receipt; changed scope conflicts.
+ * @summary Archive a stopped coding session and permit a fresh session on a later authorized task invocation
+ */
+
+
+
+export const RecoverCodexSessionParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1)
+})
+
+export const recoverCodexSessionBodyExpectedRevisionMax = 9007199254740991;
+
+
+
+export const RecoverCodexSessionBody = zod.object({
+  "requestId": zod.string().uuid(),
+  "expectedRevision": zod.number().int().min(1).max(recoverCodexSessionBodyExpectedRevisionMax),
+  "acknowledgeUncertainEffects": zod.literal(true)
+})
+
+
+export const recoverCodexSessionResponseExpectedRevisionMax = 9007199254740991;
+
+export const recoverCodexSessionResponseRevisionMax = 9007199254740991;
+
+export const recoverCodexSessionResponseRecordedAtMin = 0;
+export const recoverCodexSessionResponseRecordedAtMax = 9007199254740991;
+
+
+
+export const RecoverCodexSessionResponse = zod.object({
+  "requestId": zod.string().uuid(),
+  "taskId": zod.number().int().min(1),
+  "expectedRevision": zod.number().int().min(1).max(recoverCodexSessionResponseExpectedRevisionMax),
+  "outcome": zod.enum(['accepted', 'rejected']),
+  "reason": zod.union([zod.enum(['task_missing', 'session_missing', 'revision_changed', 'revision_exhausted', 'task_active', 'session_running', 'cleanup_unknown', 'native_pending', 'already_reset']),zod.null()]),
+  "revision": zod.number().int().min(1).max(recoverCodexSessionResponseRevisionMax).nullable(),
+  "recordedAt": zod.number().int().min(recoverCodexSessionResponseRecordedAtMin).max(recoverCodexSessionResponseRecordedAtMax),
+  "taskResumed": zod.literal(false),
+  "effectsReconciled": zod.literal(false)
+})
+
+
+/**
+ * @summary Recover the immutable receipt after a lost response
+ */
+
+
+
+export const GetCodexSessionRecoveryReceiptParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1),
+  "requestId": zod.coerce.string().uuid()
+})
+
+
+export const getCodexSessionRecoveryReceiptResponseExpectedRevisionMax = 9007199254740991;
+
+export const getCodexSessionRecoveryReceiptResponseRevisionMax = 9007199254740991;
+
+export const getCodexSessionRecoveryReceiptResponseRecordedAtMin = 0;
+export const getCodexSessionRecoveryReceiptResponseRecordedAtMax = 9007199254740991;
+
+
+
+export const GetCodexSessionRecoveryReceiptResponse = zod.object({
+  "requestId": zod.string().uuid(),
+  "taskId": zod.number().int().min(1),
+  "expectedRevision": zod.number().int().min(1).max(getCodexSessionRecoveryReceiptResponseExpectedRevisionMax),
+  "outcome": zod.enum(['accepted', 'rejected']),
+  "reason": zod.union([zod.enum(['task_missing', 'session_missing', 'revision_changed', 'revision_exhausted', 'task_active', 'session_running', 'cleanup_unknown', 'native_pending', 'already_reset']),zod.null()]),
+  "revision": zod.number().int().min(1).max(getCodexSessionRecoveryReceiptResponseRevisionMax).nullable(),
+  "recordedAt": zod.number().int().min(getCodexSessionRecoveryReceiptResponseRecordedAtMin).max(getCodexSessionRecoveryReceiptResponseRecordedAtMax),
+  "taskResumed": zod.literal(false),
+  "effectsReconciled": zod.literal(false)
+})
+
+
+/**
+ * Authenticated read-only observation of fresh healthy scheduler workers. Startup flags are not native availability or filesystem containment proof. Every task still requires live authority and actual native preflight. API-host flags and operating system never substitute for worker reports.
+ * @summary Read the executing workers' optional coding configuration without probes or inference
+ */
+export const getCodexTaskStatusResponseSampledAtMin = 0;
+export const getCodexTaskStatusResponseSampledAtMax = 9007199254740991;
+
+export const getCodexTaskStatusResponseWorkersItemConfigurationAtMin = 0;
+export const getCodexTaskStatusResponseWorkersItemConfigurationAtMax = 9007199254740991;
+
+export const getCodexTaskStatusResponseWorkersItemHeartbeatAtMin = 0;
+export const getCodexTaskStatusResponseWorkersItemHeartbeatAtMax = 9007199254740991;
+
+export const getCodexTaskStatusResponseWorkersItemStaleAtMin = 0;
+export const getCodexTaskStatusResponseWorkersItemStaleAtMax = 9007199254740991;
+
+export const getCodexTaskStatusResponseWorkersMax = 128;
+
+
+
+export const GetCodexTaskStatusResponse = zod.object({
+  "state": zod.enum(['no_worker', 'unknown', 'unavailable', 'preflight_required']),
+  "sampledAt": zod.number().int().min(getCodexTaskStatusResponseSampledAtMin).max(getCodexTaskStatusResponseSampledAtMax),
+  "truncated": zod.boolean().describe('Some workers are omitted; absence from this list cannot establish fleet-wide unavailability'),
+  "proofScope": zod.enum(['worker_configuration']),
+  "requiresTaskPreflight": zod.literal(true),
+  "workers": zod.array(zod.object({
+  "runtimeInstanceId": zod.string(),
+  "role": zod.enum(['worker', 'combined']),
+  "configurationState": zod.enum(['disabled', 'configuration_required', 'unsupported_platform', 'preflight_required', 'not_reported']),
+  "configurationAt": zod.number().int().min(getCodexTaskStatusResponseWorkersItemConfigurationAtMin).max(getCodexTaskStatusResponseWorkersItemConfigurationAtMax).describe('Startup configuration observation, not a successful native coding check'),
+  "heartbeatAt": zod.number().int().min(getCodexTaskStatusResponseWorkersItemHeartbeatAtMin).max(getCodexTaskStatusResponseWorkersItemHeartbeatAtMax),
+  "staleAt": zod.number().int().min(getCodexTaskStatusResponseWorkersItemStaleAtMin).max(getCodexTaskStatusResponseWorkersItemStaleAtMax).describe('This heartbeat observation must not be treated as fresh after this time')
+})).max(getCodexTaskStatusResponseWorkersMax)
+})
+
+
+/**
+ * @summary Saved ChatGPT accounts and explicit active selection, without credentials
+ */
+export const getChatGPTConnectionResponseRegistrationsItemAccountIdMax = 512;
+
+export const getChatGPTConnectionResponseRegistrationsItemEmailMax = 512;
+
+export const getChatGPTConnectionResponseRegistrationsItemDisplayNameMax = 512;
+
+
+export const getChatGPTConnectionResponseRegistrationsItemPlanPausePausedAtMax = 9007199254740991;
+
+export const getChatGPTConnectionResponseRegistrationsItemPlanPauseRetryAtMax = 9007199254740991;
+
+export const getChatGPTConnectionResponseRegistrationsMax = 64;
+
+
+
+export const GetChatGPTConnectionResponse = zod.object({
+  "registrations": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "accountId": zod.string().max(getChatGPTConnectionResponseRegistrationsItemAccountIdMax),
+  "email": zod.string().max(getChatGPTConnectionResponseRegistrationsItemEmailMax).optional(),
+  "displayName": zod.string().max(getChatGPTConnectionResponseRegistrationsItemDisplayNameMax).optional(),
+  "revision": zod.number().int().min(1),
+  "signedIn": zod.boolean(),
+  "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
+  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds'),
+  "planPause": zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.union([zod.literal('subscription_sharing_usage_limit_exceeded'),zod.literal('rate_limit_exceeded'),zod.literal(null)]).nullable(),
+  "pausedAt": zod.number().int().min(1).max(getChatGPTConnectionResponseRegistrationsItemPlanPausePausedAtMax),
+  "retryAt": zod.number().int().min(1).max(getChatGPTConnectionResponseRegistrationsItemPlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
+}).optional()
+})).max(getChatGPTConnectionResponseRegistrationsMax),
+  "activeRegistrationId": zod.string().uuid().nullable()
+})
+
+
+/**
+ * @summary Start a private loopback sign-in on the browser's computer
+ */
+export const BeginChatGPTSignInBody = zod.object({
+  "callbackLocation": zod.enum(['same-computer']),
+  "registrationId": zod.string().uuid().optional(),
+  "retryAttemptId": zod.string().uuid().optional(),
+  "requestPlanPermission": zod.boolean().optional().describe('Explicitly request fresh plan consent for a selected saved account or retry; ordinary sign-in never forces consent')
+})
+
+export const BeginChatGPTSignInResponse = zod.object({
+  "attemptId": zod.string().uuid(),
+  "authorizeUrl": zod.string().describe('Official one-time authorization URL. May contain an ID-token hint; never log, persist or send to analytics.'),
+  "expiresAt": zod.number().int()
+})
+
+
+export const GetChatGPTSignInParams = zod.object({
+  "attemptId": zod.coerce.string().uuid()
+})
+
+export const getChatGPTSignInResponseExpectedRevisionMin = 0;
+
+export const getChatGPTSignInResponseProposedAccountAccountIdMax = 512;
+
+export const getChatGPTSignInResponseProposedAccountEmailMax = 512;
+
+export const getChatGPTSignInResponseProposedAccountDisplayNameMax = 512;
+
+
+export const getChatGPTSignInResponseProposedAccountPlanPausePausedAtMax = 9007199254740991;
+
+export const getChatGPTSignInResponseProposedAccountPlanPauseRetryAtMax = 9007199254740991;
+
+
+
+export const GetChatGPTSignInResponse = zod.object({
+  "attemptId": zod.string().uuid(),
+  "state": zod.enum(['pending', 'exchanging', 'review', 'confirming', 'connected', 'denied', 'cancelled', 'expired', 'failed']),
+  "expiresAt": zod.number().int(),
+  "expectedRevision": zod.number().int().min(getChatGPTSignInResponseExpectedRevisionMin).optional(),
+  "proposedAccount": zod.object({
+  "id": zod.string().uuid(),
+  "accountId": zod.string().max(getChatGPTSignInResponseProposedAccountAccountIdMax),
+  "email": zod.string().max(getChatGPTSignInResponseProposedAccountEmailMax).optional(),
+  "displayName": zod.string().max(getChatGPTSignInResponseProposedAccountDisplayNameMax).optional(),
+  "revision": zod.number().int().min(1),
+  "signedIn": zod.boolean(),
+  "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
+  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds'),
+  "planPause": zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.union([zod.literal('subscription_sharing_usage_limit_exceeded'),zod.literal('rate_limit_exceeded'),zod.literal(null)]).nullable(),
+  "pausedAt": zod.number().int().min(1).max(getChatGPTSignInResponseProposedAccountPlanPausePausedAtMax),
+  "retryAt": zod.number().int().min(1).max(getChatGPTSignInResponseProposedAccountPlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
+}).optional()
+}).optional(),
+  "failureKind": zod.enum(['temporary', 'client_missing', 'client_mismatch', 'identity_invalid', 'token_invalid', 'invalid_grant', 'invalid_client', 'authorization_failed']).optional()
+})
+
+
+export const CancelChatGPTSignInParams = zod.object({
+  "attemptId": zod.coerce.string().uuid()
+})
+
+export const CancelChatGPTSignInResponse = zod.void()
+
+
+/**
+ * @summary Save the validated candidate and explicitly select it; never starts a job
+ */
+export const ConfirmChatGPTAccountParams = zod.object({
+  "attemptId": zod.coerce.string().uuid()
+})
+
+export const confirmChatGPTAccountBodyExpectedRevisionMin = 0;
+export const confirmChatGPTAccountBodyExpectedRevisionMax = 9007199254740991;
+
+
+
+export const ConfirmChatGPTAccountBody = zod.object({
+  "expectedRevision": zod.number().int().min(confirmChatGPTAccountBodyExpectedRevisionMin).max(confirmChatGPTAccountBodyExpectedRevisionMax)
+})
+
+export const confirmChatGPTAccountResponseAccountIdMax = 512;
+
+export const confirmChatGPTAccountResponseEmailMax = 512;
+
+export const confirmChatGPTAccountResponseDisplayNameMax = 512;
+
+
+export const confirmChatGPTAccountResponsePlanPausePausedAtMax = 9007199254740991;
+
+export const confirmChatGPTAccountResponsePlanPauseRetryAtMax = 9007199254740991;
+
+
+
+export const ConfirmChatGPTAccountResponse = zod.object({
+  "id": zod.string().uuid(),
+  "accountId": zod.string().max(confirmChatGPTAccountResponseAccountIdMax),
+  "email": zod.string().max(confirmChatGPTAccountResponseEmailMax).optional(),
+  "displayName": zod.string().max(confirmChatGPTAccountResponseDisplayNameMax).optional(),
+  "revision": zod.number().int().min(1),
+  "signedIn": zod.boolean(),
+  "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
+  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds'),
+  "planPause": zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.union([zod.literal('subscription_sharing_usage_limit_exceeded'),zod.literal('rate_limit_exceeded'),zod.literal(null)]).nullable(),
+  "pausedAt": zod.number().int().min(1).max(confirmChatGPTAccountResponsePlanPausePausedAtMax),
+  "retryAt": zod.number().int().min(1).max(confirmChatGPTAccountResponsePlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
+}).optional()
+})
+
+
+/**
+ * @summary Select an existing signed-in account at its observed revision
+ */
+export const SelectChatGPTAccountParams = zod.object({
+  "registrationId": zod.coerce.string().uuid()
+})
+
+export const selectChatGPTAccountBodyExpectedRevisionMin = 0;
+export const selectChatGPTAccountBodyExpectedRevisionMax = 9007199254740991;
+
+
+
+export const SelectChatGPTAccountBody = zod.object({
+  "expectedRevision": zod.number().int().min(selectChatGPTAccountBodyExpectedRevisionMin).max(selectChatGPTAccountBodyExpectedRevisionMax)
+})
+
+export const selectChatGPTAccountResponseAccountIdMax = 512;
+
+export const selectChatGPTAccountResponseEmailMax = 512;
+
+export const selectChatGPTAccountResponseDisplayNameMax = 512;
+
+
+export const selectChatGPTAccountResponsePlanPausePausedAtMax = 9007199254740991;
+
+export const selectChatGPTAccountResponsePlanPauseRetryAtMax = 9007199254740991;
+
+
+
+export const SelectChatGPTAccountResponse = zod.object({
+  "id": zod.string().uuid(),
+  "accountId": zod.string().max(selectChatGPTAccountResponseAccountIdMax),
+  "email": zod.string().max(selectChatGPTAccountResponseEmailMax).optional(),
+  "displayName": zod.string().max(selectChatGPTAccountResponseDisplayNameMax).optional(),
+  "revision": zod.number().int().min(1),
+  "signedIn": zod.boolean(),
+  "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
+  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds'),
+  "planPause": zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.union([zod.literal('subscription_sharing_usage_limit_exceeded'),zod.literal('rate_limit_exceeded'),zod.literal(null)]).nullable(),
+  "pausedAt": zod.number().int().min(1).max(selectChatGPTAccountResponsePlanPausePausedAtMax),
+  "retryAt": zod.number().int().min(1).max(selectChatGPTAccountResponsePlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
+}).optional()
+})
+
+
+/**
+ * @summary Explicitly clear this observed quota pause; never starts a job or changes provider
+ */
+export const RetryChatGPTPlanParams = zod.object({
+  "registrationId": zod.coerce.string().uuid()
+})
+
+export const retryChatGPTPlanBodyExpectedRevisionMin = 0;
+export const retryChatGPTPlanBodyExpectedRevisionMax = 9007199254740991;
+
+
+
+export const RetryChatGPTPlanBody = zod.object({
+  "expectedRevision": zod.number().int().min(retryChatGPTPlanBodyExpectedRevisionMin).max(retryChatGPTPlanBodyExpectedRevisionMax),
+  "pauseId": zod.string().uuid()
+})
+
+export const retryChatGPTPlanResponseAccountIdMax = 512;
+
+export const retryChatGPTPlanResponseEmailMax = 512;
+
+export const retryChatGPTPlanResponseDisplayNameMax = 512;
+
+
+export const retryChatGPTPlanResponsePlanPausePausedAtMax = 9007199254740991;
+
+export const retryChatGPTPlanResponsePlanPauseRetryAtMax = 9007199254740991;
+
+
+
+export const RetryChatGPTPlanResponse = zod.object({
+  "id": zod.string().uuid(),
+  "accountId": zod.string().max(retryChatGPTPlanResponseAccountIdMax),
+  "email": zod.string().max(retryChatGPTPlanResponseEmailMax).optional(),
+  "displayName": zod.string().max(retryChatGPTPlanResponseDisplayNameMax).optional(),
+  "revision": zod.number().int().min(1),
+  "signedIn": zod.boolean(),
+  "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
+  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds'),
+  "planPause": zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.union([zod.literal('subscription_sharing_usage_limit_exceeded'),zod.literal('rate_limit_exceeded'),zod.literal(null)]).nullable(),
+  "pausedAt": zod.number().int().min(1).max(retryChatGPTPlanResponsePlanPausePausedAtMax),
+  "retryAt": zod.number().int().min(1).max(retryChatGPTPlanResponsePlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
+}).optional()
+})
+
+
+/**
+ * @summary Stop renewable session, clear credentials and retain account mapping
+ */
+export const SignOutChatGPTAccountParams = zod.object({
+  "registrationId": zod.coerce.string().uuid()
+})
+
+export const SignOutChatGPTAccountResponse = zod.object({
+  "localSignedOut": zod.literal(true),
+  "revocationConfirmed": zod.boolean().nullable()
+})
+
+
 export const ListSourceChangesResponseItem = zod.object({
   "id": zod.string().uuid(),
   "agentId": zod.number().int(),
@@ -1444,7 +1923,7 @@ export const SendAgentMessageResponse = zod.object({
   "updatedAt": zod.coerce.date()
 })),
   "usedModel": zod.string().nullish().describe('Model id that actually served this turn.'),
-  "usedProvider": zod.string().nullish().describe('Provider that served this turn (replit, openrouter, openai, or ollama).')
+  "usedProvider": zod.string().nullish().describe('Provider that served this turn (replit, openrouter, openai, ollama, or chatgpt).')
 })
 
 
@@ -3494,6 +3973,12 @@ export const ResolveApprovalResponse = zod.object({
 /**
  * @summary Org-wide dashboard summary
  */
+export const getOrgSummaryResponseTokenReportedEventsTodayMin = 0;
+
+export const getOrgSummaryResponseTokenUnreportedEventsTodayMin = 0;
+
+
+
 export const GetOrgSummaryResponse = zod.object({
   "totalAgents": zod.number(),
   "activeAgents": zod.number(),
@@ -3505,7 +3990,10 @@ export const GetOrgSummaryResponse = zod.object({
   "tokensUsedToday": zod.number(),
   "estimatedCostTodayUsd": zod.number(),
   "usageEventsToday": zod.number(),
-  "costReportedEventsToday": zod.number()
+  "costReportedEventsToday": zod.number(),
+  "tokenReportedEventsToday": zod.number().int().min(getOrgSummaryResponseTokenReportedEventsTodayMin).optional(),
+  "tokenUnreportedEventsToday": zod.number().int().min(getOrgSummaryResponseTokenUnreportedEventsTodayMin).optional(),
+  "tokenUsageCoverageToday": zod.enum(['no_usage', 'complete', 'partial', 'unknown']).optional().describe('Token totals are lower bounds unless every call has reported usage.')
 })
 
 
@@ -3514,7 +4002,7 @@ export const GetOrgSummaryResponse = zod.object({
  */
 export const GetModelCatalogResponse = zod.object({
   "providers": zod.array(zod.object({
-  "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama']),
+  "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "label": zod.string(),
   "available": zod.boolean()
 })),
@@ -3522,7 +4010,7 @@ export const GetModelCatalogResponse = zod.object({
   "id": zod.string(),
   "label": zod.string(),
   "tier": zod.enum(['economy', 'standard', 'premium', 'reasoning']),
-  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama']),
+  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
   "isDefault": zod.boolean()
@@ -3574,6 +4062,8 @@ export const GetLlmSettingsResponse = zod.object({
   "configured": zod.boolean(),
   "reachable": zod.boolean(),
   "baseUrl": zod.string().url().max(getLlmSettingsResponseOllamaBaseUrlMax).nullable(),
+  "hasAddressInEnv": zod.boolean(),
+  "addressSource": zod.enum(['runtime', 'environment', 'none']),
   "modelCount": zod.number().int().min(getLlmSettingsResponseOllamaModelCountMin),
   "toolModelCount": zod.number().int().min(getLlmSettingsResponseOllamaToolModelCountMin),
   "catalogSyncedAt": zod.number().int().min(getLlmSettingsResponseOllamaCatalogSyncedAtMin).nullable(),
@@ -3585,7 +4075,7 @@ export const GetLlmSettingsResponse = zod.object({
 }),
   "catalog": zod.object({
   "providers": zod.array(zod.object({
-  "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama']),
+  "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "label": zod.string(),
   "available": zod.boolean()
 })),
@@ -3593,7 +4083,7 @@ export const GetLlmSettingsResponse = zod.object({
   "id": zod.string(),
   "label": zod.string(),
   "tier": zod.enum(['economy', 'standard', 'premium', 'reasoning']),
-  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama']),
+  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
   "isDefault": zod.boolean()
@@ -3613,12 +4103,15 @@ export const updateLlmSettingsBodyOpenrouterApiKeyMax = 512;
 
 export const updateLlmSettingsBodyOpenaiApiKeyMax = 512;
 
+export const updateLlmSettingsBodyOllamaBaseUrlMax = 2048;
+
 
 
 export const UpdateLlmSettingsBody = zod.object({
   "expectedRevision": zod.number().int().min(updateLlmSettingsBodyExpectedRevisionMin).max(updateLlmSettingsBodyExpectedRevisionMax).optional().describe('The exact stored-credential revision reviewed by the operator. Legacy callers may omit it.'),
   "openrouterApiKey": zod.string().max(updateLlmSettingsBodyOpenrouterApiKeyMax).nullish(),
-  "openaiApiKey": zod.string().max(updateLlmSettingsBodyOpenaiApiKeyMax).nullish()
+  "openaiApiKey": zod.string().max(updateLlmSettingsBodyOpenaiApiKeyMax).nullish(),
+  "ollamaBaseUrl": zod.string().max(updateLlmSettingsBodyOllamaBaseUrlMax).nullish().describe('Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.')
 })
 
 
@@ -3628,10 +4121,10 @@ export const UpdateLlmSettingsResponse = zod.object({
   "revision": zod.number().int().min(1),
   "ok": zod.literal(true),
   "configured": zod.boolean(),
-  "configuredProviders": zod.array(zod.enum(['replit', 'openrouter', 'openai', 'ollama'])),
+  "configuredProviders": zod.array(zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt'])),
   "catalog": zod.object({
   "providers": zod.array(zod.object({
-  "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama']),
+  "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "label": zod.string(),
   "available": zod.boolean()
 })),
@@ -3639,7 +4132,7 @@ export const UpdateLlmSettingsResponse = zod.object({
   "id": zod.string(),
   "label": zod.string(),
   "tier": zod.enum(['economy', 'standard', 'premium', 'reasoning']),
-  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama']),
+  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
   "isDefault": zod.boolean()
@@ -3754,7 +4247,7 @@ export const testLlmConnectionResponseLatencyMsMin = 0;
 export const TestLlmConnectionResponse = zod.object({
   "revision": zod.number().int().min(testLlmConnectionResponseRevisionMin),
   "ok": zod.literal(true),
-  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama']),
+  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "model": zod.string().min(1).max(testLlmConnectionResponseModelMax),
   "sample": zod.string().max(testLlmConnectionResponseSampleMax).describe('Retained for compatibility; returned empty to avoid echoing upstream content.'),
   "latencyMs": zod.number().int().min(testLlmConnectionResponseLatencyMsMin)
@@ -3832,6 +4325,10 @@ export const getOperationsOverviewResponseUsageReportedCostUsdMin = 0;
 export const getOperationsOverviewResponseUsageUsageEventsMin = 0;
 
 export const getOperationsOverviewResponseUsageCostReportedEventsMin = 0;
+
+export const getOperationsOverviewResponseUsageTokenReportedEventsMin = 0;
+
+export const getOperationsOverviewResponseUsageTokenUnreportedEventsMin = 0;
 
 export const getOperationsOverviewResponseFleetHealthSamplesItemHealthyWorkerCountMin = 0;
 
@@ -3916,6 +4413,9 @@ export const GetOperationsOverviewResponse = zod.object({
   "reportedCostUsd": zod.number().min(getOperationsOverviewResponseUsageReportedCostUsdMin),
   "usageEvents": zod.number().int().min(getOperationsOverviewResponseUsageUsageEventsMin),
   "costReportedEvents": zod.number().int().min(getOperationsOverviewResponseUsageCostReportedEventsMin),
+  "tokenReportedEvents": zod.number().int().min(getOperationsOverviewResponseUsageTokenReportedEventsMin).optional(),
+  "tokenUnreportedEvents": zod.number().int().min(getOperationsOverviewResponseUsageTokenUnreportedEventsMin).optional(),
+  "tokenUsageCoverage": zod.enum(['no_usage', 'complete', 'partial', 'unknown']).optional().describe('Token totals are lower bounds unless every call has reported usage.'),
   "providerMetricsCoverage": zod.enum(['partial', 'complete'])
 }),
   "fleetHealthSamples": zod.array(zod.object({
@@ -4078,6 +4578,10 @@ export const getProjectOperationsResponseUsageReportedCostUsdMin = 0;
 export const getProjectOperationsResponseUsageUsageEventsMin = 0;
 
 export const getProjectOperationsResponseUsageCostReportedEventsMin = 0;
+
+export const getProjectOperationsResponseUsageTokenReportedEventsMin = 0;
+
+export const getProjectOperationsResponseUsageTokenUnreportedEventsMin = 0;
 
 export const getProjectOperationsResponseFleetHealthSamplesItemHealthyWorkerCountMin = 0;
 
@@ -4249,6 +4753,9 @@ export const GetProjectOperationsResponse = zod.object({
   "reportedCostUsd": zod.number().min(getProjectOperationsResponseUsageReportedCostUsdMin),
   "usageEvents": zod.number().int().min(getProjectOperationsResponseUsageUsageEventsMin),
   "costReportedEvents": zod.number().int().min(getProjectOperationsResponseUsageCostReportedEventsMin),
+  "tokenReportedEvents": zod.number().int().min(getProjectOperationsResponseUsageTokenReportedEventsMin).optional(),
+  "tokenUnreportedEvents": zod.number().int().min(getProjectOperationsResponseUsageTokenUnreportedEventsMin).optional(),
+  "tokenUsageCoverage": zod.enum(['no_usage', 'complete', 'partial', 'unknown']).optional().describe('Token totals are lower bounds unless every call has reported usage.'),
   "providerMetricsCoverage": zod.enum(['partial', 'complete'])
 }),
   "fleetHealthSamples": zod.array(zod.object({

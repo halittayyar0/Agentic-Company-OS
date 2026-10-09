@@ -6,6 +6,8 @@ import {
   agentsTable,
   db,
   dbReady,
+  closeDatabase,
+  databaseBackend,
   operationInvocationsTable,
   operationReceiptsTable,
   projectMembersTable,
@@ -15,6 +17,7 @@ import {
   tasksTable,
   usageEventsTable,
 } from "@workspace/db";
+test.after(() => closeDatabase());
 
 test("project operations is bounded to the root subtree and never projects raw audit text", async () => {
   await dbReady;
@@ -100,6 +103,7 @@ test("project operations is bounded to the root subtree and never projects raw a
     startedAt: new Date("2026-08-20T00:00:00.000Z"),
     lastHeartbeatAt: new Date("2026-09-01T11:59:59.000Z"),
     sanitizedError: "PRIVATE-ERROR-SENTINEL",
+    failureKind: "chatgpt_plan",
   });
   const receiptId = randomUUID();
   const operationKey = `op:v1:${suffix.replaceAll("-", "").padEnd(64, "a")}`;
@@ -191,7 +195,11 @@ test("project operations is bounded to the root subtree and never projects raw a
     schedulerTickMs: 5_000,
   });
   assert.equal(snapshot.rootTask.id, root.id);
-  assert.equal(snapshot.runtime.state, "local_demo");
+  assert.equal(snapshot.attempts[0]?.failureKind, "chatgpt_plan");
+  assert.equal(
+    snapshot.runtime.state,
+    databaseBackend === "postgresql" ? "live" : "local_demo",
+  );
   assert.deepEqual(
     snapshot.attempts.map((attempt: { id: string }) => attempt.id),
     [attemptId],
@@ -202,6 +210,9 @@ test("project operations is bounded to the root subtree and never projects raw a
   );
   assert.equal(snapshot.receipts[0]?.operationKey, operationKey);
   assert.equal(snapshot.usage.taskTokens, 123);
+  assert.equal(snapshot.usage.tokenReportedEvents, 0);
+  assert.equal(snapshot.usage.tokenUnreportedEvents, 1);
+  assert.equal(snapshot.usage.tokenUsageCoverage, "unknown");
   assert.equal(snapshot.fleetHealthSamples[0]?.providerP50LatencyMs, null);
   assert.match(snapshot.cursor, /^\d+$/u);
 

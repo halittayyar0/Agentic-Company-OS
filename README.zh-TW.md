@@ -141,6 +141,10 @@
 
 連結中的技術文件以英語為主。歡迎範圍明確的小型貢獻：可重現的錯誤回報、更清楚的翻譯、實用指南或經過測試的修正。
 
+**模型連線，適用於 v0.4.0 及更新版本：**[連線指南](./docs/model-connections.zh-TW.md)介紹本機模型、ChatGPT、API 金鑰及首次任務草稿的保留。較早的安裝套件不包含此流程。
+
+中斷後，可在專案或代理頁面開啟**模型用量紀錄**查看請求。檢查不消耗模型 token，也不會重新傳送請求；未知用量不會被視為零。[了解用量紀錄 →](./docs/inference-accounting.md)
+
 ---
 
 **以 [MIT 授權條款](./LICENSE)開放原始碼。** 隨附的 IBM Plex 字型採用 SIL Open Font License 1.1；請參閱[第三方聲明](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt)。

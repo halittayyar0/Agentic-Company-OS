@@ -1,6 +1,8 @@
 import type { NewProjectCopy } from "../new-project-copy";
 
 const copy = {
+  draftStorageError:
+    "此分頁無法儲存供重新載入後復原的草稿。你仍可在此編輯文字；重新載入或關閉分頁前，請先複製保存。",
   back: "返回專案",
   eyebrow: "新專案 · 全體團隊",
   title: "提出你的想法，與團隊一起實現。",

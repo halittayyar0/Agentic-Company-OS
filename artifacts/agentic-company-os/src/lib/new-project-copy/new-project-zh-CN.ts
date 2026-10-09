@@ -1,6 +1,8 @@
 import type { NewProjectCopy } from "../new-project-copy";
 
 const copy = {
+  draftStorageError:
+    "此标签页无法保存供重新加载后恢复的草稿。你仍可在此编辑文字；重新加载或关闭标签页前，请先复制保存。",
   back: "返回项目",
   eyebrow: "新项目 · 全体团队",
   title: "提出你的想法，与团队一起实现。",

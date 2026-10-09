@@ -43,13 +43,19 @@ test("prebuilt installation pulls an immutable image without compiling source", 
     ),
   );
 });
-function plan(mode: string, provider = "later") {
+function plan(
+  mode: string,
+  provider = "later",
+  codingRuntime?: boolean,
+  accessMode = "approval",
+) {
   return planInstallation(
     {
       mode,
       locale: "en",
       port: 54321,
-      accessMode: "approval",
+      accessMode,
+      ...(codingRuntime !== undefined ? { codingRuntime } : {}),
       provider,
       phoneAccess: "local",
       toolPacks: [],
@@ -62,9 +68,115 @@ function plan(mode: string, provider = "later") {
       composeVersion: "2.40.0",
       native: { ready: true, issues: [] },
       container: { ready: true, issues: [] },
+      coding: { ready: true, issues: [], apparmor: true },
     },
   );
 }
+
+test("selected coding deployment keeps API authority separate and private overrides last", () => {
+  const image = `ghcr.io/owner/app@sha256:${"a".repeat(64)}`;
+  const codingImage = `ghcr.io/owner/app-coding@sha256:${"b".repeat(64)}`;
+  const selected = plan("container", "later", true);
+  assert.throws(
+    () =>
+      buildContainerDeployment(
+        source,
+        selected,
+        resources,
+        {},
+        undefined,
+        image,
+        { apparmor: false, image: codingImage },
+      ),
+    /coding/u,
+  );
+  assert.throws(
+    () =>
+      buildContainerDeployment(
+        source,
+        selected,
+        resources,
+        {},
+        undefined,
+        image,
+      ),
+    /coding/u,
+  );
+  assert.throws(
+    () =>
+      buildContainerDeployment(
+        source,
+        selected,
+        resources,
+        {},
+        undefined,
+        image,
+        { apparmor: true },
+      ),
+    /coding/u,
+  );
+  assert.throws(
+    () =>
+      buildContainerDeployment(
+        source,
+        selected,
+        resources,
+        {},
+        undefined,
+        image,
+        { apparmor: true, image },
+      ),
+    /coding/u,
+  );
+  const result = buildContainerDeployment(
+    source,
+    selected,
+    resources,
+    {},
+    undefined,
+    image,
+    { apparmor: true, image: codingImage },
+  );
+  assert.equal(result.override.services.app.image, image);
+  assert.equal(
+    result.override.services.app.environment.ALLOW_AGENT_CODEX_TASKS,
+    "false",
+  );
+  for (const name of ["worker-1", "worker-2"]) {
+    assert.equal(result.override.services[name].image, codingImage);
+    assert.equal(
+      result.override.services[name].environment.ALLOW_AGENT_CODEX_TASKS,
+      "true",
+    );
+    assert.equal(
+      result.override.services[name].environment.ACOS_CODEX_EXECUTABLE,
+      "/opt/agentic-codex/bin/codex",
+    );
+  }
+  assert.deepEqual(
+    result.args.filter((_, i) => result.args[i - 1] === "--file"),
+    [
+      path.join(source, "compose.yaml"),
+      path.join(source, "compose.coding.yaml"),
+      path.join(source, "compose.coding-apparmor.yaml"),
+      path.join(directory, "compose.override.json"),
+    ],
+  );
+  const ordinary = buildContainerDeployment(
+    source,
+    plan("container"),
+    resources,
+    {},
+    undefined,
+    image,
+    { apparmor: true, image: codingImage },
+  );
+  assert.ok(!ordinary.args.some((arg) => arg.endsWith("compose.coding.yaml")));
+  assert.equal(
+    ordinary.override.services["worker-1"].environment.ALLOW_AGENT_CODEX_TASKS,
+    "false",
+  );
+});
 
 test("native launch has one API and two workers with separate writable data", () => {
   const specs = buildNativeDeployment(source, plan("native"), resources, {});
@@ -84,6 +196,8 @@ test("native launch has one API and two workers with separate writable data", ()
     resources.secretFiles.operator_auth_token,
   );
   assert.equal(specs[1].env?.OPERATOR_AUTH_TOKEN_FILE, undefined);
+  assert.equal(specs[1].env?.ALLOW_AGENT_CODEX_TASKS, "false");
+  assert.equal(specs[1].env?.ACOS_CODEX_EXECUTABLE, undefined);
   assert.equal(
     specs[1].env?.RUNTIME_CONTROL_API_URL,
     "http://127.0.0.1:54321/api/internal/runtime-control",

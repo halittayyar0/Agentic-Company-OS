@@ -1,23 +1,14 @@
 import { spawn } from "node:child_process";
-import { readdir, realpath } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { testLoaderUrl } from "./test-node-options";
-import { assertLocalTestEnvironment } from "./test-environment";
-
-assertLocalTestEnvironment(process.env);
+import { prepareLocalTestEnvironment } from "./test-environment";
 
 // Windows hosted runners expose TEMP through an 8.3 account alias. Resolve the
 // OS-selected root before tests create their owned files; never relax the
 // production checks rejecting redirected user-supplied output directories.
-const canonicalTemp = await realpath(tmpdir());
-const testEnvironment = {
-  ...process.env,
-  TEMP: canonicalTemp,
-  TMP: canonicalTemp,
-  TMPDIR: canonicalTemp,
-};
+const testEnvironment = await prepareLocalTestEnvironment(process.env);
 
 const workspaceRoot = fileURLToPath(new URL("../..", import.meta.url));
 const scanRoots = ["artifacts", "lib", "scripts"];

@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { resolveProcessLaunch } from "./process-launch";
+import { stopOwnedAgentRuntimes } from "../orchestrator/owned-agent-runtimes";
 import type { WorkspaceLocale } from "../workspace-locale";
 import type { TerminalMessage } from "./terminal-copy";
 import { getTerminalCopy, terminalMessage } from "./terminal-localization";
@@ -171,7 +172,7 @@ export function stopAllAgentProcesses(): number {
   for (const child of active) {
     terminateAgentProcessTree(child);
   }
-  return active.length;
+  return active.length + stopOwnedAgentRuntimes();
 }
 
 function findWorkspaceRoot(): string {

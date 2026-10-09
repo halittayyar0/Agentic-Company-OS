@@ -3,21 +3,32 @@ import {
   db,
   taskAttemptsTable,
   tasksTable,
-  usageEventsTable,
+  effectiveUsageEventsView as usageEventsTable,
   type Task,
 } from "@workspace/db";
 import {
   taskBudgetBlockReason,
+  unreportedTokenUsageBlockReason,
   type TaskBudgetLimits,
 } from "./task-budget-policy";
 import type { WorkspaceLocale } from "../workspace-locale";
 import {
   readFamilySpendAdmission,
   type SpendReaderClient,
+  type InferenceAccountingStatus,
 } from "./family-spend-admission";
 import { ModelAdmissionDeniedError } from "./model-fallback";
+import { tokenUsageEvidence } from "../usage-coverage";
 
-export class TaskSpendBudgetError extends ModelAdmissionDeniedError {}
+export class TaskSpendBudgetError extends ModelAdmissionDeniedError {
+  constructor(
+    message: string,
+    readonly accountingStatus: InferenceAccountingStatus = null,
+    readonly inferenceAttemptId: string | null = null,
+  ) {
+    super(message);
+  }
+}
 
 export async function assertTaskInferenceAdmission(
   taskId: number,
@@ -28,12 +39,17 @@ export async function assertTaskInferenceAdmission(
     .from(tasksTable)
     .where(eq(tasksTable.id, taskId));
   if (!task) throw new Error("Task no longer exists");
-  const reason = await readTaskSpendBlockReason(
+  const admission = await readTaskSpendAdmission(
     task,
     { ...executionSpendLimits(), maxSteps: null },
     locale,
   );
-  if (reason) throw new TaskSpendBudgetError(reason);
+  if (admission.reason)
+    throw new TaskSpendBudgetError(
+      admission.reason,
+      admission.accountingStatus,
+      admission.inferenceAttemptId,
+    );
 }
 
 function costEvidence(
@@ -100,6 +116,7 @@ export async function readIndividualTaskSpendAdmission(
   locale: WorkspaceLocale = "tr",
   now = new Date(),
   client: SpendReaderClient = db,
+  _ignoreInferenceAttemptId?: string,
 ) {
   const recurring = task.autonomyMode === "continuous";
   const cycleStart = task.lastCycleCompletedAt ?? task.createdAt;
@@ -111,16 +128,19 @@ export async function readIndividualTaskSpendAdmission(
         string | null
       >`sum(${usageEventsTable.reportedCostUsd}) filter (where ${usageEventsTable.createdAt} >= ${cycleStart})`,
       rows: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${cycleStart})`,
+      tokenReported: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${cycleStart} and ${usageEventsTable.usageReported} is true)`,
       unknown: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${cycleStart} and ${usageEventsTable.reportedCostUsd} is null)`,
       allTokens: sql<string>`coalesce(sum(${usageEventsTable.totalTokens}), 0)`,
       allCost: sql<string | null>`sum(${usageEventsTable.reportedCostUsd})`,
       allRows: sql<string>`count(*)`,
+      allTokenReported: sql<string>`count(*) filter (where ${usageEventsTable.usageReported} is true)`,
       allUnknown: sql<string>`count(*) filter (where ${usageEventsTable.reportedCostUsd} is null)`,
       dayTokens: sql<string>`coalesce(sum(case when ${usageEventsTable.createdAt} >= ${dayStart} then ${usageEventsTable.totalTokens} else 0 end), 0)`,
       dayCost: sql<
         string | null
       >`sum(${usageEventsTable.reportedCostUsd}) filter (where ${usageEventsTable.createdAt} >= ${dayStart})`,
       dayRows: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${dayStart})`,
+      dayTokenReported: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${dayStart} and ${usageEventsTable.usageReported} is true)`,
       dayUnknown: sql<string>`count(*) filter (where ${usageEventsTable.createdAt} >= ${dayStart} and ${usageEventsTable.reportedCostUsd} is null)`,
     })
     .from(usageEventsTable)
@@ -164,16 +184,27 @@ export async function readIndividualTaskSpendAdmission(
       : Math.max(task.tokensUsed, Number(usage?.allTokens ?? 0)),
     estimatedCostUsd: cycleCost.reportedCostUsd,
   };
-  const cycleReason = taskBudgetBlockReason(
-    snapshot,
-    { ...limits, maxSteps: recurring ? null : limits.maxSteps },
-    locale,
+  const cycleTokenEvidence = tokenUsageEvidence(
+    recurring ? usage?.rows : usage?.allRows,
+    recurring ? usage?.tokenReported : usage?.allTokenReported,
+    !recurring && task.tokensUsed > Number(usage?.allTokens ?? 0),
   );
+  const cycleReason =
+    taskBudgetBlockReason(
+      snapshot,
+      { ...limits, maxSteps: recurring ? null : limits.maxSteps },
+      locale,
+    ) ??
+    unreportedTokenUsageBlockReason(
+      cycleTokenEvidence.tokenUsageCoverage,
+      locale,
+    );
   if (cycleReason || !recurring)
     return {
       reason: cycleReason,
       tokensUsed: snapshot.tokensUsed,
       ...cycleCost,
+      ...cycleTokenEvidence,
       usageSource: recurring
         ? "current_cycle_usage_ledger"
         : "max(task_aggregate,usage_events_ledger)",
@@ -188,19 +219,32 @@ export async function readIndividualTaskSpendAdmission(
     tokensUsed: Number(usage?.dayTokens ?? 0),
     estimatedCostUsd: dailyCost.reportedCostUsd,
   };
-  const reason = taskBudgetBlockReason(
-    daily,
-    {
-      maxSteps: null,
-      maxTokens: Math.floor(positive("MAX_RECURRING_DAILY_TOKENS", 250_000)),
-      maxReportedCostUsd: positive("MAX_RECURRING_DAILY_REPORTED_COST_USD", 5),
-    },
-    locale,
+  const dailyTokenEvidence = tokenUsageEvidence(
+    usage?.dayRows,
+    usage?.dayTokenReported,
   );
+  const reason =
+    taskBudgetBlockReason(
+      daily,
+      {
+        maxSteps: null,
+        maxTokens: Math.floor(positive("MAX_RECURRING_DAILY_TOKENS", 250_000)),
+        maxReportedCostUsd: positive(
+          "MAX_RECURRING_DAILY_REPORTED_COST_USD",
+          5,
+        ),
+      },
+      locale,
+    ) ??
+    unreportedTokenUsageBlockReason(
+      dailyTokenEvidence.tokenUsageCoverage,
+      locale,
+    );
   return {
     reason,
     tokensUsed: daily.tokensUsed,
     ...dailyCost,
+    ...dailyTokenEvidence,
     usageSource: "rolling_24h_usage_ledger",
   };
 }
@@ -210,16 +254,29 @@ export async function readTaskSpendAdmission(
 ) {
   const individual = await readIndividualTaskSpendAdmission(...args);
   if (individual.reason)
-    return { ...individual, budgetScope: "task", rootTaskId: null };
+    return {
+      ...individual,
+      budgetScope: "task",
+      rootTaskId: null,
+      accountingStatus: null as InferenceAccountingStatus,
+      inferenceAttemptId: null,
+    };
   const family = await readFamilySpendAdmission(
     args[0].id,
     args[2] ?? "tr",
     args[3],
     args[4],
+    args[5],
   );
   return family.reason
     ? { ...family, budgetScope: "family" }
-    : { ...individual, budgetScope: "task", rootTaskId: family.rootTaskId };
+    : {
+        ...individual,
+        budgetScope: "task",
+        rootTaskId: family.rootTaskId,
+        accountingStatus: family.accountingStatus,
+        inferenceAttemptId: family.inferenceAttemptId,
+      };
 }
 
 export async function readTaskSpendBlockReason(

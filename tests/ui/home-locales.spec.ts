@@ -84,7 +84,7 @@ test("English home can start a project with English instructions and errors", as
     page.getByRole("link", { name: /Try a useful check without a model/u }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Connect a model" }),
+    page.getByRole("button", { name: "Connect a model" }),
   ).toBeVisible();
   await expect(page.getByText(/You can save a project now/u)).toBeVisible();
   await page.getByRole("button", { name: "Build a website" }).click();
@@ -127,7 +127,9 @@ test("Arabic home keeps the project composer usable on a narrow light screen", a
     page.getByRole("heading", { name: "ما الذي سننجزه معًا اليوم؟" }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: /جرّب فحص/u })).toBeVisible();
-  await expect(page.getByRole("link", { name: "اربط نموذجًا" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "اربط نموذجًا" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "أنشئ موقعًا" }).click();
   await expect(
     page.getByRole("textbox", { name: "النتيجة التي تريدها" }),
@@ -166,9 +168,9 @@ test("a connected tool-capable model removes the setup guidance", async ({
     }),
   );
   await page.goto("/");
-  await expect(page.getByRole("link", { name: "Connect a model" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("button", { name: "Connect a model" }),
+  ).toHaveCount(0);
   expect([...harness.unexpected]).toEqual([]);
 });
 
@@ -187,7 +189,7 @@ for (const [locale, action] of [
     }, locale);
     const harness = await installStudioFixtures(page);
     await page.goto("/");
-    await expect(page.getByRole("link", { name: action })).toBeVisible();
+    await expect(page.getByRole("button", { name: action })).toBeVisible();
     expect([...harness.unexpected]).toEqual([]);
   });
 }

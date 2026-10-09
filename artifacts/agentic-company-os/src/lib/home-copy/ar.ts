@@ -1,6 +1,8 @@
 import type { HomeCopy } from "../home-copy";
 
 const copy = {
+  draftStorageError:
+    "لا يمكن لهذه الصفحة حفظ المسودة لاستعادتها بعد إعادة التحميل. يمكنك متابعة تحرير النص هنا؛ احتفظ بنسخة قبل إعادة التحميل أو إغلاق الصفحة.",
   deskKicker: "مساحة عملك",
   heroTitle: "ما الذي سننجزه معًا اليوم؟",
   heroDescription:

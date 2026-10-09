@@ -1,6 +1,7 @@
 import {
   configureDirectOpenAI,
   configureOpenRouter,
+  configureOllama,
   configureProviderRequestGuard,
   refreshModelCatalog,
 } from "@workspace/ai-server";
@@ -15,6 +16,7 @@ import type { RuntimeInstanceHandle } from "./orchestrator/runtime-instance-regi
 import {
   readRuntimeConfig,
   readRuntimeConfigSnapshot,
+  normalizeRuntimeOllamaBaseUrl,
   ProviderConfigConflict,
   type RuntimeConfig,
 } from "./runtime-config";
@@ -40,6 +42,7 @@ function normalizeConfig(config: RuntimeConfig): RuntimeConfig {
   return {
     openrouterApiKey: normalize(config.openrouterApiKey),
     openaiApiKey: normalize(config.openaiApiKey),
+    ollamaBaseUrl: normalizeRuntimeOllamaBaseUrl(config.ollamaBaseUrl) ?? null,
   };
 }
 
@@ -61,6 +64,7 @@ function assertProviderConfig(value: unknown): RuntimeConfig {
   return normalizeConfig({
     openrouterApiKey: record.openrouterApiKey as string | null | undefined,
     openaiApiKey: record.openaiApiKey as string | null | undefined,
+    ollamaBaseUrl: normalizeRuntimeOllamaBaseUrl(record.ollamaBaseUrl),
   });
 }
 
@@ -169,6 +173,12 @@ async function ensureProviderConfigCurrent(
         });
         configureDirectOpenAI({
           apiKey: desired.config.openaiApiKey ?? null,
+        });
+        configureOllama({
+          baseUrl:
+            desired.config.ollamaBaseUrl ??
+            environment.OLLAMA_BASE_URL?.trim() ??
+            null,
         });
         appliedRevision = desired.revision;
         // A runtime is not eligible to make even catalog/provider requests

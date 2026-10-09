@@ -5,6 +5,60 @@ import { createSetupSession } from "./session";
 import type { InstallationPlan } from "./plan";
 import type { InstallationCredentials } from "./session";
 
+test("optional coding selection is localized, reviewed and cleared when terminal permission is removed", async (t) => {
+  const browser = await chromium.launch({
+    headless: true,
+    chromiumSandbox: true,
+  });
+  t.after(() => browser.close());
+  const session = await createSetupSession({
+    capabilities: async () => ({
+      platform: "linux",
+      architecture: "x64",
+      nodeVersion: "v24.20.0",
+      postgresClientVersion: null,
+      composeVersion: "2.40.0",
+      native: { ready: true, issues: [] },
+      container: { ready: true, issues: [] },
+      coding: { ready: true, issues: [], apparmor: true },
+    }),
+    execute: async () => ({ url: "http://127.0.0.1:5000" }),
+  });
+  t.after(() => session.close());
+  for (const locale of ["en", "tr", "de", "ru", "zh-CN", "zh-TW", "ar"]) {
+    const page = await browser.newPage({
+      viewport: { width: 320, height: 844 },
+    });
+    await page.goto(session.url);
+    await page.locator("#next:not([disabled])").waitFor();
+    await page.locator("#language").selectOption(locale);
+    await page.locator('[name="mode"][value="container"]').check();
+    await page.locator("#next").click();
+    const coding = page.locator('[name="codingRuntime"]');
+    assert.equal(await coding.isChecked(), false);
+    await coding.check();
+    const title = await page.locator('[data-copy="codingTitle"]').innerText();
+    assert.ok(title.length > 8);
+    assert.equal(await page.locator("#coding-apparmor").isVisible(), true);
+    await page.locator("#next").click();
+    await page.locator("#review:not([hidden])").waitFor({ timeout: 5000 });
+    assert.ok((await page.locator("#summary").innerText()).includes(title));
+    assert.equal(
+      await page.evaluate("document.documentElement.scrollWidth > innerWidth"),
+      false,
+    );
+    assert.equal(
+      await page.locator("html").getAttribute("dir"),
+      locale === "ar" ? "rtl" : "ltr",
+    );
+    await page.locator("#back").click();
+    await page.locator('[name="accessMode"]').selectOption("read_only");
+    assert.equal(await coding.isChecked(), false);
+    assert.equal(await coding.isDisabled(), true);
+    await page.close();
+  }
+});
+
 test("portable setup selects its supported container mode and explains native source setup", async (t) => {
   const browser = await chromium.launch({
     headless: true,

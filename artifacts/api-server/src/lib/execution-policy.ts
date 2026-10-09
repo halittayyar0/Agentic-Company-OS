@@ -58,6 +58,7 @@ const classes: Record<string, keyof CustomExecutionPermissions> = {
   vm_write_file: "files",
   browser_save_screenshot: "files",
   vm_run_command: "terminal",
+  vm_codex_task: "terminal",
   vm_run_sudo_command: "sudo",
   browser_open: "browser",
   browser_click: "browser",

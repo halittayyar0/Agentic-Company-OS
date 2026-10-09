@@ -25,6 +25,7 @@ import { LANGUAGE_OPTIONS, isLocale } from "@/lib/i18n";
 import { loadSettingsCopy, type SettingsCopy } from "@/lib/settings-copy";
 import { applyColorMode, getSavedColorMode, type ColorMode } from "@/lib/theme";
 import { matchesModelSearch } from "@/lib/model-search";
+import { ModelConnectionLauncher } from "@/components/studio/model-connection-launcher";
 
 const SourceWorkspaceSettings = lazy(() =>
   import("../components/settings/source-workspaces").then((module) => ({
@@ -38,11 +39,12 @@ const ExecutionPolicySettings = lazy(() =>
 );
 const settingsKey = ["settings", "llm"] as const;
 const providers = ["openrouter", "openai", "ollama", "replit"] as const;
-const names = {
+const names: Record<ModelProviderId, string> = {
   openrouter: "OpenRouter",
   openai: "OpenAI",
   ollama: "Ollama",
   replit: "Replit",
+  chatgpt: "ChatGPT",
 };
 type KeyProvider = "openrouter" | "openai";
 type Notice =
@@ -381,6 +383,9 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
         <p className="text-sm leading-6 text-muted-foreground">
           {c.credentialHelp}
         </p>
+        <ModelConnectionLauncher>
+          {t("providerSetupAction")}
+        </ModelConnectionLauncher>
         {query.isPending && <p role="status">{c.loading}</p>}
         {!data && query.isError && <p role="alert">{c.loadError}</p>}
         {data && (query.isError || needsReview || !validRevision) && (

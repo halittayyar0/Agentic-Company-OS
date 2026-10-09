@@ -141,6 +141,10 @@ Diese Ergebnisse gelten für die genannte Version. Ein 24-Stunden-Dauertest, Abn
 
 Die verlinkte technische Dokumentation ist überwiegend auf Englisch. Kleine, gezielte Beiträge sind willkommen: ein reproduzierbarer Fehlerbericht, eine klarere Übersetzung, eine nützliche Anleitung oder eine getestete Korrektur.
 
+**Modellverbindung ab v0.4.0:** Die [Anleitung zur Modellverbindung](./docs/model-connections.de.md) erklärt lokale Modelle, ChatGPT, API-Schlüssel und den Erhalt des ersten Auftragsentwurfs. Frühere Installationspakete enthalten diesen Ablauf nicht.
+
+Öffne **Modellnutzungsprotokolle** bei einem Projekt oder Agenten, um eine Anfrage nach einer Unterbrechung zu prüfen. Die Prüfung verbraucht keine Modell-Tokens und sendet die Anfrage nicht erneut; unbekannte Nutzung wird nicht als null gezählt. [Nutzungsprotokolle verstehen →](./docs/inference-accounting.md)
+
 ---
 
 **Open Source unter der [MIT-Lizenz](./LICENSE).** Die mitgelieferten IBM-Plex-Schriften stehen unter der SIL Open Font License 1.1; siehe [Drittanbieterhinweise](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt).

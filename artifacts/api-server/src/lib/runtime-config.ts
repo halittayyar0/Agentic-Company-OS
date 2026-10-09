@@ -3,6 +3,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { validateOllamaBaseUrl } from "@workspace/ai-server";
 
 /**
  * Persisted runtime configuration (operator-editable from the Settings UI).
@@ -16,6 +17,18 @@ import { randomUUID } from "node:crypto";
 export interface RuntimeConfig {
   openrouterApiKey?: string | null;
   openaiApiKey?: string | null;
+  ollamaBaseUrl?: string | null;
+}
+
+export function normalizeRuntimeOllamaBaseUrl(
+  value: unknown,
+): string | null | undefined {
+  if (value === undefined || value === null) return value;
+  if (typeof value !== "string") {
+    throw new Error("Local model address must be a string or null.");
+  }
+  if (!value.trim()) return null;
+  return validateOllamaBaseUrl(value).openAIBaseUrl;
 }
 
 export class ProviderConfigConflict extends Error {
@@ -75,7 +88,11 @@ export async function readRuntimeConfigSnapshot(): Promise<RuntimeConfigSnapshot
     );
     return {
       revision: revision as number,
-      config: { openrouterApiKey, openaiApiKey },
+      config: {
+        openrouterApiKey,
+        openaiApiKey,
+        ollamaBaseUrl: normalizeRuntimeOllamaBaseUrl(record.ollamaBaseUrl),
+      },
     };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT")
@@ -122,6 +139,7 @@ export async function writeRuntimeConfigSnapshot(
       throw new Error("Runtime configuration revision limit reached.");
     const revision = current.revision + 1;
     const next: RuntimeConfig = { ...current.config, ...patch };
+    next.ollamaBaseUrl = normalizeRuntimeOllamaBaseUrl(next.ollamaBaseUrl);
     for (const key of Object.keys(next) as Array<keyof RuntimeConfig>) {
       if (next[key] === "" || next[key] === undefined) delete next[key];
     }

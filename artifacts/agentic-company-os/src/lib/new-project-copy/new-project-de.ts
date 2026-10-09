@@ -1,6 +1,8 @@
 import type { NewProjectCopy } from "../new-project-copy";
 
 const copy = {
+  draftStorageError:
+    "Dieser Tab kann den Entwurf beim Neuladen nicht wiederherstellen. Sie können den Text hier weiter bearbeiten; kopieren Sie ihn vor dem Neuladen oder Schließen des Tabs.",
   back: "Zurück zu Projekten",
   eyebrow: "Neues Projekt · gesamtes Team",
   title: "Bring deine Idee ein. Setze sie mit deinem Team um.",

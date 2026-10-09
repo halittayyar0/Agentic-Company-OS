@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   check,
   index,
@@ -459,9 +460,9 @@ export const runtimeHealthSamplesTable = pgTable(
       .default("partial"),
     healthyWorkerCount: integer("healthy_worker_count").notNull().default(0),
     staleWorkerCount: integer("stale_worker_count").notNull().default(0),
-    schedulerTickAgeMs: integer("scheduler_tick_age_ms"),
+    schedulerTickAgeMs: bigint("scheduler_tick_age_ms", { mode: "number" }),
     dueQueueDepth: integer("due_queue_depth").notNull().default(0),
-    oldestDueAgeMs: integer("oldest_due_age_ms"),
+    oldestDueAgeMs: bigint("oldest_due_age_ms", { mode: "number" }),
     activeTaskCount: integer("active_task_count").notNull().default(0),
     sleepingTaskCount: integer("sleeping_task_count").notNull().default(0),
     recoveringTaskCount: integer("recovering_task_count").notNull().default(0),

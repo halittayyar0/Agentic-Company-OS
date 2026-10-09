@@ -15,6 +15,7 @@ type ExampleCopy = {
 };
 
 export type HomeCopy = {
+  draftStorageError: string;
   deskKicker: string;
   heroTitle: string;
   heroDescription: string;

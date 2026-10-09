@@ -141,6 +141,10 @@
 
 链接中的技术文档以英语为主。欢迎范围明确的小型贡献：可复现的缺陷报告、更清晰的翻译、实用指南或经过测试的修复。
 
+**模型连接，适用于 v0.4.0 及更高版本：**[连接指南](./docs/model-connections.zh-CN.md)介绍本地模型、ChatGPT、API 密钥及首次任务草稿的保留。较早的安装包不包含这个流程。
+
+中断后，可在项目或代理页面打开**模型用量记录**查看请求。检查不消耗模型 token，也不会重新发送请求；未知用量不会被当作零。[了解用量记录 →](./docs/inference-accounting.md)
+
 ---
 
 **依据 [MIT 许可证](./LICENSE)开源。** 随附的 IBM Plex 字体采用 SIL Open Font License 1.1；请参阅[第三方声明](./artifacts/agentic-company-os/public/THIRD_PARTY_NOTICES.txt)。

@@ -361,8 +361,14 @@ test("durable lifecycle tools leave no partial terminal state when the step cras
       );
       const crash = new Error(`synthetic crash after ${lifecycle.toolName}`);
       await stepTask(fixture.claimed, {
-        createCompletion: async (params) =>
-          toolCompletion(params.model, lifecycle.toolName, lifecycle.args),
+        createCompletion: async (params) => {
+          await params.beforeRequest?.();
+          return toolCompletion(
+            params.model,
+            lifecycle.toolName,
+            lifecycle.args,
+          );
+        },
         runTool: async (ctx, name, rawArgs) => {
           await executeTool(ctx, name, rawArgs);
           throw crash;
@@ -460,8 +466,14 @@ test("all durable lifecycle finalizers roll back on replaced-owner and emergency
             .where(eq(agentsTable.id, replacementAgent.id));
         });
         await stepWithBarrier(fixture.claimed, {
-          createCompletion: async (params) =>
-            toolCompletion(params.model, lifecycle.toolName, lifecycle.args),
+          createCompletion: async (params) => {
+            await params.beforeRequest?.();
+            return toolCompletion(
+              params.model,
+              lifecycle.toolName,
+              lifecycle.args,
+            );
+          },
           runtimeOperationsConfig: workerConfig,
           beforeLifecycleFinalizeRelease: async (tx) => {
             if (conflict === "replaced_owner") {
@@ -553,10 +565,12 @@ test("a reassigned task rejects the stale owner's intermediate step write", asyn
       },
     ) => Promise<void>);
   await stepWithBarrier(fixture.claimed, {
-    createCompletion: async (params) =>
-      toolCompletion(params.model, "complete_task", {
+    createCompletion: async (params) => {
+      await params.beforeRequest?.();
+      return toolCompletion(params.model, "complete_task", {
         resultSummary: "stale owner must not persist this result",
-      }),
+      });
+    },
     runtimeOperationsConfig: workerConfig,
     beforeOwnedStepWriteTransaction: async () => {
       barrierCalls += 1;
@@ -627,8 +641,10 @@ test("a durable lifecycle mutation and its operation receipt succeed in one fina
   const question = `Choose bounded option ${randomUUID()}`;
   await stepTask(fixture.claimed, {
     locale: "tr",
-    createCompletion: async (params) =>
-      toolCompletion(params.model, "request_user_input", { question }),
+    createCompletion: async (params) => {
+      await params.beforeRequest?.();
+      return toolCompletion(params.model, "request_user_input", { question });
+    },
     runtimeOperationsConfig: workerConfig,
   });
 
@@ -731,8 +747,10 @@ test("all lifecycle finalizers preserve the reserved language and exact source a
         let currentAction: string | null = null;
         await stepTask(fixture.claimed, {
           locale: locale === "en" ? "ar" : "en",
-          createCompletion: async (params) =>
-            toolCompletion(params.model, toolName, args),
+          createCompletion: async (params) => {
+            await params.beforeRequest?.();
+            return toolCompletion(params.model, toolName, args);
+          },
           runTool: async (ctx, name, rawArgs) => {
             const [live] = await db
               .select()
@@ -879,8 +897,9 @@ test("a deferred durable operation stops its tool batch and schedules the attemp
   const fixture = await createClaimedFixture(t, "Deferred durable operation");
   const dispatched: string[] = [];
   await stepTask(fixture.claimed, {
-    createCompletion: async (params) =>
-      toolBatchCompletion(params.model, [
+    createCompletion: async (params) => {
+      await params.beforeRequest?.();
+      return toolBatchCompletion(params.model, [
         {
           id: "deferred-operation",
           name: "request_user_input",
@@ -891,7 +910,8 @@ test("a deferred durable operation stops its tool batch and schedules the attemp
           name: "post_company_message",
           args: { content: "must not be posted" },
         },
-      ]),
+      ]);
+    },
     runTool: async (_ctx, name) => {
       dispatched.push(name);
       return {
@@ -932,10 +952,12 @@ test("continuous completion persists cadence, releases both leases, and succeeds
   const before = Date.now();
   await stepTask(fixture.claimed, {
     locale: "tr",
-    createCompletion: async (params) =>
-      toolCompletion(params.model, "complete_task", {
+    createCompletion: async (params) => {
+      await params.beforeRequest?.();
+      return toolCompletion(params.model, "complete_task", {
         resultSummary: "Cycle evidence is complete.",
-      }),
+      });
+    },
     runtimeOperationsConfig: workerConfig,
   });
 
@@ -1646,6 +1668,7 @@ test("slot filling starts and heartbeats each claim before the next claim transa
         leaseHeartbeatRuntime: manualHeartbeatRuntime,
         afterInitialLeaseHeartbeat: lifecycle.afterInitialLeaseHeartbeat,
         createCompletion: async (params) => {
+          await params.beforeRequest?.();
           providerCalls += 1;
           if (providerCalls === 1) firstProviderStarted.resolve();
           if (providerCalls === 2) bothProvidersStarted.resolve();
@@ -1847,6 +1870,7 @@ test("two schedulers never create a delayed five-claim first batch", async (t) =
       runtimeOperationsConfig: workerConfig,
       leaseHeartbeatRuntime: manualHeartbeatRuntime,
       createCompletion: async (params) => {
+        await params.beforeRequest?.();
         providerCalls += 1;
         if (providerCalls === allClaims.length) providerStarted.resolve();
         await releaseProviders.promise;

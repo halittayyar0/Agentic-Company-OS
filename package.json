@@ -1,6 +1,6 @@
 {
   "name": "agentic-company-os",
-  "version": "0.3.13",
+  "version": "0.4.0",
   "description": "Local-first, human-governed operating system for autonomous AI agent teams.",
   "license": "MIT",
   "packageManager": "pnpm@10.17.1",
@@ -9,6 +9,7 @@
     "pnpm": ">=10.17 <11"
   },
   "scripts": {
+    "connect:chatgpt": "tsx ./scripts/src/connect-chatgpt.ts",
     "setup": "tsx ./scripts/src/setup/bootstrap.ts",
     "evidence:verify": "tsx ./scripts/src/verify-evidence.ts",
     "dev": "pnpm --parallel --filter @workspace/api-server --filter @workspace/agentic-company-os run dev",
@@ -21,16 +22,22 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "format:check": "prettier --check .",
     "security:audit": "pnpm audit --prod",
+    "security:audit:all": "pnpm audit",
     "test": "tsx ./scripts/src/run-tests.ts",
     "test:installation:native": "tsx ./scripts/src/setup/native-install-smoke.ts",
+    "test:connection:native": "tsx ./scripts/src/testing/guided-local-connection-smoke.ts",
+    "test:coding:container": "tsx ./scripts/src/testing/coding-container-smoke.ts",
     "test:ui": "node ./artifacts/agentic-company-os/node_modules/vite/bin/vite.js build --config ./artifacts/agentic-company-os/vite.config.ts && playwright test --config playwright.config.ts",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "verify": "pnpm run format:check && pnpm run security:audit && pnpm --filter @workspace/scripts run check:licenses && pnpm test && pnpm --filter @workspace/db run migrate && pnpm run build && pnpm run test:ui && pnpm --filter @workspace/scripts run check:bundle"
+    "verify": "pnpm run format:check && pnpm run security:audit && pnpm run security:audit:all && pnpm --filter @workspace/scripts run check:licenses && pnpm test && pnpm --filter @workspace/db run migrate && pnpm run build && pnpm run test:ui && pnpm --filter @workspace/scripts run check:bundle"
   },
   "private": true,
   "pnpm": {
     "overrides": {
+      "source-map-js": "1.2.2",
+      "fast-copy": "4.1.0",
+      "proxy-addr": "2.0.8",
       "qs": "6.16.0",
       "fast-uri": "3.1.8",
       "brace-expansion": "5.0.12",

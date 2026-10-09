@@ -95,6 +95,7 @@ function completionWithOneTool(): {
   return {
     getCalls: () => calls,
     createCompletion: async (params) => {
+      await params.beforeRequest?.();
       calls += 1;
       const firstRound = calls === 1;
       return {
@@ -397,6 +398,7 @@ test("a stale API incarnation cannot commit the final agent response", async (t)
   const fixture = await createFixture(t);
   let providerCalls = 0;
   const createCompletion: typeof createChatCompletion = async (params) => {
+    await params.beforeRequest?.();
     providerCalls += 1;
     await db
       .update(runtimeInstancesTable)

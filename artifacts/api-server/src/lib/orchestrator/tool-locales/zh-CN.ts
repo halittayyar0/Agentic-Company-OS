@@ -1,6 +1,11 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolZhCN: ToolCopy = {
+  inferenceAccountingPending:
+    "正在等待模型调用的用量记录（{id}）。此项工作的后续模型调用将等待记录完成。",
+  inferenceAccountingRecovery:
+    "调用 {id} 的用量记录缺失或不完整。为防止无法追踪的支出，此项工作的后续模型调用已暂停。请查看用量记录恢复详情。",
+  inferenceAccountingReady: "调用 {id} 的用量记录已完成。此任务将自动继续。",
   budgetFamilyResumed: "已检查使用额度，重新排队的任务数：{count}。",
   schedulerClaimed: "已领取任务",
   projectMeetingRunning: "正在准备项目会议回复：{title}",
@@ -12,6 +17,8 @@ export const toolZhCN: ToolCopy = {
   schedulerRecoveryNote: "已释放中断工作的执行权；任务已重新排队。",
   schedulerStepBudget: "已达到操作员设置的步骤上限（{used}/{limit}）。",
   schedulerTokenBudget: "已达到令牌预算上限（{used}/{limit}）。",
+  schedulerUnreportedTokenUsage:
+    "此任务的令牌用量报告不完整。为避免无法计量的支出，已暂停后续模型调用。请检查已记录的调用；如需继续，请使用能够报告令牌用量的提供商创建新任务。现有记录将保留。",
   schedulerCostBudget: "已达到提供商报告的费用预算上限（${used}/{limit}）。",
   schedulerFamilyTokenBudget:
     "任务 #{rootTaskId} 及其子任务已达到共享令牌预算上限（{used}/{limit}）。",

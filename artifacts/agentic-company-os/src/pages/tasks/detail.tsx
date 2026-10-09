@@ -52,6 +52,12 @@ import { ErrorBoundary } from "@/components/error-boundary";
 const BudgetTaskResume = lazy(
   () => import("@/components/tasks/budget-task-resume"),
 );
+const CodingSessionRecovery = lazy(
+  () => import("@/components/tasks/coding-session-recovery"),
+);
+const InferenceAccountingPanel = lazy(
+  () => import("@/components/tasks/inference-accounting-panel"),
+);
 
 function hasBudgetResumeRecovery(taskId: number) {
   try {
@@ -399,6 +405,11 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
                 </Suspense>
               </ErrorBoundary>
             ) : null}
+            <ErrorBoundary resetKey={taskId}>
+              <Suspense fallback={null}>
+                <CodingSessionRecovery key={taskId} taskId={taskId} />
+              </Suspense>
+            </ErrorBoundary>
           </div>
 
           <ProjectTeamSummary
@@ -454,6 +465,13 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
         disabled={isError}
         onResumed={() => taskHeadingRef.current?.focus({ preventScroll: true })}
       />
+      <Suspense fallback={null}>
+        <InferenceAccountingPanel
+          key={taskId}
+          scopeType="task"
+          scopeId={taskId}
+        />
+      </Suspense>
 
       {subtasksError ||
       activitiesError ||

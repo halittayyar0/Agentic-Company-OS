@@ -32,27 +32,36 @@ import { readRuntimeOperationsConfig } from "../lib/runtime-operations-config";
 import { agentConfigVersion } from "../lib/agent-config-version";
 import { WORKSPACE_LOCALES } from "../lib/workspace-locale";
 
-const reply: typeof createChatCompletion = async () => ({
-  provider: "ollama",
-  completion: {
-    id: randomUUID(),
-    object: "chat.completion",
-    created: 1,
-    model: "observed-provider-model",
-    choices: [
-      {
-        index: 0,
-        finish_reason: "stop",
-        logprobs: null,
-        message: {
-          role: "assistant",
-          content: "Recorded reply",
-          refusal: null,
+const reply: typeof createChatCompletion = async (params) => {
+  await params.beforeRequest?.();
+  return {
+    provider: "openrouter",
+    completion: {
+      id: randomUUID(),
+      object: "chat.completion",
+      created: 1,
+      model: "observed-provider-model",
+      choices: [
+        {
+          index: 0,
+          finish_reason: "stop",
+          logprobs: null,
+          message: {
+            role: "assistant",
+            content: "Recorded reply",
+            refusal: null,
+          },
         },
+      ],
+      usage: {
+        prompt_tokens: 2,
+        completion_tokens: 2,
+        total_tokens: 4,
+        cost: 0,
       },
-    ],
-  },
-});
+    },
+  };
+};
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((done) => {
@@ -175,7 +184,7 @@ test("durable expert requests preserve one execution identity and recover honest
       assert.equal(complete.status, 200);
       assert.equal(complete.data.deliveryState, "complete");
       assert.equal(complete.data.outcome, "reply");
-      assert.equal(complete.data.usedProvider, "ollama");
+      assert.equal(complete.data.usedProvider, "openrouter");
       assert.equal(complete.data.usedModel, "observed-provider-model");
       assert.equal(
         complete.data.agentMessage.modelId,

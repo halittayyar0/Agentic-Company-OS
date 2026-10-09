@@ -1,0 +1,11 @@
+{
+  "kind": "managed-coding-helpers-v1",
+  "outerSha256": "d614afff26b5f4f2250f432876399dc95ed2e8c04dbf6dbece3a067d9c7cacb7",
+  "innerSha256": "9f5789651eb95860fe3242745513a177029983e7a208854529ae7dc23aaf0eb9",
+  "archiveSha256": "d038cebff7a83e2ea0039f652e19b18f708e99b93ab2372341d488c393fc1a5a",
+  "changedSourceSha256": "a2378ba1043fb9821310453db3c3988e84f194a66e8bc526f502deffc0340f27",
+  "filteredSourceSha256": "dcf9f8da4dce7cd5acf7b1e209eb14094a2cdf8613dc40f3caa3d13265ca909e",
+  "commandFilterSha256": "43da5df160b438feb7796814c88d81393ca618d67911e210858727f4e59faeac",
+  "procInformationGuardSha256": "e2fa084e91751700b4bf1c89c25d427a62a2025af72306735c946c92c52d415d",
+  "apparmorSha256": "738840b998afef3e2c626751d0fe8ad39b43fb39c39cc5d4627cbdb8365d869a"
+}

@@ -72,6 +72,7 @@ for (const operationOutcome of [
 
     let providerCalls = 0;
     const createCompletion: typeof createChatCompletion = async (params) => {
+      await params.beforeRequest?.();
       providerCalls += 1;
       const firstRound = providerCalls === 1;
       return {

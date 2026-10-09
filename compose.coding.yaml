@@ -1,0 +1,26 @@
+# Explicit optional x64 native coding workers. The API remains on the ordinary
+# image. Agent/task permissions and selected account admission still apply.
+services:
+  worker-1:
+    image: agentic-company-os:coding-local
+    build:
+      target: coding-runtime
+    environment:
+      ACOS_CODEX_EXECUTABLE: /opt/agentic-codex/bin/codex
+      ALLOW_AGENT_CODEX_TASKS: "true"
+      ALLOW_AGENT_PROCESS_EXEC: "true"
+    security_opt: !override
+      - no-new-privileges:true
+      - seccomp=./deploy/coding-seccomp.json
+
+  worker-2:
+    image: agentic-company-os:coding-local
+    build:
+      target: coding-runtime
+    environment:
+      ACOS_CODEX_EXECUTABLE: /opt/agentic-codex/bin/codex
+      ALLOW_AGENT_CODEX_TASKS: "true"
+      ALLOW_AGENT_PROCESS_EXEC: "true"
+    security_opt: !override
+      - no-new-privileges:true
+      - seccomp=./deploy/coding-seccomp.json

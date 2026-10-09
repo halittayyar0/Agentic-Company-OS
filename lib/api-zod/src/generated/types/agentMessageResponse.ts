@@ -20,7 +20,7 @@ export interface AgentMessageResponse {
      */
   usedModel?: string | null;
   /**
-     * Provider that served this turn (replit, openrouter, openai, or ollama).
+     * Provider that served this turn (replit, openrouter, openai, ollama, or chatgpt).
      * @nullable
      */
   usedProvider?: string | null;

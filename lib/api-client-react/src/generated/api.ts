@@ -32,6 +32,7 @@ import type {
   ApplySourceChangeBody,
   ApprovalDecisionInput,
   ApprovalRequest,
+  BeginChatGPTSignInBody,
   BrowserCloseInput,
   BrowserControlInput,
   BrowserControlState,
@@ -40,7 +41,16 @@ import type {
   BrowserView,
   CapabilityCatalog,
   CapabilityPackSelection,
+  ChatGPTAccount,
+  ChatGPTConnection,
+  ChatGPTExpectedRevision,
+  ChatGPTSignInStart,
+  ChatGPTSignInStatus,
   CheckSourceChangeBody,
+  CodexSessionRecoveryInput,
+  CodexSessionRecoveryReceipt,
+  CodexSessionRecoveryStatus,
+  CodexTaskStatus,
   CompanyChannel,
   CompanyChannelMember,
   CompanyChannelMemberInput,
@@ -52,9 +62,11 @@ import type {
   ExecutionPolicy,
   GetAgentAvatarParams,
   GetCapabilityCatalogParams,
+  GetInferenceAccountingStatusParams,
   GetOperationsOverviewParams,
   GetProjectOperationsParams,
   HealthStatus,
+  InferenceAccountingSnapshot,
   ListActivityParams,
   ListAgentMessagesParams,
   ListAgentTemplatesParams,
@@ -109,8 +121,10 @@ import type {
   ReadinessStatus,
   ReconcileOperationInput,
   ResetAgentAvatarParams,
+  RetryChatGPTPlanBody,
   RollbackSourceChangeBody,
   SavePersonalCapabilityBody,
+  SignOutChatGPTAccount200,
   SourceChange,
   StreamOperationsParams,
   Task,
@@ -171,6 +185,972 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetInferenceAccountingStatusUrl = (params: GetInferenceAccountingStatusParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/inference-accounting?${stringifiedParams}` : `/api/inference-accounting`
+}
+
+/**
+ * Authenticated read-only snapshot. Task scope includes its rooted family and the current owner's unresolved requests. Agent scope includes that agent's requests. Pending means the recorded response window has not elapsed, not verified worker liveness. Clear means no unresolved accounting marker, not task success, budget eligibility or permission to execute. Unknown usage never becomes zero and this endpoint never clears a fence.
+ * @summary Inspect model usage accounting without starting or retrying work
+ */
+export const getInferenceAccountingStatus = async (params: GetInferenceAccountingStatusParams, options?: Parameters<typeof customFetch>[1]): Promise<InferenceAccountingSnapshot> => {
+
+  return customFetch<InferenceAccountingSnapshot>(getGetInferenceAccountingStatusUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInferenceAccountingStatusQueryKey = (params?: GetInferenceAccountingStatusParams,) => {
+    return [
+    `/api/inference-accounting`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetInferenceAccountingStatusQueryOptions = <TData = Awaited<ReturnType<typeof getInferenceAccountingStatus>>, TError = ErrorType<void>>(params: GetInferenceAccountingStatusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInferenceAccountingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInferenceAccountingStatusQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInferenceAccountingStatus>>> = ({ signal }) => getInferenceAccountingStatus(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInferenceAccountingStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetInferenceAccountingStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getInferenceAccountingStatus>>>
+export type GetInferenceAccountingStatusQueryError = ErrorType<void>
+
+
+/**
+ * @summary Inspect model usage accounting without starting or retrying work
+ */
+
+export function useGetInferenceAccountingStatus<TData = Awaited<ReturnType<typeof getInferenceAccountingStatus>>, TError = ErrorType<void>>(
+ params: GetInferenceAccountingStatusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInferenceAccountingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetInferenceAccountingStatusQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCodexSessionRecoveryUrl = (taskId: number,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/coding-session`
+}
+
+/**
+ * @summary Read coding-session recovery eligibility without starting work
+ */
+export const getCodexSessionRecovery = async (taskId: number, options?: Parameters<typeof customFetch>[1]): Promise<CodexSessionRecoveryStatus> => {
+
+  return customFetch<CodexSessionRecoveryStatus>(getGetCodexSessionRecoveryUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCodexSessionRecoveryQueryKey = (taskId: number,) => {
+    return [
+    `/api/tasks/${taskId}/coding-session`
+    ] as const;
+    }
+
+
+export const getGetCodexSessionRecoveryQueryOptions = <TData = Awaited<ReturnType<typeof getCodexSessionRecovery>>, TError = ErrorType<void>>(taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecovery>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCodexSessionRecoveryQueryKey(taskId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCodexSessionRecovery>>> = ({ signal }) => getCodexSessionRecovery(taskId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecovery>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCodexSessionRecoveryQueryResult = NonNullable<Awaited<ReturnType<typeof getCodexSessionRecovery>>>
+export type GetCodexSessionRecoveryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read coding-session recovery eligibility without starting work
+ */
+
+export function useGetCodexSessionRecovery<TData = Awaited<ReturnType<typeof getCodexSessionRecovery>>, TError = ErrorType<void>>(
+ taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecovery>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCodexSessionRecoveryQueryOptions(taskId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecoverCodexSessionUrl = (taskId: number,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/coding-session/recover`
+}
+
+/**
+ * Operator-only metadata transition. Requires a unique request identity, exact observed revision and explicit acknowledgement that uncertain effects remain unresolved. Does not start or resume a task, reconcile effects, delete files, reuse a private home or grant native permissions. Running sessions, unknown cleanup, active task ownership and live native approvals are refused. Repeating a committed request returns its original receipt; changed scope conflicts.
+ * @summary Archive a stopped coding session and permit a fresh session on a later authorized task invocation
+ */
+export const recoverCodexSession = async (taskId: number,
+    codexSessionRecoveryInput: CodexSessionRecoveryInput, options?: Parameters<typeof customFetch>[1]): Promise<CodexSessionRecoveryReceipt> => {
+
+  return customFetch<CodexSessionRecoveryReceipt>(getRecoverCodexSessionUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(codexSessionRecoveryInput)
+  }
+);}
+
+
+
+
+
+export const getRecoverCodexSessionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverCodexSession>>, TError,{taskId: number;data: BodyType<CodexSessionRecoveryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recoverCodexSession>>, TError,{taskId: number;data: BodyType<CodexSessionRecoveryInput>}, TContext> => {
+
+const mutationKey = ['recoverCodexSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recoverCodexSession>>, {taskId: number;data: BodyType<CodexSessionRecoveryInput>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  recoverCodexSession(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecoverCodexSessionMutationResult = NonNullable<Awaited<ReturnType<typeof recoverCodexSession>>>
+    export type RecoverCodexSessionMutationBody = BodyType<CodexSessionRecoveryInput>
+    export type RecoverCodexSessionMutationError = ErrorType<void>
+
+    /**
+ * @summary Archive a stopped coding session and permit a fresh session on a later authorized task invocation
+ */
+export const useRecoverCodexSession = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverCodexSession>>, TError,{taskId: number;data: BodyType<CodexSessionRecoveryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recoverCodexSession>>,
+        TError,
+        {taskId: number;data: BodyType<CodexSessionRecoveryInput>},
+        TContext
+      > => {
+      return useMutation(getRecoverCodexSessionMutationOptions(options));
+    }
+
+export const getGetCodexSessionRecoveryReceiptUrl = (taskId: number,
+    requestId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/coding-session/recover/${requestId}`
+}
+
+/**
+ * @summary Recover the immutable receipt after a lost response
+ */
+export const getCodexSessionRecoveryReceipt = async (taskId: number,
+    requestId: string, options?: Parameters<typeof customFetch>[1]): Promise<CodexSessionRecoveryReceipt> => {
+
+  return customFetch<CodexSessionRecoveryReceipt>(getGetCodexSessionRecoveryReceiptUrl(taskId,requestId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCodexSessionRecoveryReceiptQueryKey = (taskId: number,
+    requestId: string,) => {
+    return [
+    `/api/tasks/${taskId}/coding-session/recover/${requestId}`
+    ] as const;
+    }
+
+
+export const getGetCodexSessionRecoveryReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>, TError = ErrorType<void>>(taskId: number,
+    requestId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCodexSessionRecoveryReceiptQueryKey(taskId,requestId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>> = ({ signal }) => getCodexSessionRecoveryReceipt(taskId,requestId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined && requestId !== null && requestId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCodexSessionRecoveryReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>>
+export type GetCodexSessionRecoveryReceiptQueryError = ErrorType<void>
+
+
+/**
+ * @summary Recover the immutable receipt after a lost response
+ */
+
+export function useGetCodexSessionRecoveryReceipt<TData = Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>, TError = ErrorType<void>>(
+ taskId: number,
+    requestId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexSessionRecoveryReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCodexSessionRecoveryReceiptQueryOptions(taskId,requestId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCodexTaskStatusUrl = () => {
+
+
+
+
+  return `/api/connections/codex`
+}
+
+/**
+ * Authenticated read-only observation of fresh healthy scheduler workers. Startup flags are not native availability or filesystem containment proof. Every task still requires live authority and actual native preflight. API-host flags and operating system never substitute for worker reports.
+ * @summary Read the executing workers' optional coding configuration without probes or inference
+ */
+export const getCodexTaskStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<CodexTaskStatus> => {
+
+  return customFetch<CodexTaskStatus>(getGetCodexTaskStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCodexTaskStatusQueryKey = () => {
+    return [
+    `/api/connections/codex`
+    ] as const;
+    }
+
+
+export const getGetCodexTaskStatusQueryOptions = <TData = Awaited<ReturnType<typeof getCodexTaskStatus>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexTaskStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCodexTaskStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCodexTaskStatus>>> = ({ signal }) => getCodexTaskStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCodexTaskStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCodexTaskStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getCodexTaskStatus>>>
+export type GetCodexTaskStatusQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the executing workers' optional coding configuration without probes or inference
+ */
+
+export function useGetCodexTaskStatus<TData = Awaited<ReturnType<typeof getCodexTaskStatus>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCodexTaskStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCodexTaskStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetChatGPTConnectionUrl = () => {
+
+
+
+
+  return `/api/connections/chatgpt`
+}
+
+/**
+ * @summary Saved ChatGPT accounts and explicit active selection, without credentials
+ */
+export const getChatGPTConnection = async ( options?: Parameters<typeof customFetch>[1]): Promise<ChatGPTConnection> => {
+
+  return customFetch<ChatGPTConnection>(getGetChatGPTConnectionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChatGPTConnectionQueryKey = () => {
+    return [
+    `/api/connections/chatgpt`
+    ] as const;
+    }
+
+
+export const getGetChatGPTConnectionQueryOptions = <TData = Awaited<ReturnType<typeof getChatGPTConnection>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChatGPTConnection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChatGPTConnectionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChatGPTConnection>>> = ({ signal }) => getChatGPTConnection({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChatGPTConnection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChatGPTConnectionQueryResult = NonNullable<Awaited<ReturnType<typeof getChatGPTConnection>>>
+export type GetChatGPTConnectionQueryError = ErrorType<void>
+
+
+/**
+ * @summary Saved ChatGPT accounts and explicit active selection, without credentials
+ */
+
+export function useGetChatGPTConnection<TData = Awaited<ReturnType<typeof getChatGPTConnection>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChatGPTConnection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChatGPTConnectionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getBeginChatGPTSignInUrl = () => {
+
+
+
+
+  return `/api/connections/chatgpt/sign-in`
+}
+
+/**
+ * @summary Start a private loopback sign-in on the browser's computer
+ */
+export const beginChatGPTSignIn = async (beginChatGPTSignInBody: BeginChatGPTSignInBody, options?: Parameters<typeof customFetch>[1]): Promise<ChatGPTSignInStart> => {
+
+  return customFetch<ChatGPTSignInStart>(getBeginChatGPTSignInUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(beginChatGPTSignInBody)
+  }
+);}
+
+
+
+
+
+export const getBeginChatGPTSignInMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof beginChatGPTSignIn>>, TError,{data: BodyType<BeginChatGPTSignInBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof beginChatGPTSignIn>>, TError,{data: BodyType<BeginChatGPTSignInBody>}, TContext> => {
+
+const mutationKey = ['beginChatGPTSignIn'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof beginChatGPTSignIn>>, {data: BodyType<BeginChatGPTSignInBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  beginChatGPTSignIn(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BeginChatGPTSignInMutationResult = NonNullable<Awaited<ReturnType<typeof beginChatGPTSignIn>>>
+    export type BeginChatGPTSignInMutationBody = BodyType<BeginChatGPTSignInBody>
+    export type BeginChatGPTSignInMutationError = ErrorType<void>
+
+    /**
+ * @summary Start a private loopback sign-in on the browser's computer
+ */
+export const useBeginChatGPTSignIn = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof beginChatGPTSignIn>>, TError,{data: BodyType<BeginChatGPTSignInBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof beginChatGPTSignIn>>,
+        TError,
+        {data: BodyType<BeginChatGPTSignInBody>},
+        TContext
+      > => {
+      return useMutation(getBeginChatGPTSignInMutationOptions(options));
+    }
+
+export const getGetChatGPTSignInUrl = (attemptId: string,) => {
+
+
+
+
+  return `/api/connections/chatgpt/sign-in/${attemptId}`
+}
+
+export const getChatGPTSignIn = async (attemptId: string, options?: Parameters<typeof customFetch>[1]): Promise<ChatGPTSignInStatus> => {
+
+  return customFetch<ChatGPTSignInStatus>(getGetChatGPTSignInUrl(attemptId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChatGPTSignInQueryKey = (attemptId: string,) => {
+    return [
+    `/api/connections/chatgpt/sign-in/${attemptId}`
+    ] as const;
+    }
+
+
+export const getGetChatGPTSignInQueryOptions = <TData = Awaited<ReturnType<typeof getChatGPTSignIn>>, TError = ErrorType<void>>(attemptId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChatGPTSignIn>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChatGPTSignInQueryKey(attemptId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChatGPTSignIn>>> = ({ signal }) => getChatGPTSignIn(attemptId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: attemptId !== null && attemptId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChatGPTSignIn>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChatGPTSignInQueryResult = NonNullable<Awaited<ReturnType<typeof getChatGPTSignIn>>>
+export type GetChatGPTSignInQueryError = ErrorType<void>
+
+
+
+export function useGetChatGPTSignIn<TData = Awaited<ReturnType<typeof getChatGPTSignIn>>, TError = ErrorType<void>>(
+ attemptId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChatGPTSignIn>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChatGPTSignInQueryOptions(attemptId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCancelChatGPTSignInUrl = (attemptId: string,) => {
+
+
+
+
+  return `/api/connections/chatgpt/sign-in/${attemptId}`
+}
+
+export const cancelChatGPTSignIn = async (attemptId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getCancelChatGPTSignInUrl(attemptId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelChatGPTSignInMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelChatGPTSignIn>>, TError,{attemptId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelChatGPTSignIn>>, TError,{attemptId: string}, TContext> => {
+
+const mutationKey = ['cancelChatGPTSignIn'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelChatGPTSignIn>>, {attemptId: string}> = (props) => {
+          const {attemptId} = props ?? {};
+
+          return  cancelChatGPTSignIn(attemptId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelChatGPTSignInMutationResult = NonNullable<Awaited<ReturnType<typeof cancelChatGPTSignIn>>>
+
+    export type CancelChatGPTSignInMutationError = ErrorType<void>
+
+    export const useCancelChatGPTSignIn = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelChatGPTSignIn>>, TError,{attemptId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelChatGPTSignIn>>,
+        TError,
+        {attemptId: string},
+        TContext
+      > => {
+      return useMutation(getCancelChatGPTSignInMutationOptions(options));
+    }
+
+export const getConfirmChatGPTAccountUrl = (attemptId: string,) => {
+
+
+
+
+  return `/api/connections/chatgpt/sign-in/${attemptId}/confirm`
+}
+
+/**
+ * @summary Save the validated candidate and explicitly select it; never starts a job
+ */
+export const confirmChatGPTAccount = async (attemptId: string,
+    chatGPTExpectedRevision: ChatGPTExpectedRevision, options?: Parameters<typeof customFetch>[1]): Promise<ChatGPTAccount> => {
+
+  return customFetch<ChatGPTAccount>(getConfirmChatGPTAccountUrl(attemptId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(chatGPTExpectedRevision)
+  }
+);}
+
+
+
+
+
+export const getConfirmChatGPTAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmChatGPTAccount>>, TError,{attemptId: string;data: BodyType<ChatGPTExpectedRevision>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmChatGPTAccount>>, TError,{attemptId: string;data: BodyType<ChatGPTExpectedRevision>}, TContext> => {
+
+const mutationKey = ['confirmChatGPTAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmChatGPTAccount>>, {attemptId: string;data: BodyType<ChatGPTExpectedRevision>}> = (props) => {
+          const {attemptId,data} = props ?? {};
+
+          return  confirmChatGPTAccount(attemptId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmChatGPTAccountMutationResult = NonNullable<Awaited<ReturnType<typeof confirmChatGPTAccount>>>
+    export type ConfirmChatGPTAccountMutationBody = BodyType<ChatGPTExpectedRevision>
+    export type ConfirmChatGPTAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Save the validated candidate and explicitly select it; never starts a job
+ */
+export const useConfirmChatGPTAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmChatGPTAccount>>, TError,{attemptId: string;data: BodyType<ChatGPTExpectedRevision>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmChatGPTAccount>>,
+        TError,
+        {attemptId: string;data: BodyType<ChatGPTExpectedRevision>},
+        TContext
+      > => {
+      return useMutation(getConfirmChatGPTAccountMutationOptions(options));
+    }
+
+export const getSelectChatGPTAccountUrl = (registrationId: string,) => {
+
+
+
+
+  return `/api/connections/chatgpt/accounts/${registrationId}/select`
+}
+
+/**
+ * @summary Select an existing signed-in account at its observed revision
+ */
+export const selectChatGPTAccount = async (registrationId: string,
+    chatGPTExpectedRevision: ChatGPTExpectedRevision, options?: Parameters<typeof customFetch>[1]): Promise<ChatGPTAccount> => {
+
+  return customFetch<ChatGPTAccount>(getSelectChatGPTAccountUrl(registrationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(chatGPTExpectedRevision)
+  }
+);}
+
+
+
+
+
+export const getSelectChatGPTAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectChatGPTAccount>>, TError,{registrationId: string;data: BodyType<ChatGPTExpectedRevision>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof selectChatGPTAccount>>, TError,{registrationId: string;data: BodyType<ChatGPTExpectedRevision>}, TContext> => {
+
+const mutationKey = ['selectChatGPTAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selectChatGPTAccount>>, {registrationId: string;data: BodyType<ChatGPTExpectedRevision>}> = (props) => {
+          const {registrationId,data} = props ?? {};
+
+          return  selectChatGPTAccount(registrationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SelectChatGPTAccountMutationResult = NonNullable<Awaited<ReturnType<typeof selectChatGPTAccount>>>
+    export type SelectChatGPTAccountMutationBody = BodyType<ChatGPTExpectedRevision>
+    export type SelectChatGPTAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Select an existing signed-in account at its observed revision
+ */
+export const useSelectChatGPTAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectChatGPTAccount>>, TError,{registrationId: string;data: BodyType<ChatGPTExpectedRevision>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof selectChatGPTAccount>>,
+        TError,
+        {registrationId: string;data: BodyType<ChatGPTExpectedRevision>},
+        TContext
+      > => {
+      return useMutation(getSelectChatGPTAccountMutationOptions(options));
+    }
+
+export const getRetryChatGPTPlanUrl = (registrationId: string,) => {
+
+
+
+
+  return `/api/connections/chatgpt/accounts/${registrationId}/plan/retry`
+}
+
+/**
+ * @summary Explicitly clear this observed quota pause; never starts a job or changes provider
+ */
+export const retryChatGPTPlan = async (registrationId: string,
+    retryChatGPTPlanBody: RetryChatGPTPlanBody, options?: Parameters<typeof customFetch>[1]): Promise<ChatGPTAccount> => {
+
+  return customFetch<ChatGPTAccount>(getRetryChatGPTPlanUrl(registrationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(retryChatGPTPlanBody)
+  }
+);}
+
+
+
+
+
+export const getRetryChatGPTPlanMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryChatGPTPlan>>, TError,{registrationId: string;data: BodyType<RetryChatGPTPlanBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryChatGPTPlan>>, TError,{registrationId: string;data: BodyType<RetryChatGPTPlanBody>}, TContext> => {
+
+const mutationKey = ['retryChatGPTPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryChatGPTPlan>>, {registrationId: string;data: BodyType<RetryChatGPTPlanBody>}> = (props) => {
+          const {registrationId,data} = props ?? {};
+
+          return  retryChatGPTPlan(registrationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryChatGPTPlanMutationResult = NonNullable<Awaited<ReturnType<typeof retryChatGPTPlan>>>
+    export type RetryChatGPTPlanMutationBody = BodyType<RetryChatGPTPlanBody>
+    export type RetryChatGPTPlanMutationError = ErrorType<void>
+
+    /**
+ * @summary Explicitly clear this observed quota pause; never starts a job or changes provider
+ */
+export const useRetryChatGPTPlan = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryChatGPTPlan>>, TError,{registrationId: string;data: BodyType<RetryChatGPTPlanBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retryChatGPTPlan>>,
+        TError,
+        {registrationId: string;data: BodyType<RetryChatGPTPlanBody>},
+        TContext
+      > => {
+      return useMutation(getRetryChatGPTPlanMutationOptions(options));
+    }
+
+export const getSignOutChatGPTAccountUrl = (registrationId: string,) => {
+
+
+
+
+  return `/api/connections/chatgpt/accounts/${registrationId}/session`
+}
+
+/**
+ * @summary Stop renewable session, clear credentials and retain account mapping
+ */
+export const signOutChatGPTAccount = async (registrationId: string, options?: Parameters<typeof customFetch>[1]): Promise<SignOutChatGPTAccount200> => {
+
+  return customFetch<SignOutChatGPTAccount200>(getSignOutChatGPTAccountUrl(registrationId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getSignOutChatGPTAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signOutChatGPTAccount>>, TError,{registrationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof signOutChatGPTAccount>>, TError,{registrationId: string}, TContext> => {
+
+const mutationKey = ['signOutChatGPTAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof signOutChatGPTAccount>>, {registrationId: string}> = (props) => {
+          const {registrationId} = props ?? {};
+
+          return  signOutChatGPTAccount(registrationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SignOutChatGPTAccountMutationResult = NonNullable<Awaited<ReturnType<typeof signOutChatGPTAccount>>>
+
+    export type SignOutChatGPTAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Stop renewable session, clear credentials and retain account mapping
+ */
+export const useSignOutChatGPTAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signOutChatGPTAccount>>, TError,{registrationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof signOutChatGPTAccount>>,
+        TError,
+        {registrationId: string},
+        TContext
+      > => {
+      return useMutation(getSignOutChatGPTAccountMutationOptions(options));
+    }
 
 export const getListSourceChangesUrl = () => {
 

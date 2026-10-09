@@ -267,35 +267,38 @@ async function finalizeClaimedTool(
     .update(taskAttemptsTable)
     .set({ state: "claimed" })
     .where(eq(taskAttemptsTable.id, ctx.runtimeAttemptId!));
-  const createCompletion: typeof createChatCompletion = async (params) => ({
-    provider: "replit",
-    completion: {
-      id: randomUUID(),
-      object: "chat.completion",
-      created: 1,
-      model: params.model,
-      choices: [
-        {
-          index: 0,
-          finish_reason: "tool_calls",
-          logprobs: null,
-          message: {
-            role: "assistant",
-            content: null,
-            refusal: null,
-            tool_calls: [
-              {
-                id: randomUUID(),
-                type: "function",
-                function: { name, arguments: JSON.stringify(args) },
-              },
-            ],
+  const createCompletion: typeof createChatCompletion = async (params) => {
+    await params.beforeRequest?.();
+    return {
+      provider: "replit",
+      completion: {
+        id: randomUUID(),
+        object: "chat.completion",
+        created: 1,
+        model: params.model,
+        choices: [
+          {
+            index: 0,
+            finish_reason: "tool_calls",
+            logprobs: null,
+            message: {
+              role: "assistant",
+              content: null,
+              refusal: null,
+              tool_calls: [
+                {
+                  id: randomUUID(),
+                  type: "function",
+                  function: { name, arguments: JSON.stringify(args) },
+                },
+              ],
+            },
           },
-        },
-      ],
-      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-    },
-  });
+        ],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      },
+    };
+  };
   await stepTask(
     {
       ...task,
@@ -612,10 +615,21 @@ test("question and completion lifecycle intents retain source and localize prepa
   );
 });
 
-test("completion review receives persisted failed command evidence, not only the agent report", async () => {
+test("completion review receives failed command evidence and the native turn's limited proof in one existing judge call", async () => {
   for (const locale of WORKSPACE_LOCALES) {
     const ctx = await context(locale, true);
     const { id } = await evidenceReceipt(ctx);
+    const native = await evidenceReceipt(ctx, {
+      toolName: "vm_codex_task",
+      state: "succeeded",
+      failureKind: null,
+      resultData: {
+        proofScope: "codex_turn",
+        deliverableVerified: false,
+        nativeItemCount: 1,
+        text: "PRIVATE_native_transcript",
+      },
+    });
     const before = judgeRequests.length;
     await call(ctx, "complete_task", {
       resultSummary: "I ran the checks and everything passed.",
@@ -635,6 +649,10 @@ test("completion review receives persisted failed command evidence, not only the
     );
     assert.match(prompt, /"state"\s*:\s*"failed"/u);
     assert.match(prompt, /"exitCode"\s*:\s*1/u);
+    assert.ok(prompt.includes(native.id));
+    assert.match(prompt, /"proofScope"\s*:\s*"codex_turn"/u);
+    assert.match(prompt, /"deliverableVerified"\s*:\s*false/u);
+    assert.doesNotMatch(prompt, /PRIVATE_native_transcript/u);
     const [review] = await db
       .select()
       .from(activityEventsTable)
@@ -648,7 +666,7 @@ test("completion review receives persisted failed command evidence, not only the
     assert.equal(
       (review.detail!.completionEvidence as { receiptTotal: number })
         .receiptTotal,
-      1,
+      2,
     );
     await retireFixtureAgent(ctx.agent.id);
   }

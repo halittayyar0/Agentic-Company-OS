@@ -218,6 +218,97 @@
       "when": 1790819968314,
       "tag": "0030_task_budget_resume_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791061848008,
+      "tag": "0031_chatgpt_registrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791062389235,
+      "tag": "0032_chatgpt_active_account",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791070471963,
+      "tag": "0033_usage_reporting_outcome",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791086123180,
+      "tag": "0034_codex_task_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791091283522,
+      "tag": "0035_codex_action_approvals",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791094845664,
+      "tag": "0036_codex_task_inference_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791100804868,
+      "tag": "0037_codex_session_cleanup_evidence",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791101637273,
+      "tag": "0038_codex_session_recovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791111620624,
+      "tag": "0039_codex_source_workspace_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791466592666,
+      "tag": "0040_runtime_health_age_width",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791490256038,
+      "tag": "0041_durable_inference_accounting",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791497255487,
+      "tag": "0042_inference_response_evidence",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791498638191,
+      "tag": "0043_inference_usage_correction",
+      "breakpoints": true
     }
   ]
 }

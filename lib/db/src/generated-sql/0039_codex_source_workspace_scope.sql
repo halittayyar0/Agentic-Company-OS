@@ -1,0 +1,3 @@
+ALTER TABLE "codex_task_sessions" ADD COLUMN "source_change_id" uuid;--> statement-breakpoint
+ALTER TABLE "codex_task_sessions" ADD COLUMN "source_change_revision" integer;--> statement-breakpoint
+ALTER TABLE "codex_task_sessions" ADD CONSTRAINT "codex_task_sessions_source_workspace" CHECK (("codex_task_sessions"."source_change_id" IS NULL AND "codex_task_sessions"."source_change_revision" IS NULL) OR ("codex_task_sessions"."source_change_id" IS NOT NULL AND "codex_task_sessions"."source_change_revision" IS NOT NULL AND "codex_task_sessions"."source_change_revision" > 0));

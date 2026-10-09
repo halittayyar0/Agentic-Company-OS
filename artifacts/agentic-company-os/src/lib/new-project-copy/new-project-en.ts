@@ -1,6 +1,8 @@
 import type { NewProjectCopy } from "../new-project-copy";
 
 const copy = {
+  draftStorageError:
+    "This tab cannot save your draft for reload. Your text remains editable here; keep a copy before reloading or closing the tab.",
   back: "Back to projects",
   eyebrow: "New project · whole team",
   title: "Bring in your idea. Build it together with your team.",

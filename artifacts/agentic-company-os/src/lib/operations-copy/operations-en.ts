@@ -1,4 +1,9 @@
 const copy = {
+  tokensAtLeast: "At least {count}",
+  tokenUsageUnknown: "Token usage unknown",
+  tokenCoveragePartial:
+    "Some calls have no reported token usage; totals are lower bounds.",
+  noRecordedUsage: "No usage receipts in this window.",
   recoveryTitle: "Saved reconciliation needs review",
   recoveryHelp:
     "This tab retains one unresolved decision for this project, even outside the history window. Reloading this tab keeps it; closing the tab or switching devices may not.",

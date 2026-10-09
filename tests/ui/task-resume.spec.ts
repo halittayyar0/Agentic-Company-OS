@@ -409,6 +409,19 @@ async function installResumeMocks(
         : json(route, receipt);
     }
 
+    if (path === "/api/inference-accounting" && method === "GET") {
+      const params = new URL(route.request().url()).searchParams;
+      return json(route, {
+        scopeType: params.get("scopeType"),
+        scopeId: Number(params.get("scopeId")),
+        rootTaskId: 501,
+        status: "clear",
+        observedAt: Date.now(),
+        unsettledCount: 0,
+        hasMore: false,
+        attempts: [],
+      });
+    }
     unexpected.add(`${method} ${path}`);
     return json(route, { error: "Unexpected task-resume API request" }, 501);
   });

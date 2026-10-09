@@ -58,6 +58,36 @@ The system remains a single-operator alpha; put TLS, a firewall, and distributed
 - An immutable audit ledger.
 - Disaster recovery automation or tamper-evident backups. A checked-in migration chain and startup advisory lock are implemented.
 
+## Model connections and optional coding (v0.4.0 and later)
+
+v0.4.0 adds protected ChatGPT registration and optional governed Codex
+execution. Earlier v0.3.13 setup bundles do not contain these additions.
+
+- Sign-in validates PKCE/state/nonce, signed identity and permission grants.
+  Account saving and selection remain separate; identity-only access cannot
+  authorize inference. Personal Codex credentials are never imported implicitly.
+- Credentials stay in encrypted backend storage or an owner-private development
+  store. Durable refresh locks and revision checks prevent stale token rotation.
+  Server handoff uses protected files and SSH, with no browser upload endpoint.
+- Connection dialogs keep API keys in memory until backend saving and clear them
+  on close. Persisted job drafts reject credential fields; public status and
+  recovery contracts omit private homes, tokens and native thread identities.
+- Native tasks require separate operator opt-ins, backend-selected workspaces,
+  named permissions and live lease/account authority. Unknown cleanup blocks
+  replay and source mutation. Exact action approvals do not replace OS enforcement.
+- Actual offline Linux tests verify lifetime cleanup, fixed command permissions,
+  private-file denial and no inference after final admission refusal. This is
+  neither live-model acceptance nor a claim that arbitrary hostile code is safe.
+  Native macOS coding is unsupported, and the tested Windows named-profile
+  setup refuses preparation before inference. The optional container path
+  requires Linux x64 and the enforced bundled AppArmor profile. Its published
+  image and installation need separate release acceptance. Unsupported
+  preparation fails before inference.
+
+Read the [connection guide](./chatgpt-connection.md) for precise prerequisites,
+handoff rules and verification limits. These additions do not introduce multiple
+operators, tenant isolation or a provider-enforced billing ceiling.
+
 ## Assets
 
 The primary assets are:

@@ -1,5 +1,10 @@
 import type { OperationsCopy } from "../operations-copy";
 const copy = {
+  tokensAtLeast: "En az {count}",
+  tokenUsageUnknown: "Token kullanımı bilinmiyor",
+  tokenCoveragePartial:
+    "Bazı çağrıların token kullanımı raporlanmadı; toplamlar bilinen alt sınırdır.",
+  noRecordedUsage: "Bu aralıkta kullanım makbuzu yok.",
   recoveryTitle: "Kayıtlı uzlaştırma incelenmeli",
   recoveryHelp:
     "Bu sekme, geçmiş aralığının dışında kalsa da bu proje için sonuçlanmamış bir kararı korur. Sekmeyi yenilemek kaydı korur; sekmeyi kapatmak veya cihaz değiştirmek korumayabilir.",

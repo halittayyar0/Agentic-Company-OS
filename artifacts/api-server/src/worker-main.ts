@@ -2,6 +2,7 @@ import { closeDatabase, databaseBackend, dbReady } from "@workspace/db";
 import { bootstrapProviders } from "./lib/provider-bootstrap";
 import { setProviderRuntimeIdentity } from "./lib/provider-runtime-config";
 import { logger } from "./lib/logger";
+import { readCodexConfigurationReport } from "./lib/codex-task-capability";
 import { markRuntimeOperationsUnknownAfterDrainTimeout } from "./lib/orchestrator/operation-receipts";
 import {
   markRuntimeDraining,
@@ -229,7 +230,11 @@ export async function startWorkerRuntime(
       {
         role: "worker",
         schedulerEnabled: true,
-        capabilities: { http: false, scheduler: true },
+        capabilities: {
+          ...readCodexConfigurationReport(options.environment),
+          http: false,
+          scheduler: true,
+        },
       },
       options.operationsConfig,
     );

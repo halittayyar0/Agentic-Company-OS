@@ -4,8 +4,22 @@ import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
-import { assertLocalTestEnvironment } from "./test-environment";
+import { stat } from "node:fs/promises";
+import path from "node:path";
+import {
+  assertLocalTestEnvironment,
+  prepareLocalTestEnvironment,
+} from "./test-environment";
 import { testLoaderUrl } from "./test-node-options";
+
+test("general test children never inherit an operator's native coding opt-in or executable", async () => {
+  const environment = await prepareLocalTestEnvironment({
+    ALLOW_AGENT_CODEX_TASKS: "true",
+    ACOS_CODEX_EXECUTABLE: process.execPath,
+  });
+  assert.equal(environment.ALLOW_AGENT_CODEX_TASKS, "false");
+  assert.equal(environment.ACOS_CODEX_EXECUTABLE, undefined);
+});
 
 test("general test preflight refuses database targets without revealing their values", () => {
   for (const name of [
@@ -14,6 +28,7 @@ test("general test preflight refuses database targets without revealing their va
     "DATABASE_MIGRATIONS_DIR",
     "POSTGRES_RACE_TEST_DISPOSABLE",
     "POSTGRES_RACE_TEST_FAIL_IF_SKIPPED",
+    "CHATGPT_STORAGE_DIRECTORY",
   ]) {
     for (const value of ["private-target-sentinel", " "]) {
       assert.throws(
@@ -28,6 +43,32 @@ test("general test preflight refuses database targets without revealing their va
       );
     }
   }
+});
+
+test("each general run owns an empty ChatGPT store instead of inheriting a human store", async () => {
+  const first = await prepareLocalTestEnvironment({ FIXTURE: "kept" });
+  const second = await prepareLocalTestEnvironment({});
+  assert.equal(first.FIXTURE, "kept");
+  assert.ok(path.isAbsolute(first.CHATGPT_STORAGE_DIRECTORY!));
+  assert.notEqual(
+    first.CHATGPT_STORAGE_DIRECTORY,
+    second.CHATGPT_STORAGE_DIRECTORY,
+  );
+  assert.equal(
+    (await stat(first.CHATGPT_STORAGE_DIRECTORY!)).isDirectory(),
+    true,
+  );
+  await assert.rejects(
+    prepareLocalTestEnvironment({
+      CHATGPT_STORAGE_DIRECTORY: "private-human-path",
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /CHATGPT_STORAGE_DIRECTORY/);
+      assert.doesNotMatch(error.message, /private-human-path/);
+      return true;
+    },
+  );
 });
 
 test("general tests accept a clean development shell and reject production roles", () => {

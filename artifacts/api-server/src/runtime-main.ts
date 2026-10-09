@@ -2,6 +2,7 @@ import type { Server } from "node:http";
 import { closeDatabase, databaseBackend, dbReady } from "@workspace/db";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { readCodexConfigurationReport } from "./lib/codex-task-capability";
 import { bootstrapProviders } from "./lib/provider-bootstrap";
 import { setProviderRuntimeIdentity } from "./lib/provider-runtime-config";
 import { reconcileInterruptedComputerActivities } from "./lib/orchestrator/execute-tool";
@@ -32,6 +33,7 @@ import {
 import { seedDefaultOrg } from "./lib/seed";
 import { readWorkspaceLocale } from "./lib/workspace-locale";
 import { closeAllSessions } from "./lib/vm/browser";
+import { chatgptConnectionRuntime } from "./lib/chatgpt-connection-runtime";
 import {
   startOperationsHealthSampler,
   type OperationsHealthSamplerController,
@@ -154,7 +156,10 @@ function createHttpRuntimeController(
                   runtimeHandle,
                 );
               },
-              closeSessions: () => closeAllSessions(),
+              closeSessions: async () => {
+                await chatgptConnectionRuntime.close();
+                await closeAllSessions();
+              },
               stopEmergencyMonitor: () => stopEmergencyStopMonitor(),
               markRuntimeStopped: async () => {
                 await markRuntimeStopped(runtimeHandle);
@@ -200,7 +205,10 @@ async function cleanupFailedStart(
           markTimedOutOperationsUnknown: async () => {
             await markRuntimeOperationsUnknownAfterDrainTimeout(runtimeHandle);
           },
-          closeSessions: () => closeAllSessions(),
+          closeSessions: async () => {
+            await chatgptConnectionRuntime.close();
+            await closeAllSessions();
+          },
           stopEmergencyMonitor: () => stopEmergencyStopMonitor(),
           markRuntimeStopped: async () => {
             await markRuntimeStopped(runtimeHandle);
@@ -215,6 +223,7 @@ async function cleanupFailedStart(
     return;
   }
 
+  await chatgptConnectionRuntime.close();
   await Promise.allSettled([
     stopScheduler(),
     healthSampler?.stop(),
@@ -261,6 +270,7 @@ export async function startHttpRuntime(
         role: options.operationsConfig.role,
         schedulerEnabled: options.rolePlan.startsScheduler,
         capabilities: {
+          ...readCodexConfigurationReport(options.environment),
           http: true,
           scheduler: options.rolePlan.startsScheduler,
         },

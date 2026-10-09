@@ -7,6 +7,7 @@ const LOCALIZED_TOOLS = new Set([
   ...CAPABILITY_TOOL_NAMES,
   "computer_observe",
   "vm_run_command",
+  "vm_codex_task",
   "vm_run_sudo_command",
   "vm_list_files",
   "vm_read_file",

@@ -2,7 +2,7 @@
 
 ## From a brief to a useful result
 
-Home and New project check the model catalog while you write. If this check fails, choose **Check again** to retry in place and keep your draft, or open **Connections** to review the setup. A failed refresh is shown even if an older catalog listed an available model. If no tool-capable model is configured, you can still submit a project to save it; model work needs a usable connection. The catalog check does not run a model prompt and does not prove a future call will succeed. Leaving or reloading an unsent form can still discard its draft.
+Home and New project check the model catalog while you write. If this check fails, choose **Check again** to retry in place and keep your draft, or open **Connections** to review the setup. A failed refresh is shown even if an older catalog listed an available model. If no tool-capable model is configured, you can still submit a project to save it; model work needs a usable connection. The catalog check does not run a model prompt and does not prove a future call will succeed. Unsent drafts survive in-app navigation and, when browser storage accepts the writes, a reload in the same tab. A warning explains when only this open app can retain the newest input.
 
 After a focused retry, focus returns to the retry action if the check fails, the connection link if setup is needed, or the job draft if a usable model is listed. Choosing another field while the check runs keeps your chosen focus.
 
@@ -42,6 +42,15 @@ when a task is resumed; after raising a limit, resume the blocked tasks. A recur
 cycle resets only when its root completes that cycle; rolling-day usage still
 applies. Old lifetime counters do not stand in for current recurring-cycle spend.
 Unknown provider cost remains unknown, and recorded token usage still counts.
+If an applicable task or family window contains an unreported or partially
+reported token receipt, further inference pauses. This also covers legacy
+receipts without provenance and token aggregates that exceed their receipts.
+It preserves the records instead of resetting them or treating unknown usage
+as zero. Complete measured tokens with no reported dollar price remain usable
+under token limits; the dollar total is still unknown. Review the recorded
+calls and use a new job with a provider that reports token usage to continue.
+For a rolling-day-only pause, eligibility can return once that receipt leaves
+the window; checking allowance does not itself clear it.
 
 These controls check recorded usage before each request; concurrent or in-flight
 requests may overshoot. They do not reserve provider funds, cancel existing calls

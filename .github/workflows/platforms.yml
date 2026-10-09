@@ -58,8 +58,25 @@ jobs:
           brew install postgresql@17
           "$(brew --prefix postgresql@17)/bin/pg_restore" --version
       - name: Prove native installation resume and binary backup restoration
+        env:
+          TMPDIR: ${{ runner.temp }}
         run: pnpm test:installation:native "$(brew --prefix postgresql@17)/bin"
+      - name: Prove seven-language first-job connection through real API and workers
+        env:
+          ACOS_GUIDED_LOCAL_SMOKE: "1"
+          TMPDIR: ${{ runner.temp }}
+        run: pnpm test:connection:native "$(brew --prefix postgresql@17)/bin"
       - name: Verify local database migration
         run: pnpm --filter @workspace/db run migrate
       - name: Exercise first-run and capability library
         run: pnpm exec playwright test --config playwright.config.ts tests/ui/language-setup.spec.ts tests/ui/skills-library.spec.ts --workers 1
+      - name: Preserve native installation and guided first-job evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-macos-${{ matrix.platform }}-installation-evidence
+          path: |
+            ${{ runner.temp }}/acos-native-install-proof-*/evidence.json
+            ${{ runner.temp }}/acos-native-install-proof-*/guided-local-runtime-evidence.json
+          if-no-files-found: warn
+          retention-days: 7

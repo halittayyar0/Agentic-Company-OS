@@ -1,0 +1,1 @@
+ALTER TABLE "chatgpt_registration_locks" ADD COLUMN "active_registration_id" uuid;
