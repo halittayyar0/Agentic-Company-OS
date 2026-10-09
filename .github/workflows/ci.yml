@@ -435,6 +435,8 @@ jobs:
       - name: Prove seven-language reusable work through real API and workers
         env:
           ACOS_REUSABLE_GUIDES_SMOKE: "1"
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
         run: pnpm test:guides:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
 
       - name: Exercise native PostgreSQL process topology
