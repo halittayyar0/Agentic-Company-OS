@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
 import express from "express";
+import { rateLimit } from "express-rate-limit";
 import {
   db,
   dbReady,
@@ -11,7 +12,6 @@ import {
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { createOperatorAuth } from "../lib/operator-auth";
-import { createRateLimiter } from "../lib/rate-limit";
 import { createInferenceAccountingRouter } from "./inference-accounting";
 import { GetInferenceAccountingStatusResponse } from "@workspace/api-zod";
 
@@ -38,11 +38,13 @@ test("accounting inspection authenticates before reading, rejects ambiguous scop
     });
   app.use(
     "/api",
-    createRateLimiter({
-      namespace: "test-accounting",
-      max: 7,
+    // Keep this standalone HTTP fixture rate limited with middleware that
+    // CodeQL models. The real application's limiter is covered separately.
+    rateLimit({
+      limit: 7,
       windowMs: 60_000,
-      now: () => 0,
+      standardHeaders: "draft-6",
+      legacyHeaders: false,
     }),
     auth.requireAuthentication,
     createInferenceAccountingRouter({
@@ -83,7 +85,8 @@ test("accounting inspection authenticates before reading, rejects ambiguous scop
   assert.equal(reads, 1);
   const limited = await fetch(base + "?scopeType=task&scopeId=1", { headers });
   assert.equal(limited.status, 429);
-  assert.equal(limited.headers.get("retry-after"), "60");
+  const retryAfter = Number(limited.headers.get("retry-after"));
+  assert.ok(retryAfter > 0 && retryAfter <= 60);
   assert.equal(reads, 1);
 });
 test("the real app mounts the read-only accounting scope behind operator authentication", async (t) => {
