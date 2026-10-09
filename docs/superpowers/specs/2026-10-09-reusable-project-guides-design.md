@@ -1,7 +1,7 @@
 # Reusable work through existing guides — design
 
 Date: 9 October 2026
-Status: implementation design; runtime work is pending, publication requires accepted dependencies.
+Status: implementation complete; final candidate and publication acceptance are in progress. See the execution plan for the remaining gates.
 Source inspected: e494b7d26b3a7490dc3311847cba30b1624a7b48 / tree122fa57f3fa22f90b900bf37a23b79a481f81203, pending PR44. Ruling: develop independently in the reused, clean attached windows-helper-diagnosis worktree on codex/reusable-project-guides-20261009 at corrected dependency5f573ce/treebe1aeea. This preserves the frozen PR44 source and pending tests. Publish this feature only after PR44 is accepted, rebase onto actual public main, and verify its own exact head. This does not replace PR44 acceptance.
 
 ## Intent and authorization

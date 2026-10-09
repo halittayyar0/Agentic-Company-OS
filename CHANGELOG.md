@@ -5,15 +5,29 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-09
+
+Reuse your saved instructions without losing current drafts, and recover a
+project start when its response is lost. Downloadable packages are published
+after the candidate passes platform and distribution acceptance; the v0.4.0
+portable bundle does not include these workflows.
+
+### Added
+
 - Prepare a fresh project or an editable personal guide from a saved root-project
   brief, with explicit draft choices and exact text. A saved personal guide can
   prepare another project without enabling it for agent discovery. Preparation
   and guide saving spend no model tokens and start no work. Current execution
   settings remain authoritative; the workflow copies instructions, not learned
-  success evidence. Final runtime and publication checks remain pending.
+  success evidence.
 - Preserve personal editor input and uncertain save identity through reload,
   explicit contents checks, revision review and manual identical retries. Keep
   later edits and show validation instead of silently shortening long text.
+  A confirmed validation rejection permits explicit return to editing without
+  repeatedly submitting the rejected request.
+- Real native installation checks exercise the reusable-guide workflow through
+  PostgreSQL, the API and two workers in all seven languages. The model peer is
+  controlled: these checks do not establish live model quality or account quota.
 
 - Recover New-project starts after response loss with a saved request identity,
   read-only checks and an explicit same-request retry. Seven authored languages
@@ -24,8 +38,15 @@ All notable changes to Agentic Company OS are documented here. The project uses
   terminal, and project removal cannot recycle a request identity. Legacy API
   callers without an identity retain their previous behavior.
 - Load recovery only on New project, with independently measured code and
-  copy limits. This feature is pending its final candidate/platform release
-  checks; it is not included in the v0.4.0 portable bundle.
+  copy limits. Existing route and total performance limits remain in place.
+
+### Fixed
+
+- Keep budget and coding recovery information ahead of saved-brief reuse actions
+  on project pages, including Russian and Arabic phone layouts.
+- Sample native health in the planned half-open time buckets, reject gaps and
+  duplicate samples, and retain evidence of health degradation after startup.
+  Short fault tests remain short tests; they are not 24-hour verification.
 
 ## [0.4.0] - 2026-10-09
 

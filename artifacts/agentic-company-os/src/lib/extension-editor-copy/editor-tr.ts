@@ -1,5 +1,7 @@
 import type { ExtensionEditorCopy } from "../extension-editor-copy";
 export default {
+  rejected:
+    "Sunucu bu kaydı reddetti. Düzenlemeye devam etmek metninizi ve rehber kimliğini korur. Yeniden kaydetmeden önce alanları, desteklenen aracı ve kurulu rehber sınırını kontrol edin.",
   storageError:
     "Bu sekme taslağı veya kayıt isteğini saklayamadı ya da temizleyemedi. Düzenlediğin metin burada kalır; sayfayı yenilemek kaydedilmemiş değişiklikleri kaybettirebilir. İstek saklanmadan kayıt başlatılmaz.",
   pendingTitle: "Tekrar kaydetmeden önce bu kaydı kontrol et",

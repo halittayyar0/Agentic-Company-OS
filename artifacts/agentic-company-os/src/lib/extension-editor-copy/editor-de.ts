@@ -1,5 +1,7 @@
 import type { ExtensionEditorCopy } from "../extension-editor-copy";
 export default {
+  rejected:
+    "Der Server hat diese Speicherung abgelehnt. Beim Weiterbearbeiten bleiben Text und Anleitung-ID erhalten. Prüfen Sie Felder, unterstütztes Werkzeug und die Anzahl installierter Anleitungen vor dem erneuten Speichern.",
   storageError:
     "Dieser Tab konnte den Entwurf oder Speichervorgang nicht sichern oder entfernen. Dein Text bleibt hier; beim Neuladen können ungesicherte Änderungen verloren gehen. Speichern beginnt erst, wenn die Anfrage gesichert ist.",
   pendingTitle: "Diesen Speichervorgang vor erneutem Speichern prüfen",

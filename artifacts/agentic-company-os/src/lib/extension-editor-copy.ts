@@ -3,6 +3,7 @@ export type ExtensionEditorCopy = {
   storageError: string;
   pendingTitle: string;
   uncertain: string;
+  rejected: string;
   check: string;
   retry: string;
   continue: string;

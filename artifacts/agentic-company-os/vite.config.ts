@@ -2,6 +2,7 @@ import path from "path";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
+import { bundleBudgetManifest } from "./bundle-budget-manifest";
 
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
@@ -28,6 +29,10 @@ const localApiTarget =
 export default defineConfig({
   base: basePath,
   plugins: [
+    bundleBudgetManifest(
+      path.resolve(import.meta.dirname, "../.."),
+      path.resolve(import.meta.dirname, "dist/bundle-budget-manifest.json"),
+    ),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),

@@ -1,5 +1,7 @@
 import type { ExtensionEditorCopy } from "../extension-editor-copy";
 export default {
+  rejected:
+    "伺服器拒絕了此次儲存。繼續編輯會保留文字和指南 ID。再次儲存前，請檢查欄位、支援的工具及已安裝指南數量上限。",
   storageError:
     "此分頁無法保留或清除草稿或儲存紀錄。可編輯文字仍在這裡；重新整理可能遺失未儲存的修改。只有請求成功保留後才會開始儲存。",
   pendingTitle: "再次儲存前，請檢查此次儲存",

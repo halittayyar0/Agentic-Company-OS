@@ -1,5 +1,7 @@
 import type { ExtensionEditorCopy } from "../extension-editor-copy";
 export default {
+  rejected:
+    "服务器拒绝了此次保存。继续编辑会保留文字和指南 ID。再次保存前，请检查字段、支持的工具及已安装指南数量上限。",
   storageError:
     "此标签页无法保留或清除草稿或保存记录。可编辑文本仍在这里；刷新可能丢失未保存的修改。只有请求成功保留后才会开始保存。",
   pendingTitle: "再次保存前，请检查此次保存",

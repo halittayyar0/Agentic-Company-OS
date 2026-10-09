@@ -21,6 +21,7 @@ export type ExtensionSaveRequest = {
   manifest: EditableManifest;
   expectedRevision: number;
   enabled: boolean;
+  rejected?: true;
 };
 export type DraftStore = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 const EDITOR = "acos.extension-editor.v1",
@@ -168,6 +169,7 @@ function save(value: unknown): value is ExtensionSaveRequest {
       "manifest",
       "expectedRevision",
       "enabled",
+      ...(value.rejected === true ? ["rejected"] : []),
     ]) ||
     value.version !== 1 ||
     !editor(value.submittedDraft) ||
@@ -177,7 +179,12 @@ function save(value: unknown): value is ExtensionSaveRequest {
   )
     return false;
   const prepared = prepareExtensionSave(value.submittedDraft);
-  return !!prepared && canonical(prepared) === canonical(value);
+  return (
+    !!prepared &&
+    canonical(
+      value.rejected === true ? { ...prepared, rejected: true } : prepared,
+    ) === canonical(value)
+  );
 }
 function read<T>(
   key: string,
@@ -269,6 +276,42 @@ export const clearExtensionSave = (
   expected: ExtensionSaveRequest,
   store: DraftStore,
 ) => clear(expected, SAVE, 131072, save, store);
+export function rejectExtensionSave(
+  expected: ExtensionSaveRequest,
+  store: DraftStore,
+): ExtensionSaveRequest | null {
+  const prior = readExtensionSave(store);
+  if (
+    prior.error ||
+    !prior.request ||
+    canonical(prior.request) !== canonical(expected)
+  )
+    return null;
+  const next = { ...expected, rejected: true as const };
+  return write(next, SAVE, 131072, save, store) ? next : null;
+}
+export function isExtensionSaveRejection(error: unknown): boolean {
+  if (!(error instanceof Error) || error.name !== "ApiError") return false;
+  const value = error as Error & {
+    status?: unknown;
+    method?: unknown;
+    url?: unknown;
+    data?: unknown;
+  };
+  try {
+    return (
+      value.status === 400 &&
+      value.method === "PUT" &&
+      typeof value.url === "string" &&
+      new URL(value.url, "http://localhost").pathname ===
+        "/api/skills/extensions" &&
+      object(value.data) &&
+      value.data.code === "CAPABILITY_INVALID"
+    );
+  } catch {
+    return false;
+  }
+}
 export function classifyExtensionSave(
   request: ExtensionSaveRequest,
   rows: unknown,

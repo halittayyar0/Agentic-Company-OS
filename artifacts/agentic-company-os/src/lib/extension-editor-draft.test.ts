@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import * as recovery from "./extension-editor-draft";
 import {
   readExtensionEditor,
   writeExtensionEditor,
@@ -39,6 +40,60 @@ function storage(): DraftStore {
     },
   };
 }
+
+test("a definitive rejection persists only against the exact immutable submission", () => {
+  const store = storage(),
+    request = prepareExtensionSave(draft)!;
+  assert.equal(beginExtensionSave(request, store), true);
+  const rejected = recovery.rejectExtensionSave(request, store);
+  assert.deepEqual(rejected, { ...request, rejected: true });
+  assert.deepEqual(readExtensionSave(store).request, rejected);
+  assert.equal(clearExtensionSave(request, store), false);
+  assert.equal(recovery.rejectExtensionSave(request, store), null);
+  assert.equal(clearExtensionSave(rejected!, store), true);
+});
+test("only parsed invalid-package API rejections permit editing recovery", () => {
+  const parsed = Object.assign(new Error("declined"), {
+    name: "ApiError",
+    status: 400,
+    method: "PUT",
+    url: "http://127.0.0.1:4173/api/skills/extensions",
+    data: { code: "CAPABILITY_INVALID" },
+  });
+  assert.equal(recovery.isExtensionSaveRejection(parsed), true);
+  for (const patch of [
+    { status: 409 },
+    { status: 500 },
+    { name: "TypeError" },
+    { method: "GET" },
+    { data: "unparsed" },
+    { data: { code: "OTHER" } },
+    { url: "/api/other" },
+  ]) {
+    assert.equal(
+      recovery.isExtensionSaveRejection(
+        Object.assign(new Error(), parsed, patch),
+      ),
+      false,
+    );
+  }
+});
+
+test("rejection readback failure preserves the pending request and invalid markers fail closed", () => {
+  const store = storage(),
+    request = prepareExtensionSave(draft)!;
+  beginExtensionSave(request, store);
+  assert.equal(
+    recovery.rejectExtensionSave(request, { ...store, setItem() {} }),
+    null,
+  );
+  assert.deepEqual(readExtensionSave(store).request, request);
+  store.setItem(
+    "acos.extension-save.v1",
+    JSON.stringify({ ...request, rejected: false }),
+  );
+  assert.equal(readExtensionSave(store).error, true);
+});
 
 test("editable records preserve exact unfinished fields and invalid defaults within their recovery cap", () => {
   const store = storage();

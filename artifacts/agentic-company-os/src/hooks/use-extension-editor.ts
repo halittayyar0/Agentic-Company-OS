@@ -8,6 +8,8 @@ import {
   prepareExtensionSave,
   readExtensionEditor,
   readExtensionSave,
+  rejectExtensionSave,
+  isExtensionSaveRejection,
   writeExtensionEditor,
   type EditableManifest,
   type ExtensionEditorDraft,
@@ -17,7 +19,8 @@ import {
 let editableMemory: { draft: ExtensionEditorDraft; error: boolean } | null =
   null;
 let pendingMemory: ExtensionSaveRequest | null = null;
-type Status = ReturnType<typeof classifyExtensionSave> | "uncertain";
+type Status =
+  ReturnType<typeof classifyExtensionSave> | "uncertain" | "rejected";
 type Observed = {
   revision: number;
   enabled: boolean;
@@ -67,13 +70,16 @@ export function useExtensionEditor(onSaved: () => void) {
   const [draft, setDraft] = useState(initial.draft),
     [pending, setPending] = useState(initial.pending),
     [storageError, setStorageError] = useState(initial.error),
-    [status, setStatus] = useState<Status>("uncertain"),
+    [status, setStatus] = useState<Status>(
+      initial.pending?.rejected ? "rejected" : "uncertain",
+    ),
     [busy, setBusy] = useState<"saving" | "checking" | null>(null),
     [invalid, setInvalid] = useState(false),
     [incoming, setIncoming] = useState<ExtensionEditorDraft | null>(null);
   const [observed, setObserved] = useState<Observed | null>(null);
   const current = useRef(initial.draft),
     request = useRef(initial.pending),
+    rejected = useRef(!!initial.pending?.rejected),
     flight = useRef(false),
     mounted = useRef(true);
   useEffect(() => {
@@ -194,9 +200,18 @@ export function useExtensionEditor(onSaved: () => void) {
       const observed = classifyExtensionSave(expected, [row]);
       setStatus(observed);
       if (observed === "matching") finish(expected);
-    } catch {
-      if (mounted.current && same(request.current, expected))
-        setStatus("uncertain");
+    } catch (error) {
+      if (mounted.current && same(request.current, expected)) {
+        if (isExtensionSaveRejection(error)) {
+          rejected.current = true;
+          const retained = rejectExtensionSave(expected, sessionStorage);
+          if (retained) {
+            request.current = pendingMemory = retained;
+            setPending(retained);
+          } else setStorageError(true);
+          setStatus("rejected");
+        } else setStatus("uncertain");
+      }
     } finally {
       flight.current = false;
       if (mounted.current) setBusy(null);
@@ -223,6 +238,7 @@ export function useExtensionEditor(onSaved: () => void) {
       return;
     }
     request.current = expected;
+    rejected.current = false;
     pendingMemory = expected;
     setPending(expected);
     void send(expected);
@@ -238,7 +254,9 @@ export function useExtensionEditor(onSaved: () => void) {
       });
       if (mounted.current && same(request.current, expected)) {
         const result = classifyExtensionSave(expected, rows);
-        setStatus(result);
+        setStatus(
+          result === "missing" && rejected.current ? "rejected" : result,
+        );
         // The classifier validates the complete list before it reports a change.
         setObserved(
           result === "changed" && Array.isArray(rows)
@@ -294,8 +312,7 @@ export function useExtensionEditor(onSaved: () => void) {
     const expected = request.current,
       latest = current.current;
     if (
-      status !== "changed" ||
-      !observed ||
+      !(status === "rejected" || (status === "changed" && observed)) ||
       !expected ||
       flight.current ||
       !latest ||
@@ -304,7 +321,12 @@ export function useExtensionEditor(onSaved: () => void) {
       return;
     let cleared = false;
     try {
-      cleared = clearExtensionSave(expected, sessionStorage);
+      cleared =
+        change(
+          status === "changed"
+            ? { ...latest, revision: observed!.revision }
+            : latest,
+        ) && clearExtensionSave(expected, sessionStorage);
     } catch {
       /* preserve identity */
     }
@@ -315,7 +337,6 @@ export function useExtensionEditor(onSaved: () => void) {
     request.current = null;
     pendingMemory = null;
     setPending(null);
-    change({ ...latest, revision: observed.revision });
     setObserved(null);
   }
   return {
@@ -340,6 +361,7 @@ export function useExtensionEditor(onSaved: () => void) {
     reviewCurrent,
     continue: () => {
       if (status === "matching" && request.current) finish(request.current);
+      if (status === "rejected") reviewCurrent();
     },
   };
 }

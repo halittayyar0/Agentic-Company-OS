@@ -1,5 +1,7 @@
 import type { ExtensionEditorCopy } from "../extension-editor-copy";
 export default {
+  rejected:
+    "The server declined this save. Continue editing keeps your text and guide ID. Review the fields, supported tool and installed guide limit before saving again.",
   storageError:
     "This tab could not retain or clear the draft or save record. Your editable text stays here; a reload may lose unsaved changes. Saving starts only after the request can be retained.",
   pendingTitle: "Check this save before saving again",

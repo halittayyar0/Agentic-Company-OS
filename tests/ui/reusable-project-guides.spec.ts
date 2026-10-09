@@ -216,6 +216,309 @@ for (const use of [false, true])
     expect(f.fixture.requests).toHaveLength(0);
   });
 
+test("review correction: cancelling the old editor still permits explicit Use of the retained incoming guide", async ({
+  page,
+}) => {
+  const old = await editorFixture(page),
+    f = await savedProjectFixture(page),
+    c = await loadReusableWorkCopy("en");
+  await page.getByRole("button", { name: c.prepareGuide, exact: true }).click();
+  await expect(
+    old.region.getByText(old.recovery.incomingHelp, { exact: true }),
+  ).toBeVisible();
+  const seed = await page.evaluate(() => history.state.acosGuideDraft);
+  await old.region
+    .getByRole("button", { name: old.copy.extensions[12], exact: true })
+    .click();
+  await old.region
+    .getByRole("button", { name: old.recovery.use, exact: true })
+    .click();
+  await expect(
+    old.region.getByLabel(old.copy.extensions[2], { exact: true }),
+  ).toHaveValue(seed.manifest.id);
+  await expect(
+    old.region.getByLabel(old.copy.extensions[8], { exact: true }),
+  ).toHaveValue(f.project.brief);
+  expect(
+    await page.evaluate(() => history.state.acosGuideDraft),
+  ).toBeUndefined();
+  await page.reload();
+  await expect(
+    old.region.getByLabel(old.copy.extensions[2], { exact: true }),
+  ).toHaveValue(seed.manifest.id);
+  expect(f.writes).toHaveLength(0);
+  expect(f.fixture.requests).toHaveLength(0);
+});
+
+test("review correction: a confirmed rejected save permits explicit Continue after reload while preserving later text and ID", async ({
+  page,
+}) => {
+  const f = await editorFixture(page),
+    writes: unknown[] = [];
+  await page.route("**/api/skills/extensions", async (route) => {
+    if (route.request().method() === "GET") return route.fulfill({ json: [] });
+    writes.push(route.request().postDataJSON());
+    return route.fulfill({ status: 400, json: { code: "CAPABILITY_INVALID" } });
+  });
+  const id = await f.region
+    .getByLabel(f.copy.extensions[2], { exact: true })
+    .inputValue();
+  await f.region
+    .getByRole("button", { name: f.copy.extensions[11], exact: true })
+    .click();
+  await expect.poll(() => writes.length).toBe(1);
+  await f.region
+    .getByLabel(f.copy.extensions[3], { exact: true })
+    .fill("Later editable title");
+  await page.reload();
+  await f.region
+    .getByRole("button", { name: f.recovery.continue, exact: true })
+    .click();
+  await expect(
+    f.region.getByLabel(f.copy.extensions[2], { exact: true }),
+  ).toHaveValue(id);
+  await expect(
+    f.region.getByLabel(f.copy.extensions[3], { exact: true }),
+  ).toHaveValue("Later editable title");
+  await expect(
+    f.region.getByRole("button", { name: f.copy.extensions[11], exact: true }),
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("acos.extension-save.v1")),
+  ).toBeNull();
+  expect(writes).toHaveLength(1);
+  expect(f.fixture.requests).toHaveLength(0);
+});
+
+for (const locale of LOCALES)
+  test(`${locale} rejected save recovery preserves phone text and performs no automatic retry`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({
+      width: locale === "ar" ? 320 : 390,
+      height: 844,
+    });
+    const f = await editorFixture(page, locale),
+      writes: unknown[] = [];
+    await page.route("**/api/skills/extensions", (route) => {
+      if (route.request().method() === "GET")
+        return route.fulfill({ json: [] });
+      writes.push(route.request().postDataJSON());
+      return route.fulfill({
+        status: 400,
+        json: { code: "CAPABILITY_INVALID" },
+      });
+    });
+    const id = await f.region
+      .getByLabel(f.copy.extensions[2], { exact: true })
+      .inputValue();
+    await f.region
+      .getByRole("button", { name: f.copy.extensions[11], exact: true })
+      .click();
+    await expect(f.region.getByRole("status")).toContainText(
+      f.recovery.rejected,
+    );
+    await f.region
+      .getByRole("button", { name: f.recovery.check, exact: true })
+      .click();
+    await expect(f.region.getByRole("status")).toContainText(
+      f.recovery.rejected,
+    );
+    await expect(
+      f.region.getByRole("button", { name: f.recovery.retry, exact: true }),
+    ).toHaveCount(0);
+    const proceed = f.region.getByRole("button", {
+      name: f.recovery.continue,
+      exact: true,
+    });
+    expect((await proceed.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await proceed.click();
+    await expect(
+      f.region.getByLabel(f.copy.extensions[2], { exact: true }),
+    ).toHaveValue(id);
+    await expect(
+      f.region.getByLabel(f.copy.extensions[8], { exact: true }),
+    ).toHaveValue(" First line\n第二行 😀  ");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    expect(writes).toHaveLength(1);
+    expect(f.fixture.requests).toHaveLength(0);
+  });
+
+for (const fault of ["retain-rejection", "clear-pending", "retain-editor"])
+  test(`${fault} refusal preserves rejected save and later text for explicit recovery`, async ({
+    page,
+  }) => {
+    const f = await editorFixture(page),
+      writes: unknown[] = [];
+    await page.route("**/api/skills/extensions", (route) => {
+      if (route.request().method() === "GET")
+        return route.fulfill({ json: [] });
+      writes.push(route.request().postDataJSON());
+      return route.fulfill({
+        status: 400,
+        json: { code: "CAPABILITY_INVALID" },
+      });
+    });
+    await page.evaluate(
+      (value) => {
+        const set = Storage.prototype.setItem,
+          remove = Storage.prototype.removeItem;
+        Storage.prototype.setItem = function (key, text) {
+          if (
+            (value === "retain-rejection" &&
+              key === "acos.extension-save.v1" &&
+              JSON.parse(text).rejected) ||
+            (value === "retain-editor" && key === "acos.extension-editor.v1")
+          )
+            return;
+          set.call(this, key, text);
+        };
+        Storage.prototype.removeItem = function (key) {
+          if (value === "clear-pending" && key === "acos.extension-save.v1")
+            return;
+          remove.call(this, key);
+        };
+      },
+      fault === "retain-editor" ? "later" : fault,
+    );
+    await f.region
+      .getByRole("button", { name: f.copy.extensions[11], exact: true })
+      .click();
+    await expect(f.region.getByRole("status")).toContainText(
+      f.recovery.rejected,
+    );
+    if (fault === "retain-editor")
+      await page.evaluate(() => {
+        const set = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (key, value) {
+          if (key !== "acos.extension-editor.v1") set.call(this, key, value);
+        };
+      });
+    await f.region
+      .getByLabel(f.copy.extensions[3], { exact: true })
+      .fill("Later retained text");
+    await f.region
+      .getByRole("button", { name: f.recovery.check, exact: true })
+      .click();
+    await expect(f.region.getByRole("status")).toContainText(
+      f.recovery.rejected,
+    );
+    await f.region
+      .getByRole("button", { name: f.recovery.continue, exact: true })
+      .click();
+    await expect(
+      f.region.getByLabel(f.copy.extensions[3], { exact: true }),
+    ).toHaveValue("Later retained text");
+    if (fault !== "retain-rejection") {
+      await expect(
+        f.region.getByRole("button", {
+          name: f.copy.extensions[11],
+          exact: true,
+        }),
+      ).toBeDisabled();
+      expect(
+        await page.evaluate(() =>
+          sessionStorage.getItem("acos.extension-save.v1"),
+        ),
+      ).not.toBeNull();
+    }
+    expect(writes).toHaveLength(1);
+  });
+
+test("cancelling the editor permits explicit Keep without retaining a stranded incoming guide", async ({
+  page,
+}) => {
+  const old = await editorFixture(page),
+    f = await savedProjectFixture(page),
+    copy = await loadReusableWorkCopy("en");
+  await page
+    .getByRole("button", { name: copy.prepareGuide, exact: true })
+    .click();
+  await expect(
+    old.region.getByText(old.recovery.incomingHelp, { exact: true }),
+  ).toBeVisible();
+  await old.region
+    .getByRole("button", { name: old.copy.extensions[12], exact: true })
+    .click();
+  await old.region
+    .getByRole("button", { name: old.recovery.keep, exact: true })
+    .click();
+  expect(
+    await page.evaluate(() => history.state.acosGuideDraft),
+  ).toBeUndefined();
+  await expect(
+    old.region.getByRole("button", {
+      name: old.copy.extensions[1],
+      exact: true,
+    }),
+  ).toBeEnabled();
+  expect(f.writes).toHaveLength(0);
+  expect(f.fixture.requests).toHaveLength(0);
+});
+
+test("after Cancel, refused Use persistence retains the incoming identity until a later explicit choice", async ({
+  page,
+}) => {
+  const old = await editorFixture(page),
+    f = await savedProjectFixture(page),
+    copy = await loadReusableWorkCopy("en");
+  await page
+    .getByRole("button", { name: copy.prepareGuide, exact: true })
+    .click();
+  await expect(
+    old.region.getByText(old.recovery.incomingHelp, { exact: true }),
+  ).toBeVisible();
+  const seed = await page.evaluate(() => history.state.acosGuideDraft);
+  await old.region
+    .getByRole("button", { name: old.copy.extensions[12], exact: true })
+    .click();
+  await page.evaluate(() => {
+    const set = Storage.prototype.setItem;
+    (
+      window as unknown as { restoreGuideStorage: () => void }
+    ).restoreGuideStorage = () => {
+      Storage.prototype.setItem = set;
+    };
+    Storage.prototype.setItem = function (key, value) {
+      if (key !== "acos.extension-editor.v1") set.call(this, key, value);
+    };
+  });
+  await old.region
+    .getByRole("button", { name: old.recovery.use, exact: true })
+    .click();
+  await expect(
+    old.region.getByLabel(old.copy.extensions[2], { exact: true }),
+  ).toHaveValue(seed.manifest.id);
+  expect(await page.evaluate(() => history.state.acosGuideDraft)).toEqual(seed);
+  await expect(
+    old.region.getByRole("button", {
+      name: old.copy.extensions[11],
+      exact: true,
+    }),
+  ).toBeDisabled();
+  expect(f.writes).toHaveLength(0);
+  await page.evaluate(() =>
+    (
+      window as unknown as { restoreGuideStorage: () => void }
+    ).restoreGuideStorage(),
+  );
+  await old.region
+    .getByRole("button", { name: old.recovery.use, exact: true })
+    .click();
+  expect(
+    await page.evaluate(() => history.state.acosGuideDraft),
+  ).toBeUndefined();
+  await expect(
+    old.region.getByLabel(old.copy.extensions[2], { exact: true }),
+  ).toHaveValue(seed.manifest.id);
+  expect(f.writes).toHaveLength(0);
+  expect(f.fixture.requests).toHaveLength(0);
+});
+
 test("an earlier uncertain save keeps its ID while the incoming guide waits", async ({
   page,
 }) => {
@@ -623,7 +926,9 @@ for (const code of ["CAPABILITY_INVALID", "CAPABILITY_REVISION_CONFLICT"])
       .getByRole("button", { name: f.copy.extensions[11], exact: true })
       .click();
     await expect(f.region.getByRole("status")).toContainText(
-      f.recovery.uncertain,
+      code === "CAPABILITY_INVALID"
+        ? f.recovery.rejected
+        : f.recovery.uncertain,
     );
     const pending = await page.evaluate(() =>
       JSON.parse(sessionStorage.getItem("acos.extension-save.v1")!),
@@ -633,7 +938,7 @@ for (const code of ["CAPABILITY_INVALID", "CAPABILITY_REVISION_CONFLICT"])
       .getByRole("button", { name: f.recovery.check, exact: true })
       .click();
     await expect(f.region.getByRole("status")).toContainText(
-      code === "CAPABILITY_INVALID" ? f.recovery.missing : f.recovery.changed,
+      code === "CAPABILITY_INVALID" ? f.recovery.rejected : f.recovery.changed,
     );
     expect(submissions).toHaveLength(1);
     expect(f.fixture.requests).toHaveLength(0);

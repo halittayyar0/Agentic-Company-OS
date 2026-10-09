@@ -76,6 +76,7 @@ export default function TaskDetail() {
   const { locale, t } = useLocale();
   const [, route] = useRoute("/projects/:projectId");
   const [, legacy] = useRoute("/tasks/:taskId");
+  const rawId = route?.projectId ?? legacy?.taskId;
   const copy = useQuery({
     queryKey: ["project-studio-copy", locale],
     queryFn: () => loadProjectStudioCopy(locale),
@@ -98,20 +99,18 @@ export default function TaskDetail() {
         )}
       </section>
     );
-  return (
-    <ProjectDetail
-      key={route?.projectId ?? legacy?.taskId ?? "invalid"}
-      c={copy.data}
-    />
-  );
+  return <ProjectDetail key={rawId ?? "invalid"} rawId={rawId} c={copy.data} />;
 }
 
-function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
+function ProjectDetail({
+  c,
+  rawId,
+}: {
+  c: ProjectStudioCopy;
+  rawId: string | undefined;
+}) {
   const budgetSeenFor = useRef<number | null>(null);
   const { locale, t } = useLocale();
-  const [, projectParams] = useRoute("/projects/:projectId");
-  const [, legacyParams] = useRoute("/tasks/:taskId");
-  const rawId = projectParams?.projectId ?? legacyParams?.taskId;
   const taskId = Number(rawId);
   const validTaskId =
     Number.isInteger(taskId) && taskId > 0 && taskId <= 2_147_483_647;
@@ -364,14 +363,6 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
             >
               {projectBrief.outcome}
             </p>
-            {isRootProject && (
-              <Suspense fallback={null}>
-                <ProjectReuseActions
-                  project={project}
-                  sourceUnavailable={isError || isFetching}
-                />
-              </Suspense>
-            )}
             {project.blockedReason === "budget" ||
             budgetSeenFor.current === taskId ||
             hasBudgetResumeRecovery(taskId) ? (
@@ -421,6 +412,14 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
                 <CodingSessionRecovery key={taskId} taskId={taskId} />
               </Suspense>
             </ErrorBoundary>
+            {isRootProject && (
+              <Suspense fallback={null}>
+                <ProjectReuseActions
+                  project={project}
+                  sourceUnavailable={isError || isFetching}
+                />
+              </Suspense>
+            )}
           </div>
 
           <ProjectTeamSummary
@@ -484,10 +483,7 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
         />
       </Suspense>
 
-      {subtasksError ||
-      activitiesError ||
-      agentsError ||
-      membersQuery.isError ? (
+      {contextFailures.length > 0 ? (
         <div
           className="mx-auto mt-4 flex max-w-[1680px] flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3 text-xs text-amber-800 dark:text-amber-200"
           role="status"
@@ -495,23 +491,18 @@ function ProjectDetail({ c }: { c: ProjectStudioCopy }) {
           <span>
             {studioText(c.partial, { sections: contextFailures.join(", ") })}
           </span>
-          {subtasksError ||
-          activitiesError ||
-          agentsError ||
-          membersQuery.isError ? (
-            <button
-              type="button"
-              className="min-h-11 px-2 font-semibold underline underline-offset-2"
-              onClick={() => {
-                if (subtasksError) void refetchSubtasks();
-                if (activitiesError) void refetchActivities();
-                if (agentsError) void refetchAgents();
-                if (membersQuery.isError) void membersQuery.refetch();
-              }}
-            >
-              {c.retry}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className="min-h-11 px-2 font-semibold underline underline-offset-2"
+            onClick={() => {
+              if (subtasksError) void refetchSubtasks();
+              if (activitiesError) void refetchActivities();
+              if (agentsError) void refetchAgents();
+              if (membersQuery.isError) void membersQuery.refetch();
+            }}
+          >
+            {c.retry}
+          </button>
         </div>
       ) : null}
 

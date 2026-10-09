@@ -183,8 +183,12 @@ function ExtensionLibraryBody({
     const next = preparedDraft();
     const retained = editor.incoming
       ? editor.resolveIncoming(use)
-      : !!editor.current.current &&
-        editor.change(use && next ? next : editor.current.current);
+      : use && next
+        ? editor.current.current
+          ? editor.change(next)
+          : editor.prepare(next)
+        : !use &&
+          (!editor.current.current || editor.change(editor.current.current));
     if (retained) consumePreparedGuide(use);
     else setPreparationError(true);
   }
@@ -444,7 +448,7 @@ function ExtensionLibraryBody({
                 {ec.retry}
               </Button>
             )}
-            {editor.status === "matching" && (
+            {(editor.status === "matching" || editor.status === "rejected") && (
               <Button
                 type="button"
                 className="min-h-11 max-w-full whitespace-normal"
