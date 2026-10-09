@@ -5,34 +5,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
+import {
+  retainExtensionEditorBeforeReload,
+  useExtensionEditor,
+} from "@/hooks/use-extension-editor";
+import { loadExtensionEditorCopy } from "@/lib/extension-editor-copy";
+import {
+  prepareExtensionSave,
+  type EditableManifest as Manifest,
+} from "@/lib/extension-editor-draft";
 
-type Manifest =
-  | {
-      schemaVersion: 1;
-      id: string;
-      title: string;
-      description: string;
-      kind: "program";
-      code: string;
-      permissions: ["terminal"];
-    }
-  | {
-      schemaVersion: 1;
-      id: string;
-      title: string;
-      description: string;
-      kind: "skill";
-      instructions: string;
-    }
-  | {
-      schemaVersion: 1;
-      id: string;
-      title: string;
-      description: string;
-      kind: "tool";
-      tool: string;
-      defaults: Record<string, unknown>;
-    };
 type Entry = {
   id: string;
   revision: number;
@@ -89,7 +71,15 @@ const call = <T,>(path: string, data?: unknown) =>
 export function ExtensionLibrary() {
   const { locale } = useLocale();
   const pack = useCustomizationCopy(locale);
-  if (!pack.data) return <LanguagePackStatus error={pack.isError} />;
+  if (!pack.data)
+    return (
+      <LanguagePackStatus
+        error={pack.isError}
+        onRetry={() => {
+          if (retainExtensionEditorBeforeReload()) window.location.reload();
+        }}
+      />
+    );
   return (
     <ExtensionLibraryBody c={pack.data.extensions} pc={pack.data.program} />
   );
@@ -101,7 +91,7 @@ function ExtensionLibraryBody({
   c: readonly string[];
   pc: readonly string[];
 }) {
-  const { t } = useLocale(),
+  const { t, locale } = useLocale(),
     cache = useQueryClient();
   const list = useQuery({
     queryKey: ["personal-capabilities"],
@@ -114,12 +104,36 @@ function ExtensionLibraryBody({
     retry: false,
   });
   const [selected, setSelected] = useState<string[] | null>(null),
-    [draft, setDraft] = useState<Manifest | null>(null),
-    [revision, setRevision] = useState(0),
-    [defaults, setDefaults] = useState("{}"),
-    [busy, setBusy] = useState(false),
+    [mutationBusy, setBusy] = useState(false),
     [notice, setNotice] = useState(""),
     [error, setError] = useState(false);
+  const editor = useExtensionEditor(() => {
+    setNotice(c[19]);
+    setError(false);
+    void Promise.all([
+      cache.invalidateQueries({ queryKey: ["personal-capabilities"] }),
+      cache.invalidateQueries({ queryKey: ["capability-catalog"] }),
+    ]);
+  });
+  const editorCopy = useQuery({
+    queryKey: ["extension-editor-copy", locale],
+    queryFn: () => loadExtensionEditorCopy(locale),
+    staleTime: Infinity,
+    retry: false,
+  });
+  const draft = editor.draft?.manifest ?? null,
+    revision = editor.draft?.revision ?? 0,
+    defaults = editor.draft?.defaults ?? "{}",
+    busy = mutationBusy || !!editor.busy;
+  function setDraft(value: Manifest | null) {
+    if (!value) editor.discard();
+    else if (editor.current.current)
+      editor.change({ ...editor.current.current, manifest: value });
+  }
+  function setDefaults(value: string) {
+    if (editor.current.current)
+      editor.change({ ...editor.current.current, defaults: value });
+  }
   const flight = useRef(false);
   async function mutate(operation: () => Promise<unknown>) {
     if (flight.current) return;
@@ -130,7 +144,6 @@ function ExtensionLibraryBody({
       await operation();
       setNotice(c[19]);
       setError(false);
-      setDraft(null);
       setSelected(null);
     } catch {
       setNotice(c[18]);
@@ -146,30 +159,14 @@ function ExtensionLibraryBody({
     }
   }
   function edit(row?: Entry) {
-    setDraft(
-      row?.manifest ?? {
-        schemaVersion: 1,
-        id: "user-",
-        title: "",
-        description: "",
-        kind: "skill",
-        instructions: "",
-      },
-    );
-    setRevision(row?.revision ?? 0);
-    setDefaults(
-      JSON.stringify(
-        row?.manifest.kind === "tool" ? row.manifest.defaults : {},
-        null,
-        2,
-      ),
-    );
+    editor.edit(row?.manifest, row?.revision ?? 0, row?.enabled ?? true);
     setNotice("");
   }
+  const ec = editorCopy.data;
   return (
     <section
       aria-labelledby="personal-capabilities-title"
-      className="space-y-5 rounded-panel border border-border bg-card p-5 sm:p-7"
+      className="space-y-5 rounded-panel border border-border bg-card p-5 sm:p-7 [overflow-wrap:anywhere]"
     >
       <h2 id="personal-capabilities-title" className="text-xl font-semibold">
         {c[0]}
@@ -178,7 +175,7 @@ function ExtensionLibraryBody({
         {c[27]}
       </p>
       <div className="flex flex-wrap gap-3">
-        <Button disabled={busy} onClick={() => edit()}>
+        <Button disabled={busy || !!editor.pending} onClick={() => edit()}>
           {c[1]}
         </Button>
         <label className="inline-flex min-h-11 cursor-pointer items-center rounded-xl border border-border px-4 text-sm">
@@ -188,13 +185,16 @@ function ExtensionLibraryBody({
             className="sr-only"
             type="file"
             accept="application/json,.json"
-            disabled={busy}
+            disabled={busy || !!editor.pending}
             onChange={async (event) => {
               const file = event.target.files?.[0];
               event.target.value = "";
               if (!file) return;
               try {
-                if (file.size > 16000) throw Error();
+                // UTF-8 can use several bytes per server-counted character.
+                // Bound file reading separately; prepareExtensionSave below
+                // enforces the authoritative 16,000-character JSON limit.
+                if (file.size > 64000) throw Error();
                 const value = JSON.parse(await file.text()) as Manifest;
                 if (
                   value.schemaVersion !== 1 ||
@@ -202,16 +202,23 @@ function ExtensionLibraryBody({
                   !["skill", "tool", "program"].includes(value.kind)
                 )
                   throw Error();
-                setDraft(value);
-                setRevision(
-                  list.data?.find((row) => row.id === value.id)?.revision ?? 0,
-                );
-                setDefaults(
-                  JSON.stringify(
-                    value.kind === "tool" ? value.defaults : {},
-                    null,
-                    2,
-                  ),
+                const stored = list.data?.find((row) => row.id === value.id);
+                if (
+                  !prepareExtensionSave({
+                    version: 1,
+                    manifest: value,
+                    revision: stored?.revision ?? 0,
+                    defaults: JSON.stringify(
+                      value.kind === "tool" ? value.defaults : {},
+                    ),
+                    enabled: stored?.enabled ?? true,
+                  })
+                )
+                  throw Error();
+                editor.edit(
+                  value,
+                  stored?.revision ?? 0,
+                  stored?.enabled ?? true,
                 );
               } catch {
                 setNotice(c[18]);
@@ -222,6 +229,126 @@ function ExtensionLibraryBody({
         </label>
       </div>
       {notice && <p role={error ? "alert" : "status"}>{notice}</p>}
+      {!ec && (
+        <LanguagePackStatus
+          error={editorCopy.isError}
+          onRetry={() => {
+            if (retainExtensionEditorBeforeReload()) window.location.reload();
+          }}
+        />
+      )}
+      {ec && editor.storageError && (
+        <p role="alert" className="text-sm leading-6">
+          {ec.storageError}
+        </p>
+      )}
+      {ec && editor.invalid && (
+        <p role="alert" className="text-sm leading-6">
+          {ec.validation}
+        </p>
+      )}
+      {ec && editor.incoming && (
+        <div className="space-y-3 rounded-xl border border-border p-4 text-sm leading-6">
+          <p>{ec.incomingHelp}</p>
+          <p className="font-medium">
+            <bdi>{editor.incoming.manifest.title}</bdi>
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              className="min-h-11 max-w-full whitespace-normal"
+              variant="outline"
+              onClick={() => editor.resolveIncoming(false)}
+            >
+              {ec.keep}
+            </Button>
+            <Button
+              type="button"
+              className="min-h-11 max-w-full whitespace-normal"
+              onClick={() => editor.resolveIncoming(true)}
+            >
+              {ec.use}
+            </Button>
+          </div>
+        </div>
+      )}
+      {ec && editor.pending && (
+        <section
+          aria-labelledby="guide-save-recovery"
+          className="space-y-3 rounded-xl border border-border p-4 text-sm leading-6 [overflow-wrap:anywhere]"
+        >
+          <h3 id="guide-save-recovery" className="font-semibold">
+            {ec.pendingTitle}
+          </h3>
+          <p>
+            <bdi>{editor.pending.manifest.id}</bdi>
+          </p>
+          <p role="status">{ec[editor.status]}</p>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              className="min-h-11 max-w-full whitespace-normal"
+              disabled={busy}
+              variant="outline"
+              onClick={() => void editor.check()}
+            >
+              {ec.check}
+            </Button>
+            {editor.status === "missing" && (
+              <Button
+                type="button"
+                className="min-h-11 max-w-full whitespace-normal"
+                disabled={busy}
+                onClick={editor.retry}
+              >
+                {ec.retry}
+              </Button>
+            )}
+            {editor.status === "matching" && (
+              <Button
+                type="button"
+                className="min-h-11 max-w-full whitespace-normal"
+                disabled={busy}
+                onClick={editor.continue}
+              >
+                {ec.continue}
+              </Button>
+            )}
+          </div>
+          {editor.observed && (
+            <div className="space-y-3 border-t border-border pt-3">
+              <p className="font-medium">
+                {ec.storedVersion}: <bdi>{editor.observed.manifest.title}</bdi>{" "}
+                · {editor.observed.revision}
+              </p>
+              <p>{ec.reviewHelp}</p>
+              <label className="flex min-h-11 items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-5"
+                  checked={editor.observed.enabled}
+                  disabled
+                />
+                <span>{ec.storedAvailability}</span>
+              </label>
+              <pre
+                className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-background p-3 text-xs"
+                dir="auto"
+              >
+                {JSON.stringify(editor.observed.manifest, null, 2)}
+              </pre>
+              <Button
+                type="button"
+                className="min-h-11 max-w-full whitespace-normal"
+                disabled={busy}
+                onClick={editor.reviewCurrent}
+              >
+                {ec.reviewCurrent}
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
       {(list.isError || packs.isError) && (
         <div role="alert">
           <p>{c[18]}</p>
@@ -238,22 +365,11 @@ function ExtensionLibraryBody({
       )}
       {draft && (
         <form
+          noValidate
           className="grid gap-4 rounded-xl border border-border p-4"
           onSubmit={(event) => {
             event.preventDefault();
-            void mutate(async () => {
-              const manifest =
-                draft.kind === "tool"
-                  ? { ...draft, defaults: JSON.parse(defaults) }
-                  : draft;
-              return call("extensions", {
-                manifest,
-                expectedRevision: revision,
-                enabled:
-                  list.data?.find((row) => row.id === draft.id)?.enabled ??
-                  true,
-              });
-            });
+            editor.save();
           }}
         >
           {(["id", "title", "description"] as const).map((key, index) => (
@@ -263,11 +379,7 @@ function ExtensionLibraryBody({
                 className={fieldClass}
                 required
                 value={draft[key]}
-                maxLength={
-                  key === "description" ? 2000 : key === "title" ? 120 : 65
-                }
-                readOnly={key === "id" && revision > 0}
-                disabled={busy}
+                readOnly={key === "id" && (revision > 0 || !!editor.pending)}
                 onChange={(event) =>
                   setDraft({ ...draft, [key]: event.target.value })
                 }
@@ -280,7 +392,7 @@ function ExtensionLibraryBody({
               className={fieldClass}
               aria-label={c[5]}
               value={draft.kind}
-              disabled={busy}
+              disabled={!!editor.pending}
               onChange={(event) => {
                 const base = {
                   schemaVersion: 1 as const,
@@ -319,9 +431,8 @@ function ExtensionLibraryBody({
                 className={fieldClass}
                 rows={6}
                 required
-                maxLength={8000}
-                disabled={busy}
                 value={draft.instructions}
+                aria-label={c[8]}
                 onChange={(event) =>
                   setDraft({ ...draft, instructions: event.target.value })
                 }
@@ -337,8 +448,6 @@ function ExtensionLibraryBody({
                   rows={10}
                   dir="ltr"
                   required
-                  maxLength={8000}
-                  disabled={busy}
                   aria-label={pc[1]}
                   value={draft.code}
                   onChange={(event) =>
@@ -353,7 +462,6 @@ function ExtensionLibraryBody({
                 <span>{c[9]}</span>
                 <select
                   className={fieldClass}
-                  disabled={busy}
                   aria-label={c[9]}
                   value={draft.tool}
                   onChange={(event) =>
@@ -371,20 +479,39 @@ function ExtensionLibraryBody({
                   dir="ltr"
                   className={fieldClass}
                   rows={4}
-                  maxLength={8000}
-                  disabled={busy}
                   value={defaults}
+                  aria-label={c[10]}
                   onChange={(event) => setDefaults(event.target.value)}
                 />
               </label>
             </>
           )}
-          <div className="flex gap-3">
-            <Button disabled={busy} type="submit">
+          {ec && (
+            <label className="flex min-h-11 items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="size-5"
+                checked={editor.draft?.enabled ?? false}
+                onChange={(event) => {
+                  if (editor.current.current)
+                    editor.change({
+                      ...editor.current.current,
+                      enabled: event.target.checked,
+                    });
+                }}
+              />
+              {ec.availability}
+            </label>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <Button
+              disabled={!ec || busy || !!editor.pending || !!editor.incoming}
+              type="submit"
+            >
               {c[11]}
             </Button>
             <Button
-              disabled={busy}
+              disabled={busy || !!editor.pending}
               type="button"
               variant="outline"
               onClick={() => setDraft(null)}
@@ -414,7 +541,7 @@ function ExtensionLibraryBody({
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
-                  disabled={busy}
+                  disabled={busy || !!editor.pending}
                   variant="outline"
                   onClick={() => edit(row)}
                 >
