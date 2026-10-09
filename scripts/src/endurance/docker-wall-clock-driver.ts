@@ -1261,6 +1261,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       );
     }
     const runStartedMs = new Date(this.runStartedAt).getTime();
+    const firstHealthBucketMs = Math.floor(runStartedMs / 60_000) * 60_000;
+    const healthCoverageEndMs =
+      firstHealthBucketMs + this.requiredHealthBuckets * 60_000;
     for (const sample of [...snapshot.fleetHealthSamples].sort((left, right) =>
       left.bucketAt.localeCompare(right.bucketAt),
     )) {
@@ -1294,9 +1297,19 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
           `Unplanned degraded runtime truth at ${sample.sampledAt ?? sample.bucketAt}`,
         );
       }
+      const bucketAtMs = new Date(sample.bucketAt).getTime();
+      // A previous sampler bucket may arrive after this run starts. Credit
+      // only the planned minute buckets, while still rejecting unplanned
+      // degradation above. Missing buckets retain their original minute.
+      if (
+        bucketAtMs < firstHealthBucketMs ||
+        bucketAtMs >= healthCoverageEndMs
+      ) {
+        continue;
+      }
       this.persistedHealthBuckets.add(sample.bucketAt);
       observer.observeHealth({
-        minute: this.persistedHealthBuckets.size,
+        minute: (bucketAtMs - firstHealthBucketMs) / 60_000 + 1,
         reportedState:
           sample.runtimeTruthState === "live"
             ? "healthy"

@@ -121,6 +121,97 @@ function operationsSnapshot(input: {
   };
 }
 
+test("health coverage excludes pre-run and tail buckets without inventing missing minutes", async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "agentic-health-boundary-"),
+  );
+  let snapshot = operationsSnapshot({ cursor: "1" });
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const pathname = new URL(String(input)).pathname;
+    if (pathname === "/api/readyz") return Response.json({ status: "ready" });
+    if (pathname === "/api/ops/instances") {
+      return Response.json({
+        instances: ["api", "worker", "worker"].map((role, index) => ({
+          id: `instance-${index}`,
+          role,
+          effectiveState: "healthy",
+          schedulerEnabled: role === "worker",
+        })),
+      });
+    }
+    if (pathname === "/api/tasks" && init?.method === "POST") {
+      return Response.json({ id: 7 }, { status: 201 });
+    }
+    if (pathname === "/api/tasks/7/operations") return Response.json(snapshot);
+    return Response.json({ error: "not found" }, { status: 404 });
+  };
+  const driver = new DockerWallClockDriver({
+    runId: "health-boundary-test",
+    seed: 240_901,
+    durationHours: 3 / 60,
+    workspaceRoot: process.cwd(),
+    controlDirectory: directory,
+    baseUrl: "http://127.0.0.1:5000",
+    operatorToken: "local-operator-secret",
+    harness: harness([]),
+    fetchImpl,
+    now: () => new Date("2026-10-09T07:20:01.112Z"),
+    commandedFaultHealthWindowsOnly: true,
+  });
+  const health = (bucketAt: string, sampledAt: string) => ({
+    bucketAt,
+    sampledAt,
+    runtimeTruthState: "live",
+    healthyWorkerCount: 2,
+    staleWorkerCount: 0,
+    schedulerTickAgeMs: 1_000,
+  });
+  const observer = new RecordingSoakEvidenceObserver({
+    expectedResponsibilities: 30,
+  });
+  try {
+    await driver.start();
+    snapshot = operationsSnapshot({
+      cursor: "2",
+      generatedAt: "2026-10-09T07:24:00.000Z",
+      healthSamples: [
+        // Actual failed Windows timing: a preceding bucket sampled after start.
+        health("2026-10-09T07:19:00.000Z", "2026-10-09T07:20:09.801Z"),
+        health("2026-10-09T07:20:00.000Z", "2026-10-09T07:21:08.054Z"),
+        // Minute 2 is deliberately absent; minute 3 must keep its identity.
+        health("2026-10-09T07:22:00.000Z", "2026-10-09T07:23:08.136Z"),
+        health("2026-10-09T07:23:00.000Z", "2026-10-09T07:24:00.000Z"),
+      ],
+    });
+    await driver.captureEvidence(observer, { kind: "minute", minute: 1 });
+    await driver.captureEvidence(observer, { kind: "minute", minute: 2 });
+    assert.deepEqual(
+      observer.healthObservations.map((row) => row.minute),
+      [1, 3],
+    );
+    assert.equal(observer.finalize().metrics.healthSampleBuckets, 2);
+    snapshot = operationsSnapshot({
+      cursor: "3",
+      generatedAt: "2026-10-09T07:24:01.000Z",
+      healthSamples: [
+        {
+          ...health("2026-10-09T07:23:00.000Z", "2026-10-09T07:24:01.000Z"),
+          runtimeTruthState: "degraded",
+          healthyWorkerCount: 1,
+        },
+      ],
+    });
+    // Outside coverage still cannot hide unplanned degradation after start.
+    await assert.rejects(
+      driver.captureEvidence(observer, { kind: "minute", minute: 2 }),
+      /unplanned degraded runtime truth/iu,
+    );
+  } finally {
+    await driver.stop({ keepData: false });
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("first-cycle diagnosis identifies unclaimed and lost agents without copying unsafe attempt states", async () => {
   const directory = await mkdtemp(
     path.join(tmpdir(), "agentic-incomplete-responsibility-"),
@@ -343,7 +434,7 @@ test("commanded native smoke faults admit only bounded degraded health samples",
   const driver = new DockerWallClockDriver({
     runId: "commanded-health-test",
     seed: 240_901,
-    durationHours: 1 / 60,
+    durationHours: 2 / 60,
     workspaceRoot: process.cwd(),
     controlDirectory: directory,
     baseUrl: "http://127.0.0.1:5000",
@@ -539,7 +630,7 @@ test("Docker driver starts the exact topology and derives minute evidence from d
     const driver = new DockerWallClockDriver({
       runId: "soak-test",
       seed: 240_901,
-      durationHours: 1 / 60,
+      durationHours: 2 / 60,
       workspaceRoot: process.cwd(),
       controlDirectory: directory,
       baseUrl: "http://127.0.0.1:5000",
@@ -552,7 +643,7 @@ test("Docker driver starts the exact topology and derives minute evidence from d
 
     assert.deepEqual(await driver.start(), {
       projectId: 7,
-      expectedResponsibilities: 10,
+      expectedResponsibilities: 20,
     });
     snapshot = operationsSnapshot({
       cursor: "41",
@@ -646,7 +737,7 @@ test("Docker driver starts the exact topology and derives minute evidence from d
     // Match the production API's newest-first batch after delayed observation.
     snapshot.receipts.reverse();
     const observer = new RecordingSoakEvidenceObserver({
-      expectedResponsibilities: 10,
+      expectedResponsibilities: 20,
     });
     // A receipt can commit before its attempt is finalized. Do not freeze the
     // joined running attempt into immutable evidence or count coverage early.
