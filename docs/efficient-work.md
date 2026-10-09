@@ -62,6 +62,37 @@ Environment overrides: `MAX_TASK_FAMILY_ACTIVE`, `MAX_TASK_FAMILY_TOTAL`,
 `MAX_TASK_FAMILY_TOKENS`, `MAX_TASK_FAMILY_REPORTED_COST_USD`,
 `MAX_RECURRING_FAMILY_DAILY_TOKENS`, `MAX_RECURRING_FAMILY_DAILY_REPORTED_COST_USD`.
 
+## Recover a project start after a lost response
+
+On **New project**, Start first saves the exact request and submitted draft in
+this tab's session storage. It then sends one request. If the response is lost,
+reload or return to New project in the same tab and choose **Check request**.
+Checking only reads a saved outcome; it spends no model tokens and does not
+rerun the work. A created workspace offers **Open project**. Creation does not
+mean the requested work is finished; the project page shows its current state.
+
+If no receipt is found yet, the first request might still be in flight. Choose
+**Retry same request** to send the same saved identity and input. Editing the
+visible draft does not change that saved request. Another Start stays blocked
+while an unresolved request is retained. A rejected receipt explains its reason;
+**Prepare a new start** retains the draft and permits a deliberate new request
+after you resolve that reason. It does not submit anything by itself.
+
+If storage cannot be verified, Start sends no new request. Keep a copy of your
+draft before closing the tab. A corrupt saved request blocks another identity;
+it cannot safely be treated as a cancelled job. A full browser close, cleared
+site data or a different device is outside this tab's recovery scope. Check the
+project list before deliberately starting the work elsewhere. Failed reads or
+failed removal of a saved request preserve the recovery record. Acknowledging
+one request never clears a later edited draft or a different saved request.
+
+The API's `TaskInput.requestId` is optional for compatibility. Callers that omit
+it retain the previous creation behavior and have no same-request recovery
+guarantee. A UUID binds the effective input; reusing it with changed input returns
+a conflict. Server receipts store an input digest and outcome, not the raw
+brief, and remain after project removal. Application immutability is not a
+tamper-proof audit claim or a guarantee about external side effects.
+
 ## Resume after a usage pause
 
 Open the paused project's page and choose **Check allowance and resume**. The

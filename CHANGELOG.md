@@ -3,6 +3,20 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
+## [Unreleased]
+
+- Recover New-project starts after response loss with a saved request identity,
+  read-only checks and an explicit same-request retry. Seven authored languages
+  preserve later edited drafts and distinguish workspace creation from work
+  completion. Unverifiable storage prevents a new dispatch.
+- Persist project creation and its receipt atomically. Concurrent matching
+  requests share one project; changed input conflicts, known rejection remains
+  terminal, and project removal cannot recycle a request identity. Legacy API
+  callers without an identity retain their previous behavior.
+- Load recovery only on New project, with independently measured code and
+  copy limits. This feature is pending its final candidate/platform release
+  checks; it is not included in the v0.4.0 portable bundle.
+
 ## [0.4.0] - 2026-10-09
 
 Connect a model without losing your first-job draft, and inspect durable usage

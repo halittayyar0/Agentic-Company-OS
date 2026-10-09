@@ -22,11 +22,26 @@ Disabling the Start button handles double clicks but does not recover a committe
 
 ## Client contract
 
-The New project screen saves a validated frozen request `{version:1,requestId,input}` in tab session storage before POST. Save must round-trip successfully; blocked or damaged storage keeps the editable draft and starts no job. Any saved unresolved record prevents another new identity from being submitted, including after reload. There are no automatic POST retries.
+The New project screen saves a validated frozen request `{version:1,requestId,input,submittedDraft}` in tab session storage before POST. The submitted snapshot is needed to distinguish later edits, including whitespace or finite-mode cadence, after reload; input is verified against that snapshot. Save must round-trip successfully; blocked or damaged storage keeps the editable draft and starts no job. Any saved unresolved record prevents another new identity from being submitted, including after reload. There are no automatic POST retries.
 
 After uncertainty, an explicit Check request action performs only GET. Created receipts expose an Open project action. Rejected receipts expose the reason and let the operator prepare a fresh identity while retaining the current draft. Missing receipts expose an explicit retry of the same frozen identity/input; this remains safe if the first transaction commits late. Read failures preserve the record and draft. Editing the visible draft does not modify the frozen request or cause dispatch. Do not offer discard of an unresolved request as a safe cancellation.
 
 After a valid acknowledged outcome, clear only the matching saved request and, on success, only the exact submitted composer draft. Later edits remain intact. Failed clearing leaves a recoverable record, never creates a new identity. Malformed server receipts cannot navigate, clear a draft or declare a job created.
+
+A normal POST acknowledgement is bound to the frozen UUID through one read-only
+receipt lookup before navigation. If either response is invalid or mismatched,
+retain the request for explicit Check. Leaving the composer prevents a late
+response from navigating, clearing storage or making that follow-up read. The
+recovery component is loaded only with New project; Start waits until the saved
+request state has been read. Its independent bundle measurement includes only
+the exclusive recovery chunk and exact authored recovery fields; existing route,
+vendor, API and CSS ceilings stay fixed.
+
+Aggregate code totals count one locale per surface. Recovery credit therefore
+uses the exclusive logic plus max(current locale packs) minus max(control packs),
+independently for raw and gzip sizes. The sum of all seven authored additions is
+checked separately and never subtracted from the one-locale aggregate. A
+regression must reject unrelated growth beyond the original aggregate ceiling.
 
 ## Design and localization
 

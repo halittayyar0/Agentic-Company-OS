@@ -1,6 +1,34 @@
 import type { NewProjectCopy } from "../new-project-copy";
 
 const copy = {
+  recovery: {
+    title: "Proje başlatma isteğini bul",
+    uncertain:
+      "Yanıt doğrulanamadı. Başka bir proje başlatmadan önce kaydedilen bu isteği kontrol et.",
+    missing:
+      "Henüz kayıtlı bir sonuç bulunamadı. İlk istek hâlâ ulaşabilir; yeniden deneme aynı isteği kullanır.",
+    created:
+      "Proje çalışma alanın oluşturuldu. İşin güncel durumunu görmek için aç.",
+    rejected:
+      "Bu istek reddedildi. Nedeni giderdikten sonra yeni bir başlangıç hazırla; taslağın burada kalır.",
+    checking: "İstek kontrol ediliyor…",
+    check: "İsteği kontrol et",
+    open: "Projeyi aç",
+    retry: "Aynı isteği yeniden dene",
+    prepare: "Yeni başlangıç hazırla",
+    stored: "Gönderilen proje",
+    storageError:
+      "Bu sekme kaydedilen isteği doğrulayamadı. Taslağının bir kopyasını sakla. İstek kaydedilemeden yeni istek gönderilmez; bozuk kayıt bu sekmede kurtarılmalıdır.",
+    noTokens:
+      "Kontrol yalnızca kaydedilen sonucu okur. Model tokenı harcamaz ve işi tekrar çalıştırmaz.",
+    reasons: {
+      EMERGENCY_STOP_ACTIVE: "Acil durdurma etkin.",
+      AGENT_UNAVAILABLE: "Gerekli etkin ekip kullanılamıyordu.",
+      RUNTIME_CAPACITY_EXCEEDED:
+        "Çalışma alanının eşzamanlı iş sınırına ulaşıldı.",
+      EXECUTION_POLICY_DENIED: "Çalıştırma politikası bu başlangıcı engelledi.",
+    },
+  },
   draftStorageError:
     "Bu sekme taslağı sayfa yenileme için kaydedemiyor. Metninizi burada düzenleyebilirsiniz; sayfayı yenilemeden veya sekmeyi kapatmadan önce bir kopyasını alın.",
   back: "Projelere dön",

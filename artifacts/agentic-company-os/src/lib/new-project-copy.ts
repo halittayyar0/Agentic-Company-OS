@@ -4,6 +4,28 @@ import type { TaskPriority } from "@workspace/api-client-react";
 export type ProjectCadence = 900 | 3600 | 21600 | 86400 | 604800;
 
 export type NewProjectCopy = {
+  recovery: {
+    title: string;
+    uncertain: string;
+    missing: string;
+    created: string;
+    rejected: string;
+    checking: string;
+    check: string;
+    open: string;
+    retry: string;
+    prepare: string;
+    stored: string;
+    storageError: string;
+    noTokens: string;
+    reasons: Record<
+      | "EMERGENCY_STOP_ACTIVE"
+      | "AGENT_UNAVAILABLE"
+      | "RUNTIME_CAPACITY_EXCEEDED"
+      | "EXECUTION_POLICY_DENIED",
+      string
+    >;
+  };
   draftStorageError: string;
   back: string;
   eyebrow: string;

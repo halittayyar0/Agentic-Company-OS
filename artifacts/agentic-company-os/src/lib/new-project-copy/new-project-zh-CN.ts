@@ -1,6 +1,28 @@
 import type { NewProjectCopy } from "../new-project-copy";
 
 const copy = {
+  recovery: {
+    title: "找回项目启动请求",
+    uncertain: "尚未确认响应。启动其他项目前，请先检查已保存的请求。",
+    missing: "暂未找到保存的结果。首次请求仍可能到达；重试会使用同一个请求。",
+    created: "项目工作区已创建。打开项目查看当前工作状态。",
+    rejected: "此请求已被拒绝。解决原因后，可准备重新启动；草稿会保留在此处。",
+    checking: "正在检查请求…",
+    check: "检查请求",
+    open: "打开项目",
+    retry: "重试同一请求",
+    prepare: "准备重新启动",
+    stored: "已提交的项目",
+    storageError:
+      "此标签页无法验证已保存的请求。请备份草稿。在请求能够保存前，不会发送新请求；损坏的记录需要在此标签页中恢复。",
+    noTokens: "检查只会读取保存的结果，不消耗模型令牌，也不会重新执行任务。",
+    reasons: {
+      EMERGENCY_STOP_ACTIVE: "紧急停止已启用。",
+      AGENT_UNAVAILABLE: "所需的活动团队当时不可用。",
+      RUNTIME_CAPACITY_EXCEEDED: "工作区已达到并行任务上限。",
+      EXECUTION_POLICY_DENIED: "执行策略阻止了此次启动。",
+    },
+  },
   draftStorageError:
     "此标签页无法保存供重新加载后恢复的草稿。你仍可在此编辑文字；重新加载或关闭标签页前，请先复制保存。",
   back: "返回项目",

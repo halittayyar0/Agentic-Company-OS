@@ -3,11 +3,9 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getListTasksQueryKey,
-  useCreateTask,
   useListAgents,
   type Agent,
   type TaskAutonomyMode,
-  type TaskInput,
   type TaskPriority,
 } from "@workspace/api-client-react";
 import {
@@ -41,6 +39,13 @@ import { cn } from "@/lib/utils";
 import { readSkillDraft } from "@/lib/skill-draft";
 import { useComposerDraft } from "@/hooks/use-composer-draft";
 import type { ComposerDraft } from "@/lib/composer-draft";
+import type {
+  ProjectStartHandle,
+  ProjectStartState,
+} from "@/components/studio/project-start-recovery";
+const ProjectStartRecovery = lazy(
+  () => import("@/components/studio/project-start-recovery"),
+);
 
 const AUTONOMY_OPTIONS = ["finite", "continuous"] as const;
 const PRIORITY_OPTIONS = ["low", "normal", "high", "urgent"] as const;
@@ -151,7 +156,6 @@ function NewTaskForm({
     isError: agentsError,
     refetch: refetchAgents,
   } = useListAgents({ includeInactive: false });
-  const createTask = useCreateTask();
   const { state: opsState, isScopeBlocked } = useOpsControl();
   const taskStartBlocked = isScopeBlocked("task_scheduler");
   const activeAgents = agents ?? [];
@@ -193,10 +197,22 @@ function NewTaskForm({
   const [validationError, setValidationError] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
+  const startRequest = useRef<ProjectStartHandle>(null);
+  const [startState, setStartState] = useState<ProjectStartState>({
+    ready: false,
+    pending: false,
+    busy: null,
+  });
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (taskStartBlocked || createTask.isPending) return;
+    if (
+      taskStartBlocked ||
+      !startState.ready ||
+      startState.busy ||
+      startState.pending
+    )
+      return;
     if (!title.trim() || !brief.trim()) {
       setValidationError(true);
       (title.trim() ? briefRef : titleRef).current?.focus();
@@ -211,49 +227,7 @@ function NewTaskForm({
       return;
     }
 
-    const projectInput = {
-      title: title.trim(),
-      brief: brief.trim(),
-      priority,
-      autonomyMode,
-      ...(autonomyMode === "continuous" ? { cadenceSeconds } : {}),
-    } satisfies TaskInput;
-    const submittedDraft = draft.current.current;
-
-    createTask.mutate(
-      { data: projectInput },
-      {
-        onSuccess: (newTask) => {
-          if (
-            !Number.isInteger(newTask?.id) ||
-            newTask.id <= 0 ||
-            newTask.id > 2147483647
-          ) {
-            toast({
-              title: copy.failureTitle,
-              description: copy.failureDescription,
-              variant: "destructive",
-            });
-            return;
-          }
-          draft.finish(submittedDraft);
-          toast({
-            title: copy.successTitle,
-            description: copy.successDescription(newTask.id),
-          });
-          void queryClient.invalidateQueries({
-            queryKey: getListTasksQueryKey(),
-          });
-          setLocation(`/projects/${newTask.id}`);
-        },
-        onError: () =>
-          toast({
-            title: copy.failureTitle,
-            description: copy.failureDescription,
-            variant: "destructive",
-          }),
-      },
-    );
+    startRequest.current?.start(draft.current.current);
   };
 
   return (
@@ -483,7 +457,9 @@ function NewTaskForm({
               <button
                 type="submit"
                 disabled={
-                  createTask.isPending ||
+                  !startState.ready ||
+                  !!startState.busy ||
+                  startState.pending ||
                   taskStartBlocked ||
                   agentsPending ||
                   agentsError ||
@@ -491,7 +467,7 @@ function NewTaskForm({
                 }
                 className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-[12px] bg-foreground px-5 text-sm font-semibold text-background transition-[transform,opacity] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 lg:ms-auto"
               >
-                {createTask.isPending ? copy.starting : copy.start}
+                {startState.busy === "sending" ? copy.starting : copy.start}
                 <ArrowUp size={16} aria-hidden />
               </button>
             </div>
@@ -525,6 +501,26 @@ function NewTaskForm({
             ) : null}
           </div>
         </div>
+
+        <Suspense fallback={null}>
+          <ProjectStartRecovery
+            ref={startRequest}
+            copy={copy}
+            onStateChange={setStartState}
+            onOpen={(id, submittedDraft) => {
+              if (submittedDraft) draft.finish(submittedDraft);
+              toast({
+                title: copy.successTitle,
+                description: copy.successDescription(id),
+              });
+              void queryClient.invalidateQueries({
+                queryKey: getListTasksQueryKey(),
+              });
+              setLocation(`/projects/${id}`);
+            }}
+            onPrepared={() => titleRef.current?.focus()}
+          />
+        </Suspense>
 
         <p className="mt-3 flex items-center justify-center gap-2 text-center text-[12px] text-muted-foreground">
           <Sparkles size={13} aria-hidden /> {copy.contextNote}

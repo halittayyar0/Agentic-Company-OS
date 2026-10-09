@@ -60,7 +60,7 @@ test("English new-project form validates in place and keeps the draft after a fa
 
   await expect(
     page.getByText(
-      "Check your connection and permissions, then try again. Your draft stays on this screen.",
+      "The response was not confirmed. Check this saved request before starting another project.",
       { exact: true },
     ),
   ).toBeVisible();

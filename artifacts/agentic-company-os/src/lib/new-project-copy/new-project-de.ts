@@ -1,6 +1,35 @@
 import type { NewProjectCopy } from "../new-project-copy";
 
 const copy = {
+  recovery: {
+    title: "Projektstart wiederfinden",
+    uncertain:
+      "Die Antwort wurde nicht bestätigt. Prüfe diese gespeicherte Anfrage, bevor du ein weiteres Projekt startest.",
+    missing:
+      "Es wurde noch kein Ergebnis gefunden. Die erste Anfrage kann noch ankommen; ein erneuter Versuch verwendet dieselbe Anfrage.",
+    created:
+      "Dein Projektbereich wurde erstellt. Öffne ihn, um den aktuellen Arbeitsstand zu sehen.",
+    rejected:
+      "Diese Anfrage wurde abgelehnt. Behebe die Ursache und bereite einen neuen Start vor; dein Entwurf bleibt erhalten.",
+    checking: "Anfrage wird geprüft…",
+    check: "Anfrage prüfen",
+    open: "Projekt öffnen",
+    retry: "Dieselbe Anfrage wiederholen",
+    prepare: "Neuen Start vorbereiten",
+    stored: "Gesendetes Projekt",
+    storageError:
+      "Dieser Tab konnte die gespeicherte Anfrage nicht verifizieren. Sichere deinen Entwurf. Eine neue Anfrage wird erst nach erfolgreichem Speichern gesendet; ein beschädigter Eintrag muss in diesem Tab wiederhergestellt werden.",
+    noTokens:
+      "Die Prüfung liest nur das gespeicherte Ergebnis. Sie verbraucht keine Modell-Tokens und führt die Arbeit nicht erneut aus.",
+    reasons: {
+      EMERGENCY_STOP_ACTIVE: "Der Notstopp ist aktiv.",
+      AGENT_UNAVAILABLE: "Das benötigte aktive Team war nicht verfügbar.",
+      RUNTIME_CAPACITY_EXCEEDED:
+        "Das Limit für gleichzeitig laufende Arbeiten wurde erreicht.",
+      EXECUTION_POLICY_DENIED:
+        "Die Ausführungsrichtlinie hat diesen Start blockiert.",
+    },
+  },
   draftStorageError:
     "Dieser Tab kann den Entwurf beim Neuladen nicht wiederherstellen. Sie können den Text hier weiter bearbeiten; kopieren Sie ihn vor dem Neuladen oder Schließen des Tabs.",
   back: "Zurück zu Projekten",
