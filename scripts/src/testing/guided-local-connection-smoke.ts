@@ -281,6 +281,7 @@ try {
           );
           const brief =
             "Use calculate for 17 × 23, report 391, then complete this one task. Do not delegate, create agents, browse or write files.";
+          let phase: "prepare" | "open" | "reopen" | "save" | "run" = "prepare";
           try {
             await page.goto(baseUrl);
             const draft = page.getByRole("textbox", {
@@ -289,6 +290,7 @@ try {
             });
             await expect(draft).toBeVisible();
             await draft.fill(brief);
+            phase = "open";
             await page
               .getByRole("button", { name: s.providerSetupAction, exact: true })
               .click();
@@ -301,6 +303,7 @@ try {
             await expect(draft).toHaveValue(brief);
             await page.reload();
             await expect(draft).toHaveValue(brief);
+            phase = "reopen";
             await page
               .getByRole("button", { name: s.providerSetupAction, exact: true })
               .click();
@@ -311,6 +314,7 @@ try {
             await dialog
               .getByRole("textbox", { name: c.endpoint, exact: true })
               .fill(endpoint);
+            phase = "save";
             await dialog
               .getByRole("button", { name: c.save, exact: true })
               .click();
@@ -341,6 +345,7 @@ try {
               path: path.join(directory, `guided-${locale}.png`),
               fullPage: true,
             });
+            phase = "run";
             await page
               .getByRole("button", { name: h.startProject, exact: true })
               .click();
@@ -398,11 +403,24 @@ try {
             });
             console.log(`Offline guided runtime case passed: ${locale}`);
           } catch (error) {
+            const visibleControl = (name: string) =>
+              page
+                .getByRole("button", { name, exact: true })
+                .first()
+                .isVisible()
+                .catch(() => null);
+            const [connect, connections, checkAgain] = await Promise.all([
+              visibleControl(s.providerSetupAction),
+              visibleControl(s.connections),
+              visibleControl(s.checkAgain),
+            ]);
             const failure = {
               passed: false,
               scope:
                 "Offline first-job failure observation, not runtime acceptance. Cause unconfirmed.",
               locale,
+              phase,
+              controls: { connect, connections, checkAgain },
               ...beforeSource,
               completedLocales: results.length,
               connection: diagnostics.snapshot(),

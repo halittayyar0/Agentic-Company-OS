@@ -6,6 +6,7 @@ interface ConnectionResponse {
 }
 
 interface ConnectionObservation {
+  resource?: "model-catalog";
   atMs: number;
   method: "GET" | "PUT";
   status: number;
@@ -38,11 +39,16 @@ export function createConnectionSaveDiagnostics(
       } catch {
         return;
       }
+      const catalog =
+        url.pathname === "/api/model-catalog" && response.method === "GET";
+      const settings =
+        url.pathname === "/api/settings/llm" &&
+        (response.method === "GET" || response.method === "PUT");
       if (
         url.origin !== expectedOrigin ||
         url.username ||
         url.password ||
-        url.pathname !== "/api/settings/llm" ||
+        (!catalog && !settings) ||
         (response.method !== "GET" && response.method !== "PUT") ||
         !Number.isInteger(response.status) ||
         response.status < 100 ||
@@ -51,6 +57,7 @@ export function createConnectionSaveDiagnostics(
         return;
       const elapsed = now() - startedAt;
       responses.push({
+        ...(catalog ? { resource: "model-catalog" as const } : {}),
         atMs: Number.isSafeInteger(elapsed) && elapsed >= 0 ? elapsed : 0,
         method: response.method,
         status: response.status,

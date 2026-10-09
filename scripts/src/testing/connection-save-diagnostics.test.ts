@@ -106,3 +106,55 @@ test("connection diagnostics preserve the latest bounded observations and return
   assert.equal(diagnostics.snapshot().responses.length, 64);
   assert.equal(diagnostics.snapshot().responses[0]!.status, 200);
 });
+
+test("catalog failure observations identify only the fixed GET resource and numeric rate headers", () => {
+  const diagnostics = createConnectionSaveDiagnostics("http://127.0.0.1:4173");
+  diagnostics.observe({
+    url: "http://127.0.0.1:4173/api/model-catalog?account=secret-query",
+    method: "GET",
+    status: 429,
+    headers: {
+      authorization: "Bearer secret-token",
+      "set-cookie": "secret-cookie",
+      "ratelimit-limit": "300",
+      "ratelimit-remaining": "0",
+      "ratelimit-reset": "7",
+      "retry-after": "7",
+    },
+  });
+  const snapshot = diagnostics.snapshot();
+  assert.equal(snapshot.totalResponses, 1);
+  assert.deepEqual(snapshot.responses[0], {
+    resource: "model-catalog",
+    atMs: snapshot.responses[0]?.atMs,
+    method: "GET",
+    status: 429,
+    limit: 300,
+    remaining: 0,
+    resetSeconds: 7,
+    retryAfterSeconds: 7,
+  });
+  assert.doesNotMatch(
+    JSON.stringify(snapshot),
+    /secret|account|127\.0\.0\.1|authorization|cookie/u,
+  );
+});
+
+test("catalog observations reject mutations, redirected origins and arbitrary catalog paths", () => {
+  const diagnostics = createConnectionSaveDiagnostics("http://127.0.0.1:4173");
+  const valid = {
+    url: "http://127.0.0.1:4173/api/model-catalog",
+    method: "GET",
+    status: 200,
+    headers: {},
+  };
+  for (const patch of [
+    { method: "PUT" },
+    { method: "POST" },
+    { url: "https://outside.example/api/model-catalog" },
+    { url: "http://secret:secret@127.0.0.1:4173/api/model-catalog" },
+    { url: "http://127.0.0.1:4173/api/model-catalog/private-account" },
+  ])
+    diagnostics.observe({ ...valid, ...patch });
+  assert.equal(diagnostics.snapshot().totalResponses, 0);
+});
