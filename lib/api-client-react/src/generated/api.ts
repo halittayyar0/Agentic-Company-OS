@@ -133,6 +133,8 @@ import type {
   TaskBudgetResumeInput,
   TaskBudgetResumeReceipt,
   TaskBudgetResumeStatus,
+  TaskCreationReceipt,
+  TaskCreationRequestId,
   TaskInput,
   TaskQuestion,
   TaskResumeInput,
@@ -4100,6 +4102,83 @@ export const useCreateTask = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateTaskMutationOptions(options));
     }
+
+export const getGetTaskCreationRequestUrl = (requestId: TaskCreationRequestId,) => {
+
+
+
+
+  return `/api/task-creation-requests/${requestId}`
+}
+
+/**
+ * @summary Read a saved project start without executing work
+ */
+export const getTaskCreationRequest = async (requestId: TaskCreationRequestId, options?: Parameters<typeof customFetch>[1]): Promise<TaskCreationReceipt> => {
+
+  return customFetch<TaskCreationReceipt>(getGetTaskCreationRequestUrl(requestId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskCreationRequestQueryKey = (requestId: TaskCreationRequestId,) => {
+    return [
+    `/api/task-creation-requests/${requestId}`
+    ] as const;
+    }
+
+
+export const getGetTaskCreationRequestQueryOptions = <TData = Awaited<ReturnType<typeof getTaskCreationRequest>>, TError = ErrorType<void>>(requestId: TaskCreationRequestId, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskCreationRequest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskCreationRequestQueryKey(requestId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskCreationRequest>>> = ({ signal }) => getTaskCreationRequest(requestId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: requestId !== null && requestId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskCreationRequest>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskCreationRequestQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskCreationRequest>>>
+export type GetTaskCreationRequestQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read a saved project start without executing work
+ */
+
+export function useGetTaskCreationRequest<TData = Awaited<ReturnType<typeof getTaskCreationRequest>>, TError = ErrorType<void>>(
+ requestId: TaskCreationRequestId, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskCreationRequest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskCreationRequestQueryOptions(requestId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetTaskUrl = (taskId: number,) => {
 

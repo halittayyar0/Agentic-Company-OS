@@ -2572,6 +2572,7 @@ export const ListTasksResponse = zod.array(ListTasksResponseItem)
  * Every currently active agent is enrolled as a durable project member. ownerAgentId is a backwards-compatible coordinator override; when it is omitted the server deterministically selects the active root CEO, an active structural root, or finally the lowest-id active agent.
  * @summary Start a top-level project with the complete active workforce
  */
+export const createTaskBodyRequestIdRegExp = new RegExp('^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-8][a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$');
 export const createTaskBodyTitleMax = 300;
 
 export const createTaskBodyBriefMax = 8000;
@@ -2582,6 +2583,7 @@ export const createTaskBodyCadenceSecondsMax = 604800;
 
 
 export const CreateTaskBody = zod.object({
+  "requestId": zod.string().uuid().regex(createTaskBodyRequestIdRegExp).optional().describe('Saved caller request identity; matching retries never create another project. Omission retains legacy creation without recovery.'),
   "title": zod.string().min(1).max(createTaskBodyTitleMax),
   "brief": zod.string().min(1).max(createTaskBodyBriefMax),
   "ownerAgentId": zod.number().optional().describe('Optional backwards-compatible coordinator override; every active agent still joins the project.'),
@@ -2636,6 +2638,30 @@ export const CreateTaskResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Read a saved project start without executing work
+ */
+export const getTaskCreationRequestPathRequestIdRegExp = new RegExp('^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-8][a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$');
+
+
+export const GetTaskCreationRequestParams = zod.object({
+  "requestId": zod.coerce.string().uuid().regex(getTaskCreationRequestPathRequestIdRegExp)
+})
+
+export const getTaskCreationRequestResponseRequestIdRegExp = new RegExp('^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-8][a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$');
+export const getTaskCreationRequestResponseTaskIdMax = 2147483647;
+
+
+
+export const GetTaskCreationRequestResponse = zod.object({
+  "requestId": zod.string().uuid().regex(getTaskCreationRequestResponseRequestIdRegExp).describe('Saved caller request identity; matching retries never create another project. Omission retains legacy creation without recovery.'),
+  "state": zod.enum(['created', 'rejected']),
+  "taskId": zod.number().int().min(1).max(getTaskCreationRequestResponseTaskIdMax).nullable(),
+  "failureCode": zod.enum(['EMERGENCY_STOP_ACTIVE', 'AGENT_UNAVAILABLE', 'RUNTIME_CAPACITY_EXCEEDED', 'EXECUTION_POLICY_DENIED']).nullable(),
+  "createdAt": zod.coerce.date()
 })
 
 

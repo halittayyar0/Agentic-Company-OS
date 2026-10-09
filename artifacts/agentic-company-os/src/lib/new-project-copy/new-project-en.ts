@@ -1,6 +1,34 @@
 import type { NewProjectCopy } from "../new-project-copy";
 
 const copy = {
+  recovery: {
+    title: "Recover your project start",
+    uncertain:
+      "The response was not confirmed. Check this saved request before starting another project.",
+    missing:
+      "No saved receipt was found yet. The first request may still arrive; retrying uses that same request.",
+    created:
+      "Your project workspace was created. Open it to see the current work status.",
+    rejected:
+      "This request was rejected. Prepare a new start after resolving the reason; your draft stays here.",
+    checking: "Checking request…",
+    check: "Check request",
+    open: "Open project",
+    retry: "Retry same request",
+    prepare: "Prepare a new start",
+    stored: "Submitted project",
+    storageError:
+      "This tab could not verify its saved request. Keep a copy of your draft. No new request will be sent until it can be saved; a damaged record must be recovered in this tab.",
+    noTokens:
+      "Checking only reads the saved outcome. It spends no model tokens and does not run the job again.",
+    reasons: {
+      EMERGENCY_STOP_ACTIVE: "Emergency stop is active.",
+      AGENT_UNAVAILABLE: "The required active team was unavailable.",
+      RUNTIME_CAPACITY_EXCEEDED:
+        "The workspace reached its running-work limit.",
+      EXECUTION_POLICY_DENIED: "The execution policy blocked this start.",
+    },
+  },
   draftStorageError:
     "This tab cannot save your draft for reload. Your text remains editable here; keep a copy before reloading or closing the tab.",
   back: "Back to projects",

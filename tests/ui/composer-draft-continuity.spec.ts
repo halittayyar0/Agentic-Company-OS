@@ -194,6 +194,21 @@ for (const kind of ["home", "project"] as const) {
   }) => {
     const d = await editableDraft(page, kind);
     let writes = 0;
+    if (kind === "project") {
+      await page.route("**/api/task-creation-requests/*", (route) =>
+        route.fulfill({
+          json: {
+            requestId: new URL(route.request().url()).pathname
+              .split("/")
+              .at(-1),
+            state: "created",
+            taskId: 990,
+            failureCode: null,
+            createdAt: "2026-10-09T00:00:00.000Z",
+          },
+        }),
+      );
+    }
     await page.route("**/api/tasks", async (route) => {
       if (route.request().method() !== "POST") return route.fallback();
       writes++;

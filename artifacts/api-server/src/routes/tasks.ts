@@ -36,6 +36,8 @@ import {
   CancelTaskResponse,
   UpdateTaskAutonomyBody,
   UpdateTaskAutonomyResponse,
+  GetTaskCreationRequestParams,
+  GetTaskCreationRequestResponse,
 } from "@workspace/api-zod";
 import { RuntimeCapacityError } from "../lib/orchestrator/runtime-capacity";
 import {
@@ -51,12 +53,42 @@ import { redactApprovalCapabilityScope } from "../lib/orchestrator/approval-capa
 
 import taskAnswersRouter from "./task-answers";
 import taskBudgetResumeRouter from "./task-budget-resume";
+import {
+  createProjectRequest,
+  readProjectCreationRequest,
+  taskCreationRejectionStatus,
+  TaskCreationRequestError,
+} from "../lib/task-creation-requests";
 
 const router: IRouter = Router();
 router.use(taskAnswersRouter);
 router.use(taskBudgetResumeRouter);
 class TaskCancellationConflict extends Error {}
 class ApprovedActionInFlightConflict extends Error {}
+
+router.get(
+  "/task-creation-requests/:requestId",
+  async (req, res): Promise<void> => {
+    res.setHeader("Cache-Control", "no-store");
+    const params = GetTaskCreationRequestParams.safeParse(req.params);
+    if (!params.success || Object.keys(req.query).length) {
+      res.status(400).json({
+        code: "TASK_CREATION_REQUEST_INVALID",
+        error: "An exact request identity is required.",
+      });
+      return;
+    }
+    const receipt = await readProjectCreationRequest(params.data.requestId);
+    if (!receipt) {
+      res.status(404).json({
+        code: "TASK_CREATION_REQUEST_NOT_FOUND",
+        error: "No saved receipt is visible yet.",
+      });
+      return;
+    }
+    res.json(GetTaskCreationRequestResponse.parse(receipt));
+  },
+);
 
 router.get("/tasks", async (req, res): Promise<void> => {
   const ownerAgentId = parsePositiveInteger(
@@ -144,10 +176,41 @@ router.post("/tasks", async (req, res): Promise<void> => {
 
   let task;
   try {
+    if (input.requestId !== undefined) {
+      res.setHeader("Cache-Control", "no-store");
+      const outcome = await createProjectRequest(input, input.requestId);
+      if (outcome.state === "rejected") {
+        res.status(taskCreationRejectionStatus(outcome.failureCode)).json({
+          code: outcome.failureCode,
+          error: "Project start was not accepted.",
+          requestId: input.requestId.toLowerCase(),
+        });
+        return;
+      }
+      res
+        .status(outcome.replayed ? 200 : 201)
+        .json(CreateTaskResponse.parse(outcome.task));
+      return;
+    }
     task = await db.transaction((tx) =>
       createProjectWithinTransaction(tx, input),
     );
   } catch (error) {
+    if (error instanceof TaskCreationRequestError) {
+      res
+        .status(
+          error.code === "TASK_CREATION_REQUEST_CONFLICT"
+            ? 409
+            : error.code === "TASK_CREATION_PROJECT_REMOVED"
+              ? 410
+              : 400,
+        )
+        .json({
+          code: error.code,
+          error: "Project start identity could not be reused.",
+        });
+      return;
+    }
     if (error instanceof TaskOwnerUnavailable) {
       res.status(400).json({ error: "ownerAgentId not found or inactive" });
       return;

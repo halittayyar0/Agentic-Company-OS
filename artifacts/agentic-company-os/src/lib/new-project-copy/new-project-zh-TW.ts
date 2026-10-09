@@ -1,6 +1,28 @@
 import type { NewProjectCopy } from "../new-project-copy";
 
 const copy = {
+  recovery: {
+    title: "找回專案啟動請求",
+    uncertain: "尚未確認回應。啟動其他專案前，請先檢查已儲存的請求。",
+    missing: "暫時未找到儲存的結果。首次請求仍可能送達；重試會使用同一個請求。",
+    created: "專案工作區已建立。開啟專案查看目前的工作狀態。",
+    rejected: "此請求已被拒絕。解決原因後，可準備重新啟動；草稿會保留在此處。",
+    checking: "正在檢查請求…",
+    check: "檢查請求",
+    open: "開啟專案",
+    retry: "重試同一請求",
+    prepare: "準備重新啟動",
+    stored: "已提交的專案",
+    storageError:
+      "此分頁無法驗證已儲存的請求。請備份草稿。在請求能夠儲存前，不會傳送新請求；損毀的紀錄需要在此分頁中復原。",
+    noTokens: "檢查只會讀取儲存的結果，不消耗模型權杖，也不會重新執行工作。",
+    reasons: {
+      EMERGENCY_STOP_ACTIVE: "緊急停止已啟用。",
+      AGENT_UNAVAILABLE: "所需的作用中團隊當時無法使用。",
+      RUNTIME_CAPACITY_EXCEEDED: "工作區已達到同時執行工作的上限。",
+      EXECUTION_POLICY_DENIED: "執行原則阻止了此次啟動。",
+    },
+  },
   draftStorageError:
     "此分頁無法儲存供重新載入後復原的草稿。你仍可在此編輯文字；重新載入或關閉分頁前，請先複製保存。",
   back: "返回專案",

@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { eq, inArray, sql } from "drizzle-orm";
+import { readMigrationFiles } from "drizzle-orm/migrator";
 
 test(
   "PostgreSQL retains a family fence across concurrent workers and an owned process crash",
@@ -303,9 +304,21 @@ test(
       await claimant.end();
       await budgetWork?.catch(() => undefined);
     }
+    const expectedMigrations = readMigrationFiles({
+      migrationsFolder: fileURLToPath(
+        new URL("./generated-sql/", import.meta.resolve("@workspace/db")),
+      ),
+    });
+    assert.ok(expectedMigrations.length > 0);
     const migrations = await db.execute(
-      sql`SELECT count(*)::int AS count FROM drizzle.__drizzle_migrations`,
+      sql`SELECT hash, created_at::text AS created_at FROM drizzle.__drizzle_migrations ORDER BY created_at, id`,
     );
-    assert.equal(migrations.rows[0].count, 44);
+    assert.deepEqual(
+      migrations.rows,
+      expectedMigrations.map((migration) => ({
+        hash: migration.hash,
+        created_at: String(migration.folderMillis),
+      })),
+    );
   },
 );

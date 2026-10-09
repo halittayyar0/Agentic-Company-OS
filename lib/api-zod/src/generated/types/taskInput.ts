@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0-alpha.1
  */
 import type { TaskAutonomyMode } from './taskAutonomyMode';
+import type { TaskCreationRequestId } from './taskCreationRequestId';
 import type { TaskPriority } from './taskPriority';
 
 export interface TaskInput {
+  requestId?: TaskCreationRequestId;
   /**
      * @minLength 1
      * @maxLength 300

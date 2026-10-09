@@ -1283,6 +1283,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
+        "200":
+          description: Existing project for the same accepted request identity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /task-creation-requests/{requestId}:
+    get:
+      operationId: getTaskCreationRequest
+      tags: [tasks]
+      summary: Read a saved project start without executing work
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/TaskCreationRequestId"
+      responses:
+        "200":
+          description: Persisted creation or rejection; not a task completion claim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskCreationReceipt"
+        "404":
+          description: No receipt visible yet; an in-flight transaction may still commit
 
   /tasks/{taskId}:
     parameters:
@@ -6610,6 +6637,8 @@ components:
       type: object
       additionalProperties: false
       properties:
+        requestId:
+          $ref: "#/components/schemas/TaskCreationRequestId"
         title:
           type: string
           minLength: 1
@@ -6635,6 +6664,41 @@ components:
       required:
         - title
         - brief
+
+    TaskCreationRequestId:
+      type: string
+      format: uuid
+      pattern: "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-8][a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"
+      description: Saved caller request identity; matching retries never create another project. Omission retains legacy creation without recovery.
+
+    TaskCreationReceipt:
+      type: object
+      additionalProperties: false
+      properties:
+        requestId:
+          $ref: "#/components/schemas/TaskCreationRequestId"
+        state:
+          type: string
+          enum: [created, rejected]
+        taskId:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          nullable: true
+        failureCode:
+          type: string
+          nullable: true
+          enum:
+            [
+              EMERGENCY_STOP_ACTIVE,
+              AGENT_UNAVAILABLE,
+              RUNTIME_CAPACITY_EXCEEDED,
+              EXECUTION_POLICY_DENIED,
+            ]
+        createdAt:
+          type: string
+          format: date-time
+      required: [requestId, state, taskId, failureCode, createdAt]
 
     ProjectMemberRole:
       type: string
