@@ -147,9 +147,10 @@ jobs:
   verify:
     name: Format, audit, test, typecheck, and build
     runs-on: ubuntu-latest
-    # Recorded source + browser baselines and the new route matrix exceed
-    # 36 minutes locally, before setup, native database checks and retries.
-    timeout-minutes: 60
+    # A recorded runner needed 28 minutes before UI and reached only 1143/1227
+    # cases after another 32 minutes. Keep the complete suite and its two workers;
+    # allow bounded headroom for runner variance, final checks and cleanup.
+    timeout-minutes: 75
     env:
       CI: true
       AGENT_BROWSER_CHANNEL: chromium
