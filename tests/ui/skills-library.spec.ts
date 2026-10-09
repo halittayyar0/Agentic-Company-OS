@@ -278,9 +278,13 @@ test("light desktop library shows loading and filters by area", async ({
     await gate;
     return route.fulfill({ json: getCapabilityCatalog("en") });
   });
+  // Keep the independent personal library loading while the catalog loads.
+  await page.route("**/api/skills/extensions", async (route) => {
+    await gate;
+    return route.fulfill({ json: [] });
+  });
   await page.goto("/skills");
   // Wait for this route, rather than accepting its earlier Suspense loader.
-  // The independent emergency-stop status can also be loading at this point.
   await expect(
     page.getByRole("heading", {
       level: 1,
@@ -290,12 +294,23 @@ test("light desktop library shows loading and filters by area", async ({
   ).toBeVisible();
   await expect(
     page
-      .getByRole("main")
+      .getByRole("region", { name: "Personal skills and tools", exact: true })
       .getByRole("status")
       .filter({ hasText: /^Loading page$/ }),
   ).toBeVisible();
+  // The catalog loader is a direct child of this page; personal and lazy
+  // loaders belong to nested sections and must not satisfy this assertion.
+  const catalogLoading = page
+    .getByRole("heading", { level: 1, name: "Skills & tools", exact: true })
+    .locator("..")
+    .locator("..")
+    .locator(':scope > p[role="status"]')
+    .filter({ hasText: /^Loading page$/ });
+  await expect(catalogLoading).toBeVisible();
+  await expect(catalogLoading).toHaveText("Loading page");
   release();
   await expect(page.locator("[data-skill-id]")).toHaveCount(50);
+  await expect(catalogLoading).toHaveCount(0);
   await page
     .getByRole("combobox", { name: "All areas" })
     .selectOption("engineering");
