@@ -32,6 +32,10 @@ import type {
   EnduranceRuntimeRecoveryEvidence,
 } from "./report-schema";
 import type { SoakEvidenceObserver } from "./soak-observer";
+import {
+  normalizeResponsibilityGapSnapshot,
+  type ResponsibilityGapSnapshot,
+} from "./responsibility-diagnostics";
 import type {
   IncompleteResponsibilityDiagnostic,
   WallClockCaptureContext,
@@ -821,7 +825,9 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       const response = await this.fetchImpl(new URL(pathname, this.baseUrl), {
         ...init,
         headers,
-        signal: controller.signal,
+        signal: init.signal
+          ? AbortSignal.any([controller.signal, init.signal])
+          : controller.signal,
       });
       let body: unknown;
       try {
@@ -880,17 +886,125 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
     return reread;
   }
 
-  private async readProjectOperations(): Promise<ProjectOperationsEvidence> {
+  private async readProjectOperations(
+    signal?: AbortSignal,
+  ): Promise<ProjectOperationsEvidence> {
     const windowHours = Math.min(
       168,
       Math.max(1, Math.ceil(this.durationHours) + 1),
     );
-    return this.databaseReadGate.read(async () =>
-      parseProjectOperations(
+    return this.databaseReadGate.read(async () => {
+      signal?.throwIfAborted();
+      return parseProjectOperations(
         await this.requestJson(
           `/api/tasks/${this.requireProjectId()}/operations?windowHours=${windowHours}`,
+          { signal },
         ),
-      ),
+      );
+    });
+  }
+
+  async inspectResponsibilityGaps(
+    signal?: AbortSignal,
+  ): Promise<ResponsibilityGapSnapshot> {
+    if (!this.runStarted || this.memberAgentIds.size !== 10)
+      throw new Error(
+        "Endurance responsibilities are not ready for inspection",
+      );
+    const snapshot = await this.readProjectOperations(signal);
+    // Current reads supplement cached observations without advancing accepted
+    // horizon coverage. A later success cannot repair the finalized report.
+    const attempts = new Map(this.attemptsById);
+    for (const attempt of snapshot.attempts) attempts.set(attempt.id, attempt);
+    const gaps = [];
+    for (const agentId of [...this.memberAgentIds].sort((a, b) => a - b)) {
+      const ownedAttempts = [...attempts.values()].filter(
+        (attempt) => attempt.agentId === agentId,
+      );
+      const taskIds = new Set(ownedAttempts.map((attempt) => attempt.taskId));
+      const taskId =
+        this.taskByAgentId.get(agentId) ??
+        (taskIds.size === 1 ? [...taskIds][0] : null);
+      let firstMissing: number | null = null,
+        completed = 0;
+      for (let cycle = 0; cycle < this.requiredHealthBuckets; cycle++) {
+        if (
+          taskId !== null &&
+          this.responsibilityCoverage.has(`${taskId}:${agentId}:${cycle}`)
+        )
+          completed++;
+        else firstMissing ??= cycle;
+      }
+      if (firstMissing === null) continue;
+      const cycleAttempts = ownedAttempts
+        .filter(
+          (attempt) =>
+            attempt.taskId === taskId && attempt.cycleNumber === firstMissing,
+        )
+        .sort((a, b) => b.attemptNumber - a.attemptNumber);
+      const latest = cycleAttempts[0];
+      const ids = new Set(cycleAttempts.map((attempt) => attempt.id));
+      const receipts = snapshot.receipts.filter(
+        (receipt) =>
+          receipt.originAttemptId !== null && ids.has(receipt.originAttemptId),
+      );
+      gaps.push({
+        agentId,
+        cycleNumber: firstMissing,
+        observedCompletedCycles: completed,
+        taskId,
+        attemptState:
+          latest?.state ??
+          (snapshot.truncation.attempts || taskId === null
+            ? "unknown"
+            : "not_started"),
+        attemptNumber: latest?.attemptNumber ?? null,
+        receiptStates: [...new Set(receipts.map((receipt) => receipt.state))],
+        invocationStates: [
+          ...new Set(
+            receipts.flatMap((receipt) =>
+              receipt.invocations.map((invocation) => invocation.state),
+            ),
+          ),
+        ],
+      });
+    }
+    const details = await Promise.all(
+      gaps.map(async (gap) => {
+        let task: Record<string, unknown> | null = null;
+        if (gap.taskId !== null) {
+          try {
+            signal?.throwIfAborted();
+            const current = await this.requestJson(`/api/tasks/${gap.taskId}`, {
+              signal,
+            });
+            if (
+              current.id === gap.taskId &&
+              current.ownerAgentId === gap.agentId
+            )
+              task = {
+                status: current.status,
+                cycleCount: current.cycleCount,
+                nextAttemptAt: current.nextAttemptAt,
+                blockedReason: current.blockedReason,
+              };
+          } catch {
+            // An unavailable task is unknown; never copy server error text.
+          }
+        }
+        return { ...gap, task };
+      }),
+    );
+    signal?.throwIfAborted();
+    return normalizeResponsibilityGapSnapshot(
+      {
+        sampledAt: this.now().toISOString(),
+        expectedCycles: this.requiredHealthBuckets,
+        attemptsTruncated: snapshot.truncation.attempts,
+        receiptsTruncated: snapshot.truncation.receipts,
+        gaps: details,
+      },
+      this.requiredHealthBuckets,
     );
   }
 

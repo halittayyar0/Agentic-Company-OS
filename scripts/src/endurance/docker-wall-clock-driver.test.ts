@@ -15,6 +15,7 @@ import {
 import { createSeededFaultSchedule } from "./fault-injector";
 import type { DurableEnduranceEvent } from "./postgres-harness";
 import { SoakEvidenceObserver } from "./soak-observer";
+import type { WallClockRuntimeDriver } from "./run-wall-clock-soak";
 
 class RecordingSoakEvidenceObserver extends SoakEvidenceObserver {
   readonly healthObservations: Array<{
@@ -120,6 +121,290 @@ function operationsSnapshot(input: {
     },
   };
 }
+
+for (const scenario of [
+  {
+    name: "truncated history",
+    truncated: true,
+    taskIds: [7],
+    expected: "unknown",
+  },
+  {
+    name: "ambiguous task identity",
+    truncated: false,
+    taskIds: [7, 71],
+    expected: "unknown",
+  },
+  {
+    name: "complete unambiguous history",
+    truncated: false,
+    taskIds: [7],
+    expected: "not_started",
+  },
+]) {
+  test(`final responsibility diagnostic preserves absent-attempt uncertainty for ${scenario.name}`, async () => {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "agentic-gap-history-"),
+    );
+    const snapshot = operationsSnapshot({
+      cursor: "1",
+      attempts: scenario.taskIds.map((taskId, index) => ({
+        id: `later-cycle-${index}`,
+        taskId,
+        agentId: 1,
+        attemptNumber: 1,
+        cycleNumber: 1,
+        state: "running",
+        finishedAt: null,
+      })),
+    });
+    snapshot.truncation.attempts = scenario.truncated;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const pathname = new URL(String(input)).pathname;
+      if (pathname === "/api/readyz") return Response.json({ status: "ready" });
+      if (pathname === "/api/ops/instances")
+        return Response.json({
+          instances: ["api", "worker", "worker"].map((role, index) => ({
+            id: `instance-${index}`,
+            role,
+            effectiveState: "healthy",
+            schedulerEnabled: role === "worker",
+          })),
+        });
+      if (pathname === "/api/tasks" && init?.method === "POST")
+        return Response.json({ id: 7 }, { status: 201 });
+      if (pathname === "/api/tasks/7/operations")
+        return Response.json(snapshot);
+      return Response.json({ error: "not found" }, { status: 404 });
+    };
+    const driver = new DockerWallClockDriver({
+      runId: "gap-history-test",
+      seed: 240901,
+      durationHours: 1 / 6,
+      workspaceRoot: process.cwd(),
+      controlDirectory: directory,
+      baseUrl: "http://127.0.0.1:5000",
+      operatorToken: "local-operator-secret",
+      harness: harness([]),
+      fetchImpl,
+    });
+    try {
+      await driver.start();
+      const diagnostic = await driver.inspectResponsibilityGaps();
+      const root = diagnostic.gaps.find((gap) => gap.agentId === 1);
+      assert.ok(root);
+      assert.equal(root.cycleNumber, 0);
+      assert.equal(root.attemptNumber, null);
+      assert.equal(root.taskId, scenario.taskIds.length === 1 ? 7 : null);
+      assert.equal(root.attemptState, scenario.expected);
+    } finally {
+      await driver.stop({ keepData: false });
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}
+
+test("final responsibility diagnostic includes root cycle9 and retains truncated attempt scope", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-root-gap-"));
+  const attempts = [],
+    receipts = [];
+  for (let agentId = 1; agentId <= 10; agentId++) {
+    for (
+      let cycleNumber = 0;
+      cycleNumber < (agentId === 1 ? 9 : 10);
+      cycleNumber++
+    ) {
+      const id = `attempt-${agentId}-${cycleNumber}`;
+      const finishedAt = new Date(
+        Date.parse("2026-09-01T00:00:00.000Z") + cycleNumber * 60000 + 30000,
+      ).toISOString();
+      attempts.push({
+        id,
+        taskId: agentId === 1 ? 7 : 70 + agentId,
+        agentId,
+        attemptNumber: cycleNumber + 1,
+        cycleNumber,
+        state: "succeeded",
+        finishedAt,
+      });
+      receipts.push({
+        id: `receipt-${agentId}-${cycleNumber}`,
+        operationKey: `op:v1:${(agentId * 10 + cycleNumber).toString(16).padStart(64, "0")}`,
+        originAttemptId: id,
+        state: "succeeded",
+        toolName: "synthetic_fixture_write",
+        sideEffectClass: "idempotent",
+        reservedAt: finishedAt,
+        finishedAt,
+        invocations: [
+          {
+            id: `invoke-${agentId}-${cycleNumber}`,
+            attemptId: id,
+            state: "succeeded",
+            effectStartedAt: finishedAt,
+            finishedAt,
+          },
+        ],
+      });
+    }
+  }
+  const snapshot = operationsSnapshot({
+    cursor: "99",
+    generatedAt: "2026-09-01T00:10:00.000Z",
+    attempts,
+    receipts,
+  });
+  const taskReads: string[] = [];
+  let failTaskRead = false;
+  let stallTaskRead = false;
+  let taskReadStarted: (() => void) | null = null;
+  let requestAborted = false;
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const pathname = new URL(String(input)).pathname;
+    if (pathname === "/api/readyz") return Response.json({ status: "ready" });
+    if (pathname === "/api/ops/instances")
+      return Response.json({
+        instances: ["api", "worker", "worker"].map((role, index) => ({
+          id: `instance-${index}`,
+          role,
+          effectiveState: "healthy",
+          schedulerEnabled: role === "worker",
+        })),
+      });
+    if (pathname === "/api/tasks" && init?.method === "POST")
+      return Response.json({ id: 7 }, { status: 201 });
+    if (pathname === "/api/tasks/7/operations") return Response.json(snapshot);
+    if (pathname === "/api/tasks/7") {
+      taskReads.push(pathname);
+      if (failTaskRead)
+        return Response.json({ error: "PRIVATE_ERROR" }, { status: 503 });
+      if (stallTaskRead) {
+        taskReadStarted?.();
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => {
+              requestAborted = true;
+              reject(init.signal?.reason);
+            },
+            { once: true },
+          );
+        });
+      }
+      return Response.json({
+        id: 7,
+        ownerAgentId: 1,
+        status: "blocked",
+        cycleCount: 9,
+        nextAttemptAt: null,
+        blockedReason: "operation_outcome_unknown",
+        brief: "PRIVATE_BRIEF",
+        lastError: "PRIVATE_ERROR",
+      });
+    }
+    return Response.json({ error: "PRIVATE_NOT_FOUND" }, { status: 404 });
+  };
+  const driver: WallClockRuntimeDriver = new DockerWallClockDriver({
+    runId: "root-gap-test",
+    seed: 240901,
+    durationHours: 1 / 6,
+    workspaceRoot: process.cwd(),
+    controlDirectory: directory,
+    baseUrl: "http://127.0.0.1:5000",
+    operatorToken: "PRIVATE_OPERATOR",
+    harness: harness([]),
+    fetchImpl,
+    now: () => new Date("2026-09-01T00:00:00.000Z"),
+  });
+  try {
+    await driver.start();
+    const observer = new SoakEvidenceObserver({
+      expectedResponsibilities: 100,
+    });
+    await driver.captureEvidence(observer, { kind: "minute", minute: 10 });
+    assert.equal(observer.finalize().metrics.completedResponsibilities, 99);
+    attempts.push({
+      id: "root-final-attempt",
+      taskId: 7,
+      agentId: 1,
+      attemptNumber: 12,
+      cycleNumber: 9,
+      state: "running",
+      finishedAt: null,
+    });
+    receipts.push({
+      id: "root-unknown-receipt",
+      operationKey: `op:v1:${"f".repeat(64)}`,
+      originAttemptId: "root-final-attempt",
+      state: "unknown",
+      toolName: "synthetic_fixture_write",
+      sideEffectClass: "idempotent",
+      reservedAt: "2026-09-01T00:09:30.000Z",
+      finishedAt: null,
+      invocations: [
+        {
+          id: "root-unknown-invocation",
+          attemptId: "root-final-attempt",
+          state: "unknown",
+          effectStartedAt: "2026-09-01T00:09:30.000Z",
+          finishedAt: null,
+        },
+      ],
+    });
+    snapshot.truncation.attempts = true;
+    assert.ok(
+      driver.inspectResponsibilityGaps,
+      "Final-cycle driver diagnostic is missing",
+    );
+    const diagnostic = (await driver.inspectResponsibilityGaps()) as {
+      attemptsTruncated: boolean;
+      gaps: Array<Record<string, unknown>>;
+    };
+    assert.equal(diagnostic.attemptsTruncated, true);
+    assert.deepEqual(diagnostic.gaps, [
+      {
+        agentId: 1,
+        cycleNumber: 9,
+        observedCompletedCycles: 9,
+        taskId: 7,
+        attemptState: "running",
+        attemptNumber: 12,
+        task: {
+          status: "blocked",
+          cycleCount: 9,
+          nextAttemptAt: null,
+          blockedReason: "operation_outcome_unknown",
+        },
+        receiptStates: ["unknown"],
+        invocationStates: ["unknown"],
+      },
+    ]);
+    assert.deepEqual(taskReads, ["/api/tasks/7"]);
+    assert.doesNotMatch(JSON.stringify(diagnostic), /PRIVATE_/u);
+    assert.equal(observer.finalize().metrics.completedResponsibilities, 99);
+    failTaskRead = true;
+    const unavailable = (await driver.inspectResponsibilityGaps()) as {
+      gaps: Array<Record<string, unknown>>;
+    };
+    assert.equal(unavailable.gaps[0].task, null);
+    assert.deepEqual(unavailable.gaps[0].receiptStates, ["unknown"]);
+    assert.doesNotMatch(JSON.stringify(unavailable), /PRIVATE_/u);
+    failTaskRead = false;
+    stallTaskRead = true;
+    const readStarted = new Promise<void>((resolve) => {
+      taskReadStarted = resolve;
+    });
+    const controller = new AbortController();
+    const pending = driver.inspectResponsibilityGaps(controller.signal);
+    await readStarted;
+    controller.abort();
+    await assert.rejects(pending, { name: "AbortError" });
+    assert.equal(requestAborted, true);
+  } finally {
+    await driver.stop({ keepData: false });
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("health coverage excludes pre-run and tail buckets without inventing missing minutes", async () => {
   const directory = await mkdtemp(

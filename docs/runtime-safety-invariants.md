@@ -85,3 +85,28 @@ reservation even if the operator later removes the stop. See
 [meeting turn recovery](./meeting-turns.md) for retention, restart requirements
 and limits of the other meeting mutations. Native PostgreSQL acceptance remains
 a separate gate from the PGlite router-instance tests.
+
+## Endurance failure diagnostics
+
+When the original native or container wall-clock test misses expected work,
+the coordinator records bounded metadata in its hashed journal before native
+provenance and cleanup. Each of at most ten agents contributes its first
+missing observed cycle, last available attempt state, task state and effect
+states. The root project can itself be a responsibility and is included.
+
+The diagnostic read has a ten-second ceiling and aborts its requests on timeout.
+Unavailable diagnostics retain a fixed marker while the original failed result
+and cleanup remain. Missing task reads stay unknown; attempt and receipt window
+truncation remains explicit. An absent attempt is unknown when the history is
+truncated or its task identity is ambiguous. Only complete, unambiguous history
+can report an absent attempt as not started. No raw errors, task text, names, credentials,
+commands or output are recorded. The existing first-cycle native smoke remains
+unchanged.
+
+These are current readonly observations after the accepted work horizon, with
+their own sampled timestamp. Reads of operations and tasks are not an atomic
+database snapshot. A task may complete after the horizon; that later state
+cannot change the recorded completion count or authorize replay of an uncertain
+effect. A later passing run does not diagnose an earlier failure. The original
+completion, fault, duration, cadence, security and independent verifier gates
+remain required.

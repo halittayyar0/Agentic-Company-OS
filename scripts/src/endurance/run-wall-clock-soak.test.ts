@@ -22,6 +22,7 @@ function testDriver(input: {
   stoppedWith?: Array<{ keepData: boolean }>;
   omitIrreversibleReceipt?: boolean;
   expectedResponsibilities?: number;
+  completionsPerMinute?: (minute: number) => number;
 }): WallClockRuntimeDriver {
   const minuteCalls = new Map<number, number>();
   return {
@@ -46,7 +47,9 @@ function testDriver(input: {
             succeeded: true,
           });
         }
-        observer.completeResponsibilities(10);
+        observer.completeResponsibilities(
+          input.completionsPerMinute?.(context.minute) ?? 10,
+        );
         observer.observeHealth({
           minute: context.minute,
           reportedState: "healthy",
@@ -125,6 +128,209 @@ function testDriver(input: {
     now: input.now,
   };
 }
+
+function missingFinalCycleSnapshot() {
+  return {
+    sampledAt: "2026-09-01T00:10:00.000Z",
+    expectedCycles: 10,
+    attemptsTruncated: false,
+    receiptsTruncated: false,
+    gaps: [
+      {
+        agentId: 1,
+        cycleNumber: 9,
+        observedCompletedCycles: 9,
+        taskId: 7,
+        attemptState: "running",
+        attemptNumber: 12,
+        task: {
+          status: "in_progress",
+          cycleCount: 9,
+          nextAttemptAt: null,
+          blockedReason: null,
+        },
+        receiptStates: ["unknown"],
+        invocationStates: ["unknown"],
+      },
+    ],
+  };
+}
+
+async function runFinalCycleDiagnosticCase(input: {
+  inspect: (signal?: AbortSignal) => Promise<unknown>;
+  lifecycle?: string[];
+  onProvenance?: () => void;
+  complete?: boolean;
+  diagnosticTimeoutMs?: number;
+}) {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-final-gap-"));
+  const stopped = { count: 0 };
+  let elapsed = 0;
+  const origin = Date.parse("2026-09-01T00:00:00.000Z");
+  const driver = Object.assign(
+    testDriver({
+      directory,
+      stopped,
+      now: () => new Date(origin + elapsed),
+      lifecycle: input.lifecycle,
+      expectedResponsibilities: 100,
+      completionsPerMinute: (minute) =>
+        minute === 10 && !input.complete ? 9 : 10,
+    }),
+    { inspectResponsibilityGaps: input.inspect },
+  );
+  const provenance = driver.provenance.bind(driver);
+  driver.provenance = async () => {
+    input.onProvenance?.();
+    return provenance();
+  };
+  try {
+    const result = await runWallClockSoak(
+      {
+        runId: "final-gap-test",
+        seed: 240901,
+        durationHours: 1 / 6,
+        faultProfile: "compressed-all",
+        commitSha: "test-commit",
+        browserOutputDirectory: directory,
+      },
+      driver,
+      {
+        waitUntilOffset: async (offset) => {
+          elapsed = Math.max(elapsed, offset);
+        },
+        browserSleep: async () => undefined,
+        responsibilityDiagnosticTimeoutMs: input.diagnosticTimeoutMs ?? 100,
+      },
+    );
+    return { result, stopped };
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+test("missing final cycle stays failed and is frozen before provenance can change task state", async () => {
+  const snapshot = missingFinalCycleSnapshot();
+  const lifecycle: string[] = [];
+  const { result, stopped } = await runFinalCycleDiagnosticCase({
+    inspect: async () => {
+      lifecycle.push("diagnose");
+      return snapshot;
+    },
+    lifecycle,
+    onProvenance: () => {
+      snapshot.gaps[0].task.cycleCount = 10;
+    },
+  });
+  assert.equal(result.report.pass, false);
+  assert.equal(result.report.metrics.completedResponsibilities, 99);
+  const event = result.journal.find(
+    (event) => event.kind === "responsibilities_incomplete",
+  );
+  assert.ok(
+    event,
+    "Missing final-cycle diagnostics must be retained in the hashed journal",
+  );
+  assert.equal(
+    (event.data.diagnostics as typeof snapshot).gaps[0].task.cycleCount,
+    9,
+  );
+  assert.equal(event.occurredAt, result.report.completedAt);
+  assert.deepEqual(lifecycle, ["diagnose", "provenance", "stop"]);
+  assert.equal(stopped.count, 1);
+});
+
+test("final-cycle diagnostics strip private fields and normalize unknown state text", async () => {
+  const snapshot = missingFinalCycleSnapshot();
+  snapshot.gaps[0].attemptState = "PRIVATE_STATE";
+  snapshot.gaps[0].task.status = "PRIVATE_TASK";
+  snapshot.gaps[0].receiptStates = ["PRIVATE_RECEIPT"];
+  snapshot.gaps[0].invocationStates = ["PRIVATE_INVOCATION"];
+  const { result } = await runFinalCycleDiagnosticCase({
+    inspect: async () => ({
+      ...snapshot,
+      authorization: "PRIVATE_AUTH",
+      brief: "PRIVATE_BRIEF",
+    }),
+  });
+  const event = result.journal.find(
+    (event) => event.kind === "responsibilities_incomplete",
+  );
+  assert.ok(event);
+  assert.doesNotMatch(JSON.stringify(event), /PRIVATE_/u);
+  assert.equal(
+    (event.data.diagnostics as typeof snapshot).gaps[0].attemptState,
+    "unknown",
+  );
+});
+
+test("unavailable or oversized diagnostics preserve failure and cleanup without error text", async () => {
+  for (const inspect of [
+    async () => {
+      throw new Error("PRIVATE_ERROR");
+    },
+    async () => ({
+      ...missingFinalCycleSnapshot(),
+      gaps: Array.from(
+        { length: 11 },
+        () => missingFinalCycleSnapshot().gaps[0],
+      ),
+    }),
+  ]) {
+    const { result, stopped } = await runFinalCycleDiagnosticCase({ inspect });
+    assert.equal(result.report.pass, false);
+    assert.ok(
+      result.journal.some(
+        (event) => event.kind === "responsibility_diagnostic_unavailable",
+      ),
+    );
+    assert.doesNotMatch(JSON.stringify(result.journal), /PRIVATE_ERROR/u);
+    assert.equal(stopped.count, 1);
+  }
+});
+
+test("hung final-cycle diagnostic is aborted before provenance and cleanup", async () => {
+  let aborted = false;
+  const { result, stopped } = await runFinalCycleDiagnosticCase({
+    diagnosticTimeoutMs: 15,
+    inspect: (signal) =>
+      new Promise((_resolve, reject) => {
+        signal?.addEventListener(
+          "abort",
+          () => {
+            aborted = true;
+            reject(new Error("PRIVATE_ABORT"));
+          },
+          { once: true },
+        );
+      }),
+  });
+  assert.equal(aborted, true);
+  assert.equal(result.report.pass, false);
+  assert.ok(
+    result.journal.some(
+      (event) => event.kind === "responsibility_diagnostic_unavailable",
+    ),
+  );
+  assert.equal(stopped.count, 1);
+});
+
+test("complete responsibility coverage performs no diagnostic read", async () => {
+  let calls = 0;
+  const { result } = await runFinalCycleDiagnosticCase({
+    complete: true,
+    inspect: async () => {
+      calls++;
+      throw new Error("should not read");
+    },
+  });
+  assert.equal(result.report.pass, true);
+  assert.equal(calls, 0);
+  assert.equal(
+    result.journal.some((event) => event.kind.startsWith("responsibilit")),
+    false,
+  );
+});
 
 test("coordinator produces verified evidence only after a full virtual wall-clock day", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "agentic-wall-soak-"));

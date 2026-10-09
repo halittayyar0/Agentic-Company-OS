@@ -21,6 +21,7 @@ import {
   type EnduranceReport,
 } from "./report-schema";
 import { SoakEvidenceObserver } from "./soak-observer";
+import { normalizeResponsibilityGapSnapshot } from "./responsibility-diagnostics";
 import {
   validateEnduranceSpendProvenance,
   type EnduranceSpendValues,
@@ -64,6 +65,7 @@ export interface WallClockRuntimeDriver extends FaultInjectionControls {
   inspectIncompleteResponsibilities?(): Promise<
     IncompleteResponsibilityDiagnostic[]
   >;
+  inspectResponsibilityGaps?(signal?: AbortSignal): Promise<unknown>;
   stop(options: { keepData: boolean }): Promise<void>;
   now(): Date;
 }
@@ -83,6 +85,7 @@ export interface WallClockSoakDependencies {
   browserSleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
   signal?: AbortSignal;
   cleanupTimeoutMs?: number;
+  responsibilityDiagnosticTimeoutMs?: number;
 }
 
 export interface WallClockSoakResult {
@@ -366,6 +369,48 @@ export async function runWallClockSoak(
   const evidence = observer.finalize();
   const browserResult = browser as BrowserMonitorResult | null;
   evidence.metrics.requiredHealthSampleBuckets = requiredHealthBuckets;
+  if (expectedResponsibilities > evidence.metrics.completedResponsibilities) {
+    const diagnosticController = new AbortController();
+    const diagnosticSignal = dependencies.signal
+      ? AbortSignal.any([diagnosticController.signal, dependencies.signal])
+      : diagnosticController.signal;
+    const requestedTimeout =
+      dependencies.responsibilityDiagnosticTimeoutMs ?? 10_000;
+    const diagnosticTimeout = Number.isFinite(requestedTimeout)
+      ? Math.min(10_000, Math.max(1, requestedTimeout))
+      : 10_000;
+    try {
+      diagnosticSignal.throwIfAborted();
+      if (!driver.inspectResponsibilityGaps)
+        throw new Error("Diagnostic unavailable");
+      const snapshot = await withDeadline(
+        driver.inspectResponsibilityGaps(diagnosticSignal),
+        diagnosticTimeout,
+        "Responsibility diagnostic",
+      );
+      diagnosticSignal.throwIfAborted();
+      appendJournal("responsibilities_incomplete", completedAt.toISOString(), {
+        expectedResponsibilities,
+        completedResponsibilities: evidence.metrics.completedResponsibilities,
+        diagnostics: normalizeResponsibilityGapSnapshot(
+          snapshot,
+          requiredHealthBuckets,
+        ),
+      });
+    } catch {
+      // Diagnostic failures must not replace the original outcome or expose text.
+      appendJournal(
+        "responsibility_diagnostic_unavailable",
+        completedAt.toISOString(),
+        {
+          expectedResponsibilities,
+          completedResponsibilities: evidence.metrics.completedResponsibilities,
+        },
+      );
+    } finally {
+      diagnosticController.abort();
+    }
+  }
   let provenanceBase: Omit<EnduranceProvenance, "automatedSignOff"> | null =
     null;
   try {
