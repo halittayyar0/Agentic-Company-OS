@@ -430,6 +430,8 @@ jobs:
       - name: Prove seven-language first-job connection through real API and workers
         env:
           ACOS_GUIDED_LOCAL_SMOKE: "1"
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
         run: pnpm test:connection:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
 
       - name: Prove seven-language reusable work through real API and workers
@@ -476,6 +478,7 @@ jobs:
         with:
           name: windows-native-runtime-evidence
           path: |
+            ${{ runner.temp }}/acos-native-install-proof-*/guided-local-runtime-failure.json
             ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-evidence.json
             ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-cleanup.json
             artifacts/endurance-reports/windows-native-smoke.json

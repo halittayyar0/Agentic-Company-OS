@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { chromium, expect } from "@playwright/test";
 import { runNativeInstallSmoke } from "../setup/native-install-smoke";
+import { createConnectionSaveDiagnostics } from "./connection-save-diagnostics";
 
 // Explicit offline acceptance, not a model-quality test. The real installer owns
 // a new PostgreSQL cluster, API and two workers. Only the model HTTP peer is fake.
@@ -264,6 +265,15 @@ try {
           const page = await context.newPage();
           const pageErrors: string[] = [];
           page.on("pageerror", () => pageErrors.push("pageerror"));
+          const diagnostics = createConnectionSaveDiagnostics(baseUrl);
+          page.on("response", (response) =>
+            diagnostics.observe({
+              url: response.url(),
+              method: response.request().method(),
+              status: response.status(),
+              headers: response.headers(),
+            }),
+          );
           await page.route("**/*", (route) =>
             new URL(route.request().url()).origin === new URL(baseUrl).origin
               ? route.continue()
@@ -387,6 +397,34 @@ try {
               simulatedUsage: true,
             });
             console.log(`Offline guided runtime case passed: ${locale}`);
+          } catch (error) {
+            const failure = {
+              passed: false,
+              scope:
+                "Offline first-job failure observation, not runtime acceptance. Cause unconfirmed.",
+              locale,
+              ...beforeSource,
+              completedLocales: results.length,
+              connection: diagnostics.snapshot(),
+              pageErrorCount: pageErrors.length,
+              modelRequestCount: requests.length,
+              unexpectedModelRequestCount: unexpected.length,
+            };
+            // The original error and every assertion/deadline remain intact.
+            // Stdout also retains this safe record if artifact collection fails.
+            console.log(JSON.stringify({ guidedConnectionFailure: failure }));
+            try {
+              await writeFile(
+                path.join(directory, "guided-local-runtime-failure.json"),
+                JSON.stringify(failure, null, 2),
+                { flag: "wx", mode: 0o600 },
+              );
+            } catch {
+              console.log(
+                "Offline failure observation file could not be saved",
+              );
+            }
+            throw error;
           } finally {
             await context.close();
           }
