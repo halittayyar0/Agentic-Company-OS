@@ -24,7 +24,7 @@ The wizard checks the selected installation mode and names missing local require
 
 ## Optional coding workers
 
-**Development branch; release acceptance is still pending.** In the container
+**v0.4.0 and later.** In the container
 wizard, **Codex coding worker** is a separate, unchecked option. It needs a
 Linux x64 Docker engine, Compose **2.24.4 or later**, terminal permission and
 an installer containing a separate pinned coding image. Selecting the Code
@@ -55,7 +55,7 @@ use privileged containers or mount your personal Codex home to work around a
 refusal. The coding overlay replaces only worker security options, while the
 API retains the ordinary Chromium profile.
 
-This branch's offline container gate checks the image-owned toolchain and
+The offline container gate checks the image-owned toolchain and
 native permission/lifetime cases without login or inference. Enforced AppArmor,
 the complete published container installer and generated coding deliverables
 require their own accepted evidence; a green offline gate is not that proof.
@@ -185,7 +185,7 @@ For a first project, Settings prefers a tool-capable catalog model for this test
 
 ### Local Ollama
 
-In the unreleased guided connection branch, Home, New project and Settings can
+In v0.4.0 and later, Home, New project and Settings can
 save a validated address override without leaving the job composer. Removing
 the override restores `OLLAMA_BASE_URL`; discovery does not download a model or
 send inference. See the [seven-language walkthrough](./model-connections.md).

@@ -58,10 +58,10 @@ The system remains a single-operator alpha; put TLS, a firewall, and distributed
 - An immutable audit ledger.
 - Disaster recovery automation or tamper-evident backups. A checked-in migration chain and startup advisory lock are implemented.
 
-## Guided connection branch (unreleased)
+## Model connections and optional coding (v0.4.0 and later)
 
-The development branch adds protected ChatGPT registration and optional native
-Codex execution. These controls are absent from the published v0.3.13 package.
+v0.4.0 adds protected ChatGPT registration and optional governed Codex
+execution. Earlier v0.3.13 setup bundles do not contain these additions.
 
 - Sign-in validates PKCE/state/nonce, signed identity and permission grants.
   Account saving and selection remain separate; identity-only access cannot
@@ -78,8 +78,11 @@ Codex execution. These controls are absent from the published v0.3.13 package.
 - Actual offline Linux tests verify lifetime cleanup, fixed command permissions,
   private-file denial and no inference after final admission refusal. This is
   neither live-model acceptance nor a claim that arbitrary hostile code is safe.
-  Tested Windows named-profile refusal, macOS and container coding acceptance
-  remain unresolved. Unsupported preparation fails before inference.
+  Native macOS coding is unsupported, and the tested Windows named-profile
+  setup refuses preparation before inference. The optional container path
+  requires Linux x64 and the enforced bundled AppArmor profile. Its published
+  image and installation need separate release acceptance. Unsupported
+  preparation fails before inference.
 
 Read the [connection guide](./chatgpt-connection.md) for precise prerequisites,
 handoff rules and verification limits. These additions do not introduce multiple

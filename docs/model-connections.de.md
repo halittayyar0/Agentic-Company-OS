@@ -2,8 +2,7 @@
 
 [English](./model-connections.md) · [Türkçe](./model-connections.tr.md) · [Deutsch](./model-connections.de.md) · [Русский](./model-connections.ru.md) · [简体中文](./model-connections.zh-CN.md) · [繁體中文](./model-connections.zh-TW.md) · [العربية](./model-connections.ar.md)
 
-> Entwicklungsvorschau: Diese Anleitung beschreibt den neuen Verbindungszweig.
-> Das veröffentlichte Installationspaket v0.3.13 enthält diesen Ablauf noch nicht.
+> Für v0.4.0 und neuer. Frühere Installationspakete enthalten diesen Ablauf nicht.
 
 ## Mit dem gewünschten Ergebnis beginnen
 
@@ -38,7 +37,7 @@ niemals in die Browseroberfläche einfügen.
 
 Prüfe Berechtigungen und gewünschte Ausgabe und starte den Auftrag.
 [Privater Telefonzugriff](./mobile-access.md) nutzt dieselbe Weboberfläche.
-Die optionale native Codex-Ausführung hat [eigene Plattformanforderungen](./chatgpt-connection.md#optional-governed-coding-runtime-development-branch);
+Die optionale native Codex-Ausführung hat [eigene Plattformanforderungen](./chatgpt-connection.md#optional-governed-coding-runtime);
 eine Modellverbindung aktiviert sie nicht automatisch.
 
 Meldet ein Modell den Tokenverbrauch nicht, werden der Auftrag und seine
@@ -49,4 +48,4 @@ auch wenn der Tokenverbrauch vollständig gemeldet wurde.
 
 ## Optionale Einrichtung für Programmieraufgaben
 
-Der Container-Installer des Entwicklungszweigs bietet eine separate, zunächst deaktivierte Option **Codex für Programmieraufgaben**. Sie erfordert eine Linux-x64-Engine, Compose ab 2.24.4 und Terminalzugriff. Das Werkzeugpaket Code aktiviert sie nicht. Verbinde nach der Einrichtung ein berechtigtes Konto; andere Aufgaben nutzen weiterhin deinen gewählten Anbieter. Bei AppArmor muss die Administration das mitgelieferte Profil laden. Siehe die [Installationsvoraussetzungen](./self-hosting.md#optional-coding-workers). Die Freigabe des gesamten Funktionsumfangs steht noch aus.
+Der Container-Installer bietet eine separate, zunächst deaktivierte Option **Codex für Programmieraufgaben**. Sie erfordert eine Linux-x64-Engine, Compose ab 2.24.4 und Terminalzugriff. Das Werkzeugpaket Code aktiviert sie nicht. Verbinde nach der Einrichtung ein berechtigtes Konto; andere Aufgaben nutzen weiterhin deinen gewählten Anbieter. Bei AppArmor muss die Administration das mitgelieferte Profil laden. Siehe die [Installationsvoraussetzungen](./self-hosting.md#optional-coding-workers).

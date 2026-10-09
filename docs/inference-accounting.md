@@ -1,9 +1,9 @@
 # Understanding model usage records
 
-This feature is being developed on the durable accounting branch. It is not yet
-part of a published release. Invocation-owned late evidence and atomic usage
-correction are implemented in this draft; remaining entry-path, platform and
-whole-feature acceptance checks are still required before publication.
+For v0.4.0 and later. Earlier setup bundles do not include this feature.
+Invocation-owned evidence preserves model usage across interruptions; matching
+saved evidence can correct accounting without sending another model request.
+See the release notes for the exact tested source and verification limits.
 
 Open a project or an agent and expand **Model usage records**. The panel explains
 why usage accounting is waiting and shows the exact request ID. It supports

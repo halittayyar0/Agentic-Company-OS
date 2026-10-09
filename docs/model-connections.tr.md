@@ -2,8 +2,7 @@
 
 [English](./model-connections.md) · [Türkçe](./model-connections.tr.md) · [Deutsch](./model-connections.de.md) · [Русский](./model-connections.ru.md) · [简体中文](./model-connections.zh-CN.md) · [繁體中文](./model-connections.zh-TW.md) · [العربية](./model-connections.ar.md)
 
-> Geliştirme önizlemesi: bu rehber yeni bağlantı dalını anlatır.
-> Yayımlanmış v0.3.13 kurulum paketinde bu akış bulunmaz.
+> v0.4.0 ve sonrası için. Önceki kurulum paketlerinde bu akış bulunmaz.
 
 ## Önce istediğin sonucu yaz
 
@@ -37,7 +36,7 @@ sunucunun yerel giriş dönüşüne ulaşamaz. Kimlik bilgilerini tarayıcıya y
 
 İşine dön, izinleri ve beklediğin çıktıyı kontrol edip başlat. [Telefondan özel
 erişim](./mobile-access.md) aynı web arayüzünü kullanır. İsteğe bağlı Codex kodlama
-yürütücüsünün [ayrı platform gereksinimleri](./chatgpt-connection.md#optional-governed-coding-runtime-development-branch)
+yürütücüsünün [ayrı platform gereksinimleri](./chatgpt-connection.md#optional-governed-coding-runtime)
 vardır; model bağlamak onu kendiliğinden etkinleştirmez.
 
 Model token kullanımını raporlamazsa iş ve alt görevleri yeni çağrılardan önce
@@ -47,4 +46,4 @@ maliyeti bilinmiyor olarak kalır.
 
 ## İsteğe bağlı kodlama kurulumu
 
-Geliştirme dalındaki container kurulumunda ayrı ve varsayılan olarak kapalı **Codex kodlama çalışanı** seçeneği vardır. Linux x64 motoru, Compose 2.24.4 veya üstü ve terminal izni gerekir. Kod araç paketini seçmek bunu etkinleştirmez. Uygun hesabını kurulumdan sonra bağla; diğer görevler seçtiğin sağlayıcıda kalır. AppArmor sunucusunda yöneticinin paketteki profili yüklemesi gerekir. [Kurulum gereksinimlerine](./self-hosting.md#optional-coding-workers) bak. Özelliğin tamamının yayına kabulü henüz bitmedi.
+Container kurulumunda ayrı ve varsayılan olarak kapalı **Codex kodlama çalışanı** seçeneği vardır. Linux x64 motoru, Compose 2.24.4 veya üstü ve terminal izni gerekir. Kod araç paketini seçmek bunu etkinleştirmez. Uygun hesabını kurulumdan sonra bağla; diğer görevler seçtiğin sağlayıcıda kalır. AppArmor sunucusunda yöneticinin paketteki profili yüklemesi gerekir. [Kurulum gereksinimlerine](./self-hosting.md#optional-coding-workers) bak.

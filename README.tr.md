@@ -142,9 +142,9 @@ Her taşınabilir sürüm sabit bir Linux amd64/arm64 imajına bağlanır; kurul
 
 Teknik belgelerin bir bölümü İngilizcedir. Tekrarlanabilir bir hata bildirimi, daha anlaşılır bir çeviri, faydalı bir rehber veya test edilmiş küçük bir düzeltme de değerli bir katkıdır.
 
-**Geliştirme önizlemesi:** [model bağlantısı rehberi](./docs/model-connections.tr.md)
-yerel modelleri, ChatGPT'yi, API anahtarlarını ve ilk iş taslağının korunmasını
-anlatır. Bu akış yayımlanmış v0.3.13 kurulum paketinde bulunmaz.
+**Model bağlantısı, v0.4.0 ve sonrası:** [bağlantı rehberi](./docs/model-connections.tr.md) yerel modelleri, ChatGPT’yi, API anahtarlarını ve ilk iş taslağının korunmasını anlatır. Önceki kurulum paketlerinde bu akış bulunmaz.
+
+Kesintiden sonra bir isteği incelemek için proje veya ajan sayfasında **Model kullanım kayıtları** bölümünü aç. Kontrol model tokenı harcamaz ve isteği yeniden göndermez; bilinmeyen kullanım sıfır sayılmaz. [Kullanım kayıtlarını anlama →](./docs/inference-accounting.md)
 
 ---
 

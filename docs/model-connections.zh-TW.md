@@ -2,8 +2,7 @@
 
 [English](./model-connections.md) · [Türkçe](./model-connections.tr.md) · [Deutsch](./model-connections.de.md) · [Русский](./model-connections.ru.md) · [简体中文](./model-connections.zh-CN.md) · [繁體中文](./model-connections.zh-TW.md) · [العربية](./model-connections.ar.md)
 
-> 開發預覽：本指南介紹新的模型連線分支。
-> 已發布的 v0.3.13 安裝套件尚未包含此流程。
+> 適用於 v0.4.0 及更新版本。較早的安裝套件不包含此流程。
 
 ## 先寫下你想要的結果
 
@@ -32,7 +31,7 @@ Ollama 位址必須能被應用程式的**後端服務**存取。手機上的 `l
 操作；手機無法存取伺服器的本機登入回呼。不要將憑證貼到瀏覽器介面。
 
 返回任務，確認權限與預期輸出，再啟動。[手機私人存取](./mobile-access.md)使用同一個網頁介面。
-可選的原生 Codex 程式碼執行器有[獨立的平台要求](./chatgpt-connection.md#optional-governed-coding-runtime-development-branch)；
+可選的原生 Codex 程式碼執行器有[獨立的平台要求](./chatgpt-connection.md#optional-governed-coding-runtime)；
 連接模型不會自動啟用它。
 
 如果模型未回報權杖用量，工作及其子工作會在進一步呼叫前暫停，已有記錄
@@ -41,4 +40,4 @@ Ollama 位址必須能被應用程式的**後端服務**存取。手機上的 `l
 
 ## 選用程式碼環境安裝
 
-開發分支的容器安裝精靈提供獨立、預設停用的 **Codex 程式碼工作程序** 選項。需要 Linux x64 引擎、Compose 2.24.4 或更新版本及終端機權限。選擇程式碼工具套件不會啟用此選項。安裝後連線至符合資格的帳戶；其他任務繼續使用所選供應商。使用 AppArmor 的主機需要管理員載入隨附的設定檔。請參閱[安裝要求](./self-hosting.md#optional-coding-workers)。完整功能的發布驗收尚未完成。
+容器安裝精靈提供獨立、預設停用的 **Codex 程式碼工作程序** 選項。需要 Linux x64 引擎、Compose 2.24.4 或更新版本及終端機權限。選擇程式碼工具套件不會啟用此選項。安裝後連線至符合資格的帳戶；其他任務繼續使用所選供應商。使用 AppArmor 的主機需要管理員載入隨附的設定檔。請參閱[安裝要求](./self-hosting.md#optional-coding-workers)。

@@ -276,7 +276,7 @@ The OpenRouter text catalog is refreshed before the API begins listening and the
 
 Known unprefixed built-in fleet model IDs route to the Replit AI integration. Vendor-prefixed IDs route to OpenRouter. Direct OpenAI IDs use `openai:`, and local Ollama IDs use `ollama:`; prefixes are removed only inside the selected adapter. The OpenRouter and direct OpenAI API bases are constants and cannot be set through the Settings UI, preventing a caller from redirecting their authorization headers. OpenAI requests carry a server-generated client request ID; the host logger records only provider/model/outcome and safe request IDs. Optional `APP_PUBLIC_URL` is validated as a credential-free HTTP(S) URL and only its origin is sent as OpenRouter `HTTP-Referer` attribution; it never changes the provider endpoint. The Replit integration base URL remains operator-supplied environment configuration and belongs to the trusted deployment boundary.
 
-Ollama is a separate private-egress boundary. The development branch adds a
+Ollama is a separate private-egress boundary. v0.4.0 adds a
 revision-guarded `ollamaBaseUrl` Settings override; `OLLAMA_BASE_URL` remains the
 installation default when the override is absent or removed. Validation accepts
 only an empty/`/v1` path on exact local aliases or private IP literals, rejects
@@ -288,7 +288,7 @@ each capability with bounded concurrency and timeouts. Models without a reported
 `tools` capability remain discoverable but fail closed for agent selection.
 Inference uses the validated endpoint's OpenAI-compatible `/v1/chat/completions`.
 
-### Guided connection branch (unreleased)
+### Guided model connections (v0.4.0 and later)
 
 Home and New project open a lazy connection dialog while keeping their composer
 mounted. Seven selected-language packs explain local, ChatGPT and API options.
@@ -316,12 +316,40 @@ Windows Job Objects and Linux PID namespaces provide platform lifetime
 controllers. They do not by themselves certify command permissions. Offline
 Linux tests additionally exercise the actual pinned CLI's named permission
 boundary and production driver's pre-inference admission refusal. Tested
-unelevated Windows named-profile execution refuses; macOS and container coding
-acceptance remain pending. Normal plan transport is independent of this optional
-native capability. See [connection guide](./chatgpt-connection.md) for the measured
-scope; published v0.3.13 does not contain this integration.
+unelevated Windows named-profile execution refuses, and native macOS coding is
+unsupported. The optional container path requires Linux x64 and the enforced
+bundled AppArmor profile, with separate image and installation acceptance.
+Normal plan transport is independent of this optional native capability. See
+the [connection guide](./chatgpt-connection.md) for the measured scope; earlier
+v0.3.13 bundles do not contain this integration.
 
-Chat, task-step, and judge completions pass through the usage ledger. Each row identifies kind, agent/task, provider, model, and normalized prompt/completion/total token fields. OpenRouter's direct `usage.cost` is stored when present; Replit, direct OpenAI, and Ollama retain `null` cost rather than applying a possibly stale price table. Explicit OpenRouter free pins never cross into paid inference; explicit Ollama pins never leave the local provider. Usage write failures are logged but do not roll back the model action, so the ledger is operational accounting rather than a financial system of record.
+### Durable ordinary inference accounting (v0.4.0 and later)
+
+Chat, task-step and judge requests reserve an invocation-owned marker before
+transport. The dispatch boundary must be acknowledged before a provider request
+is sent. One unresolved request fences further inference in its affected agent
+or task-family scope; unrelated scopes can remain usable. Hidden SDK retries
+are disabled, and usage-persistence retries reuse the same receipt identity
+without sending inference again.
+
+Immutable keyed receipts retain the original route, time, outcome and known
+token or cost lower bounds. Missing usage remains unknown. Returned model output
+cannot authorize tools, fallback or completion review before usage is durable.
+Invocation-matching, host-parsed evidence can atomically authorize an effective
+usage correction; a bounded restart pass reads that saved evidence without
+recovering output, resuming tasks or granting permissions. Conflicts preserve
+lower bounds and revoke complete provenance.
+
+Budgets, operations and history read the same effective usage view. Reported
+provider cost is stored when available; absent dollar prices remain null rather
+than being estimated from a model name. Explicit free and local provider pins
+do not silently fall back to paid inference. These are recorded-usage admission
+controls, not a provider-enforced billing ceiling.
+
+Authenticated project and agent panels expose bounded status through the
+read-only, no-store API without consuming model tokens. See
+[Model usage records](./inference-accounting.md) for scope, status and recovery
+limits. There is no write/reset endpoint or permission to replay unknown work.
 
 ## Tool and computer model
 

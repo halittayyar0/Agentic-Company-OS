@@ -148,9 +148,9 @@ A 24-hour soak, physical-phone/carrier acceptance and native-speaker review are 
 
 Small, focused contributions are welcome: a reproducible bug report, a clearer translation, a useful guide or a tested fix.
 
-**Development preview:** the [guided model connection walkthrough](./docs/model-connections.md)
-explains local models, ChatGPT, API keys and keeping your first-job draft. This
-flow is not included in the released v0.3.13 setup package.
+**Model connection, v0.4.0 and later:** the [connection walkthrough](./docs/model-connections.md) explains local models, ChatGPT, API keys and keeping your first-job draft. Earlier setup bundles do not include this flow.
+
+Open **Model usage records** on a project or agent to inspect a request after an interruption. Checking spends no model tokens and never resends the request; unknown usage is not treated as zero. [Reading usage records →](./docs/inference-accounting.md)
 
 ---
 

@@ -141,9 +141,9 @@ Diese Ergebnisse gelten für die genannte Version. Ein 24-Stunden-Dauertest, Abn
 
 Die verlinkte technische Dokumentation ist überwiegend auf Englisch. Kleine, gezielte Beiträge sind willkommen: ein reproduzierbarer Fehlerbericht, eine klarere Übersetzung, eine nützliche Anleitung oder eine getestete Korrektur.
 
-**Entwicklungsvorschau:** die [Anleitung zur Modellverbindung](./docs/model-connections.de.md)
-erklärt lokale Modelle, ChatGPT, API-Schlüssel und den Erhalt des ersten Entwurfs.
-Dieser Ablauf ist im veröffentlichten Installationspaket v0.3.13 noch nicht enthalten.
+**Modellverbindung ab v0.4.0:** Die [Anleitung zur Modellverbindung](./docs/model-connections.de.md) erklärt lokale Modelle, ChatGPT, API-Schlüssel und den Erhalt des ersten Auftragsentwurfs. Frühere Installationspakete enthalten diesen Ablauf nicht.
+
+Öffne **Modellnutzungsprotokolle** bei einem Projekt oder Agenten, um eine Anfrage nach einer Unterbrechung zu prüfen. Die Prüfung verbraucht keine Modell-Tokens und sendet die Anfrage nicht erneut; unbekannte Nutzung wird nicht als null gezählt. [Nutzungsprotokolle verstehen →](./docs/inference-accounting.md)
 
 ---
 

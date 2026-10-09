@@ -129,9 +129,9 @@ Sign-out reports local clearing and remote revocation separately. If
 [ChatGPT settings](https://chatgpt.com/settings/usage). No refresh token means
 that remote revocation is reported as `null`.
 
-## Optional governed coding runtime (development branch)
+## Optional governed coding runtime
 
-The development branch connects `vm_codex_task` to durable tasks. It is disabled
+In v0.4.0 and later, `vm_codex_task` connects to durable tasks. It is disabled
 by default and appears only for a task using a ChatGPT model with terminal
 permission. Direct chats do not receive this tool. Its only model-supplied
 argument is the job prompt; the backend selects the executable, account,
@@ -150,8 +150,10 @@ refuses the required split-read containment in the tested unelevated Windows
 environment, so that environment stops before inference. Linux process lifetime
 has separate native lifetime and pinned CLI permission tests. Live account inference
 and other installation environments still need their own validation.
-Native macOS coding support and complete container release acceptance remain pending. Do not enable
-this runtime by relaxing containment or sharing your personal Codex home.
+Native macOS coding is unsupported. Optional container coding requires the
+separate Linux x64 image and enforced bundled AppArmor profile; installation
+and release notes identify its measured acceptance. Do not enable this runtime
+by relaxing containment or sharing your personal Codex home.
 
 The Windows lifetime controller compiles its fixed public helper before receiving
 credentials. Compilation has a 60-second ceiling for a cold, busy machine; the
@@ -209,7 +211,7 @@ cycle. Up to eight source records are sampled with a total and truncation flag;
 private paths, check commands and output are excluded. This adds metadata to the
 existing review rather than making another inference request.
 
-This integration is not part of the released v0.3.13 snapshot. Offline protocol
+This integration requires v0.4.0 or later. Offline protocol
 peers verify the service, HTTP approval transactions and accounting behavior;
 they do not execute the displayed commands or establish native containment.
 
@@ -339,12 +341,12 @@ gate certifies those fixed commands on that measured CLI/kernel combination.
 It does not certify authenticated plan inference, native model-generated patch
 approval, recurring delivery, a different distribution, nested containers or
 other operating systems. Tests elsewhere skip this explicitly enabled native
-gate; those skips are not native coverage. The released v0.3.13 snapshot does
-not contain this integration.
+gate; those skips are not native coverage. Earlier v0.3.13 bundles do not
+contain this integration.
 
 ### Offline first-job integration gate
 
-The development branch has an opt-in first-job test that runs the real native
+The source has an opt-in first-job test that runs the real native
 installer, a fresh owned PostgreSQL cluster, the API and two workers. It uses
 rendered Chromium in all seven languages at 390px, with Arabic at 320px and RTL.
 The model HTTP peer and judge responses are fixed local fixtures. No human

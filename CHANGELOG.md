@@ -3,10 +3,12 @@
 All notable changes to Agentic Company OS are documented here. The project uses
 [Semantic Versioning](https://semver.org/). The public API remains pre-1.0.
 
-## Unreleased — guided model connection
+## [0.4.0] - 2026-10-09
 
-These changes are in development and are not included in the v0.3.13 setup ZIP.
-Integrated review and release gates remain pending.
+Connect a model without losing your first-job draft, and inspect durable usage
+records when a provider request is interrupted. Earlier v0.3.13 setup bundles
+do not include these flows. Downloadable packages are published only after
+the exact source passes the required checks and distribution acceptance.
 
 ### Added
 
@@ -23,12 +25,28 @@ Integrated review and release gates remain pending.
 - Linux PID namespace lifetime control and an offline gate using the actual
   pinned Codex CLI. Fixed commands verify workspace permissions and private-data
   denial; a separate driver case refuses final admission before any model turn.
-  Native Windows/macOS coding is unsupported and refused; ordinary application
-  installation is separate. Linux container coding has offline local proof;
-  enforced AppArmor and exact-source release acceptance remain pending. These
-  tests do not establish live plan inference or a 24-hour result.
+  Ordinary Windows/macOS application installation is separate from the optional
+  coding runtime. Its supported container path needs Linux x64 and the enforced
+  bundled AppArmor profile. Native macOS coding is unsupported; the tested
+  Windows named-profile setup stops before inference. Offline tests do not
+  establish live account inference or a 24-hour result.
 - [Connection walkthroughs](./docs/model-connections.md) in all seven languages
   explain connection states, server addresses and phone handoff.
+
+- Durable ordinary model reservations acknowledge dispatch before transport.
+  Keyed immutable receipts and invocation-owned evidence survive lost writes,
+  response loss and worker restart; storage retries never resend inference.
+- Project and agent **Model usage records** panels in all seven languages expose
+  pending, uncertain and verified status without model calls. Unknown usage stays
+  unknown and blocks more inference in the affected scope; a saved status does
+  not authorize execution or prove task completion.
+- Three forward accounting migrations (0041–0043) preserve original receipts
+  while budgets, operations and history share effective usage. Late matching
+  evidence can reconcile in bounded restart batches without recovering task
+  output or clearing conflicting evidence.
+- Both Mac architectures now run the seven-language first-job acceptance with
+  the real native installer, PostgreSQL, API and two workers. Only the model
+  HTTP peer is an offline fixture. Windows runs the same first-job gate.
 
 ### Security
 

@@ -2,8 +2,7 @@
 
 [English](./model-connections.md) · [Türkçe](./model-connections.tr.md) · [Deutsch](./model-connections.de.md) · [Русский](./model-connections.ru.md) · [简体中文](./model-connections.zh-CN.md) · [繁體中文](./model-connections.zh-TW.md) · [العربية](./model-connections.ar.md)
 
-> 开发预览：本指南介绍新的模型连接分支。
-> 已发布的 v0.3.13 安装包尚未包含这个流程。
+> 适用于 v0.4.0 及更高版本。较早的安装包不包含这个流程。
 
 ## 先写下你想要的结果
 
@@ -32,7 +31,7 @@ Ollama 地址必须能被应用的**后端服务**访问。手机上的 `localho
 操作；手机无法访问服务器的本地登录回调。不要把凭证粘贴到浏览器界面。
 
 回到任务，确认权限和期望输出，再启动。[手机私有访问](./mobile-access.md)使用同一个网页界面。
-可选的原生 Codex 编程执行器有[独立的平台要求](./chatgpt-connection.md#optional-governed-coding-runtime-development-branch)；
+可选的原生 Codex 编程执行器有[独立的平台要求](./chatgpt-connection.md#optional-governed-coding-runtime)；
 连接模型不会自动启用它。
 
 如果模型未报告令牌用量，任务及其子任务会在进一步调用前暂停，已有记录
@@ -41,4 +40,4 @@ Ollama 地址必须能被应用的**后端服务**访问。手机上的 `localho
 
 ## 可选编程环境安装
 
-开发分支的容器安装向导提供独立、默认关闭的 **Codex 编程工作进程** 选项。需要 Linux x64 引擎、Compose 2.24.4 或更新版本以及终端权限。选择代码工具包不会启用该选项。安装后连接符合条件的账户；其他任务继续使用所选服务商。使用 AppArmor 的主机需要管理员加载随附的配置。请参阅[安装要求](./self-hosting.md#optional-coding-workers)。完整功能的发布验收尚未完成。
+容器安装向导提供独立、默认关闭的 **Codex 编程工作进程** 选项。需要 Linux x64 引擎、Compose 2.24.4 或更新版本以及终端权限。选择代码工具包不会启用该选项。安装后连接符合条件的账户；其他任务继续使用所选服务商。使用 AppArmor 的主机需要管理员加载随附的配置。请参阅[安装要求](./self-hosting.md#optional-coding-workers)。

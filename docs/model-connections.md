@@ -2,8 +2,7 @@
 
 [English](./model-connections.md) · [Türkçe](./model-connections.tr.md) · [Deutsch](./model-connections.de.md) · [Русский](./model-connections.ru.md) · [简体中文](./model-connections.zh-CN.md) · [繁體中文](./model-connections.zh-TW.md) · [العربية](./model-connections.ar.md)
 
-> Development preview: this guide describes the guided connection branch.
-> The released v0.3.13 setup package does not include this flow.
+> For v0.4.0 and later. Earlier setup bundles do not include this flow.
 
 ## Start with the result you want
 
@@ -37,7 +36,7 @@ Never paste transferred credentials into the browser.
 
 Return to your job, review permissions and output requirements, then press
 **Start**. [Private phone access](./mobile-access.md) uses the same web interface.
-Optional native Codex coding has [separate platform requirements](./chatgpt-connection.md#optional-governed-coding-runtime-development-branch);
+Optional native Codex coding has [separate platform requirements](./chatgpt-connection.md#optional-governed-coding-runtime);
 connecting a model does not enable it automatically.
 
 If a model does not report token usage, the job and its subtasks pause before
@@ -47,4 +46,4 @@ when token usage is complete.
 
 ## Optional coding installation
 
-The development container installer has a separate, unchecked **Codex coding worker** option. It requires a Linux x64 engine, Compose 2.24.4 or later and terminal permission. Selecting the Code tool pack does not enable it. Connect an eligible account after setup; other tasks retain your chosen provider. AppArmor hosts require the bundled profile to be loaded by an administrator. See the [installation requirements](./self-hosting.md#optional-coding-workers). Whole-feature release acceptance is still pending.
+The container installer has a separate, unchecked **Codex coding worker** option. It requires a Linux x64 engine, Compose 2.24.4 or later and terminal permission. Selecting the Code tool pack does not enable it. Connect an eligible account after setup; other tasks retain your chosen provider. AppArmor hosts require the bundled profile to be loaded by an administrator. See the [installation requirements](./self-hosting.md#optional-coding-workers).
