@@ -5,6 +5,7 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+import type { ModelCatalogModelExecutionLocation } from './modelCatalogModelExecutionLocation';
 import type { ModelProviderId } from './modelProviderId';
 import type { ModelTier } from './modelTier';
 
@@ -16,5 +17,7 @@ export interface ModelCatalogModel {
   description: string;
   /** Whether the model can execute the function tools required by an agent run. */
   supportsTools: boolean;
+  /** Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation. */
+  executionLocation?: ModelCatalogModelExecutionLocation;
   isDefault: boolean;
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PlanInferenceError } from "@workspace/ai-server";
+import { PlanInferenceError, OllamaBoundaryError } from "@workspace/ai-server";
 import {
   ModelRoutesExhaustedError,
   ModelAdmissionDeniedError,
@@ -10,6 +10,41 @@ import {
   runWithModelFallback,
 } from "./model-fallback";
 import type { ModelRouteCandidate } from "./model-select";
+
+test("wrapped Ollama boundary failures cannot become transport retries or provider fallback", async () => {
+  const cause = new OllamaBoundaryError("server_changed");
+  const failure = Object.assign(new Error("provider unavailable", { cause }), {
+    status: 503,
+  });
+  assert.equal(classifyRecoverableModelError(failure), null);
+  let calls = 0;
+  await assert.rejects(
+    runWithModelFallback({
+      routes: [
+        {
+          modelId: "ollama:owned:latest",
+          provider: "ollama",
+          source: "task_pin",
+          tier: "standard",
+          usedFallback: false,
+        },
+        {
+          modelId: "openai:gpt-5.6-sol",
+          provider: "openai",
+          source: "fallback",
+          tier: "standard",
+          usedFallback: true,
+        },
+      ],
+      execute: async () => {
+        calls++;
+        throw failure;
+      },
+    }),
+    (error) => error === failure,
+  );
+  assert.equal(calls, 1);
+});
 
 test("plan quota or interrupted usage cannot trigger another billable attempt or paid route", async () => {
   for (const kind of [
