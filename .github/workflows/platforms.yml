@@ -88,6 +88,23 @@ jobs:
         run: pnpm exec playwright install chromium
       - name: Build application and check types
         run: pnpm run build
+      - name: Prove pinned Ollama local-only and cloud-disabled boundary
+        timeout-minutes: 15
+        env:
+          ACOS_OLLAMA_BOUNDARY_SMOKE: "1"
+        run: |
+          curl --fail --location --retry 2 --max-time 600 \
+            --output "$RUNNER_TEMP/ollama-v0.18.0-darwin.tgz" \
+            https://github.com/ollama/ollama/releases/download/v0.18.0/ollama-darwin.tgz
+          pnpm test:ollama:native "$RUNNER_TEMP/ollama-v0.18.0-darwin.tgz" "$RUNNER_TEMP/ollama-local-boundary.json"
+      - name: Preserve released Ollama boundary receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ollama-local-boundary-${{ matrix.platform }}
+          path: ${{ runner.temp }}/ollama-local-boundary.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Install PostgreSQL 17 for disposable restore acceptance
         run: |
           brew install postgresql@17
