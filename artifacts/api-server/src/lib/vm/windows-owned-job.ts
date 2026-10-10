@@ -16,6 +16,9 @@ import { registerOwnedAgentRuntime } from "../orchestrator/owned-agent-runtimes"
 import { WINDOWS_OWNED_JOB_SOURCE } from "./windows-owned-job-source";
 
 const executeFile = promisify(execFile);
+// Fixed, credential-free PowerShell/.NET preparation only. Keep trusted test
+// fixture preparation on the same allowance; launch and cleanup are separate.
+export const WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS = 60_000;
 const COMPILE = String.raw`
 $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition ([System.IO.File]::ReadAllText($env:ACOS_JOB_SOURCE)) -OutputAssembly $env:ACOS_JOB_BINARY -OutputType ConsoleApplication
@@ -67,7 +70,7 @@ export async function compileWindowsOwnedJob(directory: string) {
         windowsHide: true,
         // The frozen full Windows suite measured 31.05s for this public-source,
         // credential-free compilation. Keep a bounded cold-start allowance.
-        timeout: 60_000,
+        timeout: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
         maxBuffer: 16_384,
         env: {
           SystemRoot: systemRoot,
