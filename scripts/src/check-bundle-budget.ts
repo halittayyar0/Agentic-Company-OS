@@ -1,3 +1,7 @@
+import {
+  measureOllamaPrivacyBundle,
+  OLLAMA_PRIVACY_SOURCES,
+} from "./ollama-privacy-bundle-budget";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -310,8 +314,37 @@ const settingsRouteAssets = codeAssets.filter(
 if (settingsRouteAssets.length !== 1) {
   throw new Error("Expected one Settings route asset.");
 }
+const currentBundleAssets = codeAssets.map((asset) => ({
+  fileName: asset.fileName,
+  contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+}));
+const currentBundleManifest = JSON.parse(
+  readFileSync(
+    resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+    "utf8",
+  ),
+);
+const ollamaPrivacy = measureOllamaPrivacyBundle(
+  currentBundleAssets,
+  currentBundleManifest,
+  Object.fromEntries(
+    OLLAMA_PRIVACY_SOURCES.map((module) => [
+      module,
+      readFileSync(
+        resolve(
+          sourceDirectory,
+          module.slice("artifacts/agentic-company-os/src/".length),
+        ),
+        "utf8",
+      ),
+    ]),
+  ),
+);
 const firstTaskModelCheckGzipBytes =
-  Math.max(0, settingsRouteAssets[0].gzipBytes - 4_698) +
+  Math.max(
+    0,
+    settingsRouteAssets[0].gzipBytes - ollamaPrivacy.settingsGzip - 4_698,
+  ) +
   Math.max(
     0,
     Math.max(...settingsLocaleAssets.map((asset) => asset.gzipBytes)) - 2_624,
@@ -360,6 +393,7 @@ const connection = measureConnectionBundle(
     fileName: asset.fileName,
     contents: readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
+  currentBundleManifest,
 );
 const inferenceAccounting = measureInferenceAccountingBundle(
   codeAssets.map((asset) => ({
@@ -978,6 +1012,7 @@ if (
     projectStartRecovery.globalGzip -
     inferenceAccounting.gzip -
     connection.gzip -
+    ollamaPrivacy.gzip -
     composerDraft.gzip -
     codingRecovery.gzip -
     usageReportingGrowth.gzip -
@@ -993,7 +1028,7 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code after bounded feature accounting (${totalCodeGzipBytes - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
@@ -1003,6 +1038,7 @@ if (
     projectStartRecovery.globalRaw -
     inferenceAccounting.raw -
     connection.raw -
+    ollamaPrivacy.raw -
     composerDraft.raw -
     codingRecovery.raw -
     usageReportingGrowth.raw -
@@ -1012,7 +1048,7 @@ if (
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `raw code after bounded feature accounting (${totalCodeRawBytes - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - connection.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - connection.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
@@ -1022,6 +1058,7 @@ if (
     projectStartRecovery.globalGzip -
     inferenceAccounting.gzip -
     connection.gzip -
+    ollamaPrivacy.gzip -
     composerDraft.gzip -
     codingRecovery.gzip -
     usageReportingGrowth.gzip -
@@ -1031,7 +1068,7 @@ if (
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `gzip code after bounded feature accounting (${totalCodeGzipBytes - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -1213,4 +1250,8 @@ console.log(
 
 console.log(
   `All operator recovery language packs: ${formatBytes(operatorLocaleAssets.reduce((sum, asset) => sum + asset.rawBytes, 0))} raw / ${formatBytes(operatorLocaleAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0))} gzip.`,
+);
+
+console.log(
+  `Ollama privacy delta: ${ollamaPrivacy.raw} raw / ${ollamaPrivacy.gzip} gzip bytes (2 KB / 900 bytes cap); Settings share ${ollamaPrivacy.settingsRaw} raw / ${ollamaPrivacy.settingsGzip} gzip (600 / 200 cap), excluded from older first-task accounting. Existing base, total, asset, CSS and language ceilings retained.`,
 );
