@@ -50,6 +50,10 @@ jobs:
       - name: Install browser for native and UI tests
         run: pnpm exec playwright install chromium
       - name: Test native runtime and filesystem behavior
+        env:
+          # Node 24 can abort while reclaiming PGlite WASM import wrappers.
+          # Apply the existing test-child workaround; production is unaffected.
+          TEST_DISABLE_WASM_CODE_GC: "1"
         run: pnpm test
 
   native_runtime:
