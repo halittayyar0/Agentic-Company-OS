@@ -69,6 +69,16 @@ test("owned daemon startup evidence survives cleanup without publishing its outp
         runnerStarted: true,
         gpuDiscoveryCompleted: false,
       },
+      runnerDetails: {
+        listenerAnnounced: false,
+        dummyModelInitialized: false,
+        deviceInfoGathered: false,
+        metalDeviceEnumerated: false,
+        embeddedMetalLibrarySelected: false,
+        metalLibraryLoaded: false,
+        metalSourceCompiled: false,
+        discoveryFailed: false,
+      },
     });
     assert.ok(!JSON.stringify(beforeCleanup).includes(privateMarker));
     assert.ok(!JSON.stringify(beforeCleanup).includes(root));
@@ -82,10 +92,77 @@ test("owned daemon startup evidence survives cleanup without publishing its outp
     const afterCleanup = capture!(supervisor);
     assert.equal((afterCleanup.runtime as { running: boolean }).running, false);
     assert.deepEqual(afterCleanup.milestones, beforeCleanup.milestones);
+    assert.deepEqual(afterCleanup.runnerDetails, beforeCleanup.runnerDetails);
   } finally {
     await supervisor.kill("owned-ollama");
     await rm(root, { recursive: true });
   }
+});
+
+test("pinned child runner phases retain only booleans and no private log data", () => {
+  const privateMarker = "private-fixture-token-and-home";
+  const output = [
+    `private config ${privateMarker}`,
+    "2026/10/10 22:00:00 Server listening on 127.0.0.1:54321",
+    'time=2026-10-10T22:00:00Z level=DEBUG source=runner.go:1389 msg="dummy model load took" duration=1s',
+    'time=2026-10-10T22:00:00Z level=DEBUG source=runner.go:1394 msg="gathering device infos took" duration=1s',
+    `ggml_metal_device_init: GPU name: ${privateMarker}`,
+    "ggml_metal_library_init: using embedded metal library",
+    "ggml_metal_library_init: loaded in 1.234 sec",
+    "ggml_metal_library_init_from_source: compiled in 0.123 sec",
+    `time=2026-10-10T22:00:00Z level=INFO source=runner.go:464 msg="failure during GPU discovery" error="${privateMarker}"`,
+  ].join("\n");
+  const captured = smoke.captureOwnedOllamaStartupEvidence({
+    snapshot: () => ({
+      name: "owned-ollama",
+      pid: 12345,
+      running: true,
+      exitCode: null,
+      signal: null,
+    }),
+    logs: () => ({ stdout: "", stderr: output }),
+  });
+  assert.deepEqual(Reflect.get(captured, "runnerDetails"), {
+    listenerAnnounced: true,
+    dummyModelInitialized: true,
+    deviceInfoGathered: true,
+    metalDeviceEnumerated: true,
+    embeddedMetalLibrarySelected: true,
+    metalLibraryLoaded: true,
+    metalSourceCompiled: true,
+    discoveryFailed: true,
+  });
+  assert.ok(!JSON.stringify(captured).includes(privateMarker));
+  assert.ok(!JSON.stringify(captured).includes("54321"));
+});
+
+test("runner evidence does not infer phases from unrelated or incomplete text", () => {
+  const captured = smoke.captureOwnedOllamaStartupEvidence({
+    snapshot: () => ({
+      name: "owned-ollama",
+      pid: 12345,
+      running: false,
+      exitCode: 1,
+      signal: null,
+    }),
+    logs: () => ({
+      stdout: "Server listening on an unrelated service\n",
+      stderr:
+        'source=unrelated.go:1 msg="dummy model load took"\n' +
+        "ggml_metal_library_init: error compiling source\n" +
+        "ggml_metal_library_init_from_source: compiled in unknown sec\n",
+    }),
+  });
+  assert.deepEqual(Reflect.get(captured, "runnerDetails"), {
+    listenerAnnounced: false,
+    dummyModelInitialized: false,
+    deviceInfoGathered: false,
+    metalDeviceEnumerated: false,
+    embeddedMetalLibrarySelected: false,
+    metalLibraryLoaded: false,
+    metalSourceCompiled: false,
+    discoveryFailed: false,
+  });
 });
 
 test("startup evidence reports an unstarted daemon without reading unrelated output", () => {
@@ -246,6 +323,7 @@ test("released-server probes isolate every inherited provider, home and proxy se
       OPENAI_API_KEY: "fixture-secret",
       OLLAMA_API_KEY: "fixture-secret",
       OLLAMA_HOST: "https://outside.invalid",
+      OLLAMA_DEBUG: "untrusted-inherited-setting",
       OLLAMA_MODELS: "/personal/models",
       USERPROFILE: "/personal/profile",
       HTTPS_PROXY: "http://outside.invalid",
@@ -258,6 +336,7 @@ test("released-server probes isolate every inherited provider, home and proxy se
   assert.equal(environment.OPENAI_API_KEY, undefined);
   assert.equal(environment.OLLAMA_API_KEY, undefined);
   assert.equal(environment.OLLAMA_NO_CLOUD, "1");
+  assert.equal(environment.OLLAMA_DEBUG, "2");
   assert.equal(environment.HOME, home);
   assert.equal(environment.USERPROFILE, home);
   assert.equal(environment.OLLAMA_MODELS, path.join(home, "models"));

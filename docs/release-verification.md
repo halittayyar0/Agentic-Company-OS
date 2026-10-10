@@ -111,3 +111,17 @@ skip; do not lower counts or enlarge exclusions to accept an unexplained failure
 This command does not prove real ChatGPT account inference, physical-phone
 access or 24-hour operation. Follow the complete [release checklist](./release-checklist.md)
 and retain those limits unless their own requirements have been verified.
+
+## Investigating the pinned local-model startup check
+
+The owned Ollama smoke uses a cleared environment, private temporary home,
+disabled cloud access and no model weights. Its trace setting enables the pinned
+runtime's bootstrap child output so a failed receipt can retain fixed
+`runnerDetails` booleans: runner listener, dummy model initialization, device
+information, Metal device/library phases and discovery failure. Raw output,
+paths, device names, configuration and error text never enter that receipt.
+
+A missing phase means it was not observed; it does not prove a particular cause.
+The existing 20-second readiness limit and all privacy assertions still apply.
+These diagnostics neither fix a failing platform nor admit a release. Retain the
+original failure and verify any subsequent correction on its own exact source.

@@ -109,6 +109,9 @@ export function createOllamaSmokeEnvironment(
     OLLAMA_MODELS: path.join(home, "models"),
     OLLAMA_NO_CLOUD: "1",
     OLLAMA_NOHISTORY: "1",
+    // Pinned v0.18.0 forwards bootstrap child output only at trace level.
+    // The owned environment is secret-free; receipts expose fixed booleans only.
+    OLLAMA_DEBUG: "2",
     OLLAMA_KEEP_ALIVE: "0",
     OLLAMA_MAX_LOADED_MODELS: "1",
     HTTP_PROXY: proxy,
@@ -303,6 +306,39 @@ export function captureOwnedOllamaStartupEvidence(
         ),
       gpuDiscoveryCompleted:
         /(?:^|\n)[^\n]*\bsource=routes\.go:\d+ [^\n]*\bmsg="vram-based default context"/u.test(
+          output,
+        ),
+    },
+    runnerDetails: {
+      listenerAnnounced:
+        /(?:^|\n)(?:\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} )?Server listening on 127\.0\.0\.1:\d+(?:\r?\n|$)/u.test(
+          output,
+        ),
+      dummyModelInitialized:
+        /(?:^|\n)[^\n]*\bsource=runner\.go:\d+ [^\n]*\bmsg="dummy model load took"/u.test(
+          output,
+        ),
+      deviceInfoGathered:
+        /(?:^|\n)[^\n]*\bsource=runner\.go:\d+ [^\n]*\bmsg="gathering device infos took"/u.test(
+          output,
+        ),
+      metalDeviceEnumerated: /(?:^|\n)ggml_metal_device_init: GPU name:/u.test(
+        output,
+      ),
+      embeddedMetalLibrarySelected:
+        /(?:^|\n)ggml_metal_library_init: using embedded metal library(?:\r?\n|$)/u.test(
+          output,
+        ),
+      metalLibraryLoaded:
+        /(?:^|\n)ggml_metal_library_init: loaded in \d+(?:\.\d+)? sec(?:\r?\n|$)/u.test(
+          output,
+        ),
+      metalSourceCompiled:
+        /(?:^|\n)ggml_metal_library_init_from_source: compiled in \d+(?:\.\d+)? sec(?:\r?\n|$)/u.test(
+          output,
+        ),
+      discoveryFailed:
+        /(?:^|\n)[^\n]*\bsource=runner\.go:\d+ [^\n]*\bmsg="failure during GPU discovery"/u.test(
           output,
         ),
     },
