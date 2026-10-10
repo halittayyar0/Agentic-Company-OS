@@ -8,6 +8,18 @@ export default {
     "Keep your job here while you connect. Existing jobs waiting for a provider may continue after a connection is saved.",
   local: "Local model",
   localHint: "Use Ollama on this computer or a private server.",
+  allowCloud: "Allow cloud models for this server",
+  cloudUsage:
+    "Cloud models send prompts to Ollama cloud and use that account's applicable usage or charges. Saving does not send a model request.",
+  localLocation: "Runs locally",
+  cloudLocation: "Uses Ollama cloud",
+  unknownLocation: "Location unverified",
+  localRequirement:
+    "Local enforcement requires Ollama 0.18.0 or later. Update this server, then check the connection again.",
+  localVerified:
+    "Local models use this server's hardware. Tool support is shown separately.",
+  cloudOff: "Cloud permission is off for the saved server.",
+  cloudOn: "Cloud permission is on for the saved server.",
   chatgptHint:
     "Use an eligible ChatGPT plan; permission and quota still apply.",
   api: "API key",
