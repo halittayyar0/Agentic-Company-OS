@@ -47,3 +47,7 @@ maliyeti bilinmiyor olarak kalır.
 ## İsteğe bağlı kodlama kurulumu
 
 Container kurulumunda ayrı ve varsayılan olarak kapalı **Codex kodlama çalışanı** seçeneği vardır. Linux x64 motoru, Compose 2.24.4 veya üstü ve terminal izni gerekir. Kod araç paketini seçmek bunu etkinleştirmez. Uygun hesabını kurulumdan sonra bağla; diğer görevler seçtiğin sağlayıcıda kalır. AppArmor sunucusunda yöneticinin paketteki profili yüklemesi gerekir. [Kurulum gereksinimlerine](./self-hosting.md#optional-coding-workers) bak.
+
+## Yerel model verimliliği (geliştirme dalı)
+
+Araç kullanılan işlerde, düşünme destekli yerel modellere varsayılan olarak `reasoning_effort: none` gönderilir. Gelişmiş API çağrıları `localReasoningEffort` ile bunu seçebilir. Araçsız sohbet modelin varsayılanını kullanır; bulut modellerine bu ayar eklenmez. Destek ve sonuç modele bağlıdır. Kısaltılan ortak iç politika İngilizcedir; seçtiğin dil ve yerelleştirilmiş veya özel rol metni korunur.

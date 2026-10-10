@@ -28,6 +28,13 @@ changes. [Local models, private addresses and cloud permission](./local-models.m
 
 ## Review before starting
 
+In the development branch, local thinking models receive `reasoning_effort: none` by default during tool
+workflows, to preserve the output budget for actions. Advanced API callers can
+set `localReasoningEffort` explicitly. Plain chat without tools keeps the model
+default; cloud models keep their existing behavior. Support and results depend
+on the model. Shared internal policy is concise English; your selected language
+and complete localized/custom role playbook remain in the request.
+
 Discovered, connected and tested are different states. The explicit model test
 in advanced Settings sends a request; saving does not. Existing jobs already
 waiting for a provider may continue after saving. If a save is unconfirmed,

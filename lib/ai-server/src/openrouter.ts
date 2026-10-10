@@ -484,6 +484,9 @@ export interface UnifiedChatCompletionParams {
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
   tools?: OpenAI.Chat.Completions.ChatCompletionTool[];
   maxTokens?: number;
+  /** Local Ollama thinking models only. Tool workflows default to none to keep
+   * reasoning from consuming the output budget before an action is produced. */
+  localReasoningEffort?: "none" | "low" | "medium" | "high";
   responseFormat?: { type: "json_object" | "text" };
   signal?: AbortSignal;
   /** Diagnostics can opt out of SDK retries to bound billable attempts. */
@@ -804,6 +807,16 @@ export async function createChatCompletion(
             messages,
             tools: tools && tools.length > 0 ? tools : undefined,
             max_tokens: maxTokens,
+            ...(request.boundary === "local" && request.supportsThinking
+              ? {
+                  // Ollama 0.18 supports "none"; the pinned OpenAI SDK's
+                  // older enum does not. Limit this extension to this field.
+                  reasoning_effort: (params.localReasoningEffort ??
+                    (tools?.length
+                      ? "none"
+                      : undefined)) as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming["reasoning_effort"],
+                }
+              : {}),
             ...(responseFormat ? { response_format: responseFormat } : {}),
           },
           {

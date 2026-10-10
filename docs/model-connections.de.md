@@ -49,3 +49,7 @@ auch wenn der Tokenverbrauch vollständig gemeldet wurde.
 ## Optionale Einrichtung für Programmieraufgaben
 
 Der Container-Installer bietet eine separate, zunächst deaktivierte Option **Codex für Programmieraufgaben**. Sie erfordert eine Linux-x64-Engine, Compose ab 2.24.4 und Terminalzugriff. Das Werkzeugpaket Code aktiviert sie nicht. Verbinde nach der Einrichtung ein berechtigtes Konto; andere Aufgaben nutzen weiterhin deinen gewählten Anbieter. Bei AppArmor muss die Administration das mitgelieferte Profil laden. Siehe die [Installationsvoraussetzungen](./self-hosting.md#optional-coding-workers).
+
+## Effizienz lokaler Modelle (Entwicklungszweig)
+
+Bei Werkzeugaufrufen erhalten lokale Modelle mit Denkfunktion standardmäßig `reasoning_effort: none`. API-Aufrufer können `localReasoningEffort` ausdrücklich setzen. Chats ohne Werkzeuge behalten den Modellstandard; Cloud-Modelle erhalten diese Einstellung nicht. Unterstützung und Ergebnis hängen vom Modell ab. Die kurze gemeinsame interne Richtlinie ist Englisch; die gewählte Sprache und der vollständige lokalisierte oder eigene Rollentext bleiben erhalten.

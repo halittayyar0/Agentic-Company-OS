@@ -607,6 +607,7 @@ export interface OllamaInferenceRequest {
   readonly generation: number;
   readonly boundary: Exclude<OllamaExecutionLocation, "unknown">;
   readonly upstreamModel: string;
+  readonly supportsThinking: boolean;
   readonly client: OpenAI;
 }
 
@@ -733,6 +734,7 @@ export async function prepareOllamaInferenceRequest(
   return Object.freeze({
     ...authority,
     upstreamModel,
+    supportsThinking: found.tier === "reasoning",
     client: guardedOllamaClient(authority, upstreamModel, beforeFetch),
   });
 }
