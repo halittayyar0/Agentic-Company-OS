@@ -97,6 +97,7 @@ test("resume is fail-closed and accepts only a question-bound user_input wait", 
     "approval_expired",
     "approval_rejected",
     "approval_outcome_unknown",
+    "operation_outcome_unknown",
     null,
   ];
   const tasks = await db
@@ -135,6 +136,28 @@ test("resume is fail-closed and accepts only a question-bound user_input wait", 
   assert.equal(resumed.blockedReason, null);
 
   for (const blockedTask of tasks.slice(1)) {
+    const detail = await request(
+      server.port,
+      "GET",
+      `/api/tasks/${blockedTask.id}`,
+    );
+    assert.equal(detail.status, 200, detail.body);
+    assert.equal(
+      JSON.parse(detail.body).blockedReason,
+      blockedTask.blockedReason,
+    );
+    const list = await request(
+      server.port,
+      "GET",
+      `/api/tasks?ownerAgentId=${owner.id}`,
+    );
+    assert.equal(list.status, 200, list.body);
+    assert.equal(
+      JSON.parse(list.body).find(
+        (task: { id: number }) => task.id === blockedTask.id,
+      ).blockedReason,
+      blockedTask.blockedReason,
+    );
     const denied = await request(
       server.port,
       "POST",

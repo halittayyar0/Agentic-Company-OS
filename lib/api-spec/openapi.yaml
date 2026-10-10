@@ -6504,6 +6504,7 @@ components:
           approval_rejected,
           approval_expired,
           approval_outcome_unknown,
+          operation_outcome_unknown,
           approval_action_failed,
           owner_inactive,
         ]
