@@ -75,6 +75,14 @@ weights, checks native and compatibility local-selector rejections, and checks t
 cloud-disabled requests do not reach its owned remote/proxy peer. The receipt
 records version, archive/binary digests, request outcomes and process/home cleanup.
 
+A failed startup also records the daemon's observed running/exit state before
+cleanup and fixed startup milestones: listener announcement, GPU discovery,
+runner start and completed GPU discovery. Raw process output, environment values
+and private home paths are excluded. A listener announcement alone does not prove
+that HTTP requests succeeded. The original error, readiness deadline and failed
+result are preserved; these milestones help investigate a failure without
+declaring its cause or treating it as a successful privacy test.
+
 It does not use a person's Ollama profile or credentials. It does not prove a
 successful model completion, third-party cloud account usage, system-wide network
 isolation, physical-phone behavior or a 24-hour run. CI runs the smoke in the

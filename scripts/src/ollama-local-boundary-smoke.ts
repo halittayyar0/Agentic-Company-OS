@@ -272,6 +272,43 @@ export async function stopOwnedOllamaProcesses(
   );
 }
 
+export function captureOwnedOllamaStartupEvidence(
+  supervisor: Pick<ProcessSupervisor, "snapshot" | "logs">,
+) {
+  const snapshot = supervisor.snapshot("owned-ollama");
+  if (!snapshot) return { captured: false } as const;
+  const { stdout, stderr } = supervisor.logs("owned-ollama");
+  const output = stdout + "\n" + stderr;
+  // Only fixed upstream startup milestones leave the owned process. Raw output
+  // can contain its private home and configuration; never include it in receipts.
+  return {
+    captured: true,
+    runtime: {
+      running: snapshot.running,
+      exitCode: snapshot.exitCode,
+      signal: snapshot.signal,
+    },
+    milestones: {
+      listenerAnnounced:
+        /(?:^|\n)[^\n]*\bsource=routes\.go:\d+ [^\n]*\bmsg="Listening on /u.test(
+          output,
+        ),
+      gpuDiscoveryStarted:
+        /(?:^|\n)[^\n]*\bsource=runner\.go:\d+ [^\n]*\bmsg="discovering available GPUs/u.test(
+          output,
+        ),
+      runnerStarted:
+        /(?:^|\n)[^\n]*\bsource=server\.go:\d+ [^\n]*\bmsg="starting runner"/u.test(
+          output,
+        ),
+      gpuDiscoveryCompleted:
+        /(?:^|\n)[^\n]*\bsource=routes\.go:\d+ [^\n]*\bmsg="vram-based default context"/u.test(
+          output,
+        ),
+    },
+  };
+}
+
 export async function runOwnedOllamaExtraction(
   supervisor: Pick<ProcessSupervisor, "start" | "snapshot">,
   spec: Omit<ManagedProcessSpec, "name">,
@@ -340,6 +377,8 @@ export async function runOllamaLocalBoundarySmoke(
     | undefined;
   let binarySha256: string | undefined;
   let daemonPid: number | null = null;
+  let startupEvidence:
+    ReturnType<typeof captureOwnedOllamaStartupEvidence> | undefined;
   const observations: { route: string; status: number; kind: string }[] = [];
   const peer = createServer((request, response) => {
     if (request.url === "/owned-positive-control") positiveControls++;
@@ -499,6 +538,11 @@ export async function runOllamaLocalBoundarySmoke(
       binarySha256,
     );
     passed = true;
+  } catch (error) {
+    // Capture the observed state before termination changes it. Retain the
+    // original error and the existing startup/probe deadlines and assertions.
+    startupEvidence = captureOwnedOllamaStartupEvidence(supervisor);
+    throw error;
   } finally {
     ({ runtimeStopped, peerStopped, ownedHomeRemoved } =
       await cleanupOwnedOllama({
@@ -533,6 +577,7 @@ export async function runOllamaLocalBoundarySmoke(
           archiveBytes: pin.bytes,
           binarySha256,
           daemonPid,
+          startupEvidence,
           native,
           observations,
           alias: ALIAS,

@@ -4,6 +4,8 @@ import { mkdtemp, writeFile, readFile, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import test from "node:test";
+import * as smoke from "./ollama-local-boundary-smoke";
+import { ProcessSupervisor } from "./endurance/process-supervisor";
 import {
   createOllamaSmokeEnvironment,
   probeReleasedOllamaBoundary,
@@ -14,6 +16,97 @@ import {
   stopOwnedOllamaProcesses,
   runOwnedOllamaExtraction,
 } from "./ollama-local-boundary-smoke";
+
+test("owned daemon startup evidence survives cleanup without publishing its output or private home", async () => {
+  const capture = Reflect.get(smoke, "captureOwnedOllamaStartupEvidence") as
+    ((supervisor: ProcessSupervisor) => Record<string, unknown>) | undefined;
+  assert.equal(
+    typeof capture,
+    "function",
+    "bounded startup evidence is missing",
+  );
+  const root = await mkdtemp(path.join(os.tmpdir(), "acos-startup-evidence-"));
+  const supervisor = new ProcessSupervisor({
+    runId: path.basename(root),
+    gracefulStopMs: 100,
+    logLimitBytes: 65536,
+  });
+  const privateMarker = "owned-fixture-private-key-value";
+  const script = [
+    `console.error(${JSON.stringify("private home " + root + " secret " + privateMarker)});`,
+    "console.error('time=2026-10-10T00:00:00Z level=INFO source=routes.go:1666 msg=\"Listening on 127.0.0.1:54321 (version 0.18.0)\"');",
+    "console.error('time=2026-10-10T00:00:00Z level=INFO source=runner.go:63 msg=\"discovering available GPUs...\"');",
+    "console.error('time=2026-10-10T00:00:00Z level=INFO source=server.go:430 msg=\"starting runner\"');",
+    "setInterval(() => {}, 1000);",
+  ].join("\n");
+  try {
+    supervisor.start({
+      name: "owned-ollama",
+      command: process.execPath,
+      args: ["-e", script],
+      cwd: root,
+      env: createOllamaSmokeEnvironment(
+        process.env,
+        root,
+        "127.0.0.1:54321",
+        "http://127.0.0.1:54322",
+      ),
+    });
+    await supervisor.waitUntilReady(
+      () =>
+        supervisor
+          .logs("owned-ollama")
+          .stderr.includes('msg="starting runner"'),
+      { timeoutMs: 5000, label: "Owned startup evidence fixture" },
+    );
+    const beforeCleanup = capture!(supervisor);
+    assert.deepEqual(beforeCleanup, {
+      captured: true,
+      runtime: { running: true, exitCode: null, signal: null },
+      milestones: {
+        listenerAnnounced: true,
+        gpuDiscoveryStarted: true,
+        runnerStarted: true,
+        gpuDiscoveryCompleted: false,
+      },
+    });
+    assert.ok(!JSON.stringify(beforeCleanup).includes(privateMarker));
+    assert.ok(!JSON.stringify(beforeCleanup).includes(root));
+    await supervisor.kill("owned-ollama");
+    assert.equal(supervisor.snapshot("owned-ollama")?.running, false);
+    assert.deepEqual(beforeCleanup.runtime, {
+      running: true,
+      exitCode: null,
+      signal: null,
+    });
+    const afterCleanup = capture!(supervisor);
+    assert.equal((afterCleanup.runtime as { running: boolean }).running, false);
+    assert.deepEqual(afterCleanup.milestones, beforeCleanup.milestones);
+  } finally {
+    await supervisor.kill("owned-ollama");
+    await rm(root, { recursive: true });
+  }
+});
+
+test("startup evidence reports an unstarted daemon without reading unrelated output", () => {
+  const capture = Reflect.get(smoke, "captureOwnedOllamaStartupEvidence") as
+    | ((supervisor: Pick<ProcessSupervisor, "snapshot" | "logs">) => unknown)
+    | undefined;
+  assert.equal(
+    typeof capture,
+    "function",
+    "unstarted daemon evidence is missing",
+  );
+  assert.deepEqual(
+    capture!({
+      snapshot: () => undefined,
+      logs: () => {
+        throw new Error("Unrelated output must not be read");
+      },
+    }),
+    { captured: false },
+  );
+});
 
 test("extractor termination failure closes the peer but cannot remove the owned home", async () => {
   const killed: string[] = [];
