@@ -34,3 +34,30 @@ test("task catalog bounds schema payload and cannot expand tool authority", () =
   assert.ok(!catalog.tools.some((t) => t.function.name === "optional_1"));
   assert.ok(catalog.tools.some((t) => t.function.name === "optional_2"));
 });
+
+test("optional tools remain fully usable without sending all descriptions in every turn", () => {
+  const optional = Array.from({ length: 60 }, (_, i) => ({
+    type: "function" as const,
+    function: {
+      name: `optional_${i}`,
+      description: "Complete guidance ".repeat(100),
+      parameters: {
+        type: "object",
+        properties: { input: { type: "string" } },
+        required: ["input"],
+      },
+    },
+  }));
+  const catalog = createTaskToolCatalog(optional);
+  assert.ok(Buffer.byteLength(catalog.index, "utf8") < 1600);
+  for (const tool of optional)
+    assert.ok(catalog.index.includes(tool.function.name));
+  catalog.load(JSON.stringify({ names: ["optional_27"] }));
+  assert.deepEqual(
+    catalog.tools.find((tool) => tool.function.name === "optional_27"),
+    optional[27],
+  );
+  assert.throws(() =>
+    catalog.load(JSON.stringify({ names: ["not_authorized"] })),
+  );
+});

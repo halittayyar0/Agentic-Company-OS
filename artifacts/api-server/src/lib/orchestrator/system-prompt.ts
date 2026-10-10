@@ -38,14 +38,15 @@ import {
   COMPANY_CHANNEL_PROMPT,
 } from "./system-policy";
 
-function escapePromptData(value: unknown, maxChars: number): string {
+function boundPromptData(value: unknown, maxChars: number): string {
   const raw = String(value ?? "").replace(/\u0000/g, "");
-  const bounded =
-    raw.length <= maxChars
-      ? raw
-      : `${raw.slice(0, maxChars)}\n…[${maxChars} karakter sınırında kesildi]`;
+  return raw.length <= maxChars
+    ? raw
+    : `${raw.slice(0, maxChars)}\n…[${maxChars} karakter sınırında kesildi]`;
+}
 
-  return bounded
+function escapePromptData(value: unknown, maxChars: number): string {
+  return boundPromptData(value, maxChars)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -125,17 +126,19 @@ async function describeHierarchy(agent: Agent): Promise<string> {
   const reportBlock =
     reports.length === 0
       ? "<direct_reports>none</direct_reports>"
-      : `<direct_reports shown="${reports.length}" limit="${MAX_DIRECT_REPORTS}">
-${reports
-  .map(
-    (report) => `<agent>
-<id>${report.id}</id>
-<name>${field(report.name, 200)}</name>
-<role>${field(report.role, 300)}</role>
-<status>${field(report.status, 100)}</status>
-</agent>`,
-  )
-  .join("\n")}
+      : `<direct_reports format="json" shown="${reports.length}" limit="${MAX_DIRECT_REPORTS}">
+${field(
+  JSON.stringify({
+    columns: ["id", "name", "role", "status"],
+    rows: reports.map((report) => [
+      report.id,
+      boundPromptData(report.name, 200),
+      boundPromptData(report.role, 300),
+      boundPromptData(report.status, 100),
+    ]),
+  }),
+  MAX_DIRECT_REPORTS * 2_000,
+)}
 </direct_reports>`;
 
   return `<organization_state trust="untrusted-data">

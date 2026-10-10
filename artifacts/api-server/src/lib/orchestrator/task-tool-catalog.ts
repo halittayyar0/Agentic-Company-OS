@@ -41,14 +41,11 @@ export function createTaskToolCatalog(authorized: Tool[]) {
       return [...core, ...selected, loader];
     },
     index:
-      "Additional authorized tools (call load_tools with names before use):\n" +
+      "Additional authorized tools: load_tools(names) loads their full descriptions and schemas before use.\n" +
       authorized
         .filter((tool) => !CORE.has(tool.function.name))
-        .map(
-          (tool) =>
-            `${tool.function.name}: ${(tool.function.description ?? "").replace(/\s+/g, " ").slice(0, 100)}`,
-        )
-        .join("\n"),
+        .map((tool) => tool.function.name)
+        .join(", "),
     load(raw: string): string {
       let input: unknown;
       try {
