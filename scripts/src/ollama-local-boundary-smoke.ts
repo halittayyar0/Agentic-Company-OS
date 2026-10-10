@@ -386,28 +386,16 @@ export async function runOllamaLocalBoundarySmoke(
     );
     const destination = path.join(root, "bin");
     if (process.platform === "win32") {
-      // Fixed inline extraction code avoids changing PowerShell policy. Paths
-      // travel only as environment data; they never become command source.
-      const script = `$ErrorActionPreference='Stop'\nAdd-Type -AssemblyName System.IO.Compression.FileSystem\n$zip=[System.IO.Compression.ZipFile]::OpenRead($env:ACOS_OLLAMA_ARCHIVE)\ntry { $entries=@($zip.Entries | Where-Object { $_.FullName -ceq 'ollama.exe' }); if ($entries.Count -ne 1 -or $entries[0].Length -gt 134217728) { throw 'Unexpected pinned binary entry' }; [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entries[0],(Join-Path $env:ACOS_OLLAMA_DESTINATION 'ollama.exe'),$false) } finally { $zip.Dispose() }\n`;
+      // The full archive was byte-verified above. Extract its fixed daemon entry
+      // with Windows' native tar, avoiding PowerShell/.NET initialization inside
+      // the unchanged extraction window. Paths remain separate process arguments.
       await runOwnedOllamaExtraction(
         supervisor,
         {
-          command: path.join(
-            environment.SystemRoot!,
-            "System32/WindowsPowerShell/v1.0/powershell.exe",
-          ),
-          args: [
-            "-NoProfile",
-            "-NonInteractive",
-            "-EncodedCommand",
-            Buffer.from(script, "utf16le").toString("base64"),
-          ],
+          command: path.join(environment.SystemRoot!, "System32/tar.exe"),
+          args: ["-xf", archive, "-C", destination, pin.entry],
           cwd: root,
-          env: {
-            ...environment,
-            ACOS_OLLAMA_ARCHIVE: archive,
-            ACOS_OLLAMA_DESTINATION: destination,
-          },
+          env: environment,
         },
         30000,
       );
@@ -424,6 +412,10 @@ export async function runOllamaLocalBoundarySmoke(
       );
     }
     const binary = path.join(destination, pin.entry);
+    if (process.platform === "win32") {
+      const extracted = await lstat(binary);
+      assert.ok(extracted.isFile() && extracted.size <= 134217728);
+    }
     binarySha256 = await sha256ExactFile(binary, "Extracted pinned daemon");
     const config = Buffer.from(
       JSON.stringify({
