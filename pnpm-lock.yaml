@@ -67,8 +67,8 @@ catalogs:
       specifier: ^7.3.2
       version: 7.3.6
     zod:
-      specifier: ^3.25.76
-      version: 3.25.76
+      specifier: ^4.6.5
+      version: 4.6.5
 
 overrides:
   source-map-js: 1.2.2
@@ -289,7 +289,7 @@ importers:
         version: 3.10.0(react@19.1.0)
       zod:
         specifier: 'catalog:'
-        version: 3.25.76
+        version: 4.6.5
 
   artifacts/api-server:
     dependencies:
@@ -319,7 +319,7 @@ importers:
         version: 6.2.12
       openai:
         specifier: ^4.104.0
-        version: 4.104.0(zod@3.25.76)
+        version: 4.104.0(zod@4.6.5)
       pino:
         specifier: ^9.14.0
         version: 9.14.0
@@ -331,7 +331,7 @@ importers:
         version: 1.62.1
       zod:
         specifier: 'catalog:'
-        version: 3.25.76
+        version: 4.6.5
     devDependencies:
       '@types/cors':
         specifier: ^2.8.19
@@ -542,13 +542,13 @@ importers:
         version: 7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0)
       zod:
         specifier: 'catalog:'
-        version: 3.25.76
+        version: 4.6.5
 
   lib/ai-server:
     dependencies:
       openai:
         specifier: ^4.104.0
-        version: 4.104.0(zod@3.25.76)
+        version: 4.104.0(zod@4.6.5)
       p-limit:
         specifier: ^7.1.1
         version: 7.3.1
@@ -579,7 +579,7 @@ importers:
     dependencies:
       zod:
         specifier: 'catalog:'
-        version: 3.25.76
+        version: 4.6.5
 
   lib/db:
     dependencies:
@@ -591,13 +591,13 @@ importers:
         version: 0.45.2(@electric-sql/pglite@0.5.8)(@types/pg@8.20.0)(pg@8.22.0)
       drizzle-zod:
         specifier: ^0.8.3
-        version: 0.8.3(drizzle-orm@0.45.2(@electric-sql/pglite@0.5.8)(@types/pg@8.20.0)(pg@8.22.0))(zod@3.25.76)
+        version: 0.8.3(drizzle-orm@0.45.2(@electric-sql/pglite@0.5.8)(@types/pg@8.20.0)(pg@8.22.0))(zod@4.6.5)
       pg:
         specifier: ^8.22.0
         version: 8.22.0
       zod:
         specifier: 'catalog:'
-        version: 3.25.76
+        version: 4.6.5
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -3717,8 +3717,8 @@ packages:
     resolution: {integrity: sha512-xYqdZFUK/VYazNl/oCDYN+3WloWQwMfZxBoiNt6qNyk+xfOdi598muWE42rNZFp1kNOiqW936q5RhUdnpqElSg==}
     engines: {node: '>=18'}
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+  zod@4.6.5:
+    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
 
 snapshots:
 
@@ -5440,10 +5440,10 @@ snapshots:
       '@types/pg': 8.20.0
       pg: 8.22.0
 
-  drizzle-zod@0.8.3(drizzle-orm@0.45.2(@electric-sql/pglite@0.5.8)(@types/pg@8.20.0)(pg@8.22.0))(zod@3.25.76):
+  drizzle-zod@0.8.3(drizzle-orm@0.45.2(@electric-sql/pglite@0.5.8)(@types/pg@8.20.0)(pg@8.22.0))(zod@4.6.5):
     dependencies:
       drizzle-orm: 0.45.2(@electric-sql/pglite@0.5.8)(@types/pg@8.20.0)(pg@8.22.0)
-      zod: 3.25.76
+      zod: 4.6.5
 
   dunder-proto@1.0.1:
     dependencies:
@@ -5985,7 +5985,7 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
-  openai@4.104.0(zod@3.25.76):
+  openai@4.104.0(zod@4.6.5):
     dependencies:
       '@types/node': 18.19.130
       '@types/node-fetch': 2.6.13
@@ -5995,7 +5995,7 @@ snapshots:
       formdata-node: 4.4.1
       node-fetch: 2.7.0
     optionalDependencies:
-      zod: 3.25.76
+      zod: 4.6.5
     transitivePeerDependencies:
       - encoding
 
@@ -6641,4 +6641,4 @@ snapshots:
 
   yoctocolors@2.2.0: {}
 
-  zod@3.25.76: {}
+  zod@4.6.5: {}
