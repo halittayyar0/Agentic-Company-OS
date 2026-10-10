@@ -15,7 +15,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   ProcessSupervisor,
-  executeBoundedCommand,
+  type ManagedProcessSpec,
 } from "./endurance/process-supervisor";
 import { sha256ExactFile } from "./endurance/native-runtime-provenance";
 
@@ -259,6 +259,40 @@ export async function cleanupOwnedOllama(actions: {
   return { runtimeStopped, peerStopped, ownedHomeRemoved };
 }
 
+export async function stopOwnedOllamaProcesses(
+  supervisor: Pick<ProcessSupervisor, "kill" | "snapshots">,
+) {
+  const stopped = await Promise.allSettled([
+    supervisor.kill("owned-ollama"),
+    supervisor.kill("owned-extractor"),
+  ]);
+  return (
+    stopped.every((result) => result.status === "fulfilled") &&
+    supervisor.snapshots().every((item) => !item.running)
+  );
+}
+
+export async function runOwnedOllamaExtraction(
+  supervisor: Pick<ProcessSupervisor, "start" | "snapshot">,
+  spec: Omit<ManagedProcessSpec, "name">,
+  timeoutMs: number,
+) {
+  assert.ok(Number.isFinite(timeoutMs) && timeoutMs > 0);
+  supervisor.start({ ...spec, name: "owned-extractor" });
+  const deadline = Date.now() + timeoutMs;
+  while (supervisor.snapshot("owned-extractor")?.running) {
+    assert.ok(Date.now() < deadline, "owned_extraction_timeout");
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(50, Math.max(1, deadline - Date.now()))),
+    );
+  }
+  assert.equal(
+    supervisor.snapshot("owned-extractor")?.exitCode,
+    0,
+    "owned_extraction_failed",
+  );
+}
+
 export async function runOllamaLocalBoundarySmoke(
   archive: string,
   output: string,
@@ -355,35 +389,39 @@ export async function runOllamaLocalBoundarySmoke(
       // Fixed inline extraction code avoids changing PowerShell policy. Paths
       // travel only as environment data; they never become command source.
       const script = `$ErrorActionPreference='Stop'\nAdd-Type -AssemblyName System.IO.Compression.FileSystem\n$zip=[System.IO.Compression.ZipFile]::OpenRead($env:ACOS_OLLAMA_ARCHIVE)\ntry { $entries=@($zip.Entries | Where-Object { $_.FullName -ceq 'ollama.exe' }); if ($entries.Count -ne 1 -or $entries[0].Length -gt 134217728) { throw 'Unexpected pinned binary entry' }; [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entries[0],(Join-Path $env:ACOS_OLLAMA_DESTINATION 'ollama.exe'),$false) } finally { $zip.Dispose() }\n`;
-      await executeBoundedCommand({
-        command: path.join(
-          environment.SystemRoot!,
-          "System32/WindowsPowerShell/v1.0/powershell.exe",
-        ),
-        args: [
-          "-NoProfile",
-          "-NonInteractive",
-          "-EncodedCommand",
-          Buffer.from(script, "utf16le").toString("base64"),
-        ],
-        cwd: root,
-        environment: {
-          ...environment,
-          ACOS_OLLAMA_ARCHIVE: archive,
-          ACOS_OLLAMA_DESTINATION: destination,
+      await runOwnedOllamaExtraction(
+        supervisor,
+        {
+          command: path.join(
+            environment.SystemRoot!,
+            "System32/WindowsPowerShell/v1.0/powershell.exe",
+          ),
+          args: [
+            "-NoProfile",
+            "-NonInteractive",
+            "-EncodedCommand",
+            Buffer.from(script, "utf16le").toString("base64"),
+          ],
+          cwd: root,
+          env: {
+            ...environment,
+            ACOS_OLLAMA_ARCHIVE: archive,
+            ACOS_OLLAMA_DESTINATION: destination,
+          },
         },
-        timeoutMs: 30000,
-        maxBufferBytes: 65536,
-      });
+        30000,
+      );
     } else {
-      await executeBoundedCommand({
-        command: "/usr/bin/tar",
-        args: ["-xf", archive, "-C", destination, pin.entry],
-        cwd: root,
-        environment,
-        timeoutMs: 180000,
-        maxBufferBytes: 65536,
-      });
+      await runOwnedOllamaExtraction(
+        supervisor,
+        {
+          command: "/usr/bin/tar",
+          args: ["-xf", archive, "-C", destination, pin.entry],
+          cwd: root,
+          env: environment,
+        },
+        180000,
+      );
     }
     const binary = path.join(destination, pin.entry);
     binarySha256 = await sha256ExactFile(binary, "Extracted pinned daemon");
@@ -473,8 +511,7 @@ export async function runOllamaLocalBoundarySmoke(
     ({ runtimeStopped, peerStopped, ownedHomeRemoved } =
       await cleanupOwnedOllama({
         stopRuntime: async () => {
-          await supervisor.kill("owned-ollama");
-          return supervisor.snapshots().every((item) => !item.running);
+          return stopOwnedOllamaProcesses(supervisor);
         },
         stopPeer: async () => {
           peer.closeAllConnections();

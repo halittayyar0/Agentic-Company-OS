@@ -67,7 +67,9 @@ test("HTTP cloud consent binds to the observed revision and private server witho
       `http://127.0.0.1:${address.port}/settings/llm`,
       {
         method: body === undefined ? "GET" : "PUT",
-        headers: { "content-type": "application/json" },
+        // Each state-changing fixture request owns its socket. A busy build
+        // must not turn an idle keep-alive reset into a missing revision step.
+        headers: { "content-type": "application/json", connection: "close" },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       },
     );

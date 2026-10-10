@@ -11,7 +11,70 @@ import {
   requireCloudDisabledRejection,
   cleanupOwnedOllama,
   runOllamaLocalBoundarySmoke,
+  stopOwnedOllamaProcesses,
+  runOwnedOllamaExtraction,
 } from "./ollama-local-boundary-smoke";
+
+test("extractor termination failure closes the peer but cannot remove the owned home", async () => {
+  const killed: string[] = [];
+  let peerClosed = false,
+    homeRemoved = false;
+  await assert.rejects(
+    runOwnedOllamaExtraction(
+      {
+        start: () => ({
+          name: "owned-extractor",
+          pid: 12345,
+          running: true,
+          exitCode: null,
+          signal: null,
+        }),
+        snapshot: () => ({
+          name: "owned-extractor",
+          pid: 12345,
+          running: true,
+          exitCode: null,
+          signal: null,
+        }),
+      },
+      { command: "owned-fixture-command" },
+      1,
+    ),
+    /owned_extraction_timeout/,
+  );
+  const cleanup = await cleanupOwnedOllama({
+    stopRuntime: () =>
+      stopOwnedOllamaProcesses({
+        kill: async (name) => {
+          killed.push(name);
+          if (name === "owned-extractor")
+            throw new Error("fixture timed-out extraction tree is still live");
+        },
+        snapshots: () => [
+          {
+            name: "owned-extractor",
+            pid: 12345,
+            running: true,
+            exitCode: null,
+            signal: null,
+          },
+        ],
+      }),
+    stopPeer: async () => {
+      peerClosed = true;
+      return true;
+    },
+    removeHome: async () => {
+      homeRemoved = true;
+      return true;
+    },
+  });
+  assert.equal(peerClosed, true);
+  assert.equal(homeRemoved, false);
+  assert.ok(killed.includes("owned-extractor"));
+  assert.equal(cleanup.runtimeStopped, false);
+  assert.equal(cleanup.ownedHomeRemoved, false);
+});
 
 test("native execution refuses relative paths, existing receipts and non-pinned archives before creating a runtime", async () => {
   const root = await mkdtemp(

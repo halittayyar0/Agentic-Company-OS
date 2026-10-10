@@ -640,12 +640,15 @@ export function assertOllamaRequestCurrent(
 function guardedOllamaClient(
   authority: OllamaRequestAuthority,
   upstreamModel?: string,
+  beforeFetch?: () => Promise<void>,
 ): OpenAI {
   const captured = Object.freeze({ ...authority });
   return new OpenAI({
     apiKey: "ollama-local",
     baseURL: new URL("/v1", captured.origin).toString(),
     fetch: async (input, init) => {
+      // Apply durable API changes during admission and before every SDK retry.
+      await beforeFetch?.();
       assertOllamaRequestCurrent(captured);
       const url = new URL(String(input));
       if (
@@ -682,6 +685,7 @@ function guardedOllamaClient(
 export async function prepareOllamaInferenceRequest(
   modelId: string,
   signal?: AbortSignal,
+  beforeFetch?: () => Promise<void>,
 ): Promise<OllamaInferenceRequest> {
   signal?.throwIfAborted();
   const cloudModel = resolveOllamaCloudModelId(modelId);
@@ -729,7 +733,7 @@ export async function prepareOllamaInferenceRequest(
   return Object.freeze({
     ...authority,
     upstreamModel,
-    client: guardedOllamaClient(authority, upstreamModel),
+    client: guardedOllamaClient(authority, upstreamModel, beforeFetch),
   });
 }
 

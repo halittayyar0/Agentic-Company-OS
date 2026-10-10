@@ -785,7 +785,15 @@ export async function createChatCompletion(
     }
 
     if (model.startsWith("ollama:") || model.startsWith("ollama-cloud:")) {
-      const request = await prepareOllamaInferenceRequest(model, boundedSignal);
+      const guard = providerRequestGuard;
+      const request = await prepareOllamaInferenceRequest(
+        model,
+        boundedSignal,
+        async () => {
+          await guard?.();
+          boundedSignal.throwIfAborted();
+        },
+      );
       await dispatch();
       assertOllamaRequestCurrent(request);
       let completion: OpenAI.Chat.Completions.ChatCompletion;
