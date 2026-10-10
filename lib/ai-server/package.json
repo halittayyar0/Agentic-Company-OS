@@ -14,7 +14,7 @@
   "dependencies": {
     "openai": "^4.104.0",
     "p-limit": "^7.1.1",
-    "p-retry": "^7.1.0"
+    "p-retry": "^8.0.1"
   },
   "devDependencies": {
     "@types/node": "catalog:",
