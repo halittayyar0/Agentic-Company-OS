@@ -175,7 +175,9 @@ source-change rows, a different owner or a non-draft state are rejected. Other
 tasks use their agent's sandbox working directory.
 
 On Windows, managed source-workspace Git commands enable `core.longpaths` for
-that invocation. Snapshot cloning and source checks therefore support longer
+that invocation. Applying a reviewed snapshot also passes this setting to the
+local Git upload-pack subprocess that reads its pack files. Snapshot cloning,
+source checks and reviewed transfer therefore support longer
 installation and temporary paths, including the workflow's generated branch
 names. This does not change your global or repository Git configuration, grant
 extra permissions, or enable native Windows coding.

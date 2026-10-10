@@ -539,6 +539,10 @@ export async function applySourceChange(id: string, revision: number) {
       await git(row.agentId, row.sourcePath, [
         "fetch",
         "--no-tags",
+        // Local upload-pack reads the reviewed pack in a separate Git process.
+        ...(process.platform === "win32"
+          ? ["--upload-pack=git -c core.longpaths=true upload-pack"]
+          : []),
         row.candidatePath!,
         row.candidateCommit!,
       ]);

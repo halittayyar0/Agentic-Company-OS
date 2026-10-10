@@ -32,10 +32,21 @@ const reviewLockPath = path.join(
   "codex",
   `source-${fixtureId}.lock`,
 );
-// Exercise Git's actual branch-ref lock path even on short hosted Windows roots.
+const reviewPackPath = path.join(
+  sandboxRoot,
+  ".source-reviews",
+  `${fixtureId}-${fixtureId}`,
+  ".git",
+  "objects",
+  "pack",
+  `pack-${"0".repeat(40)}.pack`,
+);
+// Exercise both branch creation and upload-pack even on short Windows roots.
 const windowsPathPadding =
   process.platform === "win32"
-    ? "x".repeat(Math.max(0, 260 - reviewLockPath.length))
+    ? "x".repeat(
+        Math.max(0, 260 - reviewLockPath.length, 260 - reviewPackPath.length),
+      )
     : "";
 process.env.AGENT_SANDBOX_ROOT = sandboxRoot + windowsPathPadding;
 process.env.ALLOW_AGENT_PROCESS_EXEC = "true";
