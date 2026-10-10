@@ -2,6 +2,63 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createTaskToolCatalog } from "./task-tool-catalog";
 
+test("initial task envelope defers guidance and approval schemas without losing authority or parameters", () => {
+  const deferredNames = [
+    "list_skills",
+    "read_skill",
+    "request_approval",
+    "update_task_progress",
+    "request_user_input",
+  ];
+  const authorized = ["calculate", "complete_task", ...deferredNames].map(
+    (name) => ({
+      type: "function" as const,
+      function: {
+        name,
+        description: `Full instructions for ${name}. `.repeat(20),
+        parameters: {
+          type: "object",
+          properties: { input: { type: "string", enum: ["reviewed"] } },
+          required: ["input"],
+          additionalProperties: false,
+        },
+      },
+    }),
+  );
+  const catalog = createTaskToolCatalog(authorized);
+  assert.deepEqual(
+    catalog.tools.map((tool) => tool.function.name),
+    ["calculate", "complete_task", "load_tools"],
+  );
+  for (const name of deferredNames) {
+    assert.ok(catalog.index.split("\n")[1]!.split(", ").includes(name));
+    catalog.load(JSON.stringify({ names: [name] }));
+    assert.deepEqual(
+      catalog.tools.map((tool) => tool.function.name),
+      ["calculate", "complete_task", name, "load_tools"],
+    );
+    assert.strictEqual(
+      catalog.tools.find((tool) => tool.function.name === name),
+      authorized.find((tool) => tool.function.name === name),
+    );
+    const before = catalog.tools;
+    assert.throws(() =>
+      catalog.load(JSON.stringify({ names: [name, "execute_unapproved"] })),
+    );
+    assert.deepEqual(catalog.tools, before);
+  }
+  catalog.load(JSON.stringify({ names: deferredNames }));
+  assert.deepEqual(catalog.tools.slice(2, -1), authorized.slice(2));
+  catalog.load('{"names":["calculate"]}');
+  assert.deepEqual(
+    catalog.tools.map((tool) => tool.function.name),
+    ["calculate", "complete_task", "load_tools"],
+  );
+  const restricted = createTaskToolCatalog([authorized[0]!]);
+  assert.ok(!restricted.index.includes("request_approval"));
+  assert.throws(() => restricted.load('{"names":["request_approval"]}'));
+});
+
 test("task catalog bounds schema payload and cannot expand tool authority", () => {
   const catalog = createTaskToolCatalog(
     [

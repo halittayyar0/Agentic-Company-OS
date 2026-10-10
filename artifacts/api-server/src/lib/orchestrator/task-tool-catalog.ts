@@ -1,15 +1,7 @@
 import type OpenAI from "openai";
 
 type Tool = OpenAI.Chat.Completions.ChatCompletionTool;
-const CORE = new Set([
-  "calculate",
-  "complete_task",
-  "request_user_input",
-  "update_task_progress",
-  "list_skills",
-  "read_skill",
-  "request_approval",
-]);
+const CORE = new Set(["calculate", "complete_task"]);
 const loader: Tool = {
   type: "function",
   function: {

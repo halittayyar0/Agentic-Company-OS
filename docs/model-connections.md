@@ -28,6 +28,12 @@ changes. [Local models, private addresses and cloud permission](./local-models.m
 
 ## Review before starting
 
+Task workflows initially send only calculation, completion and tool loading schemas.
+Other authorized tools, including guides, questions and approval requests, load
+with their full schemas when needed. Loading grants no permission. This reduces
+the initial request size; some workflows need an extra model call, and small
+local models still require a real task test.
+
 In the development branch, local thinking models receive `reasoning_effort: none` by default during tool
 workflows, to preserve the output budget for actions. Advanced API callers can
 set `localReasoningEffort` explicitly. Plain chat without tools keeps the model

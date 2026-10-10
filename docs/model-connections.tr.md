@@ -24,6 +24,12 @@ bağlantı etkin kalabilir.
 
 ## Başlatmadan önce kontrol et
 
+Görevler başlangıçta yalnız hesaplama, tamamlama ve araç yükleme şemalarını
+kullanır. Rehber, soru ve onay araçları dahil diğer yetkili araçlar gerektiğinde
+eksiksiz şemalarıyla yüklenir. Yüklemek izin vermez. İlk istek küçülür; bazı
+akışlar ek model çağrısı gerektirir. Küçük yerel modellerin gerçek bir görevle
+denenmesi gerekir.
+
 Modelin listelenmesi, bağlanması ve denenmesi farklı durumlardır. Gelişmiş
 Ayarlardaki açık model testi istek gönderir; kaydetmek göndermez. Önceden
 başlatılmış, sağlayıcı bekleyen işler bağlantı kaydedilince devam edebilir.

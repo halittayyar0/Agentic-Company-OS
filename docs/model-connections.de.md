@@ -24,6 +24,13 @@ Umgebungsverbindung kann aktiv bleiben.
 
 ## Vor dem Start prüfen
 
+Aufgaben senden anfangs nur die Schemata für Berechnung, Abschluss und
+Werkzeugladen. Weitere erlaubte Werkzeuge, einschließlich Anleitungen, Fragen
+und Freigabeanfragen, werden bei Bedarf vollständig geladen. Laden erteilt
+keine Berechtigung. Die erste Anfrage wird kleiner; manche Abläufe benötigen
+einen zusätzlichen Modellaufruf. Kleine lokale Modelle brauchen weiterhin
+einen Test mit einer echten Aufgabe.
+
 Erkannt, verbunden und getestet sind verschiedene Zustände. Der ausdrückliche
 Modelltest in den erweiterten Einstellungen sendet eine Anfrage; Speichern tut
 das nicht. Bereits gestartete, wartende Aufträge können nach dem Speichern
