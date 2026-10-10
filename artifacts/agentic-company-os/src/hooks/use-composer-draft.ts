@@ -3,6 +3,7 @@ import {
   readComposerDraft,
   writeComposerDraft,
   clearComposerDraft,
+  hasComposerDraftInput,
   type ComposerDraft,
 } from "@/lib/composer-draft";
 // This tab's SPA navigation can preserve editable input even when browser
@@ -38,7 +39,7 @@ export function useComposerDraft<T extends ComposerDraft>(
   const current = useRef(initial.value),
     completed = useRef(false);
   function change(next: T) {
-    if (completed.current) return;
+    if (completed.current) return false;
     current.current = next;
     setValue(next);
     let saved = false;
@@ -49,6 +50,7 @@ export function useComposerDraft<T extends ComposerDraft>(
     }
     editable.set(next.kind, { draft: next, unsaved: !saved });
     setError(!saved);
+    return saved;
   }
   function finish(submitted: T) {
     // Called only after the explicit Start request has a successful receipt.
@@ -64,5 +66,12 @@ export function useComposerDraft<T extends ComposerDraft>(
       /* do not hide a later draft */
     }
   }
-  return { value, error, change, finish, current };
+  return {
+    value,
+    error,
+    change,
+    finish,
+    current,
+    hasRestoredInput: hasComposerDraftInput(initial.value),
+  };
 }

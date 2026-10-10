@@ -26,6 +26,10 @@ test("native wall-clock driver lazily wires portable PostgreSQL into the shared 
     inspectIncompleteResponsibilities: async () => [
       { agentId: 10, attemptState: "lost", attemptNumber: 2 },
     ],
+    inspectResponsibilityGaps: async (signal) => {
+      assert.equal(signal, gapController.signal);
+      return { rootTaskIncluded: true };
+    },
     createBrowserSession: async () => ({
       sample: async () => ({
         runtimeLabel: "Canlı",
@@ -161,6 +165,15 @@ test("native wall-clock driver lazily wires portable PostgreSQL into the shared 
   assert.equal(
     (await driver.provenance()).configuration.runtime,
     "native-postgres",
+  );
+  const gapController = new AbortController();
+  assert.ok(
+    driver.inspectResponsibilityGaps,
+    "Native final-cycle diagnostic forwarding is missing",
+  );
+  assert.deepEqual(
+    await driver.inspectResponsibilityGaps(gapController.signal),
+    { rootTaskIncluded: true },
   );
   assert.deepEqual(await driver.inspectIncompleteResponsibilities?.(), [
     { agentId: 10, attemptState: "lost", attemptNumber: 2 },

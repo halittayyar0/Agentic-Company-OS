@@ -147,9 +147,10 @@ jobs:
   verify:
     name: Format, audit, test, typecheck, and build
     runs-on: ubuntu-latest
-    # Recorded source + browser baselines and the new route matrix exceed
-    # 36 minutes locally, before setup, native database checks and retries.
-    timeout-minutes: 60
+    # A recorded runner needed 28 minutes before UI and reached only 1143/1227
+    # cases after another 32 minutes. Keep the complete suite and its two workers;
+    # allow bounded headroom for runner variance, final checks and cleanup.
+    timeout-minutes: 75
     env:
       CI: true
       AGENT_BROWSER_CHANNEL: chromium
@@ -314,6 +315,33 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Install PostgreSQL 17 for owned reusable-guide acceptance
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          printf 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt %s-pgdg main\n' "$VERSION_CODENAME" | sudo tee /etc/apt/sources.list.d/pgdg-reusable-guides.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends postgresql-17
+          /usr/lib/postgresql/17/bin/pg_restore --version
+
+      - name: Prove seven-language reusable work through real API and workers
+        env:
+          ACOS_REUSABLE_GUIDES_SMOKE: "1"
+          TMPDIR: ${{ runner.temp }}
+        run: pnpm test:guides:native /usr/lib/postgresql/17/bin
+
+      - name: Preserve owned reusable-guide evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: reusable-guides-linux-native-evidence
+          path: |
+            ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-evidence.json
+            ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-cleanup.json
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Run UI release smoke
         run: pnpm exec playwright test --config playwright.config.ts
 
@@ -403,7 +431,16 @@ jobs:
       - name: Prove seven-language first-job connection through real API and workers
         env:
           ACOS_GUIDED_LOCAL_SMOKE: "1"
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
         run: pnpm test:connection:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
+
+      - name: Prove seven-language reusable work through real API and workers
+        env:
+          ACOS_REUSABLE_GUIDES_SMOKE: "1"
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+        run: pnpm test:guides:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
 
       - name: Exercise native PostgreSQL process topology
         run: >-
@@ -442,6 +479,9 @@ jobs:
         with:
           name: windows-native-runtime-evidence
           path: |
+            ${{ runner.temp }}/acos-native-install-proof-*/guided-local-runtime-failure.json
+            ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-evidence.json
+            ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-cleanup.json
             artifacts/endurance-reports/windows-native-smoke.json
             artifacts/endurance-reports/windows-native-wall-clock.json
             artifacts/endurance-reports/windows-native-wall-clock.jsonl

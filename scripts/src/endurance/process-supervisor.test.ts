@@ -5,12 +5,16 @@ import { executeBoundedCommand, ProcessSupervisor } from "./process-supervisor";
 
 const childProgram = `
 const name = process.env.ENDURANCE_PROCESS_NAME;
-process.stdout.write(name + ":ready\\n");
-process.stderr.write(name + ":diagnostic\\n");
 process.on("SIGTERM", () => {
   process.stdout.write(name + ":drained\\n");
   process.exit(0);
 });
+process.stdout.write(name + ":ready\\n");
+process.stderr.write(name + ":diagnostic\\n");
+if (process.env.ENDURANCE_FIXTURE_DELAY_AFTER_READY === "1") {
+  // Keep the readiness-to-stop window open while this child finishes startup.
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300);
+}
 setInterval(() => {}, 1000);
 `;
 test("bounded command cancellation ends the owned process before the ordinary timeout", async () => {
@@ -61,6 +65,7 @@ test("supervisor captures bounded logs and stops only the exact named child", as
       name: "worker-a",
       command: process.execPath,
       args: ["-e", childProgram],
+      env: { ENDURANCE_FIXTURE_DELAY_AFTER_READY: "1" },
     });
     const second = supervisor.start({
       name: "worker-b",

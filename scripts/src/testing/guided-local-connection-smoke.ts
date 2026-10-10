@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { chromium, expect } from "@playwright/test";
 import { runNativeInstallSmoke } from "../setup/native-install-smoke";
+import { createConnectionSaveDiagnostics } from "./connection-save-diagnostics";
 
 // Explicit offline acceptance, not a model-quality test. The real installer owns
 // a new PostgreSQL cluster, API and two workers. Only the model HTTP peer is fake.
@@ -264,6 +265,15 @@ try {
           const page = await context.newPage();
           const pageErrors: string[] = [];
           page.on("pageerror", () => pageErrors.push("pageerror"));
+          const diagnostics = createConnectionSaveDiagnostics(baseUrl);
+          page.on("response", (response) =>
+            diagnostics.observe({
+              url: response.url(),
+              method: response.request().method(),
+              status: response.status(),
+              headers: response.headers(),
+            }),
+          );
           await page.route("**/*", (route) =>
             new URL(route.request().url()).origin === new URL(baseUrl).origin
               ? route.continue()
@@ -271,6 +281,7 @@ try {
           );
           const brief =
             "Use calculate for 17 × 23, report 391, then complete this one task. Do not delegate, create agents, browse or write files.";
+          let phase: "prepare" | "open" | "reopen" | "save" | "run" = "prepare";
           try {
             await page.goto(baseUrl);
             const draft = page.getByRole("textbox", {
@@ -279,6 +290,7 @@ try {
             });
             await expect(draft).toBeVisible();
             await draft.fill(brief);
+            phase = "open";
             await page
               .getByRole("button", { name: s.providerSetupAction, exact: true })
               .click();
@@ -291,6 +303,7 @@ try {
             await expect(draft).toHaveValue(brief);
             await page.reload();
             await expect(draft).toHaveValue(brief);
+            phase = "reopen";
             await page
               .getByRole("button", { name: s.providerSetupAction, exact: true })
               .click();
@@ -301,6 +314,7 @@ try {
             await dialog
               .getByRole("textbox", { name: c.endpoint, exact: true })
               .fill(endpoint);
+            phase = "save";
             await dialog
               .getByRole("button", { name: c.save, exact: true })
               .click();
@@ -331,6 +345,7 @@ try {
               path: path.join(directory, `guided-${locale}.png`),
               fullPage: true,
             });
+            phase = "run";
             await page
               .getByRole("button", { name: h.startProject, exact: true })
               .click();
@@ -387,6 +402,47 @@ try {
               simulatedUsage: true,
             });
             console.log(`Offline guided runtime case passed: ${locale}`);
+          } catch (error) {
+            const visibleControl = (name: string) =>
+              page
+                .getByRole("button", { name, exact: true })
+                .first()
+                .isVisible()
+                .catch(() => null);
+            const [connect, connections, checkAgain] = await Promise.all([
+              visibleControl(s.providerSetupAction),
+              visibleControl(s.connections),
+              visibleControl(s.checkAgain),
+            ]);
+            const failure = {
+              passed: false,
+              scope:
+                "Offline first-job failure observation, not runtime acceptance. Cause unconfirmed.",
+              locale,
+              phase,
+              controls: { connect, connections, checkAgain },
+              ...beforeSource,
+              completedLocales: results.length,
+              connection: diagnostics.snapshot(),
+              pageErrorCount: pageErrors.length,
+              modelRequestCount: requests.length,
+              unexpectedModelRequestCount: unexpected.length,
+            };
+            // The original error and every assertion/deadline remain intact.
+            // Stdout also retains this safe record if artifact collection fails.
+            console.log(JSON.stringify({ guidedConnectionFailure: failure }));
+            try {
+              await writeFile(
+                path.join(directory, "guided-local-runtime-failure.json"),
+                JSON.stringify(failure, null, 2),
+                { flag: "wx", mode: 0o600 },
+              );
+            } catch {
+              console.log(
+                "Offline failure observation file could not be saved",
+              );
+            }
+            throw error;
           } finally {
             await context.close();
           }

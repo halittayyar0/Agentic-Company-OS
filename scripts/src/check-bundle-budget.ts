@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { measureUsageReportingBundleGrowth } from "./usage-reporting-bundle-budget";
@@ -8,6 +8,12 @@ import { measureComposerDraftBundle } from "./composer-draft-bundle-budget";
 import { measureConnectionBundle } from "./connection-bundle-budget";
 import { measureInferenceAccountingBundle } from "./inference-accounting-bundle-budget";
 import { measureProjectStartRecoveryBundle } from "./project-start-recovery-bundle-budget";
+import { measureReusableWorkBundle } from "./reusable-work-bundle-budget";
+import {
+  assertNoExcludedBundleModules,
+  resolveExclusiveBundleAssets,
+} from "./bundle-source-map";
+import { measureReaderMetadataGrowth } from "./reader-metadata-growth";
 
 const outputDirectory = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -26,7 +32,7 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
-function checkExcludedUiSources(): void {
+function checkExcludedUiSources(): string[] {
   const css = readFileSync(resolve(sourceDirectory, "index.css"), "utf8");
   const excludedPaths = new Set<string>();
   for (const [, pattern] of css.matchAll(/@source not "([^"\n]+)";/gu)) {
@@ -69,9 +75,14 @@ function checkExcludedUiSources(): void {
       `Live sources import CSS-excluded UI components:\n${liveImports.join("\n")}`,
     );
   }
+  return [...excludedPaths].map(
+    (path) =>
+      "artifacts/agentic-company-os/src/" +
+      relative(sourceDirectory, path).replaceAll("\\", "/"),
+  );
 }
 
-checkExcludedUiSources();
+const excludedUiSources = checkExcludedUiSources();
 
 const budgets = {
   // Shared route code plus the largest selected pack for each localized route
@@ -172,6 +183,70 @@ const assets = readdirSync(outputDirectory)
 const codeAssets = assets.filter((asset) =>
   /\.(?:css|js)$/iu.test(asset.fileName),
 );
+assertNoExcludedBundleModules(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
+  excludedUiSources,
+);
+const reusableMeasured = measureReusableWorkBundle(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  sourceDirectory,
+);
+const readerModules = ["artifacts/agentic-company-os/src/pages/skills.tsx"];
+const [skillReader] = resolveExclusiveBundleAssets(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
+  readerModules,
+  readerModules,
+);
+// Frozen control2db64b5: skills-C5i47NKm.js, SHAe428e465...; source
+// SHA df6ce0ab... is unchanged. Runtime-body SHA also stays identical after
+// replacing only generated asset hashes and preload indexes. Credit bounded
+// dependency metadata growth, never an existing reader's runtime code.
+const readerMetadata = measureReaderMetadataGrowth(
+  skillReader.contents,
+  readFileSync(resolve(sourceDirectory, "pages/skills.tsx"), "utf8"),
+  {
+    sourceSha:
+      "df6ce0ab551161439c93b1b344ee2a29ebf8a975ceedf0f81624c8e3a47e36e6",
+    bodySha: "8e0164df5b2e4bfee3823c7b84eacbcd50fed7080cf80acd9168f3280ea1d6ff",
+    consumers: 2,
+    raw: 6323,
+    gzip: 2039,
+    rawCap: 200,
+    gzipCap: 75,
+  },
+);
+const reusableWork = {
+  ...reusableMeasured,
+  raw: reusableMeasured.raw + readerMetadata.raw,
+  gzip: reusableMeasured.gzip + readerMetadata.gzip,
+  globalRaw: reusableMeasured.globalRaw + readerMetadata.raw,
+  globalGzip: reusableMeasured.globalGzip + readerMetadata.gzip,
+};
+if (reusableWork.raw > 32000 || reusableWork.gzip > 11500)
+  throw Error(
+    "Selected reusable-work transfer including reader metadata exceeds its independent cap",
+  );
 const projectStartRecovery = measureProjectStartRecoveryBundle(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
@@ -275,6 +350,11 @@ const inferenceLocaleAssets = languagePackAssets(
   "inference-copy-",
   "model usage records",
 );
+const reusableLocaleAssets = languagePackAssets("reuse-", "brief preparation");
+const editorLocaleAssets = languagePackAssets(
+  "editor-",
+  "personal editor recovery",
+);
 const connection = measureConnectionBundle(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
@@ -284,7 +364,9 @@ const connection = measureConnectionBundle(
 const inferenceAccounting = measureInferenceAccountingBundle(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
-    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+    contents:
+      reusableWork.routes.find((route) => route.fileName === asset.fileName)
+        ?.contents ?? readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
 );
 const codingRecovery = measureCodingRecoveryBundle(
@@ -294,13 +376,18 @@ const codingRecovery = measureCodingRecoveryBundle(
     contents:
       inferenceAccounting.routes.find(
         (route) => route.fileName === asset.fileName,
-      )?.contents ?? readFileSync(resolve(outputDirectory, asset.fileName)),
+      )?.contents ??
+      reusableWork.routes.find((route) => route.fileName === asset.fileName)
+        ?.contents ??
+      readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
 );
 const usageReportingGrowth = measureUsageReportingBundleGrowth(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
-    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+    contents:
+      reusableWork.routes.find((route) => route.fileName === asset.fileName)
+        ?.contents ?? readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
 );
 const meetingLocaleAssets = languagePackAssets("meetings-", "project meetings");
@@ -363,6 +450,8 @@ const localeAssetNames = new Set(
     ...codingRecoveryLocaleAssets,
     ...connectionLocaleAssets,
     ...inferenceLocaleAssets,
+    ...reusableLocaleAssets,
+    ...editorLocaleAssets,
     ...computerLocaleAssets,
     ...fileLocaleAssets,
     ...browserLocaleAssets,
@@ -394,6 +483,8 @@ const sharedCodeGzipBytes = sharedCodeAssets.reduce(
 );
 const totalCodeRawBytes =
   sharedCodeRawBytes +
+  Math.max(...reusableLocaleAssets.map((asset) => asset.rawBytes)) +
+  Math.max(...editorLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...inferenceLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...connectionLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...codingRecoveryLocaleAssets.map((asset) => asset.rawBytes)) +
@@ -423,6 +514,8 @@ const totalCodeRawBytes =
   Math.max(...shellLocaleAssets.map((asset) => asset.rawBytes));
 const totalCodeGzipBytes =
   sharedCodeGzipBytes +
+  Math.max(...reusableLocaleAssets.map((asset) => asset.gzipBytes)) +
+  Math.max(...editorLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...inferenceLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...connectionLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...codingRecoveryLocaleAssets.map((asset) => asset.gzipBytes)) +
@@ -641,17 +734,15 @@ const totalMediaRawBytes = mediaAssets.reduce(
 const skillLibraryAssets = codeAssets.filter((asset) =>
   /^(?:skills|skill-draft)-[^/]+\.js$/u.test(asset.fileName),
 );
-const skillLibraryRawBytes = skillLibraryAssets.reduce(
-  (sum, asset) => sum + asset.rawBytes,
-  0,
-);
-const skillLibraryGzipBytes = skillLibraryAssets.reduce(
-  (sum, asset) => sum + asset.gzipBytes,
-  0,
-);
+const skillLibraryRawBytes =
+  skillLibraryAssets.reduce((sum, asset) => sum + asset.rawBytes, 0) -
+  readerMetadata.raw;
+const skillLibraryGzipBytes =
+  skillLibraryAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0) -
+  readerMetadata.gzip;
 if (
-  skillLibraryRawBytes > budgets.skillLibraryRawBytes ||
-  skillLibraryGzipBytes > budgets.skillLibraryGzipBytes
+  skillLibraryRawBytes + readerMetadata.raw > budgets.skillLibraryRawBytes ||
+  skillLibraryGzipBytes + readerMetadata.gzip > budgets.skillLibraryGzipBytes
 ) {
   violations.push(
     `skill library exceeds its 8 KB raw / 2.5 KB gzip feature budget`,
@@ -668,11 +759,13 @@ const customizationCodeAssets = codeAssets.filter((asset) =>
 const customizationRawBytes =
   4_000 +
   customizationCodeAssets.reduce((sum, asset) => sum + asset.rawBytes, 0) +
-  Math.max(...customizationLocaleAssets.map((asset) => asset.rawBytes));
+  Math.max(...customizationLocaleAssets.map((asset) => asset.rawBytes)) -
+  reusableWork.libraryRaw;
 const customizationGzipBytes =
   1_500 +
   customizationCodeAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0) +
-  Math.max(...customizationLocaleAssets.map((asset) => asset.gzipBytes));
+  Math.max(...customizationLocaleAssets.map((asset) => asset.gzipBytes)) -
+  reusableWork.libraryGzip;
 if (
   customizationRawBytes > budgets.customizationRawBytes ||
   customizationGzipBytes > budgets.customizationGzipBytes
@@ -881,6 +974,7 @@ const budgetResumeGlobalGzipBytes =
   budgetResumeGzipBytes - Math.min(900, sharedResumeGzipBytes);
 if (
   totalCodeGzipBytes -
+    reusableWork.globalGzip -
     projectStartRecovery.globalGzip -
     inferenceAccounting.gzip -
     connection.gzip -
@@ -899,12 +993,13 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code after bounded feature accounting (${totalCodeGzipBytes - projectStartRecovery.globalGzip - inferenceAccounting.gzip - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
 if (
   totalCodeRawBytes -
+    reusableWork.globalRaw -
     projectStartRecovery.globalRaw -
     inferenceAccounting.raw -
     connection.raw -
@@ -917,12 +1012,13 @@ if (
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `raw code after bounded feature accounting (${totalCodeRawBytes - projectStartRecovery.globalRaw - inferenceAccounting.raw - connection.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - connection.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
 if (
   totalCodeGzipBytes -
+    reusableWork.globalGzip -
     projectStartRecovery.globalGzip -
     inferenceAccounting.gzip -
     connection.gzip -
@@ -935,7 +1031,7 @@ if (
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `gzip code after bounded feature accounting (${totalCodeGzipBytes - projectStartRecovery.globalGzip - inferenceAccounting.gzip - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - connection.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -1079,6 +1175,9 @@ console.log(
 );
 console.log(
   `Model usage records: ${inferenceAccounting.raw} raw / ${inferenceAccounting.gzip} gzip bytes (8 KB / 3.5 KB independent cap), exact reader wiring including verified sole agent preload metadata ${inferenceAccounting.integrationRaw} raw / ${inferenceAccounting.integrationGzip} gzip (1 KB / 500 bytes cap); all seven packs ${inferenceAccounting.allLocaleRaw} raw / ${inferenceAccounting.allLocaleGzip} gzip (11 KB / 6 KB cap). Exact wiring excluded from older recovery/Keeper credit; no vendor, SDK, CSS or project dependency-array credit. Existing ceilings retained.`,
+);
+console.log(
+  `Reusable work: ${reusableWork.raw} raw / ${reusableWork.gzip} gzip selected transfer (32 KB / 11.5 KB cap); ${reusableWork.globalRaw} raw / ${reusableWork.globalGzip} gzip global credit. Sole new-reader preload suffix ${reusableWork.metadataRaw} raw / ${reusableWork.metadataGzip} gzip (180 / 80 cap); unchanged Skills runtime metadata growth ${readerMetadata.raw} raw / ${readerMetadata.gzip} gzip (200 / 75 cap). Older library credit excludes this same growth; no duplicate, vendor, API or CSS credit.`,
 );
 if (violations.length > 0) {
   throw new Error(

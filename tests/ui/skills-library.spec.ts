@@ -278,9 +278,18 @@ test("light desktop library shows loading and filters by area", async ({
     await gate;
     return route.fulfill({ json: getCapabilityCatalog("en") });
   });
+  // Keep the independent personal library loading while the catalog loads.
+  await page.route("**/api/skills/extensions", async (route) => {
+    await gate;
+    return route.fulfill({ json: [] });
+  });
+  // Exercise the cold language-pack loader alongside both data loaders.
+  await page.route("**/assets/editor-en-*.js", async (route) => {
+    await gate;
+    return route.continue();
+  });
   await page.goto("/skills");
   // Wait for this route, rather than accepting its earlier Suspense loader.
-  // The independent emergency-stop status can also be loading at this point.
   await expect(
     page.getByRole("heading", {
       level: 1,
@@ -288,14 +297,35 @@ test("light desktop library shows loading and filters by area", async ({
       exact: true,
     }),
   ).toBeVisible();
-  await expect(
-    page
-      .getByRole("main")
-      .getByRole("status")
-      .filter({ hasText: /^Loading page$/ }),
-  ).toBeVisible();
+  const personalRegion = page.getByRole("region", {
+    name: "Personal skills and tools",
+    exact: true,
+  });
+  const editorLanguageLoading = personalRegion
+    .locator(':scope > section[role="status"]')
+    .filter({ hasText: /^Loading page$/ });
+  await expect(editorLanguageLoading).toBeVisible();
+  // The personal data loader is independent of its nested language loader.
+  const personalLoading = personalRegion
+    .locator(':scope > p[role="status"]')
+    .filter({ hasText: /^Loading page$/ });
+  await expect(personalLoading).toBeVisible();
+  await expect(personalLoading).toHaveText("Loading page");
+  // The catalog loader is a direct child of this page; personal and lazy
+  // loaders belong to nested sections and must not satisfy this assertion.
+  const catalogLoading = page
+    .getByRole("heading", { level: 1, name: "Skills & tools", exact: true })
+    .locator("..")
+    .locator("..")
+    .locator(':scope > p[role="status"]')
+    .filter({ hasText: /^Loading page$/ });
+  await expect(catalogLoading).toBeVisible();
+  await expect(catalogLoading).toHaveText("Loading page");
   release();
   await expect(page.locator("[data-skill-id]")).toHaveCount(50);
+  await expect(catalogLoading).toHaveCount(0);
+  await expect(personalLoading).toHaveCount(0);
+  await expect(editorLanguageLoading).toHaveCount(0);
   await page
     .getByRole("combobox", { name: "All areas" })
     .selectOption("engineering");

@@ -9,7 +9,8 @@ process.env.NODE_ENV = "test";
 const token = "capability-catalog-test-token-32-characters";
 process.env.OPERATOR_AUTH_TOKEN = token;
 const { default: app } = await import("../app");
-const { dbReady, closeDatabase } = await import("@workspace/db");
+const { dbReady, closeDatabase, db, capabilityInstallationsTable } =
+  await import("@workspace/db");
 test.after(async () => {
   await closeDatabase();
 });
@@ -146,5 +147,47 @@ test("the real catalog route requires authentication and validates every locale"
       await (await fetch(`${url}?locale=en`, { headers })).json(),
     ).skills.length,
     0,
+  );
+  const unsupported = await save({
+    manifest: {
+      schemaVersion: 1,
+      id: "user-unsupported",
+      title: "Unsupported",
+      description: "Unsupported tool",
+      kind: "tool",
+      tool: "not-a-supported-tool",
+      defaults: {},
+    },
+    enabled: false,
+    expectedRevision: 0,
+  });
+  assert.equal(unsupported.status, 400);
+  assert.deepEqual(await unsupported.json(), { code: "CAPABILITY_INVALID" });
+  // Seed a full installed catalog without exhausting the HTTP write limiter.
+  await db.insert(capabilityInstallationsTable).values(
+    Array.from({ length: 99 }, (_, index) => ({
+      id: `user-capacity-${index}`,
+      manifest: { ...manifest, id: `user-capacity-${index}` },
+      enabled: false,
+    })),
+  );
+  const overflow = await save({
+    manifest: { ...manifest, id: "user-capacity-overflow" },
+    enabled: false,
+    expectedRevision: 0,
+  });
+  assert.equal(overflow.status, 400);
+  assert.deepEqual(await overflow.json(), { code: "CAPABILITY_INVALID" });
+  assert.equal(
+    (
+      (await (
+        await fetch(`${url}/extensions`, { headers })
+      ).json()) as unknown[]
+    ).length,
+    100,
+  );
+  assert.equal(
+    (await save({ manifest, enabled: false, expectedRevision: 2 })).status,
+    200,
   );
 });

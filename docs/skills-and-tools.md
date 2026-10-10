@@ -19,6 +19,41 @@ Traditional Chinese and Arabic. It follows the selected workspace language and
 supports Arabic right-to-left layout. Editing a draft changes ordinary project
 text; a guide does not silently replace the operator's scope.
 
+## Reuse a saved project brief
+
+**Upcoming source workflow; not included in the v0.4.0 setup bundle.**
+
+1. Open a project and find **Saved brief**. **Use brief again** prepares another
+   project's editable title and scope. **Prepare personal guide** opens the same
+   text in the personal guide editor, with its local source project identified.
+2. If you already have a draft, choose whether to keep it or use the incoming
+   text. Review the title, instructions and availability before **Save**. A new
+   prepared guide defaults to unavailable for agent discovery; you may explicitly
+   change that choice. Titles over 120 characters require an edit before saving.
+3. In the saved guide's row, choose **Prepare a project**. You can reuse a disabled
+   guide's text without enabling it. Review **Settings**, edit the scope and choose
+   **Start project** when ready. The new job defaults to delivery focused and normal
+   priority; it has its own request identity and execution records.
+
+Preparation transfers only the saved title, brief and narrow source attribution.
+It does not copy results, files, permissions, prior approvals, model connections,
+recurring settings or budgets. Current installation policy remains authoritative.
+A completed source status is not proof that the reused instructions are effective.
+No model is asked to summarize or learn a method during this preparation.
+
+Editable drafts and pending saves are kept separately in this browser tab. If a
+save response is lost, **Check saved contents** reads the saved version. Continue
+only after reviewing the result; an explicit retry sends the same submitted ID
+and version. This checks stored contents, not a durable save-command receipt.
+Later edits remain available. A denied or damaged browser store blocks a new
+submission and warns when reload could lose text. Saved guides live in PostgreSQL;
+tab drafts depend on browser storage.
+
+Preparation, Save and Check create no tasks and make no model calls. Explicit
+Start uses the normal project admission, connection and token/cost limits. Only
+text skills have this handoff; utility tools and executable programs retain their
+own authoring and permission rules.
+
 ## The original 30 work guides
 
 | Area                  | Guides                                                                                                               |

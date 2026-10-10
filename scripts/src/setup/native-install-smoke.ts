@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, realpath, writeFile, readFile } from "node:fs/promises";
+import {
+  appendFile,
+  mkdtemp,
+  realpath,
+  writeFile,
+  readFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -66,6 +72,12 @@ export async function runNativeInstallSmoke(
       "--encoding=UTF8",
       "--locale=C",
     ]);
+    // Every proof client uses authenticated loopback TCP. Distribution builds
+    // can default to a system socket directory unavailable to this owned user.
+    await appendFile(
+      path.join(data, "postgresql.conf"),
+      "\nunix_socket_directories = ''\n",
+    );
     await command("pg_ctl", [
       "-D",
       data,

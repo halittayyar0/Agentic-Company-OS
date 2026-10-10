@@ -10,6 +10,10 @@
 @source not "./components/vm/vm-section.tsx";
 @source not "./components/operations/operations-room-components.test.tsx";
 @source not "./components/ui/tooltip.tsx";
+/* Unit-test examples are not product class names. Name exact files so the
+ * bundle gate can reject stale exclusions or accidental live imports. */
+@source not "./lib/{activity-summary,adaptive-polling,agent-directory-copy,approval-review,avatar-image,browser-workbench,budget-resume-recovery,coding-recovery-copy,coding-recovery-intent,company-room-send,completion-review-view,composer-draft,delegation-conversation,evidence-packet,expert-chat,extension-editor-draft,file-deletion,file-session,format,home-copy,i18n,meeting-command-recovery,meeting-drafts,meeting-turn-recovery,model-search,new-agent-copy,operation-recovery-api,operation-recovery,operations-copy,operations-event-stream,operations-snapshot-cache,operations-view-model,operator-request,project-preparation,project-reuse,project-start-request,record-history,run-trace,skill-draft,terminal-session,trace-copy,workforce-installation,workspace-files}.test.ts";
+@source not "./components/operations/receipt-reconciliation-model.test.ts";
 
 /* The variable face keeps controls and data legible across supported scripts.
  * Non-Latin scripts fall back to the user's platform font. */
@@ -314,20 +318,6 @@
     pointer-events: none;
   }
 
-  .company-canvas {
-    position: relative;
-    background-color: hsl(var(--background));
-    background-image:
-      linear-gradient(hsl(var(--border) / 0.26) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--border) / 0.26) 1px, transparent 1px);
-    background-position: -1px -1px;
-    background-size: 64px 64px;
-  }
-
-  .crt::before {
-    display: none;
-  }
-
   .glass {
     border: 1px solid hsl(var(--border));
     border-radius: calc(var(--radius) + 2px);
@@ -342,16 +332,6 @@
 
   .project-studio {
     container-type: inline-size;
-  }
-
-  .glass-hover:hover {
-    border-color: hsl(var(--primary));
-    box-shadow: none;
-    transform: none;
-  }
-
-  .glow-sm {
-    box-shadow: none;
   }
 
   .radar-dot::after {
@@ -381,13 +361,6 @@
     animation: caret-blink 1s steps(2, start) infinite;
   }
 
-  .execution-rail-scan {
-    left: -6rem;
-    background: hsl(var(--primary));
-    animation: handoff-rail 4.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-    will-change: transform;
-  }
-
   .shimmer {
     background: hsl(var(--muted));
     animation: skeleton-pulse 1.6s ease-in-out infinite alternate;
@@ -409,10 +382,6 @@
     height: 1px;
     background: hsl(var(--primary));
     pointer-events: none;
-  }
-
-  .float-slow {
-    animation: none;
   }
 
   .toggle-elevate,
@@ -459,32 +428,6 @@
 @keyframes caret-blink {
   50% {
     opacity: 0;
-  }
-}
-
-@keyframes handoff-rail {
-  0%,
-  12% {
-    transform: translateX(0);
-    opacity: 0;
-  }
-  24%,
-  78% {
-    opacity: 1;
-  }
-  90%,
-  100% {
-    transform: translateX(calc(100vw + 12rem));
-    opacity: 0;
-  }
-}
-
-@keyframes heartbeat-slide {
-  from {
-    transform: translateX(-120%);
-  }
-  to {
-    transform: translateX(320%);
   }
 }
 

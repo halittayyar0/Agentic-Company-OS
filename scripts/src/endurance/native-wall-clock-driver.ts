@@ -230,6 +230,15 @@ export class NativeWallClockDriver implements WallClockRuntimeDriver {
     return this.requireInner().createBrowserSession();
   }
 
+  inspectResponsibilityGaps(signal?: AbortSignal): Promise<unknown> {
+    const inner = this.requireInner();
+    if (!inner.inspectResponsibilityGaps)
+      return Promise.reject(
+        new Error("Native responsibility diagnostics are unavailable"),
+      );
+    return inner.inspectResponsibilityGaps(signal);
+  }
+
   spendConfiguration() {
     return { ...this.spend.provenance };
   }
