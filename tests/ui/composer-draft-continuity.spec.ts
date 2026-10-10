@@ -264,6 +264,15 @@ test("a skill-prefilled project consumes its navigation seed once and preserves 
   const skill = page.locator('[data-skill-id="csv-quality"]');
   await skill.locator("summary").click();
   await skill.getByRole("button", { name: catalog.copy.use }).click();
+  // The form is editable before its lazy preparation helper arrives. Establish
+  // this case's prefilled state before testing edits made after preparation.
+  await expect(page.locator("input#title")).toHaveValue("CSV quality report");
+  await expect(page.locator("textarea#brief")).toHaveValue(
+    /^Report header issues, missing cells, ragged rows, duplicate values and numeric ranges;/,
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.history.state?.acosSkillDraft))
+    .toBeUndefined();
   await page
     .locator("textarea#brief")
     .fill("My reviewed source and scope 原文");
