@@ -60,3 +60,7 @@ Der Container-Installer bietet eine separate, zunächst deaktivierte Option **Co
 ## Effizienz lokaler Modelle (Entwicklungszweig)
 
 Bei Werkzeugaufrufen erhalten lokale Modelle mit Denkfunktion standardmäßig `reasoning_effort: none`. API-Aufrufer können `localReasoningEffort` ausdrücklich setzen. Chats ohne Werkzeuge behalten den Modellstandard; Cloud-Modelle erhalten diese Einstellung nicht. Unterstützung und Ergebnis hängen vom Modell ab. Die kurze gemeinsame interne Richtlinie ist Englisch; die gewählte Sprache und der vollständige lokalisierte oder eigene Rollentext bleiben erhalten.
+
+## Abschlussprüfung (Entwicklungszweig)
+
+Die Abschlussprüfung vergleicht jede geforderte Aktion mit den Werkzeugaufzeichnungen dieses Aufgabenzyklus. Eine richtige Antwort ersetzt keine verlangte Aktion. Neben den letzten Belegen liest sie begrenzte Werkzeugzähler für den gesamten Zyklus; gekürzte Aufzeichnungen beweisen nicht, dass eine Aktion nie stattgefunden hat. Dafür wird der bestehende Prüfaufruf genutzt. Metadaten und Modellurteil garantieren keine Qualität von Dateien, Tests oder Ergebnissen.

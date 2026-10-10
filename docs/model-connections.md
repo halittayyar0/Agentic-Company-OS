@@ -64,3 +64,7 @@ when token usage is complete.
 ## Optional coding installation
 
 The container installer has a separate, unchecked **Codex coding worker** option. It requires a Linux x64 engine, Compose 2.24.4 or later and terminal permission. Selecting the Code tool pack does not enable it. Connect an eligible account after setup; other tasks retain your chosen provider. AppArmor hosts require the bundled profile to be loaded by an administrator. See the [installation requirements](./self-hosting.md#optional-coding-workers).
+
+## Completion review (development branch)
+
+The completion reviewer checks each required action against recorded tool use for this task cycle. A correct answer does not replace a requested action. It reads bounded counts across the cycle as well as recent receipts; truncated records cannot prove an action never happened. This uses the existing review call. Metadata and a model verdict do not guarantee the quality of files, tests or results.

@@ -57,3 +57,7 @@ Container kurulumunda ayrı ve varsayılan olarak kapalı **Codex kodlama çalı
 ## Yerel model verimliliği (geliştirme dalı)
 
 Araç kullanılan işlerde, düşünme destekli yerel modellere varsayılan olarak `reasoning_effort: none` gönderilir. Gelişmiş API çağrıları `localReasoningEffort` ile bunu seçebilir. Araçsız sohbet modelin varsayılanını kullanır; bulut modellerine bu ayar eklenmez. Destek ve sonuç modele bağlıdır. Kısaltılan ortak iç politika İngilizcedir; seçtiğin dil ve yerelleştirilmiş veya özel rol metni korunur.
+
+## Tamamlanma denetimi (geliştirme dalı)
+
+Tamamlanma denetçisi, istenen her işlemi bu görev döngüsündeki araç kayıtlarıyla karşılaştırır. Doğru cevap, istenen işlemin yerine geçmez. Son kayıt örneklerine ek olarak döngü boyunca sınırlı araç sayaçlarını okur; kırpılmış kayıtlarda bir işlem görünmemesi, hiç yapılmadığını kanıtlamaz. Mevcut denetim çağrısı kullanılır. Kayıt metadatası ve model kararı, dosyaların, testlerin veya sonuçların kalitesini garanti etmez.

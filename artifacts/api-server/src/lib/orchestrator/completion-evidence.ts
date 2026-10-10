@@ -10,6 +10,7 @@ import {
 import { redactAuditText } from "../audit-redaction";
 
 const RECEIPT_LIMIT = 12;
+const TOOL_COUNT_LIMIT = 128;
 const CHILD_LIMIT = 8;
 const SOURCE_CHANGE_LIMIT = 8;
 const commitId = (value: unknown): value is string =>
@@ -67,6 +68,30 @@ export async function loadCompletionEvidence(
           operationReceiptsTable.state,
           operationReceiptsTable.reconciliationDecision,
         );
+      // Cover tools used before the latest receipt sample. Never infer absence
+      // from a truncated sample or copy arbitrary names into the model context.
+      const toolCounts = await tx
+        .select({
+          tool: sql<string | null>`case
+            when ${operationReceiptsTable.toolName} ~ '^[a-zA-Z][a-zA-Z0-9_]{0,79}$'
+            then ${operationReceiptsTable.toolName} else null end`,
+          state: operationReceiptsTable.state,
+          reconciliationDecision: operationReceiptsTable.reconciliationDecision,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(operationReceiptsTable)
+        .where(receiptScope)
+        .groupBy(
+          operationReceiptsTable.toolName,
+          operationReceiptsTable.state,
+          operationReceiptsTable.reconciliationDecision,
+        )
+        .orderBy(
+          operationReceiptsTable.toolName,
+          operationReceiptsTable.state,
+          operationReceiptsTable.reconciliationDecision,
+        )
+        .limit(TOOL_COUNT_LIMIT + 1);
       const rows = await tx
         .select({
           id: sql<string>`left(${operationReceiptsTable.id}, 120)`,
@@ -163,6 +188,18 @@ export async function loadCompletionEvidence(
         cycleNumber: task.cycleCount,
         receiptTotal,
         receiptCounts,
+        toolCountsTruncated:
+          toolCounts.length > TOOL_COUNT_LIMIT ||
+          toolCounts.some((row) => row.tool === null),
+        toolCounts: toolCounts
+          .slice(0, TOOL_COUNT_LIMIT)
+          .filter((row) => row.tool !== null)
+          .map((row) => ({
+            tool: redactAuditText(row.tool!, 80),
+            state: row.state,
+            reconciliationDecision: row.reconciliationDecision,
+            count: row.count,
+          })),
         receiptsTruncated: receiptTotal > rows.length,
         receipts: rows.map((row) => ({
           id: redactAuditText(row.id, 120),
