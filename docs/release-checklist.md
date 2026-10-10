@@ -61,6 +61,15 @@ docker build --pull -t agentic-company-os:release-candidate .
 Docker commands may be omitted only when the release is explicitly marked as
 not container-verified.
 
+Before merging, run the source-controlled [release verifier](./release-verification.md)
+with the reviewed candidate head, base, tree and tested PR merge identities.
+It requires the original protected context/App checks, explicit PR/main CodeQL
+scopes and complete source/UI logs for Linux, Windows and both Mac architectures.
+After the ordinary squash merge, run it again with `--phase main` and retain
+the original candidate inputs. Its report deliberately keeps
+`publicationReady: false`: the installation, native artifact, endurance,
+distribution and anonymous public readback requirements below still apply.
+
 Confirm the CI production-topology job starts one API and two workers with a
 shared PostgreSQL database and a distinct runtime-control key, reports all three
 runtime instances healthy, observes a killed worker as stale, and accepts only

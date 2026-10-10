@@ -6,6 +6,7 @@
   "scripts": {
     "check:bundle": "tsx ./src/check-bundle-budget.ts",
     "check:licenses": "tsx ./src/check-production-licenses.ts",
+    "release:verify": "tsx ./src/release/cli.ts",
     "endurance:accelerated": "tsx ./src/run-accelerated-endurance.ts",
     "endurance:wall-clock": "tsx ./src/run-wall-clock-soak.ts",
     "endurance:native-postgres-smoke": "tsx ./src/run-native-postgres-smoke.ts",
