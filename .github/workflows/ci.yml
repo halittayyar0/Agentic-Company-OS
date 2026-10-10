@@ -417,6 +417,8 @@ jobs:
         env:
           TEST_CONCURRENCY: "1"
           TEST_DISABLE_WASM_CODE_GC: "1"
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
         run: pnpm test
 
       - name: Typecheck
@@ -479,6 +481,7 @@ jobs:
         with:
           name: windows-native-runtime-evidence
           path: |
+            ${{ runner.temp }}/acos-owned-job-proof-*/fixture-scope.json
             ${{ runner.temp }}/acos-native-install-proof-*/guided-local-runtime-failure.json
             ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-evidence.json
             ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-cleanup.json

@@ -161,10 +161,26 @@ full Windows regression measured 31.05 seconds. Owner-only output protection and
 binary identity checks remain required. This allowance does not enable native
 Windows coding or change task, launch or cleanup deadlines.
 
+The Windows lifecycle test's trusted fixture uses the same compiler ceiling.
+Its retained `fixture-scope.json` records helper preparation and fixture
+compilation durations/outcomes separately, including failures. CI uploads this
+credential-free receipt even if preparation fails; it does not upload generated
+executables or compiler environments. A preparation receipt alone does not prove
+the lifecycle cases ran. The full suite still requires their original UTF-8,
+emergency-stop, natural-exit and failed-start cleanup assertions.
+
 For a source-change task, the backend selects that task's draft directory inside
 its agent sandbox. It never uses the original checkout directly. Multiple
 source-change rows, a different owner or a non-draft state are rejected. Other
 tasks use their agent's sandbox working directory.
+
+On Windows, managed source-workspace Git commands enable `core.longpaths` for
+that invocation. Applying a reviewed snapshot also passes this setting to the
+local Git upload-pack subprocess that reads its pack files. Snapshot cloning,
+source checks and reviewed transfer therefore support longer
+installation and temporary paths, including the workflow's generated branch
+names. This does not change your global or repository Git configuration, grant
+extra permissions, or enable native Windows coding.
 
 Source workspace admission captures the source-change ID and revision.
 Changing, removing or duplicating that record invalidates the running

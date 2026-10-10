@@ -16,6 +16,7 @@ export const TaskBlockedReason = {
   approval_rejected: 'approval_rejected',
   approval_expired: 'approval_expired',
   approval_outcome_unknown: 'approval_outcome_unknown',
+  operation_outcome_unknown: 'operation_outcome_unknown',
   approval_action_failed: 'approval_action_failed',
   owner_inactive: 'owner_inactive',
 } as const;

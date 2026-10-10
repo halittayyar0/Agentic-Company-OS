@@ -17,6 +17,7 @@ import { OwnerPrivateStorage } from "@workspace/ai-server/owner-private-storage"
 import {
   compileWindowsOwnedJob,
   launchWindowsOwnedJob,
+  WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
 } from "./windows-owned-job";
 import {
   ownedAgentRuntimeCount,
@@ -53,6 +54,12 @@ let root: string,
 let fixtureEnvironment: NodeJS.ProcessEnv;
 let sourceBefore: string;
 const evidence: Record<string, unknown>[] = [];
+const preparation: {
+  phase: "helper-preparation" | "fixture-compilation";
+  compilerDeadlineMs: number;
+  elapsedMs: number;
+  outcome: "completed" | "failed" | "terminated";
+}[] = [];
 async function sourceDigest() {
   const hash = createHash("sha256");
   for (const relative of [
@@ -73,7 +80,24 @@ test.before(async () => {
   root = await realpath(
     await mkdtemp(path.join(await realpath(tmpdir()), "acos-owned-job-proof-")),
   );
-  helper = await compileWindowsOwnedJob(path.join(root, "private-helper"));
+  const helperStarted = performance.now();
+  try {
+    helper = await compileWindowsOwnedJob(path.join(root, "private-helper"));
+    preparation.push({
+      phase: "helper-preparation",
+      compilerDeadlineMs: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
+      elapsedMs: Math.round(performance.now() - helperStarted),
+      outcome: "completed",
+    });
+  } catch (error) {
+    preparation.push({
+      phase: "helper-preparation",
+      compilerDeadlineMs: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
+      elapsedMs: Math.round(performance.now() - helperStarted),
+      outcome: "failed",
+    });
+    throw error;
+  }
   const sourceStorage = new OwnerPrivateStorage(
     path.join(root, "private-fixture"),
   );
@@ -91,31 +115,54 @@ test.before(async () => {
   };
   const script =
     "Add-Type -TypeDefinition ([System.IO.File]::ReadAllText($env:ACOS_FIXTURE_SOURCE)) -OutputAssembly $env:ACOS_FIXTURE_BINARY -OutputType ConsoleApplication";
-  await promisify(execFile)(
-    path.join(
-      systemRoot,
-      "System32",
-      "WindowsPowerShell",
-      "v1.0",
-      "powershell.exe",
-    ),
-    [
-      "-NoLogo",
-      "-NoProfile",
-      "-NonInteractive",
-      "-EncodedCommand",
-      Buffer.from(script, "utf16le").toString("base64"),
-    ],
-    {
-      windowsHide: true,
-      timeout: 30000,
-      env: {
-        ...fixtureEnvironment,
-        ACOS_FIXTURE_SOURCE: path.join(sourceStorage.directory, "fixture.cs"),
-        ACOS_FIXTURE_BINARY: fixtureExecutable,
+  const fixtureStarted = performance.now();
+  try {
+    await promisify(execFile)(
+      path.join(
+        systemRoot,
+        "System32",
+        "WindowsPowerShell",
+        "v1.0",
+        "powershell.exe",
+      ),
+      [
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-EncodedCommand",
+        Buffer.from(script, "utf16le").toString("base64"),
+      ],
+      {
+        windowsHide: true,
+        timeout: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
+        maxBuffer: 16_384,
+        env: {
+          ...fixtureEnvironment,
+          ACOS_FIXTURE_SOURCE: path.join(sourceStorage.directory, "fixture.cs"),
+          ACOS_FIXTURE_BINARY: fixtureExecutable,
+        },
       },
-    },
-  );
+    );
+    preparation.push({
+      phase: "fixture-compilation",
+      compilerDeadlineMs: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
+      elapsedMs: Math.round(performance.now() - fixtureStarted),
+      outcome: "completed",
+    });
+  } catch (error) {
+    // Retain no compiler message, command, environment or output. The original
+    // exception still fails the suite; this receipt only locates preparation.
+    preparation.push({
+      phase: "fixture-compilation",
+      compilerDeadlineMs: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
+      elapsedMs: Math.round(performance.now() - fixtureStarted),
+      outcome:
+        error instanceof Error && "killed" in error && error.killed === true
+          ? "terminated"
+          : "failed",
+    });
+    throw error;
+  }
 });
 async function until(check: () => Promise<boolean>, timeout = 10000) {
   const deadline = Date.now() + timeout;
@@ -285,6 +332,7 @@ test.after(async () => {
         completedAt: new Date().toISOString(),
         sourceBefore,
         sourceAfter: await sourceDigest(),
+        preparation,
         evidence,
       }),
     );
