@@ -174,6 +174,12 @@ its agent sandbox. It never uses the original checkout directly. Multiple
 source-change rows, a different owner or a non-draft state are rejected. Other
 tasks use their agent's sandbox working directory.
 
+On Windows, managed source-workspace Git commands enable `core.longpaths` for
+that invocation. Snapshot cloning and source checks therefore support longer
+installation and temporary paths, including the workflow's generated branch
+names. This does not change your global or repository Git configuration, grant
+extra permissions, or enable native Windows coding.
+
 Source workspace admission captures the source-change ID and revision.
 Changing, removing or duplicating that record invalidates the running
 authority; restoring its old values does not revive it. The source workflow

@@ -20,7 +20,24 @@ process.env.NODE_ENV = "test";
 const directory = await mkdtemp(
   path.join(await realpath(tmpdir()), "acos source proof "),
 );
-process.env.AGENT_SANDBOX_ROOT = path.join(directory, "sandboxes");
+const sandboxRoot = path.join(directory, "sandboxes");
+const fixtureId = "00000000-0000-0000-0000-000000000000";
+const reviewLockPath = path.join(
+  sandboxRoot,
+  ".source-reviews",
+  `${fixtureId}-${fixtureId}`,
+  ".git",
+  "refs",
+  "heads",
+  "codex",
+  `source-${fixtureId}.lock`,
+);
+// Exercise Git's actual branch-ref lock path even on short hosted Windows roots.
+const windowsPathPadding =
+  process.platform === "win32"
+    ? "x".repeat(Math.max(0, 260 - reviewLockPath.length))
+    : "";
+process.env.AGENT_SANDBOX_ROOT = sandboxRoot + windowsPathPadding;
 process.env.ALLOW_AGENT_PROCESS_EXEC = "true";
 const {
   db,

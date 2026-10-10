@@ -106,6 +106,7 @@ async function git(
       "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"),
       "-c",
       "core.fsmonitor=false",
+      ...(process.platform === "win32" ? ["-c", "core.longpaths=true"] : []),
       "-c",
       "credential.helper=",
       "-c",
