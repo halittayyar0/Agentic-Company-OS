@@ -53,7 +53,7 @@
 - [ ] Add routing tests: remote/unknown rows never satisfy local auto/free/pinned fallback; a cloud alias ending `:free` is not free; persisted local IDs remain local after alias replacement; manual cloud pins preserve one selected billing boundary; other-provider free pins/task precedence remain intact.
 - [ ] Add task tests: boundary/version/consent failures before dispatch invent no usage receipt, produce provider setup state, do not drift to a paid route and keep recurring/resumed IDs intact.
 - [ ] Run the targeted tests and retain failure evidence. Implement consent mapping inside the existing serialized revision update, storage validation, bootstrap and split-role application. Carry typed boundary errors into existing task outcome handling.
-- [ ] Regenerate with `pnpm --filter @workspace/api-spec codegen`; run `pnpm api:check` if defined (otherwise use the repository's generated-artifact parity command from package scripts), plus targeted runtime/settings/routing/task tests and `pnpm typecheck`. Resolve actual parity failures without editing expected outputs blindly. Commit this tested deliverable.
+- [ ] Regenerate with `pnpm --filter @workspace/api-spec run codegen`, repeat the same command and compare every tracked generated file's bytes; the repository has no `api:check` script. Run targeted runtime/settings/routing/task tests and `pnpm typecheck`. Resolve actual parity failures without editing expected outputs blindly. Commit this tested deliverable.
 
 ## Task 3: Honest connection and model choice in seven languages
 

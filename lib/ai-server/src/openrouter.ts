@@ -16,13 +16,16 @@ import {
   getDirectOpenAIClient,
   getDirectOpenAIModelCatalog,
   getOllamaCatalogSnapshot,
-  getOllamaClient,
+  assertOllamaRequestCurrent,
   isDirectOpenAIConfigured,
   isOllamaConfigured,
   refreshOllamaCatalog,
+  prepareOllamaInferenceRequest,
   resolveDirectOpenAIModelId,
   resolveOllamaModelId,
+  resolveOllamaCloudModelId,
 } from "./first-party-providers";
+import { findOllamaBoundaryError } from "./ollama-model-boundary";
 import {
   MODEL_CATALOG,
   getChatCompletionExtraParams,
@@ -462,7 +465,11 @@ export function resolveModelProvider(modelId: string): ModelProvider | null {
   if (!modelId) return null;
   if (isKnownModelId(modelId)) return "replit";
   if (resolveDirectOpenAIModelId(modelId)) return "openai";
-  if (resolveOllamaModelId(modelId)) return "ollama";
+  if (modelId.startsWith("ollama:") || modelId.startsWith("ollama-cloud:")) {
+    return resolveOllamaModelId(modelId) || resolveOllamaCloudModelId(modelId)
+      ? "ollama"
+      : null;
+  }
   const hit = OPENROUTER_MODEL_CATALOG.some((m) => m.id === modelId);
   if (hit) return "openrouter";
   // OpenRouter supports aliases and newly published ids before a local cache
@@ -777,23 +784,28 @@ export async function createChatCompletion(
       }
     }
 
-    const ollamaModel = resolveOllamaModelId(model);
-    if (ollamaModel) {
-      const client = getOllamaClient();
+    if (model.startsWith("ollama:") || model.startsWith("ollama-cloud:")) {
+      const request = await prepareOllamaInferenceRequest(model, boundedSignal);
       await dispatch();
-      const completion = await client.chat.completions.create(
-        {
-          model: ollamaModel,
-          messages,
-          tools: tools && tools.length > 0 ? tools : undefined,
-          max_tokens: maxTokens,
-          ...(responseFormat ? { response_format: responseFormat } : {}),
-        },
-        {
-          signal: boundedSignal,
-          maxRetries: params.disableRetries ? 0 : undefined,
-        },
-      );
+      assertOllamaRequestCurrent(request);
+      let completion: OpenAI.Chat.Completions.ChatCompletion;
+      try {
+        completion = await request.client.chat.completions.create(
+          {
+            model: request.upstreamModel,
+            messages,
+            tools: tools && tools.length > 0 ? tools : undefined,
+            max_tokens: maxTokens,
+            ...(responseFormat ? { response_format: responseFormat } : {}),
+          },
+          {
+            signal: boundedSignal,
+            maxRetries: params.disableRetries ? 0 : undefined,
+          },
+        );
+      } catch (error) {
+        throw findOllamaBoundaryError(error) ?? error;
+      }
       await observeCompletionResponseUsage(params, completion, "ollama");
       return { completion, provider: "ollama" as const };
     }
