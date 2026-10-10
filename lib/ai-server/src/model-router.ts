@@ -18,6 +18,7 @@ export interface ModelCatalogEntry {
   label: string;
   description: string;
   supportsTools: boolean;
+  executionLocation?: "local" | "cloud" | "unknown";
 }
 
 export const MODEL_CATALOG: ModelCatalogEntry[] = [

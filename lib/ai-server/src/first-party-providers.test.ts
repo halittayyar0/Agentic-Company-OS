@@ -183,6 +183,9 @@ test("Ollama discovery fails closed for models without reported tool support", a
     assert.equal(request.redirect, "error");
     assert.equal(request.headers.has("authorization"), false);
 
+    if (url.pathname === "/api/version")
+      return Response.json({ version: "0.18.0" });
+
     if (url.pathname === "/api/tags") {
       return new Response(
         JSON.stringify({
@@ -203,8 +206,12 @@ test("Ollama discovery fails closed for models without reported tool support", a
     return new Response(
       JSON.stringify({
         capabilities:
-          body.model === "qwen3:8b" ? ["completion", "tools"] : ["completion"],
-        details: { parameter_size: body.model === "qwen3:8b" ? "8.2B" : "7B" },
+          body.model === "qwen3:8b:local"
+            ? ["completion", "tools"]
+            : ["completion"],
+        details: {
+          parameter_size: body.model === "qwen3:8b:local" ? "8.2B" : "7B",
+        },
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
@@ -232,6 +239,7 @@ test("Ollama discovery fails closed for models without reported tool support", a
       "/api/show",
       "/api/show",
       "/api/tags",
+      "/api/version",
     ]);
   } finally {
     globalThis.fetch = originalFetch;

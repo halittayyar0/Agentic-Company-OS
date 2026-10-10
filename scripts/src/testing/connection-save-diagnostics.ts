@@ -6,7 +6,7 @@ interface ConnectionResponse {
 }
 
 interface ConnectionObservation {
-  resource?: "model-catalog";
+  resource?: "model-catalog" | "auth-status" | "agents" | "tasks";
   atMs: number;
   method: "GET" | "PUT";
   status: number;
@@ -41,6 +41,16 @@ export function createConnectionSaveDiagnostics(
       }
       const catalog =
         url.pathname === "/api/model-catalog" && response.method === "GET";
+      const authStatus =
+        url.pathname === "/api/auth/status" && response.method === "GET";
+      const workspaceResource =
+        response.method === "GET"
+          ? url.pathname === "/api/agents"
+            ? ("agents" as const)
+            : url.pathname === "/api/tasks"
+              ? ("tasks" as const)
+              : undefined
+          : undefined;
       const settings =
         url.pathname === "/api/settings/llm" &&
         (response.method === "GET" || response.method === "PUT");
@@ -48,7 +58,7 @@ export function createConnectionSaveDiagnostics(
         url.origin !== expectedOrigin ||
         url.username ||
         url.password ||
-        (!catalog && !settings) ||
+        (!catalog && !settings && !authStatus && !workspaceResource) ||
         (response.method !== "GET" && response.method !== "PUT") ||
         !Number.isInteger(response.status) ||
         response.status < 100 ||
@@ -58,6 +68,8 @@ export function createConnectionSaveDiagnostics(
       const elapsed = now() - startedAt;
       responses.push({
         ...(catalog ? { resource: "model-catalog" as const } : {}),
+        ...(authStatus ? { resource: "auth-status" as const } : {}),
+        ...(workspaceResource ? { resource: workspaceResource } : {}),
         atMs: Number.isSafeInteger(elapsed) && elapsed >= 0 ? elapsed : 0,
         method: response.method,
         status: response.status,

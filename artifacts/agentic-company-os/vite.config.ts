@@ -68,6 +68,9 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
+        // Repeated content-hash paths compress better with a smaller alphabet.
+        // Keep the same eight-character names and SHA-256 evidence manifest.
+        hashCharacters: "hex",
         manualChunks(id) {
           const moduleId = id.replaceAll("\\", "/");
           if (moduleId.endsWith("/src/lib/completion-review-view.ts"))

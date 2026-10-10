@@ -162,6 +162,8 @@ Small, focused contributions are welcome: a reproducible bug report, a clearer t
 
 **Model connection, v0.4.0 and later:** the [connection walkthrough](./docs/model-connections.md) explains local models, ChatGPT, API keys and keeping your first-job draft. Earlier setup bundles do not include this flow.
 
+**Local model privacy:** Ollama 0.18.0 or later exposes separate local/cloud choices. Cloud use requires explicit permission for that server; unverified models are unavailable. [Private addresses, version guidance and cloud controls →](./docs/local-models.md)
+
 Open **Model usage records** on a project or agent to inspect a request after an interruption. Checking spends no model tokens and never resends the request; unknown usage is not treated as zero. [Reading usage records →](./docs/inference-accounting.md)
 
 ---

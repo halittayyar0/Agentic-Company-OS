@@ -2,16 +2,27 @@ import { isIP } from "node:net";
 import OpenAI from "openai";
 import pLimit from "p-limit";
 import type { ModelCatalogEntry, ModelTier } from "./model-router";
+import {
+  classifyOllamaModel,
+  localOllamaReference,
+  ollamaRemoteMetadata,
+  OllamaBoundaryError,
+  parseOllamaModelReference,
+  supportedOllamaVersion,
+  type OllamaExecutionLocation,
+} from "./ollama-model-boundary";
 
 export type FirstPartyModelProvider = "openai" | "ollama";
 
 export const OPENAI_BASE_URL = "https://api.openai.com/v1";
 export const OPENAI_MODEL_PREFIX = "openai:";
 export const OLLAMA_MODEL_PREFIX = "ollama:";
+export const OLLAMA_CLOUD_MODEL_PREFIX = "ollama-cloud:";
 
 const providerState = {
   openaiApiKey: null as string | null,
   ollamaBaseUrl: null as string | null,
+  ollamaCloudOrigin: null as string | null,
 };
 
 let directOpenAIClient: OpenAI | null = null;
@@ -216,20 +227,20 @@ function isPrivateIPv4(hostname: string): boolean {
 
 export function configureOllama(params: {
   baseUrl: string | null | undefined;
+  cloudOrigin?: string | null;
 }): void {
   const next = params.baseUrl?.trim() || null;
-  if (providerState.ollamaBaseUrl !== next) {
-    ollamaCatalogGeneration += 1;
-    ollamaCatalog.models = [];
-    ollamaCatalog.fetchedAt = 0;
-    ollamaCatalog.lastAttemptAt = 0;
-    ollamaCatalog.reachable = false;
-    ollamaCatalog.error = null;
-    // A previous endpoint's discovery remains bounded by its request deadlines,
-    // but cannot own the new endpoint's refresh or publish into its catalog.
-    ollamaRefreshPromise = null;
+  const cloudOrigin = params.cloudOrigin
+    ? validateOllamaBaseUrl(params.cloudOrigin).origin
+    : null;
+  if (
+    providerState.ollamaBaseUrl !== next ||
+    providerState.ollamaCloudOrigin !== cloudOrigin
+  ) {
+    invalidateOllamaConfiguration();
   }
   providerState.ollamaBaseUrl = next;
+  providerState.ollamaCloudOrigin = cloudOrigin;
   ollamaClient = null;
   ollamaClientBaseUrl = null;
 }
@@ -237,8 +248,12 @@ export function configureOllama(params: {
 export function resolveOllamaEndpoint(): ValidatedOllamaEndpoint | null {
   const raw =
     providerState.ollamaBaseUrl ?? process.env.OLLAMA_BASE_URL?.trim();
-  if (!raw) return null;
-  return validateOllamaBaseUrl(raw);
+  const endpoint = raw ? validateOllamaBaseUrl(raw) : null;
+  if ((endpoint?.origin ?? null) !== ollamaEffectiveOrigin) {
+    invalidateOllamaConfiguration();
+    ollamaEffectiveOrigin = endpoint?.origin ?? null;
+  }
+  return endpoint;
 }
 
 export function isOllamaConfigured(): boolean {
@@ -265,15 +280,15 @@ export function getOllamaConfigurationError():
 export function getOllamaClient(): OpenAI {
   const endpoint = resolveOllamaEndpoint();
   if (!endpoint) {
-    throw new Error(
-      "OLLAMA_BASE_URL must be configured to use local Ollama models.",
-    );
+    throw new OllamaBoundaryError("setup_required");
   }
+  if (!ollamaCatalog.localEnforcementSupported)
+    throw new OllamaBoundaryError("unsupported_version");
   if (!ollamaClient || ollamaClientBaseUrl !== endpoint.openAIBaseUrl) {
-    ollamaClient = new OpenAI({
-      apiKey: "ollama-local",
-      baseURL: endpoint.openAIBaseUrl,
-      fetch: (input, init) => globalThis.fetch(input, init),
+    ollamaClient = guardedOllamaClient({
+      origin: endpoint.origin,
+      generation: ollamaCatalogGeneration,
+      boundary: "local",
     });
     ollamaClientBaseUrl = endpoint.openAIBaseUrl;
   }
@@ -288,11 +303,15 @@ interface OllamaTagRow {
   name?: unknown;
   model?: unknown;
   details?: unknown;
+  remote_host?: unknown;
+  remote_model?: unknown;
 }
 
 interface OllamaShowPayload {
   capabilities?: unknown;
   details?: unknown;
+  remote_host?: unknown;
+  remote_model?: unknown;
 }
 
 export interface OllamaCatalogSnapshot {
@@ -300,6 +319,9 @@ export interface OllamaCatalogSnapshot {
   fetchedAt: number | null;
   reachable: boolean;
   error: "unreachable" | "invalid_private_endpoint" | null;
+  serverVersion: string | null;
+  localEnforcementSupported: boolean;
+  cloudEnabled: boolean;
 }
 
 const ollamaCatalog = {
@@ -308,6 +330,8 @@ const ollamaCatalog = {
   lastAttemptAt: 0,
   reachable: false,
   error: null as OllamaCatalogSnapshot["error"],
+  serverVersion: null as string | null,
+  localEnforcementSupported: false,
 };
 
 const OLLAMA_CATALOG_TTL_MS = 5 * 60_000;
@@ -315,14 +339,34 @@ const OLLAMA_CATALOG_RETRY_MS = 30_000;
 const OLLAMA_MAX_MODELS = 100;
 let ollamaRefreshPromise: Promise<OllamaCatalogSnapshot> | null = null;
 let ollamaCatalogGeneration = 0;
+let ollamaEffectiveOrigin: string | null = null;
+
+function invalidateOllamaConfiguration(): void {
+  ollamaCatalogGeneration++;
+  ollamaCatalog.models = [];
+  ollamaCatalog.fetchedAt = 0;
+  ollamaCatalog.lastAttemptAt = 0;
+  ollamaCatalog.reachable = false;
+  ollamaCatalog.error = null;
+  ollamaCatalog.serverVersion = null;
+  ollamaCatalog.localEnforcementSupported = false;
+  ollamaRefreshPromise = null;
+  ollamaClient = null;
+  ollamaClientBaseUrl = null;
+}
 
 export function getOllamaCatalogSnapshot(): OllamaCatalogSnapshot {
   const configurationError = getOllamaConfigurationError();
+  const endpoint = configurationError ? null : resolveOllamaEndpoint();
   return {
     models: [...ollamaCatalog.models],
     fetchedAt: ollamaCatalog.fetchedAt || null,
     reachable: ollamaCatalog.reachable,
     error: configurationError ?? ollamaCatalog.error,
+    serverVersion: ollamaCatalog.serverVersion,
+    localEnforcementSupported: ollamaCatalog.localEnforcementSupported,
+    cloudEnabled:
+      endpoint !== null && providerState.ollamaCloudOrigin === endpoint.origin,
   };
 }
 
@@ -364,6 +408,29 @@ async function refreshOllamaCatalogFromEndpoint(
   if (!endpoint) return getOllamaCatalogSnapshot();
 
   try {
+    let serverVersion: string | null = null;
+    try {
+      const response = await fetch(new URL("/api/version", endpoint.origin), {
+        headers: { Accept: "application/json" },
+        redirect: "error",
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (response.ok) {
+        const version = (await response.json()) as { version?: unknown };
+        if (
+          typeof version.version === "string" &&
+          /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u.test(
+            version.version,
+          ) &&
+          version.version.length <= 64
+        )
+          serverVersion = version.version;
+      }
+    } catch {
+      /* Reachable tags do not prove an unreadable version's local enforcement. */
+    }
+    const localEnforcementSupported =
+      supportedOllamaVersion(serverVersion) !== null;
     const tagsUrl = new URL("/api/tags", endpoint.origin);
     const tagsResponse = await fetch(tagsUrl, {
       headers: { Accept: "application/json" },
@@ -384,7 +451,11 @@ async function refreshOllamaCatalogFromEndpoint(
       .filter(isRecord) as OllamaTagRow[];
     const limit = pLimit(4);
     const entries = await Promise.all(
-      rows.map((row) => limit(() => normalizeOllamaModel(endpoint, row))),
+      rows.map((row) =>
+        limit(() =>
+          normalizeOllamaModel(endpoint, row, localEnforcementSupported),
+        ),
+      ),
     );
     if (generation !== ollamaCatalogGeneration)
       return getOllamaCatalogSnapshot();
@@ -397,6 +468,8 @@ async function refreshOllamaCatalogFromEndpoint(
     ollamaCatalog.fetchedAt = Date.now();
     ollamaCatalog.reachable = true;
     ollamaCatalog.error = null;
+    ollamaCatalog.serverVersion = serverVersion;
+    ollamaCatalog.localEnforcementSupported = localEnforcementSupported;
   } catch {
     if (generation !== ollamaCatalogGeneration)
       return getOllamaCatalogSnapshot();
@@ -411,28 +484,70 @@ async function refreshOllamaCatalogFromEndpoint(
 async function normalizeOllamaModel(
   endpoint: ValidatedOllamaEndpoint,
   row: OllamaTagRow,
+  localEnforcementSupported: boolean,
 ): Promise<(ModelCatalogEntry & { provider: "ollama" }) | null> {
   const upstreamId =
     safeOllamaModelId(row.model) ?? safeOllamaModelId(row.name);
   if (!upstreamId) return null;
+  const rowName = safeOllamaModelId(row.name),
+    rowModel = safeOllamaModelId(row.model);
+  const nameReference = rowName ? parseOllamaModelReference(rowName) : null;
+  const modelReference = rowModel ? parseOllamaModelReference(rowModel) : null;
+  const conflictingIds =
+    (row.name !== undefined && !rowName) ||
+    (row.model !== undefined && !rowModel) ||
+    Boolean(
+      nameReference &&
+      modelReference &&
+      (nameReference.canonical !== modelReference.canonical ||
+        (nameReference.explicitSource === "cloud") !==
+          (modelReference.explicitSource === "cloud")),
+    );
 
   let show: OllamaShowPayload | null = null;
-  try {
-    const showResponse = await fetch(new URL("/api/show", endpoint.origin), {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ model: upstreamId, verbose: false }),
-      redirect: "error",
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (showResponse.ok)
-      show = (await showResponse.json()) as OllamaShowPayload;
-  } catch {
-    // Discovery remains useful, but unknown capability is fail-closed below.
+  const taggedLocation = classifyOllamaModel(
+    upstreamId,
+    row,
+    null,
+    localEnforcementSupported,
+  );
+  const canInspect =
+    !conflictingIds &&
+    ollamaRemoteMetadata(row) !== "invalid" &&
+    ((taggedLocation === "cloud" &&
+      providerState.ollamaCloudOrigin === endpoint.origin) ||
+      (taggedLocation !== "cloud" && localEnforcementSupported));
+  if (canInspect) {
+    try {
+      const showResponse = await fetch(new URL("/api/show", endpoint.origin), {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model:
+            taggedLocation === "cloud"
+              ? upstreamId
+              : localOllamaReference(upstreamId),
+          verbose: false,
+        }),
+        redirect: "error",
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (showResponse.ok)
+        show = (await showResponse.json()) as OllamaShowPayload;
+    } catch {
+      // Discovery remains useful, but unknown capability is fail-closed below.
+    }
   }
+  let executionLocation = classifyOllamaModel(
+    upstreamId,
+    row,
+    show,
+    localEnforcementSupported,
+  );
+  if (conflictingIds) executionLocation = "unknown";
 
   const capabilities = Array.isArray(show?.capabilities)
     ? show.capabilities.filter(
@@ -449,13 +564,18 @@ async function normalizeOllamaModel(
   const supportsTools = capabilities.includes("tools");
 
   return {
-    id: `${OLLAMA_MODEL_PREFIX}${upstreamId}`,
+    id: `${executionLocation === "cloud" ? OLLAMA_CLOUD_MODEL_PREFIX : OLLAMA_MODEL_PREFIX}${upstreamId}`,
     provider: "ollama",
     tier: inferOllamaTier(parameterSize, capabilities),
     label: upstreamId,
     supportsTools,
+    executionLocation,
     description: [
-      "Yerel Ollama",
+      executionLocation === "local"
+        ? "Yerel Ollama"
+        : executionLocation === "cloud"
+          ? "Ollama bulut"
+          : "Ollama · çalışma yeri doğrulanmadı",
       parameterSize,
       quantization,
       supportsTools ? "araç desteği doğrulandı" : "araç desteği raporlanmadı",
@@ -468,19 +588,153 @@ async function normalizeOllamaModel(
 function safeOllamaModelId(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim();
-  if (
-    !normalized ||
-    normalized.length > 200 ||
-    !/^[A-Za-z0-9][A-Za-z0-9._/-]*(?::[A-Za-z0-9._-]+)?$/u.test(normalized)
-  ) {
-    return null;
-  }
-  return normalized;
+  return parseOllamaModelReference(normalized) ? normalized : null;
 }
 
 export function resolveOllamaModelId(modelId: string): string | null {
   if (!modelId.startsWith(OLLAMA_MODEL_PREFIX)) return null;
   return safeOllamaModelId(modelId.slice(OLLAMA_MODEL_PREFIX.length));
+}
+
+export function resolveOllamaCloudModelId(modelId: string): string | null {
+  return modelId.startsWith(OLLAMA_CLOUD_MODEL_PREFIX)
+    ? safeOllamaModelId(modelId.slice(OLLAMA_CLOUD_MODEL_PREFIX.length))
+    : null;
+}
+
+export interface OllamaInferenceRequest {
+  readonly origin: string;
+  readonly generation: number;
+  readonly boundary: Exclude<OllamaExecutionLocation, "unknown">;
+  readonly upstreamModel: string;
+  readonly client: OpenAI;
+}
+
+type OllamaRequestAuthority = Pick<
+  OllamaInferenceRequest,
+  "origin" | "generation" | "boundary"
+>;
+
+export function assertOllamaRequestCurrent(
+  request: OllamaRequestAuthority,
+): void {
+  let endpoint: ValidatedOllamaEndpoint | null;
+  try {
+    endpoint = resolveOllamaEndpoint();
+  } catch {
+    throw new OllamaBoundaryError("server_changed");
+  }
+  if (
+    !endpoint ||
+    endpoint.origin !== request.origin ||
+    request.generation !== ollamaCatalogGeneration
+  )
+    throw new OllamaBoundaryError("server_changed");
+  if (
+    request.boundary === "cloud" &&
+    providerState.ollamaCloudOrigin !== request.origin
+  )
+    throw new OllamaBoundaryError("cloud_consent_required");
+}
+
+function guardedOllamaClient(
+  authority: OllamaRequestAuthority,
+  upstreamModel?: string,
+  beforeFetch?: () => Promise<void>,
+): OpenAI {
+  const captured = Object.freeze({ ...authority });
+  return new OpenAI({
+    apiKey: "ollama-local",
+    baseURL: new URL("/v1", captured.origin).toString(),
+    fetch: async (input, init) => {
+      // Apply durable API changes during admission and before every SDK retry.
+      await beforeFetch?.();
+      assertOllamaRequestCurrent(captured);
+      const url = new URL(String(input));
+      if (
+        url.origin !== captured.origin ||
+        url.pathname !== "/v1/chat/completions" ||
+        url.search ||
+        url.hash ||
+        url.username ||
+        url.password ||
+        typeof init?.body !== "string"
+      )
+        throw new OllamaBoundaryError("invalid_request_boundary");
+      let body: { model?: unknown };
+      try {
+        body = JSON.parse(init.body) as { model?: unknown };
+      } catch {
+        throw new OllamaBoundaryError("invalid_request_boundary");
+      }
+      if (
+        typeof body.model !== "string" ||
+        (upstreamModel && body.model !== upstreamModel)
+      )
+        throw new OllamaBoundaryError("invalid_request_boundary");
+      if (
+        captured.boundary === "local" &&
+        localOllamaReference(body.model) !== body.model
+      )
+        throw new OllamaBoundaryError("invalid_request_boundary");
+      return globalThis.fetch(input, { ...init, redirect: "error" });
+    },
+  });
+}
+
+export async function prepareOllamaInferenceRequest(
+  modelId: string,
+  signal?: AbortSignal,
+  beforeFetch?: () => Promise<void>,
+): Promise<OllamaInferenceRequest> {
+  signal?.throwIfAborted();
+  const cloudModel = resolveOllamaCloudModelId(modelId);
+  const localModel = resolveOllamaModelId(modelId);
+  const upstream = cloudModel ?? localModel;
+  if (!upstream) throw new OllamaBoundaryError("invalid_model_reference");
+  const reference = parseOllamaModelReference(upstream);
+  if (
+    !reference ||
+    (!cloudModel && reference.explicitSource === "cloud") ||
+    (cloudModel && reference.explicitSource === "local")
+  )
+    throw new OllamaBoundaryError("invalid_model_reference");
+  let endpoint: ValidatedOllamaEndpoint | null;
+  try {
+    endpoint = resolveOllamaEndpoint();
+  } catch {
+    throw new OllamaBoundaryError("setup_required");
+  }
+  if (!endpoint) throw new OllamaBoundaryError("setup_required");
+  const authority = Object.freeze({
+    origin: endpoint.origin,
+    generation: ollamaCatalogGeneration,
+    boundary: cloudModel ? ("cloud" as const) : ("local" as const),
+  });
+  assertOllamaRequestCurrent(authority);
+  const catalog = await refreshOllamaCatalog();
+  signal?.throwIfAborted();
+  assertOllamaRequestCurrent(authority);
+  if (!catalog.reachable) throw new OllamaBoundaryError("setup_required");
+  if (!cloudModel && !catalog.localEnforcementSupported)
+    throw new OllamaBoundaryError("unsupported_version");
+  const found = catalog.models.find((row) => {
+    const selected = cloudModel
+      ? resolveOllamaCloudModelId(row.id)
+      : resolveOllamaModelId(row.id);
+    return (
+      selected &&
+      parseOllamaModelReference(selected)?.canonical === reference.canonical
+    );
+  });
+  if (!found || found.executionLocation !== authority.boundary)
+    throw new OllamaBoundaryError("unknown_locality");
+  const upstreamModel = cloudModel ? upstream : localOllamaReference(upstream);
+  return Object.freeze({
+    ...authority,
+    upstreamModel,
+    client: guardedOllamaClient(authority, upstreamModel, beforeFetch),
+  });
 }
 
 function inferOllamaTier(

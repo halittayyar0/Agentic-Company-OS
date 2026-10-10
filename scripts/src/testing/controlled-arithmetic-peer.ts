@@ -28,13 +28,18 @@ export async function createControlledArithmeticPeer({
         : {};
       const method = req.method!,
         route = req.url!;
+      if (route === "/api/version" && method === "GET") {
+        requests.push({ method, path: route });
+        res.end(JSON.stringify({ version: "0.18.0" }));
+        return;
+      }
       if (route === "/api/tags" && method === "GET") {
         requests.push({ method, path: route });
         res.end(JSON.stringify({ models: [{ name: model, model }] }));
         return;
       }
       if (route === "/api/show" && method === "POST") {
-        assert.equal(body.model, model);
+        assert.equal(body.model, model + ":local");
         requests.push({ method, path: route });
         res.end(
           JSON.stringify({
@@ -46,7 +51,7 @@ export async function createControlledArithmeticPeer({
       }
       assert.equal(route, "/v1/chat/completions");
       assert.equal(method, "POST");
-      assert.equal(body.model, model);
+      assert.equal(body.model, model + ":local");
       assert.notEqual(body.stream, true);
       const messages: {
         role?: string;

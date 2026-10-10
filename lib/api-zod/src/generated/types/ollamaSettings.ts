@@ -11,6 +11,21 @@ import type { OllamaSettingsError } from './ollamaSettingsError';
 export interface OllamaSettings {
   configured: boolean;
   reachable: boolean;
+  /** Explicit consent for this exact private server origin. Missing on older servers; absence never grants cloud permission. */
+  cloudEnabled?: boolean;
+  /**
+     * @maxLength 64
+     * @nullable
+     */
+  serverVersion?: string | null;
+  /** Whether the reported stable server version enforces local selectors. Missing or false cannot prove local execution. */
+  localEnforcementSupported?: boolean;
+  /** @minimum 0 */
+  localModelCount?: number;
+  /** @minimum 0 */
+  cloudModelCount?: number;
+  /** @minimum 0 */
+  unknownModelCount?: number;
   /**
      * @maxLength 2048
      * @nullable

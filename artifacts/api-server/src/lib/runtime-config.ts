@@ -18,6 +18,72 @@ export interface RuntimeConfig {
   openrouterApiKey?: string | null;
   openaiApiKey?: string | null;
   ollamaBaseUrl?: string | null;
+  ollamaCloudOrigin?: string | null;
+}
+
+export function normalizeRuntimeOllamaCloudOrigin(
+  value: unknown,
+): string | null | undefined {
+  if (value === undefined || value === null) return value;
+  if (
+    typeof value !== "string" ||
+    validateOllamaBaseUrl(value).origin !== value
+  )
+    throw new Error(
+      "Ollama cloud consent must name a canonical private origin.",
+    );
+  return value;
+}
+
+function effectiveOllamaOrigin(
+  config: RuntimeConfig,
+  environment: NodeJS.ProcessEnv,
+): string | null {
+  const address = config.ollamaBaseUrl ?? environment.OLLAMA_BASE_URL?.trim();
+  if (!address) return null;
+  try {
+    return validateOllamaBaseUrl(address).origin;
+  } catch {
+    return null;
+  }
+}
+
+/** Saved consent cannot authorize a different environment or restored address. */
+export function effectiveOllamaCloudOrigin(
+  config: RuntimeConfig,
+  environment: NodeJS.ProcessEnv = process.env,
+): string | null {
+  const consent = normalizeRuntimeOllamaCloudOrigin(config.ollamaCloudOrigin);
+  return consent && consent === effectiveOllamaOrigin(config, environment)
+    ? consent
+    : null;
+}
+
+/** Called while the file queue or database row lock owns the exact revision. */
+export function applyRuntimeConfigPatch(
+  current: RuntimeConfig,
+  patch: RuntimeConfig,
+  environment: NodeJS.ProcessEnv = process.env,
+): RuntimeConfig {
+  const next = { ...current, ...patch };
+  next.ollamaBaseUrl = normalizeRuntimeOllamaBaseUrl(next.ollamaBaseUrl);
+  if (next.ollamaCloudOrigin !== undefined)
+    next.ollamaCloudOrigin = normalizeRuntimeOllamaCloudOrigin(
+      next.ollamaCloudOrigin,
+    );
+  if (
+    patch.ollamaBaseUrl !== undefined &&
+    effectiveOllamaOrigin(current, environment) !==
+      effectiveOllamaOrigin(next, environment) &&
+    patch.ollamaCloudOrigin === undefined
+  )
+    next.ollamaCloudOrigin = null;
+  if (
+    patch.ollamaCloudOrigin &&
+    patch.ollamaCloudOrigin !== effectiveOllamaOrigin(next, environment)
+  )
+    throw new Error("Ollama cloud consent does not match the selected server.");
+  return next;
 }
 
 export function normalizeRuntimeOllamaBaseUrl(
@@ -92,6 +158,13 @@ export async function readRuntimeConfigSnapshot(): Promise<RuntimeConfigSnapshot
         openrouterApiKey,
         openaiApiKey,
         ollamaBaseUrl: normalizeRuntimeOllamaBaseUrl(record.ollamaBaseUrl),
+        ...(record.ollamaCloudOrigin === undefined
+          ? {}
+          : {
+              ollamaCloudOrigin: normalizeRuntimeOllamaCloudOrigin(
+                record.ollamaCloudOrigin,
+              ),
+            }),
       },
     };
   } catch (error) {
@@ -122,6 +195,7 @@ export async function writeRuntimeConfig(
 export async function writeRuntimeConfigSnapshot(
   patch: RuntimeConfig,
   expectedRevision?: number,
+  environment: NodeJS.ProcessEnv = process.env,
 ): Promise<RuntimeConfigSnapshot> {
   let resolveWrite: (() => void) | undefined;
   const previousWrite = writeQueue;
@@ -138,8 +212,7 @@ export async function writeRuntimeConfigSnapshot(
     if (current.revision >= Number.MAX_SAFE_INTEGER)
       throw new Error("Runtime configuration revision limit reached.");
     const revision = current.revision + 1;
-    const next: RuntimeConfig = { ...current.config, ...patch };
-    next.ollamaBaseUrl = normalizeRuntimeOllamaBaseUrl(next.ollamaBaseUrl);
+    const next = applyRuntimeConfigPatch(current.config, patch, environment);
     for (const key of Object.keys(next) as Array<keyof RuntimeConfig>) {
       if (next[key] === "" || next[key] === undefined) delete next[key];
     }

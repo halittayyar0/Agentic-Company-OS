@@ -22,6 +22,10 @@ at the phone; a container's points at the container. Use a private address
 reachable from the installed runtime. **Use installation default** removes the
 saved override; an environment connection can remain.
 
+Ollama requires 0.18.0 or later. Local, cloud and unverified models have separate
+labels; cloud permission is off by default and resets when the server address
+changes. [Local models, private addresses and cloud permission](./local-models.md).
+
 ## Review before starting
 
 Discovered, connected and tested are different states. The explicit model test

@@ -7,7 +7,16 @@ import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
 import { cn } from "@/lib/utils";
 import { PROVIDER_META } from "@/lib/format";
-import { matchesModelSearch } from "@/lib/model-search";
+import {
+  hasFreeModelIdentifier,
+  matchesModelSearch,
+  ollamaModelLocation,
+} from "@/lib/model-search";
+import {
+  OllamaModelLocation,
+  useOllamaLocationCopy,
+} from "./ollama-model-location";
+import { LanguagePackStatus } from "@/components/i18n/language-pack-status";
 import type { NewAgentCopy } from "@/lib/new-agent-copy";
 import type { Locale } from "@/lib/i18n";
 
@@ -39,6 +48,12 @@ export function AgentModelPicker({
   });
   const providerLabel = (id: string, fallback: string) =>
     id === "replit" ? copy.builtin : (PROVIDER_META[id]?.label ?? fallback);
+  const locationCopy = useOllamaLocationCopy(
+    locale,
+    Boolean(
+      catalog?.models.some((model) => ollamaModelLocation(model) !== null),
+    ),
+  );
   const matchingModels = useMemo(
     () =>
       (catalog?.models ?? []).filter((model) =>
@@ -48,7 +63,7 @@ export function AgentModelPicker({
             description: [
               model.description,
               copy.tiers[model.tier],
-              model.id.endsWith(":free") ? copy.free : "",
+              hasFreeModelIdentifier(model) ? copy.free : "",
               !model.supportsTools ? copy.noTools : "",
             ].join(" "),
           },
@@ -70,6 +85,8 @@ export function AgentModelPicker({
     !isFetching &&
     Boolean(
       selected?.supportsTools &&
+      ollamaModelLocation(selected) !== "unknown" &&
+      (ollamaModelLocation(selected) === null || Boolean(locationCopy.data)) &&
       catalog?.providers.some(
         (provider) => provider.id === selected.provider && provider.available,
       ),
@@ -120,6 +137,13 @@ export function AgentModelPicker({
           </Button>
         </div>
       ) : null}
+      {catalog?.models.some((model) => ollamaModelLocation(model) !== null) &&
+      !locationCopy.data ? (
+        <LanguagePackStatus
+          error={locationCopy.isError}
+          buttonClassName="min-h-11"
+        />
+      ) : null}
       {groups.map((group) => (
         <section
           key={group.id}
@@ -152,7 +176,14 @@ export function AgentModelPicker({
                 >
                   <button
                     type="button"
-                    disabled={Boolean(reason) || isError || isFetching}
+                    disabled={
+                      Boolean(reason) ||
+                      ollamaModelLocation(model) === "unknown" ||
+                      (ollamaModelLocation(model) !== null &&
+                        !locationCopy.data) ||
+                      isError ||
+                      isFetching
+                    }
                     aria-pressed={value === model.id}
                     onClick={() => onChange(model.id)}
                     className={cn(
@@ -169,12 +200,13 @@ export function AgentModelPicker({
                       {model.isDefault && (
                         <span className="text-primary">{copy.default}</span>
                       )}
-                      {model.id.endsWith(":free") && (
+                      {hasFreeModelIdentifier(model) && (
                         <span className="text-primary">{copy.free}</span>
                       )}
                       <span className="text-muted-foreground">
                         {copy.tiers[model.tier]}
                       </span>
+                      <OllamaModelLocation model={model} locale={locale} />
                     </span>
                     <span
                       dir="ltr"

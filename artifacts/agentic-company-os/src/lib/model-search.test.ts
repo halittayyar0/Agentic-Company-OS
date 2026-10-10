@@ -26,6 +26,20 @@ test("model search normalization keeps words and removes separators", () => {
   );
 });
 
+test("a cloud alias ending free cannot acquire free-price search aliases", () => {
+  const model = {
+    ...miniMaxFree,
+    id: "ollama-cloud:alias:free",
+    provider: "ollama",
+    label: "Owned cloud alias",
+    description: "Cloud account usage",
+  };
+  assert.equal(matchesModelSearch(model, "ücretsiz"), false);
+  assert.equal(matchesModelSearch(model, "bedava"), false);
+  assert.equal(matchesModelSearch(model, "alias free"), true);
+  assert.equal(matchesModelSearch(miniMaxFree, "ücretsiz"), true);
+});
+
 test("model search handles the selected locale and marked Arabic without altering model identifiers", () => {
   assert.equal(matchesModelSearch(miniMaxFree, "MINIMAX", "en"), true);
   assert.equal(matchesModelSearch(miniMaxFree, "MINIMAX", "tr"), true);

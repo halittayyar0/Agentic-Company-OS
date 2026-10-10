@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import { chromium, expect } from "@playwright/test";
 import { runNativeInstallSmoke } from "../setup/native-install-smoke";
 import { createConnectionSaveDiagnostics } from "./connection-save-diagnostics";
+import { waitForNativeReadWindow } from "./native-read-window";
 
 // Explicit offline acceptance, not a model-quality test. The real installer owns
 // a new PostgreSQL cluster, API and two workers. Only the model HTTP peer is fake.
@@ -75,11 +76,14 @@ const peer = createServer(async (req, res) => {
       method = req.method!;
     const body = bytes ? JSON.parse(Buffer.concat(parts).toString("utf8")) : {};
     res.setHeader("Content-Type", "application/json");
-    if (route === "/api/tags" && method === "GET") {
+    if (route === "/api/version" && method === "GET") {
+      requests.push({ method, path: route });
+      res.end(JSON.stringify({ version: "0.18.0" }));
+    } else if (route === "/api/tags" && method === "GET") {
       requests.push({ method, path: route });
       res.end(JSON.stringify({ models: [{ name: model, model }] }));
     } else if (route === "/api/show" && method === "POST") {
-      assert.equal(body.model, model);
+      assert.equal(body.model, model + ":local");
       requests.push({ method, path: route });
       res.end(
         JSON.stringify({
@@ -88,7 +92,7 @@ const peer = createServer(async (req, res) => {
         }),
       );
     } else if (route === "/v1/chat/completions" && method === "POST") {
-      assert.equal(body.model, model);
+      assert.equal(body.model, model + ":local");
       assert.notEqual(body.stream, true);
       const judge = body.response_format?.type === "json_object";
       const messages: Array<Record<string, unknown>> = body.messages;
@@ -185,6 +189,7 @@ try {
   evidenceDirectory = await runNativeInstallSmoke(postgresBin, pnpmPath, {
     kind: "offline-guided",
     run: async ({ baseUrl, operatorToken, directory }) => {
+      let lastResponseHeaders = new Headers();
       const request = async <T = Record<string, unknown>>(
         route: string,
         method = "GET",
@@ -218,6 +223,7 @@ try {
           true,
           `${method} ${route}: ${response.status}`,
         );
+        lastResponseHeaders = response.headers;
         const value: unknown = await response.json();
         assert.ok(value && typeof value === "object");
         return value as T;
@@ -243,6 +249,8 @@ try {
       );
       try {
         for (const locale of locales) {
+          await request("/agents");
+          const readWindow = await waitForNativeReadWindow(lastResponseHeaders);
           const settings = await request("/settings/llm");
           await request("/settings/llm", "PUT", {
             expectedRevision: settings.revision,
@@ -390,6 +398,7 @@ try {
             assert.deepEqual(pageErrors, []);
             results.push({
               locale,
+              readWindow,
               taskId: id,
               status: task.status,
               model: task.lastModelId,

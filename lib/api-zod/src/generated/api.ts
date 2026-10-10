@@ -4039,6 +4039,7 @@ export const GetModelCatalogResponse = zod.object({
   "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
+  "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
   "isDefault": zod.boolean()
 }))
 })
@@ -4054,6 +4055,14 @@ export const getLlmSettingsResponseOpenrouterKeyPreviewMax = 64;
 export const getLlmSettingsResponseOpenrouterBaseUrlMax = 2048;
 
 export const getLlmSettingsResponseOpenaiKeyPreviewMax = 64;
+
+export const getLlmSettingsResponseOllamaServerVersionMax = 64;
+
+export const getLlmSettingsResponseOllamaLocalModelCountMin = 0;
+
+export const getLlmSettingsResponseOllamaCloudModelCountMin = 0;
+
+export const getLlmSettingsResponseOllamaUnknownModelCountMin = 0;
 
 export const getLlmSettingsResponseOllamaBaseUrlMax = 2048;
 
@@ -4087,6 +4096,12 @@ export const GetLlmSettingsResponse = zod.object({
   "ollama": zod.object({
   "configured": zod.boolean(),
   "reachable": zod.boolean(),
+  "cloudEnabled": zod.boolean().optional().describe('Explicit consent for this exact private server origin. Missing on older servers; absence never grants cloud permission.'),
+  "serverVersion": zod.string().max(getLlmSettingsResponseOllamaServerVersionMax).nullish(),
+  "localEnforcementSupported": zod.boolean().optional().describe('Whether the reported stable server version enforces local selectors. Missing or false cannot prove local execution.'),
+  "localModelCount": zod.number().int().min(getLlmSettingsResponseOllamaLocalModelCountMin).optional(),
+  "cloudModelCount": zod.number().int().min(getLlmSettingsResponseOllamaCloudModelCountMin).optional(),
+  "unknownModelCount": zod.number().int().min(getLlmSettingsResponseOllamaUnknownModelCountMin).optional(),
   "baseUrl": zod.string().url().max(getLlmSettingsResponseOllamaBaseUrlMax).nullable(),
   "hasAddressInEnv": zod.boolean(),
   "addressSource": zod.enum(['runtime', 'environment', 'none']),
@@ -4112,6 +4127,7 @@ export const GetLlmSettingsResponse = zod.object({
   "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
+  "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
   "isDefault": zod.boolean()
 }))
 })
@@ -4137,7 +4153,8 @@ export const UpdateLlmSettingsBody = zod.object({
   "expectedRevision": zod.number().int().min(updateLlmSettingsBodyExpectedRevisionMin).max(updateLlmSettingsBodyExpectedRevisionMax).optional().describe('The exact stored-credential revision reviewed by the operator. Legacy callers may omit it.'),
   "openrouterApiKey": zod.string().max(updateLlmSettingsBodyOpenrouterApiKeyMax).nullish(),
   "openaiApiKey": zod.string().max(updateLlmSettingsBodyOpenaiApiKeyMax).nullish(),
-  "ollamaBaseUrl": zod.string().max(updateLlmSettingsBodyOllamaBaseUrlMax).nullish().describe('Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.')
+  "ollamaBaseUrl": zod.string().max(updateLlmSettingsBodyOllamaBaseUrlMax).nullish().describe('Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.'),
+  "ollamaCloudEnabled": zod.boolean().optional().describe('Explicitly enable or disable cloud models on the selected server. Requires expectedRevision; the backend binds consent to the canonical effective origin.')
 })
 
 
@@ -4161,6 +4178,7 @@ export const UpdateLlmSettingsResponse = zod.object({
   "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
+  "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
   "isDefault": zod.boolean()
 }))
 })
