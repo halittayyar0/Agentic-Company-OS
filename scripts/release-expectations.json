@@ -1,8 +1,8 @@
 {
   "linux": {
     "source": {
-      "tests": 2331,
-      "passed": 2293,
+      "tests": 2404,
+      "passed": 2366,
       "skippedCases": [
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
         "Linux launcher closes emergency epoch gap before spawn # SKIP",
@@ -45,14 +45,14 @@
       ]
     },
     "ui": {
-      "tests": 1227,
+      "tests": 1257,
       "workers": 2
     }
   },
   "windows": {
     "source": {
-      "tests": 2331,
-      "passed": 2299,
+      "tests": 2404,
+      "passed": 2372,
       "skippedCases": [
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
         "Linux launcher closes emergency epoch gap before spawn # SKIP",
@@ -91,8 +91,8 @@
   },
   "macos-arm-source": {
     "source": {
-      "tests": 2331,
-      "passed": 2293,
+      "tests": 2404,
+      "passed": 2366,
       "skippedCases": [
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
         "Linux launcher closes emergency epoch gap before spawn # SKIP",
@@ -137,8 +137,8 @@
   },
   "macos-intel-source": {
     "source": {
-      "tests": 2331,
-      "passed": 2293,
+      "tests": 2404,
+      "passed": 2366,
       "skippedCases": [
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
         "Linux launcher closes emergency epoch gap before spawn # SKIP",

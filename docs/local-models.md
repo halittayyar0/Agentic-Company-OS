@@ -11,8 +11,13 @@ Review the model and permissions before pressing **Start**.
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | App and Ollama on the same computer                  | `http://127.0.0.1:11434`                                                                                                   |
 | App in a container, Ollama on its host               | A private host address reachable from that container; Docker Desktop commonly provides `http://host.docker.internal:11434` |
-| App and Ollama in the same private container network | The Ollama service name, for example `http://ollama:11434`                                                                 |
+| App and Ollama in the same private container network | The Ollama container’s private IP address reachable from the backend                                                       |
 | App on a server                                      | A private address reachable from that server                                                                               |
+
+The app accepts `localhost`, `host.docker.internal`, private IPv4 literals and
+IPv6 ULA/loopback literals. Container service names such as `ollama` are rejected.
+For a shared private container network, use the Ollama container’s assigned private
+IP address and update the app connection if that address changes.
 
 Ollama must listen on the selected interface. Host aliases vary by engine;
 `host.docker.internal` is not guaranteed on Linux. Avoid exposing the Ollama port
