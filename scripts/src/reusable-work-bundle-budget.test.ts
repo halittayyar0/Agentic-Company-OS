@@ -249,9 +249,6 @@ test("unauthored or extended copy cannot silently earn seven-language credit", (
     const asset = f.assets.find(
       (row) => row.fileName === "reuse-en-fixture.js",
     )!;
-    asset.contents = Buffer.from(
-      asset.contents.toString().replace('incomingTitle:"', 'incomingTitle:"'),
-    );
     if (mutation === "changed")
       asset.contents = Buffer.from(
         asset.contents
