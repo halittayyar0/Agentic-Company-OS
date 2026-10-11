@@ -12,6 +12,7 @@ import { measureComposerDraftBundle } from "./composer-draft-bundle-budget";
 import { measureCompletionRequirementsBundle } from "./completion-requirements-bundle-budget";
 import { measureConnectionBundle } from "./connection-bundle-budget";
 import { measureInferenceAccountingBundle } from "./inference-accounting-bundle-budget";
+import { measureResponseRetryRepairBundle } from "./response-retry-repair-bundle-budget";
 import { measureProjectStartRecoveryBundle } from "./project-start-recovery-bundle-budget";
 import { measureReusableWorkBundle } from "./reusable-work-bundle-budget";
 import {
@@ -447,6 +448,16 @@ const usageReportingGrowth = measureUsageReportingBundleGrowth(
 );
 const meetingLocaleAssets = languagePackAssets("meetings-", "project meetings");
 const studioLocaleAssets = languagePackAssets("studio-", "project studio");
+const retryRepairLocaleAssets = languagePackAssets(
+  "retry-repair-",
+  "retry storage repair",
+);
+const retryRepair = measureResponseRetryRepairBundle(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+);
 const expertChatLocaleAssets = languagePackAssets("chat-", "expert chat");
 const computerLocaleAssets = languagePackAssets(
   "computer-",
@@ -499,6 +510,7 @@ const localeAssetNames = new Set(
     ...expertDetailLocaleAssets,
     ...expertChatLocaleAssets,
     ...studioLocaleAssets,
+    ...retryRepairLocaleAssets,
     ...traceLocaleAssets,
     ...meetingTurnLocaleAssets,
     ...meetingLocaleAssets,
@@ -548,6 +560,7 @@ const totalCodeRawBytes =
   Math.max(...connectionLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...codingRecoveryLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...studioLocaleAssets.map((asset) => asset.rawBytes)) +
+  Math.max(...retryRepairLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...traceLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...meetingTurnLocaleAssets.map((asset) => asset.rawBytes)) +
   Math.max(...meetingLocaleAssets.map((asset) => asset.rawBytes)) +
@@ -584,6 +597,7 @@ const totalCodeGzipBytes =
   Math.max(...connectionLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...codingRecoveryLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...studioLocaleAssets.map((asset) => asset.gzipBytes)) +
+  Math.max(...retryRepairLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...traceLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...meetingTurnLocaleAssets.map((asset) => asset.gzipBytes)) +
   Math.max(...meetingLocaleAssets.map((asset) => asset.gzipBytes)) +
@@ -1044,6 +1058,7 @@ if (
     reusableWork.globalGzip -
     projectStartRecovery.globalGzip -
     inferenceAccounting.gzip -
+    retryRepair.gzip -
     connection.gzip -
     ollamaPrivacy.gzip -
     composerDraft.gzip -
@@ -1061,7 +1076,7 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code after bounded feature accounting (${totalCodeGzipBytes - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
@@ -1071,6 +1086,7 @@ if (
     reusableWork.globalRaw -
     projectStartRecovery.globalRaw -
     inferenceAccounting.raw -
+    retryRepair.raw -
     connection.raw -
     ollamaPrivacy.raw -
     composerDraft.raw -
@@ -1082,7 +1098,7 @@ if (
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `raw code after bounded feature accounting (${totalCodeRawBytes - completionConditions.raw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - connection.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - completionConditions.raw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
@@ -1092,6 +1108,7 @@ if (
     reusableWork.globalGzip -
     projectStartRecovery.globalGzip -
     inferenceAccounting.gzip -
+    retryRepair.gzip -
     connection.gzip -
     ollamaPrivacy.gzip -
     composerDraft.gzip -
@@ -1103,7 +1120,7 @@ if (
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `gzip code after bounded feature accounting (${totalCodeGzipBytes - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -1250,6 +1267,9 @@ console.log(
 );
 console.log(
   `Model usage records: ${inferenceAccounting.raw} raw / ${inferenceAccounting.gzip} gzip bytes (8 KB / 3.5 KB independent cap), exact reader wiring including verified sole agent preload metadata ${inferenceAccounting.integrationRaw} raw / ${inferenceAccounting.integrationGzip} gzip (1 KB / 500 bytes cap); all seven packs ${inferenceAccounting.allLocaleRaw} raw / ${inferenceAccounting.allLocaleGzip} gzip (11 KB / 6 KB cap). Exact wiring excluded from older recovery/Keeper credit; no vendor, SDK, CSS or project dependency-array credit. Existing ceilings retained.`,
+);
+console.log(
+  `Retry storage repair: ${retryRepair.raw} raw / ${retryRepair.gzip} gzip bytes (4 KB / 1.5 KB independent addition cap); reader growth ${retryRepair.logicRaw} raw / ${retryRepair.logicGzip} gzip; all seven conditional packs ${retryRepair.allLocaleRaw} raw / ${retryRepair.allLocaleGzip} gzip (6 KB / 3 KB cap). Only growth over the verified existing retry reader and one selected pack earn credit. Existing studio, route, API, vendor and CSS ceilings retained.`,
 );
 console.log(
   `Reusable work: ${reusableWork.raw} raw / ${reusableWork.gzip} gzip selected transfer (32 KB / 11.5 KB cap); ${reusableWork.globalRaw} raw / ${reusableWork.globalGzip} gzip global credit. Sole new-reader preload suffix ${reusableWork.metadataRaw} raw / ${reusableWork.metadataGzip} gzip (180 / 80 cap); unchanged Skills runtime metadata growth ${readerMetadata.raw} raw / ${readerMetadata.gzip} gzip (200 / 75 cap). Older library credit excludes this same growth; no duplicate, vendor, API or CSS credit.`,

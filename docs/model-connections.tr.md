@@ -61,3 +61,9 @@ Araç kullanılan işlerde, düşünme destekli yerel modellere varsayılan olar
 ## Tamamlanma denetimi (geliştirme dalı)
 
 Tamamlanma denetçisi, istenen her işlemi bu görev döngüsündeki araç kayıtlarıyla karşılaştırır. Doğru cevap, istenen işlemin yerine geçmez. Son kayıt örneklerine ek olarak döngü boyunca sınırlı araç sayaçlarını okur; kırpılmış kayıtlarda bir işlem görünmemesi, hiç yapılmadığını kanıtlamaz. Mevcut denetim çağrısı kullanılır. Kayıt metadatası ve model kararı, dosyaların, testlerin veya sonuçların kalitesini garanti etmez.
+
+## Bozuk yeniden deneme kaydını temizle (geliştirme dalı)
+
+Duraklayan görevde bozuk kayıt uyarısı varsa **Bozuk kaydı temizle** seçeneğini kullan. Önce sunucudaki güncel görev kontrol edilir, sonra yalnız bu sekmedeki değişmemiş bozuk kayıt kaldırılır. Model çağrısı yapılmaz, görev devam ettirilmez. Görevi inceleyip ayrıca **Bu görevi yeniden dene** seçeneğini kullan; yeniden deneme token tüketebilir.
+
+Geçerli ve sonucu belirsiz bir istek bu yolla silinmez; yeniden deneme işlem kaydını incele. Depolamaya erişilemiyorsa veya kayıt kontrol sırasında değişirse temizleme doğrulanmaz. Görev durumunu ve tarayıcı depolamasını kontrol edip sayfayı yeniden yükle. Kabul veya ret sonrasında çıkan depolama uyarısı sunucunun sonucunu değiştirmez.

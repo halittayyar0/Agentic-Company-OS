@@ -64,3 +64,9 @@ Bei Werkzeugaufrufen erhalten lokale Modelle mit Denkfunktion standardmäßig `r
 ## Abschlussprüfung (Entwicklungszweig)
 
 Die Abschlussprüfung vergleicht jede geforderte Aktion mit den Werkzeugaufzeichnungen dieses Aufgabenzyklus. Eine richtige Antwort ersetzt keine verlangte Aktion. Neben den letzten Belegen liest sie begrenzte Werkzeugzähler für den gesamten Zyklus; gekürzte Aufzeichnungen beweisen nicht, dass eine Aktion nie stattgefunden hat. Dafür wird der bestehende Prüfaufruf genutzt. Metadaten und Modellurteil garantieren keine Qualität von Dateien, Tests oder Ergebnissen.
+
+## Defekte Wiederholungsdaten löschen (Entwicklungszweig)
+
+Meldet eine pausierte Aufgabe defekte Daten, wähle **Defekte Daten löschen**. Zuerst wird die aktuelle Aufgabe auf dem Server geprüft. Anschließend wird nur der unveränderte defekte Eintrag dieses Tabs entfernt. Es erfolgt keine Modellanfrage und keine Fortsetzung. Prüfe die Aufgabe und starte einen erneuten Versuch separat; dieser kann Tokens verbrauchen.
+
+Eine gültige Anfrage mit unklarem Ergebnis bleibt erhalten: Prüfe ihren Beleg. Bei fehlendem Speicherzugriff oder geändertem Eintrag wird das Löschen nicht bestätigt. Prüfe Aufgabenstatus und Browserspeicher und lade die Seite neu. Eine Speicherwarnung nach Annahme oder Ablehnung ändert das Serverergebnis nicht.

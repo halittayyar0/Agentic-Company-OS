@@ -14,12 +14,12 @@ const uuid =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const key = (taskId: number) => `acos.response-retry.v1.${taskId}`;
 
-export function readResponseRetryIntent(
-  taskId: number,
-  storage: Pick<Storage, "getItem">,
-): ResponseRetryIntent | null {
-  const raw = storage.getItem(key(taskId));
-  if (raw === null) return null;
+export type ResponseRetryRecord =
+  | { kind: "missing" }
+  | { kind: "saved"; intent: ResponseRetryIntent }
+  | { kind: "damaged"; raw: string };
+
+function parseIntent(taskId: number, raw: string): ResponseRetryIntent {
   const value = JSON.parse(raw);
   if (
     value?.taskId !== taskId ||
@@ -30,6 +30,47 @@ export function readResponseRetryIntent(
   )
     throw new Error("Invalid saved response retry scope");
   return { taskId, blockedAttemptId: value.blockedAttemptId };
+}
+
+export function readResponseRetryIntent(
+  taskId: number,
+  storage: Pick<Storage, "getItem">,
+): ResponseRetryIntent | null {
+  const raw = storage.getItem(key(taskId));
+  if (raw === null) return null;
+  return parseIntent(taskId, raw);
+}
+
+export function readResponseRetryRecord(
+  taskId: number,
+  storage: Pick<Storage, "getItem">,
+): ResponseRetryRecord {
+  if (!Number.isSafeInteger(taskId) || taskId <= 0)
+    throw new Error("Invalid saved response retry scope");
+  const raw = storage.getItem(key(taskId));
+  if (raw === null) return { kind: "missing" };
+  try {
+    return { kind: "saved", intent: parseIntent(taskId, raw) };
+  } catch {
+    return { kind: "damaged", raw };
+  }
+}
+
+export function clearDamagedResponseRetry(
+  taskId: number,
+  observedRaw: string,
+  storage: Pick<Storage, "getItem" | "removeItem">,
+) {
+  const current = readResponseRetryRecord(taskId, storage);
+  if (
+    typeof observedRaw !== "string" ||
+    current.kind !== "damaged" ||
+    current.raw !== observedRaw
+  )
+    throw new Error("Saved response retry changed");
+  storage.removeItem(key(taskId));
+  if (storage.getItem(key(taskId)) !== null)
+    throw new Error("Saved response retry could not be cleared");
 }
 export function saveResponseRetryIntent(
   intent: ResponseRetryIntent,

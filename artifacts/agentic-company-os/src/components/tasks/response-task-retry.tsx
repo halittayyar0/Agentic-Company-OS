@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { loadResponseRetryRepairCopy } from "@/lib/response-retry-repair-copy";
+import { setupMessages } from "@/lib/i18n";
 import type { ProjectStudioCopy } from "@/lib/project-studio-copy";
 import {
   clearResponseRetryIntent,
+  clearDamagedResponseRetry,
   getResponseRetryScope,
   inspectResponseRetry,
-  readResponseRetryIntent,
+  readResponseRetryRecord,
   saveResponseRetryIntent,
   sendResponseRetry,
   type ResponseRetryIntent,
@@ -26,21 +30,39 @@ export default function ResponseTaskRetry({
   const client = useQueryClient(),
     guard = useRef(false),
     alive = useRef(true);
+  const { locale } = useLocale();
   const [initial] = useState(() => {
     try {
       return {
-        intent: readResponseRetryIntent(taskId, sessionStorage),
+        record: readResponseRetryRecord(taskId, sessionStorage),
         error: false,
       };
     } catch {
-      return { intent: null, error: true };
+      return { record: null, error: true };
     }
   });
-  const [intent, setIntent] = useState(initial.intent),
-    [storageError, setStorageError] = useState(initial.error);
-  const [phase, setPhase] = useState<"send" | "inspect" | null>(null);
+  const [intent, setIntent] = useState(
+      initial.record?.kind === "saved" ? initial.record.intent : null,
+    ),
+    [damaged, setDamaged] = useState(
+      initial.record?.kind === "damaged" ? initial.record.raw : null,
+    ),
+    [storageError, setStorageError] = useState(
+      initial.error || initial.record?.kind === "damaged",
+    );
+  const [phase, setPhase] = useState<"send" | "inspect" | "repair" | null>(
+    null,
+  );
   const [notice, setNotice] = useState<string | null>(null),
     [accepted, setAccepted] = useState(false);
+  const repairCopy = useQuery({
+    queryKey: ["response-retry-repair-copy", locale],
+    queryFn: () => loadResponseRetryRepairCopy(locale),
+    enabled: storageError,
+    retry: false,
+    staleTime: Infinity,
+  });
+  const r = repairCopy.data;
   const scope = useQuery({
     queryKey: ["task-response-retry", taskId],
     queryFn: ({ signal }) => getResponseRetryScope(taskId, signal),
@@ -57,13 +79,52 @@ export default function ResponseTaskRetry({
       alive.current = false;
     };
   }, []);
+  const failedStorage = (adopt = false) => {
+    setStorageError(true);
+    try {
+      const record = readResponseRetryRecord(taskId, sessionStorage);
+      setDamaged(record.kind === "damaged" ? record.raw : null);
+      if (adopt && record.kind === "saved") setIntent(record.intent);
+    } catch {
+      setDamaged(null);
+    }
+  };
+  const repair = async () => {
+    if (guard.current || damaged === null || intent || !r) return;
+    guard.current = true;
+    setPhase("repair");
+    setNotice(null);
+    const observed = damaged;
+    try {
+      const current = await refetch();
+      if (!alive.current) return;
+      if (current.isError || !current.data || current.data.taskId !== taskId)
+        throw new Error("Current task scope unavailable");
+      clearDamagedResponseRetry(taskId, observed, sessionStorage);
+      setDamaged(null);
+      setStorageError(false);
+      setAccepted(false);
+      setNotice(r[3]);
+    } catch (error) {
+      if (!alive.current) return;
+      setNotice(
+        error instanceof Error &&
+          error.message === "Saved response retry changed"
+          ? r[4]
+          : r[5],
+      );
+    } finally {
+      guard.current = false;
+      if (alive.current) setPhase(null);
+    }
+  };
   const dispatch = async (sent: ResponseRetryIntent, inspect = false) => {
     if (guard.current) return;
     if (!inspect) {
       try {
         saveResponseRetryIntent(sent, sessionStorage);
       } catch {
-        setStorageError(true);
+        failedStorage(true);
         return;
       }
     }
@@ -80,9 +141,10 @@ export default function ResponseTaskRetry({
       try {
         clearResponseRetryIntent(sent, sessionStorage);
         setIntent(null);
+        setDamaged(null);
         setStorageError(false);
       } catch {
-        setStorageError(true);
+        failedStorage();
       }
       onResumed();
       void client.invalidateQueries({
@@ -106,7 +168,7 @@ export default function ResponseTaskRetry({
           clearResponseRetryIntent(sent, sessionStorage);
           setIntent(null);
         } catch {
-          setStorageError(true);
+          failedStorage();
         }
         setNotice(c.responseRetryRejected);
         void refetch();
@@ -144,7 +206,11 @@ export default function ResponseTaskRetry({
       )}
       {storageError && (
         <p role="alert" className="mt-3 text-sm">
-          {c.answerStorage}
+          {r
+            ? r[0]
+            : repairCopy.isError
+              ? setupMessages[locale].languageFileError
+              : c.loading}
         </p>
       )}
       {scope.isError && (
@@ -153,9 +219,23 @@ export default function ResponseTaskRetry({
         </p>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
+        {damaged !== null && !intent && r && (
+          <>
+            <p className="basis-full text-sm leading-6">{r[1]}</p>
+            <Button
+              variant="outline"
+              className="min-h-11 h-auto whitespace-normal text-start"
+              disabled={!!phase || scope.isFetching}
+              aria-busy={phase === "repair"}
+              onClick={() => void repair()}
+            >
+              {phase === "repair" ? c.loading : r[2]}
+            </Button>
+          </>
+        )}
         {intent && (
           <Button
-            className="min-h-11 whitespace-normal text-start"
+            className="min-h-11 h-auto whitespace-normal text-start"
             disabled={!!phase}
             aria-busy={phase === "inspect"}
             onClick={() => void dispatch(intent, true)}
@@ -186,7 +266,10 @@ export default function ResponseTaskRetry({
           variant="outline"
           className="min-h-11 h-auto whitespace-normal text-start"
           disabled={!!phase || scope.isFetching}
-          onClick={() => void refetch()}
+          onClick={() => {
+            if (storageError && repairCopy.isError) void repairCopy.refetch();
+            void refetch();
+          }}
         >
           {c.checkState}
         </Button>

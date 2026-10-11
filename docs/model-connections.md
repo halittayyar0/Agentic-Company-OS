@@ -68,3 +68,9 @@ The container installer has a separate, unchecked **Codex coding worker** option
 ## Completion review (development branch)
 
 The completion reviewer checks each required action against recorded tool use for this task cycle. A correct answer does not replace a requested action. It reads bounded counts across the cycle as well as recent receipts; truncated records cannot prove an action never happened. This uses the existing review call. Metadata and a model verdict do not guarantee the quality of files, tests or results.
+
+## Clear damaged retry details (development branch)
+
+If a paused task reports damaged retry details, choose **Clear damaged details**. This first checks the current task on the server, then removes only the unchanged damaged entry in this browser tab. It sends no model request and does not resume work. Review the task and choose **Retry this task** separately; retry can use tokens.
+
+A valid unresolved request cannot be cleared this way: use **Inspect retry receipt**. If storage is unavailable or the entry changes during checking, repair remains unconfirmed. Check the task state and browser storage, then reload. A storage warning after accepted or rejected retry does not reverse the server’s result.
