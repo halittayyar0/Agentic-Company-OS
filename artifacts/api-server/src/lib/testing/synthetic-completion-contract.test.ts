@@ -29,6 +29,15 @@ const options = (
 const params = () => ({
   model: "synthetic/endurance",
   messages: [{ role: "user" as const, content: "Owned offline fixture" }],
+  tools: [
+    {
+      type: "function" as const,
+      function: {
+        name: "synthetic_fixture_write",
+        parameters: { type: "object", properties: {} },
+      },
+    },
+  ],
 });
 for (const outcome of ["success", "malformed"] as const)
   test(`synthetic ${outcome} acknowledges one dispatch and awaits its exact bounded usage before returning`, async () => {

@@ -133,6 +133,7 @@ const PROVIDER_SETUP_MESSAGE: Record<WorkspaceLocale, string> = {
 };
 
 export interface StepTaskDependencies {
+  getTools?: typeof getToolsForAgent;
   runtimeOperationsConfig: RuntimeOperationsConfig;
   createCompletion?: typeof createChatCompletion;
   selectModelPlan?: typeof selectModelPlan;
@@ -662,7 +663,7 @@ export async function stepTask(
       ? `${taskPrompts.systemPrompt}\n\n${exclusiveTurnSystemPrompt(exclusivePolicy, locale)}`
       : taskPrompts.systemPrompt;
     const authorizedTools = filterToolsForExclusiveTurn(
-      await getToolsForAgent(agent, true, {
+      await (dependencies.getTools ?? getToolsForAgent)(agent, true, {
         modelId: task.executionModelId ?? agent.modelId,
         locale,
       }),

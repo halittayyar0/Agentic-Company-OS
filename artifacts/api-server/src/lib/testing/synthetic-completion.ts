@@ -246,6 +246,58 @@ function malformedCompletion(
   };
 }
 
+function withAdvertisedTools(
+  result: Awaited<ReturnType<typeof createChatCompletion>>,
+  tools: Parameters<typeof createChatCompletion>[0]["tools"],
+): Awaited<ReturnType<typeof createChatCompletion>> {
+  const advertised = new Set((tools ?? []).map((tool) => tool.function.name));
+  const missing = [
+    ...new Set(
+      (result.completion.choices[0]?.message.tool_calls ?? [])
+        .map((call) => call.function.name)
+        .filter((name) => !advertised.has(name)),
+    ),
+  ].sort();
+  if (missing.length === 0) return result;
+  if (!advertised.has("load_tools"))
+    throw new Error("synthetic_tool_schema_unavailable");
+  const digest = createHash("sha256")
+    .update(`${result.completion.id}:${JSON.stringify(missing)}`)
+    .digest("hex")
+    .slice(0, 24);
+  return {
+    ...result,
+    completion: {
+      ...result.completion,
+      id: `synthetic-load-${digest}`,
+      choices: [
+        {
+          index: 0,
+          finish_reason: "tool_calls",
+          logprobs: null,
+          message: {
+            role: "assistant",
+            content:
+              "Load the required schemas before the next synthetic action.",
+            refusal: null,
+            tool_calls: [
+              {
+                id: `synthetic-load-call-${digest}`,
+                type: "function",
+                function: {
+                  name: "load_tools",
+                  arguments: JSON.stringify({ names: missing }),
+                },
+              },
+            ],
+          },
+        },
+      ],
+      usage: { prompt_tokens: 24, completion_tokens: 8, total_tokens: 32 },
+    },
+  };
+}
+
 export function createSyntheticCompletion(
   options: SyntheticCompletionOptions,
 ): typeof createChatCompletion {
@@ -270,12 +322,15 @@ export function createSyntheticCompletion(
     // synthetic response uses the same owned dispatch/accounting contract.
     const model = params.model;
     if (params.signal?.aborted) throw abortError(params.signal);
-    await params.beforeRequest?.();
     const result =
       fault.outcome === "malformed"
         ? malformedCompletion(options, model)
-        : (delegationCompletion(options, model, params.messages) ??
-          deterministicCompletion(options, model));
+        : withAdvertisedTools(
+            delegationCompletion(options, model, params.messages) ??
+              deterministicCompletion(options, model),
+            params.tools,
+          );
+    await params.beforeRequest?.();
     const usage = result.completion.usage;
     if (!usage) throw new Error("synthetic_completion_usage_missing");
     await params.onResponseUsage?.({

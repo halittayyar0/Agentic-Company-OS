@@ -7,6 +7,7 @@ import test from "node:test";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   agentsTable,
+  activityEventsTable,
   db,
   dbReady,
   operationReceiptsTable,
@@ -155,6 +156,10 @@ function completionArgs(model = "synthetic/endurance") {
     model,
     messages: [{ role: "user" as const, content: "deterministic work" }],
     maxTokens: 200,
+    tools: [SYNTHETIC_FIXTURE_TOOL_NAME, "delegate_task"].map((name) => ({
+      type: "function" as const,
+      function: { name, parameters: { type: "object", properties: {} } },
+    })),
   };
 }
 
@@ -469,6 +474,17 @@ test("one full synthetic stepTask cycle advances all ten agents while finite chi
     );
   assert.equal(fixtureReceipts.length, 10);
   assert.ok(fixtureReceipts.every((receipt) => receipt.state === "succeeded"));
+  const protocolEvents = await db
+    .select({ detail: activityEventsTable.detail })
+    .from(activityEventsTable)
+    .where(inArray(activityEventsTable.taskId, taskIds));
+  assert.ok(
+    protocolEvents.every(
+      (event) =>
+        (event.detail as { runtimeEvent?: string } | null)?.runtimeEvent !==
+        "tool_call_not_advertised",
+    ),
+  );
 
   await db.insert(tasksTable).values({
     title: `Finite blocker ${suffix}`,
