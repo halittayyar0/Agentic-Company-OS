@@ -45,6 +45,9 @@ export default function ProjectPreparationChoice({
         priority: "normal",
         autonomyMode: "finite",
         cadenceSeconds: 3600,
+        ...(incoming.completionRequirements?.length
+          ? { completionRequirements: incoming.completionRequirements }
+          : {}),
       });
     const consumed =
       saved && consumeProjectPreparation(incoming, window.history);

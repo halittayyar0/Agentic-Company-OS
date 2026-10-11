@@ -5,6 +5,17 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+### Added
+
+- Optional owner-selected completion conditions for up to eight permitted tool
+  operations. Exact current-cycle execution records are checked before review;
+  selections remain in draft and start recovery, with no new model call or
+  permission grant. Seven-language selection and status panels distinguish
+  execution success, missing capabilities and answer quality.
+- Persist permission rejections when a selected operation becomes unavailable
+  before project admission. A repaired permission cannot revive an old rejected
+  request; the owner can explicitly prepare a new start.
+
 ### Fixed
 
 - Write native Ollama boundary receipts through an exclusively created file

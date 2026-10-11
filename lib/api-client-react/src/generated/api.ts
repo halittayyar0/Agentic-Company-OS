@@ -65,6 +65,7 @@ import type {
   GetInferenceAccountingStatusParams,
   GetOperationsOverviewParams,
   GetProjectOperationsParams,
+  GetTaskCompletionToolsParams,
   HealthStatus,
   InferenceAccountingSnapshot,
   ListActivityParams,
@@ -133,6 +134,8 @@ import type {
   TaskBudgetResumeInput,
   TaskBudgetResumeReceipt,
   TaskBudgetResumeStatus,
+  TaskCompletionSnapshot,
+  TaskCompletionTools,
   TaskCreationReceipt,
   TaskCreationRequestId,
   TaskInput,
@@ -3946,6 +3949,167 @@ export const useSendCompanyMessage = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getSendCompanyMessageMutationOptions(options));
     }
+
+export const getGetTaskCompletionToolsUrl = (params?: GetTaskCompletionToolsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/task-completion-tools?${stringifiedParams}` : `/api/task-completion-tools`
+}
+
+/**
+ * @summary Read eligible operations from the coordinator's current permitted catalog
+ */
+export const getTaskCompletionTools = async (params?: GetTaskCompletionToolsParams, options?: Parameters<typeof customFetch>[1]): Promise<TaskCompletionTools> => {
+
+  return customFetch<TaskCompletionTools>(getGetTaskCompletionToolsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskCompletionToolsQueryKey = (params?: GetTaskCompletionToolsParams,) => {
+    return [
+    `/api/task-completion-tools`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTaskCompletionToolsQueryOptions = <TData = Awaited<ReturnType<typeof getTaskCompletionTools>>, TError = ErrorType<void>>(params?: GetTaskCompletionToolsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionTools>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskCompletionToolsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskCompletionTools>>> = ({ signal }) => getTaskCompletionTools(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionTools>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskCompletionToolsQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskCompletionTools>>>
+export type GetTaskCompletionToolsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read eligible operations from the coordinator's current permitted catalog
+ */
+
+export function useGetTaskCompletionTools<TData = Awaited<ReturnType<typeof getTaskCompletionTools>>, TError = ErrorType<void>>(
+ params?: GetTaskCompletionToolsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionTools>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskCompletionToolsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTaskCompletionRequirementsUrl = (taskId: number,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/completion-requirements`
+}
+
+/**
+ * @summary Read exact current-cycle execution conditions without raw arguments or results
+ */
+export const getTaskCompletionRequirements = async (taskId: number, options?: Parameters<typeof customFetch>[1]): Promise<TaskCompletionSnapshot> => {
+
+  return customFetch<TaskCompletionSnapshot>(getGetTaskCompletionRequirementsUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskCompletionRequirementsQueryKey = (taskId: number,) => {
+    return [
+    `/api/tasks/${taskId}/completion-requirements`
+    ] as const;
+    }
+
+
+export const getGetTaskCompletionRequirementsQueryOptions = <TData = Awaited<ReturnType<typeof getTaskCompletionRequirements>>, TError = ErrorType<void>>(taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionRequirements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskCompletionRequirementsQueryKey(taskId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskCompletionRequirements>>> = ({ signal }) => getTaskCompletionRequirements(taskId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionRequirements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskCompletionRequirementsQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskCompletionRequirements>>>
+export type GetTaskCompletionRequirementsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read exact current-cycle execution conditions without raw arguments or results
+ */
+
+export function useGetTaskCompletionRequirements<TData = Awaited<ReturnType<typeof getTaskCompletionRequirements>>, TError = ErrorType<void>>(
+ taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionRequirements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskCompletionRequirementsQueryOptions(taskId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListTasksUrl = (params?: ListTasksParams,) => {
   const normalizedParams = new URLSearchParams();

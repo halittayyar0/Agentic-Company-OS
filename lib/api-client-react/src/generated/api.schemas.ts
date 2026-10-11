@@ -2125,6 +2125,30 @@ export interface WorkforceBlueprintInstallInput {
   cadenceSeconds?: number;
 }
 
+export type TaskCompletionRequirementKind = typeof TaskCompletionRequirementKind[keyof typeof TaskCompletionRequirementKind];
+
+
+export const TaskCompletionRequirementKind = {
+  tool_succeeded: 'tool_succeeded',
+} as const;
+
+export interface TaskCompletionRequirement {
+  kind: TaskCompletionRequirementKind;
+  /**
+     * Exact eligible tool name in the selected coordinator's current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.
+     * @minLength 1
+     * @maxLength 80
+     * @pattern ^[a-zA-Z][a-zA-Z0-9_]{0,79}$
+     */
+  tool: string;
+}
+
+/**
+ * Optional owner-selected tools that must have a verified successful receipt in this task's current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.
+ * @maxItems 8
+ */
+export type TaskCompletionRequirements = TaskCompletionRequirement[];
+
 export type TaskPriority = typeof TaskPriority[keyof typeof TaskPriority];
 
 
@@ -2154,6 +2178,7 @@ export interface Task {
   id: number;
   title: string;
   brief: string;
+  completionRequirements?: TaskCompletionRequirements;
   status: TaskStatus;
   priority: TaskPriority;
   ownerAgentId: number;
@@ -3175,6 +3200,7 @@ export interface TaskInput {
      * @maxLength 8000
      */
   brief: string;
+  completionRequirements?: TaskCompletionRequirements;
   /** Optional backwards-compatible coordinator override; every active agent still joins the project. */
   ownerAgentId?: number;
   priority?: TaskPriority;
@@ -3185,6 +3211,47 @@ export interface TaskInput {
      * @maximum 604800
      */
   cadenceSeconds?: number;
+}
+
+export interface TaskCompletionTools {
+  /** @minimum 1 */
+  ownerAgentId: number;
+  /** @items.pattern ^[a-zA-Z][a-zA-Z0-9_]{0,79}$ */
+  tools: string[];
+}
+
+export type TaskCompletionSnapshotSource = typeof TaskCompletionSnapshotSource[keyof typeof TaskCompletionSnapshotSource];
+
+
+export const TaskCompletionSnapshotSource = {
+  persisted_current_cycle: 'persisted_current_cycle',
+} as const;
+
+export type TaskCompletionRequirementStateKind = typeof TaskCompletionRequirementStateKind[keyof typeof TaskCompletionRequirementStateKind];
+
+
+export const TaskCompletionRequirementStateKind = {
+  tool_succeeded: 'tool_succeeded',
+} as const;
+
+export interface TaskCompletionRequirementState {
+  kind: TaskCompletionRequirementStateKind;
+  /** @pattern ^[a-zA-Z][a-zA-Z0-9_]{0,79}$ */
+  tool: string;
+  satisfied: boolean;
+  available: boolean;
+}
+
+export interface TaskCompletionSnapshot {
+  source: TaskCompletionSnapshotSource;
+  /** @minimum 1 */
+  taskId: number;
+  /** @minimum 0 */
+  cycleNumber: number;
+  taskStatus: TaskStatus;
+  observedAt: string;
+  /** @maxItems 8 */
+  requirements: TaskCompletionRequirementState[];
 }
 
 export type TaskCreationReceiptState = typeof TaskCreationReceiptState[keyof typeof TaskCreationReceiptState];
@@ -4205,6 +4272,13 @@ limit?: PageLimitParameter;
  * @minimum 1
  */
 beforeId?: BeforeIdParameter;
+};
+
+export type GetTaskCompletionToolsParams = {
+/**
+ * @minimum 1
+ */
+ownerAgentId?: number;
 };
 
 export type ListTasksParams = {

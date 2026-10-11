@@ -1,10 +1,15 @@
 import { hasComposerDraftInput } from "./composer-draft";
 import type { ProjectDraft } from "./project-start-request";
 import { readSkillDraft } from "./skill-draft";
+import {
+  completionRequirementsSchema,
+  type CompletionRequirement,
+} from "./completion-requirements-input";
 
 export type ProjectPreparation = {
   title: string;
   brief: string;
+  completionRequirements?: CompletionRequirement[];
   source?:
     | { kind: "project"; id: number; status: string; updatedAt: string }
     | { kind: "guide"; id: string; revision: number; enabled: boolean };
@@ -82,9 +87,23 @@ export function readProjectPreparation(
   if (!draft || !("acosSkillDraft" in state)) return null;
   const value = state.acosSkillDraft;
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  if (!("source" in value) || value.source === undefined) return draft;
-  const source = readSource(value.source);
-  return source ? { ...draft, source } : null;
+  const source =
+    "source" in value && value.source !== undefined
+      ? readSource(value.source)
+      : undefined;
+  if (source === null) return null;
+  if (
+    "completionRequirements" in value &&
+    value.completionRequirements !== undefined
+  ) {
+    if (source?.kind !== "project") return null;
+    const parsed = completionRequirementsSchema.safeParse(
+      value.completionRequirements,
+    );
+    if (!parsed.success) return null;
+    return { ...draft, source, completionRequirements: parsed.data };
+  }
+  return source ? { ...draft, source } : draft;
 }
 
 /** A later navigation seed must never be cleared by an earlier choice. */

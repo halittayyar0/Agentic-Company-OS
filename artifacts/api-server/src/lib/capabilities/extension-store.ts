@@ -184,8 +184,11 @@ export async function exportExtension(id: string) {
   if (!row) throw new Error("EXTENSION_MISSING");
   return validateExtensionPackage(row.manifest);
 }
-export async function readCapabilityPacks() {
-  const [row] = await db
+export async function readCapabilityPacks(
+  connection:
+    Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db = db,
+) {
+  const [row] = await connection
     .select()
     .from(capabilityPreferencesTable)
     .where(eq(capabilityPreferencesTable.id, 1));

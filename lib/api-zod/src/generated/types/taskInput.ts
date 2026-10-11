@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0-alpha.1
  */
 import type { TaskAutonomyMode } from './taskAutonomyMode';
+import type { TaskCompletionRequirements } from './taskCompletionRequirements';
 import type { TaskCreationRequestId } from './taskCreationRequestId';
 import type { TaskPriority } from './taskPriority';
 
@@ -21,6 +22,7 @@ export interface TaskInput {
      * @maxLength 8000
      */
   brief: string;
+  completionRequirements?: TaskCompletionRequirements;
   /** Optional backwards-compatible coordinator override; every active agent still joins the project. */
   ownerAgentId?: number;
   priority?: TaskPriority;

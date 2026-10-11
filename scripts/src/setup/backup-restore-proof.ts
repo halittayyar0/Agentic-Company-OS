@@ -76,6 +76,9 @@ export async function proveDatabaseBackup(input: {
   connectionArgs: string[];
   command: (name: string, args: string[]) => Promise<{ stdout: string }>;
   copyArchive?: () => Promise<string>;
+  verifyAdditionalRestoredData?: (
+    readOnlySql: (query: string) => Promise<string>,
+  ) => Promise<void>;
 }) {
   const restoreDatabase = `acos_restore_${randomUUID().replaceAll("-", "")}`;
   const sql = (database: string, query: string) =>
@@ -142,6 +145,13 @@ export async function proveDatabaseBackup(input: {
       before,
       "The restored application records and migration history must match the fixture",
     );
+    if (input.verifyAdditionalRestoredData) {
+      await input.verifyAdditionalRestoredData(
+        async (query) =>
+          (await sql(restoreDatabase, `BEGIN READ ONLY;\n${query};\nROLLBACK;`))
+            .stdout,
+      );
+    }
     const write = await sql(
       restoreDatabase,
       `BEGIN;

@@ -6,6 +6,7 @@ import { readExecutionPolicy, policyAllowsTool } from "../execution-policy";
 import { codexTaskMayBeOffered } from "../codex-task-capability";
 import { getCodexTaskCopy } from "../codex-task-copy";
 import type { WorkspaceLocale } from "../workspace-locale";
+import type { RuntimeTransaction } from "./runtime-emergency-stop";
 
 type ToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
 
@@ -493,7 +494,11 @@ import { readCapabilityPacks, toolPack } from "../capabilities/extension-store";
 export async function getToolsForAgent(
   agent: Agent,
   hasActiveTask: boolean,
-  context: { modelId?: string | null; locale?: WorkspaceLocale } = {},
+  context: {
+    modelId?: string | null;
+    locale?: WorkspaceLocale;
+    connection?: RuntimeTransaction;
+  } = {},
 ): Promise<ToolDef[]> {
   const permissions = agent.permissions;
   // Approval is also available in direct chat. If no task exists, the
@@ -539,7 +544,10 @@ export async function getToolsForAgent(
       });
   }
 
-  if (permissions.canUseSudo && (await isCanonicalRootCeo(agent))) {
+  if (
+    permissions.canUseSudo &&
+    (await isCanonicalRootCeo(agent, context.connection))
+  ) {
     tools.push(vmRunSudoCommandTool);
   }
 
@@ -560,8 +568,8 @@ export async function getToolsForAgent(
     tools.push(updateTaskProgressTool, completeTaskTool, requestUserInputTool);
   }
 
-  const policy = await readExecutionPolicy();
-  const packs = await readCapabilityPacks();
+  const policy = await readExecutionPolicy(context.connection);
+  const packs = await readCapabilityPacks(context.connection);
   return tools.filter(
     (tool) =>
       tool.type === "function" &&

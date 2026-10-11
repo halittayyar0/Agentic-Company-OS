@@ -48,6 +48,9 @@ const ProjectStartRecovery = lazy(
 const ProjectPreparationChoice = lazy(
   () => import("@/components/studio/project-preparation-choice"),
 );
+const CompletionRequirementsChoice = lazy(
+  () => import("@/components/tasks/completion-requirements-choice"),
+);
 
 const AUTONOMY_OPTIONS = ["finite", "continuous"] as const;
 const PRIORITY_OPTIONS = ["low", "normal", "high", "urgent"] as const;
@@ -163,6 +166,7 @@ function NewTaskForm({
   const activeAgents = agents ?? [];
 
   const [preparationBlocked, setPreparationBlocked] = useState(true);
+  const [requirementsBlocked, setRequirementsBlocked] = useState(true);
   const draft = useComposerDraft<Extract<ComposerDraft, { kind: "project" }>>({
     version: 1,
     kind: "project",
@@ -198,6 +202,7 @@ function NewTaskForm({
     if (
       taskStartBlocked ||
       preparationBlocked ||
+      requirementsBlocked ||
       !startState.ready ||
       startState.busy ||
       startState.pending
@@ -456,6 +461,7 @@ function NewTaskForm({
                 type="submit"
                 disabled={
                   preparationBlocked ||
+                  requirementsBlocked ||
                   !startState.ready ||
                   !!startState.busy ||
                   startState.pending ||
@@ -500,6 +506,19 @@ function NewTaskForm({
             ) : null}
           </div>
         </div>
+
+        <Suspense fallback={null}>
+          <CompletionRequirementsChoice
+            value={draft.value.completionRequirements ?? []}
+            onChange={(completionRequirements) =>
+              draft.change({ ...draft.current.current, completionRequirements })
+            }
+            onBlockedChange={setRequirementsBlocked}
+            onReload={() => {
+              if (draft.change(draft.current.current)) window.location.reload();
+            }}
+          />
+        </Suspense>
 
         <Suspense fallback={null}>
           <ProjectStartRecovery

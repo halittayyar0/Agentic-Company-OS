@@ -26,9 +26,11 @@ export function isRootCeo(agent: RootCeoIdentity): boolean {
  */
 export async function isCanonicalRootCeo(
   agent: Pick<Agent, "id"> & RootCeoIdentity,
+  connection:
+    Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db = db,
 ): Promise<boolean> {
   if (!isRootCeo(agent)) return false;
-  const marked = await db
+  const marked = await connection
     .select({ id: agentsTable.id })
     .from(agentsTable)
     .where(eq(agentsTable.isRootCeo, true))

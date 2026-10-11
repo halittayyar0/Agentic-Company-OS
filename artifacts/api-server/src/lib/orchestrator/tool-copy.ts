@@ -211,6 +211,8 @@ export const toolTr = {
     "ENGELLENDİ: bağlı alt görev taskId={id} halen {status}; önce alt görev sonucunu çöz veya iptal et.",
   teamCompletionRejected:
     "Denetim bu tamamlanmayı reddetti: {reason} Lütfen görevi orijinal talimatla uyumlu hale getirip tekrar dene.",
+  teamCompletionRequirementsMissing:
+    "Görev tamamlanamaz: bu döngüde {tools} için geçerli başarı kaydı yok. Gerekli işlemleri mevcut yetkilerinle yürüt; sonuç ayrıca denetlenecek.",
   teamCyclePrepared:
     "Bu çalışma döngüsü {at} için atomik sonlandırmaya hazırlandı.",
   teamCompletionPrepared: "Görev tamamlanması atomik sonlandırmaya hazırlandı.",

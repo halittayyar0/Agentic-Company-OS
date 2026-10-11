@@ -34,6 +34,35 @@ function storage() {
     },
   };
 }
+test("selected completion conditions survive draft reload and cannot be cleared by an earlier acknowledgement", () => {
+  const store = storage();
+  const selected = {
+    ...project,
+    completionRequirements: [
+      { kind: "tool_succeeded" as const, tool: "calculate" },
+    ],
+  };
+  assert.equal(writeComposerDraft(selected, store), true);
+  assert.deepEqual(readComposerDraft("project", store).draft, selected);
+  assert.equal(clearComposerDraft(project, store), false);
+  assert.deepEqual(readComposerDraft("project", store).draft, selected);
+  for (const completionRequirements of [
+    [{ kind: "tool_succeeded", tool: "complete_task" }],
+    [{ kind: "tool_succeeded", tool: "calculate", secret: "no" }],
+    [
+      { kind: "tool_succeeded", tool: "calculate" },
+      { kind: "tool_succeeded", tool: "calculate" },
+    ],
+    Array.from({ length: 9 }, (_, i) => ({
+      kind: "tool_succeeded",
+      tool: "operation_" + i,
+    })),
+  ])
+    assert.equal(
+      writeComposerDraft({ ...project, completionRequirements }, storage()),
+      false,
+    );
+});
 test("home and project draft scopes round-trip original fields without submission data or credentials", () => {
   const store = storage();
   assert.equal(writeComposerDraft(home, store), true);

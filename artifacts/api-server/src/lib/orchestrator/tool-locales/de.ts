@@ -278,6 +278,8 @@ export const toolDe: ToolCopy = {
     "BLOCKIERT: Die Aufgabe wurde gestoppt oder die Ausführungsberechtigung ging verloren.",
   teamChildUnresolved:
     "BLOCKIERT: Die Unteraufgabe taskId={id} hat weiterhin den Status {status}; kläre zuerst ihr Ergebnis oder brich sie ab.",
+  teamCompletionRequirementsMissing:
+    "Die Aufgabe kann nicht abgeschlossen werden: In diesem Zyklus fehlt ein gültiger Erfolgsnachweis für {tools}. Führe die erforderlichen Vorgänge mit deinen bestehenden Berechtigungen aus; das Ergebnis muss weiterhin geprüft werden.",
   teamCompletionRejected:
     "Die Prüfung hat diesen Abschluss abgelehnt: {reason} Bringe die Aufgabe mit der ursprünglichen Anweisung in Einklang und versuche es erneut.",
   teamCyclePrepared:

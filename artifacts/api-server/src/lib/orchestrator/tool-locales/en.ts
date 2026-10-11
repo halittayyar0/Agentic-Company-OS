@@ -248,6 +248,8 @@ export const toolEn: ToolCopy = {
     "BLOCKED: child task taskId={id} is still {status}; resolve its outcome or cancel it first.",
   teamCompletionRejected:
     "Review rejected this completion: {reason} Align the task with the original instruction before trying again.",
+  teamCompletionRequirementsMissing:
+    "The task cannot complete: this cycle has no valid success record for {tools}. Run the required operations within your existing permissions; the result still requires review.",
   teamCyclePrepared:
     "This work cycle was prepared for atomic finalization at {at}.",
   teamCompletionPrepared: "Task completion prepared for atomic finalization.",

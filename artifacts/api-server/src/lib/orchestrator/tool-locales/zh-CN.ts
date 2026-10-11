@@ -213,6 +213,8 @@ export const toolZhCN: ToolCopy = {
   teamTaskLost: "已阻止：任务已停止或执行权限已丢失。",
   teamChildUnresolved:
     "已阻止：子任务 taskId={id} 仍处于 {status} 状态；请先处理该子任务的结果，或将其取消。",
+  teamCompletionRequirementsMissing:
+    "任务无法完成：本轮尚无 {tools} 的有效成功记录。请在现有权限内执行所需操作；结果仍需审核。",
   teamCompletionRejected:
     "审核拒绝了此次完成请求：{reason} 请先让任务符合原始指令，再重试。",
   teamCyclePrepared: "此工作周期已准备好在 {at} 以原子方式完成最终提交。",

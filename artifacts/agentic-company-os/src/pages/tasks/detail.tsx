@@ -61,6 +61,9 @@ const InferenceAccountingPanel = lazy(
 const ProjectReuseActions = lazy(
   () => import("@/components/studio/project-reuse-actions"),
 );
+const CompletionRequirementsPanel = lazy(
+  () => import("@/components/tasks/completion-requirements-panel"),
+);
 
 function hasBudgetResumeRecovery(taskId: number) {
   try {
@@ -412,6 +415,17 @@ function ProjectDetail({
                 <CodingSessionRecovery key={taskId} taskId={taskId} />
               </Suspense>
             </ErrorBoundary>
+            {!!project.completionRequirements?.length && (
+              <ErrorBoundary resetKey={taskId}>
+                <Suspense fallback={null}>
+                  <CompletionRequirementsPanel
+                    key={taskId}
+                    taskId={taskId}
+                    requirements={project.completionRequirements}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            )}
             {isRootProject && (
               <Suspense fallback={null}>
                 <ProjectReuseActions

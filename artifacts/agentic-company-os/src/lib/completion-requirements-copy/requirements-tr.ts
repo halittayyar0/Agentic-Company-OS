@@ -1,0 +1,53 @@
+import type { CompletionRequirementsCopy } from "../completion-requirements-copy";
+const copy = {
+  unavailableActive:
+    "Koordinatör artık bu işlemi kullanamıyor. Ayarlar üzerinden mevcut izinleri incele. Kaydedilen koşul geçerliliğini koruyor.",
+  title: "Tamamlanma koşulları",
+  optional: "İsteğe bağlı",
+  help: "Projenin bitmesinden önce başarıyla çalışması gereken işlemleri seç. Düzenli işlerde her turda yeni bir başarı kaydı gerekir.",
+  limit: "En fazla sekiz işlem seçebilirsin.",
+  loading: "İzin verilen işlemler kontrol ediliyor…",
+  loadError: "İşlemler kontrol edilemedi. Seçimlerin korunuyor.",
+  retry: "Tekrar kontrol et",
+  empty: "Şu anda seçilebilecek işlem yok.",
+  search: "İşlem bul",
+  selected: "Seçilenler",
+  remove: "Koşulu kaldır",
+  unavailable:
+    "Koordinatör şu anda bu işlemi kullanamıyor. Başlamadan önce koşulu kaldır veya Ayarlar üzerinden mevcut izinleri incele.",
+  satisfied: "Başarı kaydedildi",
+  missing: "Başarı kaydı yok",
+  cycle: "Tur",
+  observed: "Kontrol zamanı",
+  sourceHelp:
+    "Bunlar bu tura ait kalıcı işlem kayıtlarıdır. Bir işlemin başarılı olması son yanıtın doğru olduğunu kanıtlamaz; normal inceleme devam eder.",
+  permissionHelp:
+    "Koşul seçmek izin vermez, araçları etkinleştirmez veya işi başlatmaz.",
+  other: "Kurulu işlem",
+  labels: {
+    calculate: "Sayıları hesapla",
+    analyze_text: "Metni analiz et",
+    compare_text: "Metinleri karşılaştır",
+    inspect_json: "JSON verisini incele",
+    profile_csv: "CSV verisini analiz et",
+    convert_datetime: "Tarih ve saati dönüştür",
+    inspect_url: "URL adresini incele",
+    hash_text: "Metnin parmak izini oluştur",
+    vm_run_command: "Komut çalıştır",
+    vm_run_sudo_command: "Yönetici yetkisiyle komut çalıştır",
+    vm_list_files: "Dosyaları listele",
+    vm_read_file: "Dosya oku",
+    vm_write_file: "Dosya yaz",
+    computer_observe: "Bilgisayarı gözlemle",
+    browser_open: "Web sayfası aç",
+    browser_snapshot: "Web sayfasını incele",
+    browser_click: "Web sayfasında tıkla",
+    browser_type: "Web sayfasına yaz",
+    browser_scroll: "Web sayfasını kaydır",
+    browser_extract_text: "Sayfa metnini çıkar",
+    browser_wait: "Web sayfasını bekle",
+    browser_save_screenshot: "Sayfanın ekran görüntüsünü kaydet",
+    run_extension: "Kurulu eklentiyi çalıştır",
+  },
+} satisfies CompletionRequirementsCopy;
+export default copy;

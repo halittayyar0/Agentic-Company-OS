@@ -216,6 +216,8 @@ export const toolZhTW: ToolCopy = {
   teamTaskLost: "已封鎖：任務已停止或已失去執行權限。",
   teamChildUnresolved:
     "已封鎖：子任務 taskId={id} 仍處於 {status} 狀態；請先處理該子任務的結果，或將其取消。",
+  teamCompletionRequirementsMissing:
+    "任務無法完成：本輪尚無 {tools} 的有效成功紀錄。請在現有權限內執行所需操作；結果仍需審核。",
   teamCompletionRejected:
     "審查拒絕了此次完成請求：{reason} 請先讓任務符合原始指示，再重試。",
   teamCyclePrepared: "此工作週期已準備好在 {at} 以不可分割的方式完成最終提交。",

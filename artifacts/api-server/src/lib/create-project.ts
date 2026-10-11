@@ -4,6 +4,7 @@ import {
   tasksTable,
   projectMembersTable,
   activityEventsTable,
+  type Agent,
 } from "@workspace/db";
 import { assertOutstandingTaskCapacity } from "./orchestrator/runtime-capacity";
 import {
@@ -11,9 +12,35 @@ import {
   type RuntimeTransaction,
 } from "./orchestrator/runtime-emergency-stop";
 import { assertAgentConfig } from "./agent-config-version";
+import {
+  parseCompletionRequirements,
+  type CompletionRequirement,
+} from "@workspace/db/completion-requirements";
+import { eligibleCompletionToolNames } from "./task-completion-catalog";
+import { getToolsForAgent } from "./orchestrator/tools";
 
 export class TaskOwnerUnavailable extends Error {}
 export class ActiveWorkforceUnavailable extends Error {}
+export class TaskCompletionRequirementsUnavailable extends Error {
+  readonly code = "TASK_COMPLETION_REQUIREMENTS_UNAVAILABLE";
+  constructor() {
+    super("TASK_COMPLETION_REQUIREMENTS_UNAVAILABLE");
+  }
+}
+export function selectProjectOwner(
+  activeAgents: Agent[],
+  ownerAgentId?: number,
+): Agent | undefined {
+  if (ownerAgentId !== undefined)
+    return activeAgents.find((agent) => agent.id === ownerAgentId);
+  return (
+    activeAgents.find((agent) => agent.isRootCeo) ??
+    activeAgents.find(
+      (agent) => agent.parentAgentId === null && agent.depth === 0,
+    ) ??
+    activeAgents[0]
+  );
+}
 export interface ProjectCreationInput {
   title: string;
   brief: string;
@@ -22,6 +49,7 @@ export interface ProjectCreationInput {
   autonomyMode?: "finite" | "continuous";
   cadenceSeconds?: number;
   dueAt?: Date | null;
+  completionRequirements?: CompletionRequirement[];
 }
 /** Caller owns the transaction so a request receipt can commit with the project. */
 export async function createProjectWithinTransaction(
@@ -52,21 +80,28 @@ export async function createProjectWithinTransaction(
   if (input.ownerAgentId !== undefined && !requestedOwner) {
     throw new TaskOwnerUnavailable();
   }
-  const owner =
-    requestedOwner ??
-    activeAgents.find((agent) => agent.isRootCeo) ??
-    activeAgents.find(
-      (agent) => agent.parentAgentId === null && agent.depth === 0,
-    ) ??
-    activeAgents[0]!;
+  const owner = selectProjectOwner(activeAgents, input.ownerAgentId)!;
 
   if (expectedConfig !== undefined) assertAgentConfig(owner, expectedConfig);
+  const completionRequirements = parseCompletionRequirements(
+    input.completionRequirements,
+  );
+  if (completionRequirements.length) {
+    const available = new Set(
+      eligibleCompletionToolNames(
+        await getToolsForAgent(owner, true, { connection: tx }),
+      ),
+    );
+    if (completionRequirements.some((item) => !available.has(item.tool)))
+      throw new TaskCompletionRequirementsUnavailable();
+  }
   await assertOutstandingTaskCapacity(tx);
   const [created] = await tx
     .insert(tasksTable)
     .values({
       title: input.title,
       brief: input.brief,
+      completionRequirements,
       status: "pending",
       priority: input.priority ?? "normal",
       ownerAgentId: owner.id,

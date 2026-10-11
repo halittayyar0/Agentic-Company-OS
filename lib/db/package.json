@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./completion-requirements": "./src/completion-requirements.ts",
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {

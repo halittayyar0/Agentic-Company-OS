@@ -13,6 +13,7 @@ import {
   type Agent,
   type Task,
 } from "@workspace/db";
+import { parseCompletionRequirements } from "@workspace/db/completion-requirements";
 import { isCanonicalRootCeo } from "./agent-authority";
 import { getLocalizedAgentTemplate } from "../agent-template-localization";
 import {
@@ -339,6 +340,11 @@ ${messages
 }
 
 async function describeTaskContext(task: Task): Promise<string> {
+  const requirements = parseCompletionRequirements(task.completionRequirements);
+  const completionBlock = requirements.length
+    ? `\n<completion_requirements>${JSON.stringify(requirements)}</completion_requirements>
+<completion_requirement_rule>These owner-selected operations need persisted success in this task's current cycle before completion. They grant no permissions; the result still requires review.</completion_requirement_rule>`
+    : "";
   let parentBlock = "<parent_task>none</parent_task>";
   if (task.parentTaskId) {
     const [parent] = await db
@@ -404,7 +410,7 @@ ${recentActivity
 <task>
 <id>${task.id}</id>
 <title>${field(task.title, 500)}</title>
-<brief>${field(task.brief, MAX_TASK_BRIEF_CHARS)}</brief>
+<brief>${field(task.brief, MAX_TASK_BRIEF_CHARS)}</brief>${completionBlock}
 <status>${field(task.status, 100)}</status>
 <progress_percent>${task.progressPercent}</progress_percent>
 <priority>${field(task.priority, 100)}</priority>

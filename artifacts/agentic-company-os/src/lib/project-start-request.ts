@@ -4,6 +4,11 @@ import type {
   TaskCreationReceipt,
 } from "@workspace/api-client-react";
 import type { ComposerDraft } from "./composer-draft";
+import { projectDraftSchema } from "./composer-draft";
+import {
+  completionRequirementsSchema,
+  canonicalCompletionRequirements,
+} from "./completion-requirements-input";
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 export type ProjectDraft = Extract<ComposerDraft, { kind: "project" }>;
 export const projectStartKey = "acos.project-start.v1";
@@ -14,15 +19,6 @@ const uuid = z
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
     ),
   );
-const draftSchema = z.strictObject({
-  version: z.literal(1),
-  kind: z.literal("project"),
-  title: z.string().check(z.maxLength(300)),
-  brief: z.string().check(z.maxLength(8000)),
-  priority: z.enum(["low", "normal", "high", "urgent"]),
-  autonomyMode: z.enum(["finite", "continuous"]),
-  cadenceSeconds: z.literal([900, 3600, 21600, 86400, 604800]),
-});
 const inputSchema = z.strictObject({
   requestId: uuid,
   title: z.string().check(z.minLength(1), z.maxLength(300)),
@@ -30,12 +26,13 @@ const inputSchema = z.strictObject({
   priority: z.enum(["low", "normal", "high", "urgent"]),
   autonomyMode: z.enum(["finite", "continuous"]),
   cadenceSeconds: z.optional(z.literal([900, 3600, 21600, 86400, 604800])),
+  completionRequirements: z.optional(completionRequirementsSchema),
 });
 const requestSchema = z.strictObject({
   version: z.literal(1),
   requestId: uuid,
   input: inputSchema,
-  submittedDraft: draftSchema,
+  submittedDraft: projectDraftSchema,
 });
 export type ProjectStartRequest = z.infer<typeof requestSchema>;
 function inputFor(draft: ProjectDraft, requestId: string): TaskInput {
@@ -47,6 +44,13 @@ function inputFor(draft: ProjectDraft, requestId: string): TaskInput {
     autonomyMode: draft.autonomyMode,
     ...(draft.autonomyMode === "continuous"
       ? { cadenceSeconds: draft.cadenceSeconds }
+      : {}),
+    ...(draft.completionRequirements?.length
+      ? {
+          completionRequirements: canonicalCompletionRequirements(
+            draft.completionRequirements,
+          ),
+        }
       : {}),
   };
 }

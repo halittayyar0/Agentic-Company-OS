@@ -19,6 +19,19 @@ import { applyInstallationPreferences } from "./preferences";
 import { readInstallation } from "./resume";
 import { proveDatabaseBackup } from "./backup-restore-proof";
 
+type NativeProofContext = {
+  baseUrl: string;
+  operatorToken: string;
+  directory: string;
+};
+export type AdditionalNativeDataProof = {
+  prepare: (context: NativeProofContext) => Promise<void>;
+  verifyResumed: (context: NativeProofContext) => Promise<void>;
+  verifyRestored: (
+    readOnlySql: (query: string) => Promise<string>,
+  ) => Promise<void>;
+};
+
 // Opt-in real native installation proof. Owns a fresh PostgreSQL cluster and
 // keeps its evidence directory; it never attaches to the operator's database.
 export async function runNativeInstallSmoke(
@@ -33,6 +46,7 @@ export async function runNativeInstallSmoke(
       directory: string;
     }) => Promise<void>;
   },
+  additionalDataProof?: AdditionalNativeDataProof,
 ) {
   const source = fileURLToPath(new URL("../../..", import.meta.url));
   const directory = await mkdtemp(
@@ -162,6 +176,14 @@ export async function runNativeInstallSmoke(
       "static UI served",
       "personal capability saved",
     );
+    if (additionalDataProof) {
+      assert.ok(result.operatorToken);
+      await additionalDataProof.prepare({
+        baseUrl: result.url,
+        operatorToken: result.operatorToken,
+        directory,
+      });
+    }
     await executor.stopNative();
     const restored = await readInstallation(privateDirectory, source);
     assert.equal(restored.complete, true);
@@ -193,6 +215,14 @@ export async function runNativeInstallSmoke(
       "complete",
     );
     checks.push("restart preserved operator identity and capability");
+    if (additionalDataProof) {
+      assert.ok(result.operatorToken);
+      await additionalDataProof.verifyResumed({
+        baseUrl: result.url,
+        operatorToken: result.operatorToken,
+        directory,
+      });
+    }
     const backup = await proveDatabaseBackup({
       database: "setup_proof",
       dumpPath: path.join(directory, "agentic-os.dump"),
@@ -205,10 +235,17 @@ export async function runNativeInstallSmoke(
         "setup_proof",
       ],
       command,
+      ...(additionalDataProof
+        ? { verifyAdditionalRestoredData: additionalDataProof.verifyRestored }
+        : {}),
     });
     checks.push(
       "binary backup restored roster, migration journal entry count, application writes and sequence state",
     );
+    if (additionalDataProof)
+      checks.push(
+        "additional fixture data persisted through installation resume and binary restore",
+      );
     if (acceptance) {
       await acceptance.run({
         baseUrl: result.url,
