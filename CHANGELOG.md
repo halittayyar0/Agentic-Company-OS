@@ -5,6 +5,13 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+### Fixed
+
+- Write native Ollama boundary receipts through an exclusively created file
+  descriptor. Competing writers cannot overwrite an existing receipt or redirect
+  its contents by changing the pathname. Existing preflight checks, probe
+  deadlines, cleanup assertions and privacy boundaries remain in place.
+
 ## [0.5.0] - 2026-10-09
 
 Reuse your saved instructions without losing current drafts, and recover a

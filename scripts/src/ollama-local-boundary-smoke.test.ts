@@ -17,6 +17,72 @@ import {
   runOwnedOllamaExtraction,
 } from "./ollama-local-boundary-smoke";
 
+function receiptWriter() {
+  const writer = Reflect.get(smoke, "writeNewOllamaBoundaryReceipt") as
+    ((output: string, contents: string) => Promise<void>) | undefined;
+  assert.equal(
+    typeof writer,
+    "function",
+    "descriptor receipt writer is missing",
+  );
+  return writer!;
+}
+
+test("new boundary receipts write the complete document through an owned descriptor", async () => {
+  const writer = receiptWriter();
+  const root = await mkdtemp(path.join(os.tmpdir(), "acos-receipt-write-"));
+  try {
+    const output = path.join(root, "receipt.json");
+    const contents =
+      JSON.stringify({ passed: false, observations: ["owned"] }) + "\n";
+    await writer(output, contents);
+    assert.equal(await readFile(output, "utf8"), contents);
+    await assert.rejects(writer(output, "replacement"), { code: "EEXIST" });
+    assert.equal(await readFile(output, "utf8"), contents);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("competing boundary receipt writes admit exactly one complete document", async () => {
+  const writer = receiptWriter();
+  const root = await mkdtemp(path.join(os.tmpdir(), "acos-receipt-race-"));
+  try {
+    const output = path.join(root, "receipt.json");
+    const documents = ["first-owned-document\n", "second-owned-document\n"];
+    const results = await Promise.allSettled(
+      documents.map((contents) => writer(output, contents)),
+    );
+    assert.equal(
+      results.filter((result) => result.status === "fulfilled").length,
+      1,
+    );
+    const rejected = results.find((result) => result.status === "rejected");
+    assert.ok(rejected && rejected.status === "rejected");
+    assert.equal(rejected.reason.code, "EEXIST");
+    const winner = results.findIndex((result) => result.status === "fulfilled");
+    assert.equal(await readFile(output, "utf8"), documents[winner]);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("boundary receipt writing rejects an existing directory without changing its contents", async () => {
+  const writer = receiptWriter();
+  const root = await mkdtemp(path.join(os.tmpdir(), "acos-receipt-directory-"));
+  try {
+    await writeFile(path.join(root, "preserved.txt"), "preserved");
+    await assert.rejects(writer(root, "replacement"), { code: "EEXIST" });
+    assert.deepEqual(await readdir(root), ["preserved.txt"]);
+    assert.equal(
+      await readFile(path.join(root, "preserved.txt"), "utf8"),
+      "preserved",
+    );
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
 test("owned daemon startup evidence survives cleanup without publishing its output or private home", async () => {
   const capture = Reflect.get(smoke, "captureOwnedOllamaStartupEvidence") as
     ((supervisor: ProcessSupervisor) => Record<string, unknown>) | undefined;

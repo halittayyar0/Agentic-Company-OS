@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { constants } from "node:fs";
 import {
   lstat,
   mkdir,
   mkdtemp,
+  open,
   realpath,
   rm,
   writeFile,
@@ -366,6 +368,25 @@ export async function runOwnedOllamaExtraction(
   );
 }
 
+export async function writeNewOllamaBoundaryReceipt(
+  output: string,
+  contents: string,
+) {
+  // A preflight check is only an early diagnostic. Acquire the new file
+  // exclusively at the point of use and keep writing through that descriptor,
+  // so a later pathname replacement cannot redirect the write.
+  const receipt = await open(
+    output,
+    constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY,
+    0o600,
+  );
+  try {
+    await receipt.writeFile(contents, { encoding: "utf8" });
+  } finally {
+    await receipt.close();
+  }
+}
+
 export async function runOllamaLocalBoundarySmoke(
   archive: string,
   output: string,
@@ -601,7 +622,7 @@ export async function runOllamaLocalBoundarySmoke(
           return !(await lstat(root).catch(() => null));
         },
       }));
-    await writeFile(
+    await writeNewOllamaBoundaryReceipt(
       output,
       JSON.stringify(
         {
@@ -632,7 +653,6 @@ export async function runOllamaLocalBoundarySmoke(
         null,
         2,
       ) + "\n",
-      { flag: "wx", mode: 0o600 },
     );
   }
   assert.ok(passed && runtimeStopped && peerStopped && ownedHomeRemoved);
