@@ -409,6 +409,14 @@ async function installResumeMocks(
         : json(route, receipt);
     }
 
+    if (path === "/api/tasks/501/response-retry" && method === "GET") {
+      return json(route, {
+        taskId: 501,
+        canRetry: false,
+        blockedAttemptId: null,
+      });
+    }
+
     if (path === "/api/inference-accounting" && method === "GET") {
       const params = new URL(route.request().url()).searchParams;
       return json(route, {
@@ -730,9 +738,25 @@ test.describe("blocked task operator handoff", () => {
       failResume: false,
       blockedReason: "runtime_failure",
     });
+    const c = await loadProjectStudioCopy("tr");
+    const scopeReply = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/tasks/501/response-retry" &&
+        response.request().method() === "GET",
+    );
 
     await page.goto("/tasks/501");
     await expectProjectStudioScope(page, harness);
+    const response = await scopeReply;
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toEqual({
+      taskId: 501,
+      canRetry: false,
+      blockedAttemptId: null,
+    });
+    await expect(
+      page.getByRole("button", { name: c.responseRetryAction, exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole("heading", { name: "Nova senden yanıt bekliyor" }),
     ).toHaveCount(0);

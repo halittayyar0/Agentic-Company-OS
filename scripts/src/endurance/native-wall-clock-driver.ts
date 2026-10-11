@@ -226,6 +226,19 @@ export class NativeWallClockDriver implements WallClockRuntimeDriver {
     return inner.inspectIncompleteResponsibilities();
   }
 
+  captureFinalHealthEvidence(
+    observer: SoakEvidenceObserver,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const inner = this.requireInner();
+    if (!inner.captureFinalHealthEvidence) {
+      return Promise.reject(
+        new Error("Native final health evidence is unavailable"),
+      );
+    }
+    return inner.captureFinalHealthEvidence(observer, signal);
+  }
+
   createBrowserSession() {
     return this.requireInner().createBrowserSession();
   }

@@ -47,6 +47,8 @@ window. Additional PostgreSQL test summaries later in the log are recorded but
 cannot replace the source result. Skips must match the reviewed test names and
 reasons; durations may vary. UI runs must have the expected count and workers,
 with no retries, failures, flaky cases, skipped cases or interrupted cases.
+The UI configuration disables automatic retries. A failed first attempt fails
+the main UI job and preserves its browser failure evidence.
 
 Original workflow event, commit, path, run attempt and job identities are also
 checked for every required Actions producer, including secret scanning, CodeQL
@@ -101,6 +103,14 @@ report. Existing report files are never overwritten. Inspect the original job
 and fix the cause before preparing new evidence.
 
 ## Updating expected coverage
+
+Wall-clock runners wait for the final planned health bucket to be persisted
+before closing the report. Worker sampling can commit after the duration
+boundary; the wait uses the existing 120-second evidence deadline and remains
+cancellable. Only actual persisted rows count. Earlier gaps, unplanned degraded
+health and a missing terminal bucket still fail; no minute is renumbered and no
+pre-run or tail bucket supplies missing coverage. The report includes the real
+completion time, and a short run remains `verified24h=false`.
 
 When adding or removing tests, update the candidate's expectation file in the
 same reviewed change. Keep all six platform stages. Derive the new source total
