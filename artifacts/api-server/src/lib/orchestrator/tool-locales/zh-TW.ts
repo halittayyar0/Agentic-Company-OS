@@ -1,6 +1,8 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolZhTW: ToolCopy = {
+  taskResponseRetryQueued:
+    "使用者確認後，因回應不完整而暫停的任務已重新加入佇列。",
   inferenceAccountingPending:
     "正在等待模型呼叫的用量記錄（{id}）。此項工作的後續模型呼叫將等待記錄完成。",
   inferenceAccountingRecovery:
@@ -361,6 +363,12 @@ export const toolZhTW: ToolCopy = {
   approvalBindingInvalidated: "已核准的瀏覽器綁定已失效；需要重新核准。",
   judgeRunning: "正在審核任務",
   taskAdvanceInstruction: "將任務推進一步。評估目前狀態並呼叫適當的工具。",
+  taskResponseIncompleteLocal:
+    "模型回覆遭截斷，任務已暫停。請檢查目前 Ollama 模型的上下文與回覆長度限制，再於任務頁面重試。",
+  taskResponseIncompleteRemote:
+    "模型回覆遭截斷，任務已暫停。請檢查目前模型的上下文與回覆長度限制，再於任務頁面重試。",
+  taskResponseSpaceReduced:
+    "回覆遭截斷。已保留任務與工具執行證據並縮減歷史，將在原有輪次上限內重試一次。",
   taskOpenInstruction:
     "任務仍未結束。不要在解釋後停止：呼叫下一個安全且具體的工具；需要人工輸入時使用 request_user_input；有證據滿足驗收標準時呼叫 complete_task。",
   taskPassiveFallbackInstruction:
@@ -374,6 +382,8 @@ export const toolZhTW: ToolCopy = {
   taskToolFallbackInstruction:
     "上一個模型已兩次未能使用工具協定。保留相同上下文，並透過一個完全符合允許的工具參數結構的具體步驟繼續。",
   operationCompleted: "操作已完成：{tool}。",
+  toolSchemaUnavailable:
+    "本次請求未提供 {tool}，因此未執行。請使用已提供的工具，或先透過 load_tools 載入清單中的選用工具，再在下一次請求中呼叫。權限未變更。",
   modelFailure: "{reason}（{source}）",
   failureRateLimit: "已達模型請求限額。",
   failureTimeout: "模型請求逾時。",

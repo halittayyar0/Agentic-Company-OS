@@ -14,6 +14,8 @@ export type ConnectionCopy = {
   unknownLocation: string;
   localRequirement: string;
   localVerified: string;
+  modelRuntimeRequirement: string;
+  modelRuntimeUnverified: string;
   cloudOff: string;
   cloudOn: string;
   chatgptHint: string;
@@ -60,6 +62,37 @@ export type ConnectionCopy = {
   refresh: string;
   unknown: string;
 };
+
+export function modelConnectionReady(model: {
+  provider: string;
+  id: string;
+  executionLocation?: string;
+  runtimeCompatibility?: string;
+}): boolean {
+  return (
+    model.provider !== "ollama" ||
+    (model.executionLocation === "local" &&
+      model.id.startsWith("ollama:") &&
+      model.runtimeCompatibility === "compatible") ||
+    (model.executionLocation === "cloud" &&
+      model.id.startsWith("ollama-cloud:"))
+  );
+}
+
+export function localModelRuntimeHint(
+  model: { runtimeCompatibility?: string; requiredOllamaVersion?: string },
+  copy: ConnectionCopy,
+): readonly [string, string, string] | null {
+  if (model.runtimeCompatibility === "compatible") return null;
+  if (
+    model.runtimeCompatibility === "update_required" &&
+    model.requiredOllamaVersion
+  ) {
+    const [before, after] = copy.modelRuntimeRequirement.split("{version}");
+    return [before, model.requiredOllamaVersion, after];
+  }
+  return [copy.modelRuntimeUnverified, "", ""];
+}
 const loaders = {
   en: () => import("./connection-copy/connection-en"),
   tr: () => import("./connection-copy/connection-tr"),

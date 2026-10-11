@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 import { createHash, randomUUID } from "node:crypto";
 import http from "node:http";
 import test, { after, type TestContext } from "node:test";
@@ -415,9 +416,24 @@ test("saved owner operation requirements stay visible and real successful work n
     createCompletion: async (params) => {
       await params.beforeRequest?.();
       const system = String(params.messages[0]?.content ?? "");
+      const user = String(
+        params.messages.find((message) => message.role === "user")?.content ??
+          "",
+      );
+      const requirements =
+        /<completion_requirements>([\s\S]*?)<\/completion_requirements>/.exec(
+          user,
+        );
+      if (requirements) {
+        assert.deepEqual(
+          JSON.parse(requirements[1]),
+          fixture.task.completionRequirements,
+        );
+      }
       ownerConditionVisible ||=
-        system.includes("<completion_requirements>") &&
-        system.includes('"tool":"calculate"');
+        requirements !== null &&
+        user.includes('<task_context trust="untrusted-data">') &&
+        !system.includes("<completion_requirements>");
       return ++calls === 1
         ? toolCompletion(params.model, "calculate", {
             operation: "multiply",
@@ -527,6 +543,10 @@ test("durable lifecycle tools leave no partial terminal state when the step cras
       const crash = new Error(`synthetic crash after ${lifecycle.toolName}`);
       await stepTask(fixture.claimed, {
         createCompletion: async (params) => {
+          const loading = await loadFixtureTaskTools(params, [
+            lifecycle.toolName,
+          ]);
+          if (loading) return loading;
           await params.beforeRequest?.();
           return toolCompletion(
             params.model,
@@ -632,6 +652,10 @@ test("all durable lifecycle finalizers roll back on replaced-owner and emergency
         });
         await stepWithBarrier(fixture.claimed, {
           createCompletion: async (params) => {
+            const loading = await loadFixtureTaskTools(params, [
+              lifecycle.toolName,
+            ]);
+            if (loading) return loading;
             await params.beforeRequest?.();
             return toolCompletion(
               params.model,
@@ -807,6 +831,10 @@ test("a durable lifecycle mutation and its operation receipt succeed in one fina
   await stepTask(fixture.claimed, {
     locale: "tr",
     createCompletion: async (params) => {
+      const loading = await loadFixtureTaskTools(params, [
+        "request_user_input",
+      ]);
+      if (loading) return loading;
       await params.beforeRequest?.();
       return toolCompletion(params.model, "request_user_input", { question });
     },
@@ -913,6 +941,8 @@ test("all lifecycle finalizers preserve the reserved language and exact source a
         await stepTask(fixture.claimed, {
           locale: locale === "en" ? "ar" : "en",
           createCompletion: async (params) => {
+            const loading = await loadFixtureTaskTools(params, [toolName]);
+            if (loading) return loading;
             await params.beforeRequest?.();
             return toolCompletion(params.model, toolName, args);
           },
@@ -1063,6 +1093,11 @@ test("a deferred durable operation stops its tool batch and schedules the attemp
   const dispatched: string[] = [];
   await stepTask(fixture.claimed, {
     createCompletion: async (params) => {
+      const loading = await loadFixtureTaskTools(params, [
+        "request_user_input",
+        "post_company_message",
+      ]);
+      if (loading) return loading;
       await params.beforeRequest?.();
       return toolBatchCompletion(params.model, [
         {
@@ -1833,6 +1868,10 @@ test("slot filling starts and heartbeats each claim before the next claim transa
         leaseHeartbeatRuntime: manualHeartbeatRuntime,
         afterInitialLeaseHeartbeat: lifecycle.afterInitialLeaseHeartbeat,
         createCompletion: async (params) => {
+          const loading = await loadFixtureTaskTools(params, [
+            "request_user_input",
+          ]);
+          if (loading) return loading;
           await params.beforeRequest?.();
           providerCalls += 1;
           if (providerCalls === 1) firstProviderStarted.resolve();
@@ -2035,6 +2074,10 @@ test("two schedulers never create a delayed five-claim first batch", async (t) =
       runtimeOperationsConfig: workerConfig,
       leaseHeartbeatRuntime: manualHeartbeatRuntime,
       createCompletion: async (params) => {
+        const loading = await loadFixtureTaskTools(params, [
+          "request_user_input",
+        ]);
+        if (loading) return loading;
         await params.beforeRequest?.();
         providerCalls += 1;
         if (providerCalls === allClaims.length) providerStarted.resolve();

@@ -1,5 +1,16 @@
 import type { ProjectStudioCopy } from "../project-studio-copy";
 const copy: ProjectStudioCopy = {
+  responseRetryHeading: "Modellarbeit ist angehalten",
+  responseRetryHelp:
+    "Prüfe zuerst Kontext- und Antwortlimits. Aufgabengrenzen und gespeicherte Modelle bleiben; automatische Auswahl wird erneut geprüft. Die Fortsetzung kann Tokens verbrauchen.",
+  responseRetryAction: "Diese Aufgabe erneut versuchen",
+  responseRetrySame: "Dieselbe Anfrage erneut senden",
+  responseRetryInspect: "Bestätigung des Versuchs prüfen",
+  responseRetryAccepted: "Aufgabe zur Fortsetzung eingereiht.",
+  responseRetryRejected:
+    "Nicht fortgesetzt. Prüfe Aufgabenstatus, zuständigen Agenten, Freigaben und Nutzungslimits.",
+  responseRetryUnknown:
+    "Ergebnis unbestätigt. Prüfe die gespeicherte Bestätigung oder sende dieselbe Anfrage erneut.",
   budgetHeading: "Am Nutzungslimit pausiert",
   budgetHelp:
     "Die Prüfung verbraucht keine Modell-Tokens und setzt die Nutzung nicht zurück. Fortgesetzte Arbeit nutzt das bestehende Kontingent. Ist es ausgeschöpft, erhöhen Sie die konfigurierten Limits oder warten Sie, bis das rollierende Tagesfenster erneuert wird.",
@@ -161,7 +172,9 @@ const copy: ProjectStudioCopy = {
   runSummary: "Gespeicherte Übersicht",
   progress: "Fortschritt",
   attempts: "Arbeitsversuche",
-  tokens: "Tokens",
+  tokens: "Erfasste Tokens",
+  tokenUsageHelp:
+    "Nur diese Aufgabe: Prüfungen und gemeldete fehlgeschlagene Aufrufe enthalten; nicht gemeldeter Verbrauch ausgeschlossen.",
   model: "Gespeichertes Modell",
   unknownModel: "Kein Modell gespeichert",
   deliveryHelp:

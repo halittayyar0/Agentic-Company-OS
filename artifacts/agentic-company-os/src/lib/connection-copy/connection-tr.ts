@@ -1,5 +1,9 @@
 import type { ConnectionCopy } from "../connection-copy";
 export default {
+  modelRuntimeRequirement:
+    "Ollama {version} veya üzeri gerekiyor. Bu sunucuyu güncelleyip bağlantıyı yeniden kontrol edin.",
+  modelRuntimeUnverified:
+    "Bu modelin gerektirdiği Ollama sürümü doğrulanamadı. Kullanmadan önce bağlantıyı kontrol edin.",
   apiProviders: "API sağlayıcısı",
   signedOut: "Bu hesabın oturumu kapalı. Kullanmadan önce yeniden giriş yap.",
   signInAgain: "Yeniden giriş yap",

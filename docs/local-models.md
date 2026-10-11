@@ -5,6 +5,64 @@ Ollama **0.18.0 or later** and an installed model that supports tools to run age
 jobs. Saving discovers the catalog; it does not download a model or test inference.
 Review the model and permissions before pressing **Start**.
 
+A real Windows CPU installation has completed a bounded first task and displayed
+its saved result at phone width. See the [first-result verification record](./verification/2026-10-11-local-first-result.md)
+for the exact task, actual token counts and limits. Tool support alone does not
+establish the quality of future tasks or of a completion reviewer.
+
+The latest development trial did not complete on the small CPU model. Recorded
+usage, review-format validation and task-context recovery have since received
+scoped checks; this is not current release acceptance. See the
+[response-recovery record](./verification/2026-10-11-incomplete-response-recovery.md)
+for the context-capacity evidence. A subsequent trial reduced organization data
+without removing facts, but the runner rejected the model's malformed tool output.
+See the [latest verification record](./verification/2026-10-11-compact-organization-context.md)
+for that failure and the remaining gates.
+
+If the runner returns an error without usage, the task can pause for accounting
+recovery. A displayed recorded-token count of zero does not establish that the
+model consumed no tokens. Checking the connection does not resolve an outstanding
+usage receipt, and the cut-short-response retry is not an accounting reset.
+
+## Apply saved usage, then choose whether to resume
+
+Open **Model usage records** on the task or agent. **Check saved records** only
+reads the current state. When trusted usage evidence has already been saved for
+that exact call, **Apply usage** becomes available. It corrects accounting once;
+it does not call a model or start work. Repeated clicks cannot duplicate usage.
+The original receipt remains unchanged.
+
+After a task's usage block clears, an eligible **Retry this task** action can
+appear separately. Review its explanation before clicking: retry can consume
+tokens and still requires the existing permissions, approvals and spend limits.
+Existing execution evidence is retained. Updating usage alone is not task success.
+
+If the application response is lost or belongs to another task, the interface
+reports uncertainty and reads the saved state again. It does not automatically
+repeat the write or resume the task. Without genuine saved usage evidence, the
+accounting block stays in place; there is no zero-token reset or manual override.
+In particular, the latest local model's parser failure did not report usage and
+cannot be recovered by this action. See the
+[saved-usage recovery verification](./verification/2026-10-11-saved-usage-recovery.md)
+for measured tests and remaining limits.
+
+## When a response is cut short
+
+The app prevents partial responses from executing tools. For a local task, it
+can remove earlier model narration once while retaining policy, the task and
+tool evidence, within the existing round limit. Continued truncation pauses the
+task. This recovery does not enlarge your server's context or guarantee model
+quality.
+
+Check the current Ollama model's context and response limits, then open the task
+page. Its explicit retry retains usage limits and any saved model selection;
+automatic routing is checked again. Checking state or inspecting a saved retry
+receipt uses no model tokens. Continuing work can consume tokens. A retry does
+not clear budgets, approvals or unresolved operations.
+
+If the connection drops after sending, inspect the saved receipt or retry the
+same request. Reloading the page never sends that request automatically.
+
 ## Use an address the backend can reach
 
 | Installation                                         | Ollama address                                                                                                             |
@@ -66,6 +124,28 @@ If discovery fails, check the address, listener and private network access. A
 previously selected model stays visible as unavailable; the app does not silently
 replace it with a paid provider. Refresh discovery and review the selection before
 resuming a paused task.
+
+## Check the model's required Ollama version
+
+The local-selector floor (0.18.0) establishes the execution boundary. Individual
+models can require a newer runner. Discovery reads the running server's
+`/api/version` and the model's `/api/show` `requires` field without running inference.
+For example, a model requiring 0.30.0 cannot run on a 0.18.0 server even when it
+reports tool support.
+
+The connection screen shows the required version separately from tool support in
+all seven application languages. Update the **server serving this address**, then
+check the connection again. Automatic routing excludes incompatible or unverified
+local models. An explicit local selection keeps its local boundary and refuses
+inference before dispatch; it does not switch to a paid or cloud provider.
+
+Requirements and versions must be bounded stable versions. Missing or empty model
+requirements follow the legacy server contract; malformed declared requirements
+remain unverified. Discovery results are cached for up to five minutes. Checking
+the connection again refreshes them. A compatible result establishes version
+admission, not model quality, available memory, successful tool use or task completion.
+An explicitly allowed cloud model's remote runner requirement is not compared with
+the local gateway version.
 
 ## What the privacy test proves
 

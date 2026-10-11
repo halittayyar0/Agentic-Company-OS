@@ -28,6 +28,7 @@ import {
   hasFreeModelIdentifier,
   matchesModelSearch,
   ollamaModelLocation,
+  modelRuntimeReady,
 } from "@/lib/model-search";
 import {
   OllamaModelLocation,
@@ -444,6 +445,7 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                     ? (models.find(
                         (model) =>
                           ollamaModelLocation(model) === "local" &&
+                          modelRuntimeReady(model) &&
                           model.supportsTools,
                       ) ??
                       models.find(
@@ -623,6 +625,7 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                               blocked ||
                               ops.controlsBlocked ||
                               !chosenModel ||
+                              !modelRuntimeReady(chosenModel) ||
                               ollamaModelLocation(chosenModel) === "unknown" ||
                               (provider === "ollama" && !locationCopy.data)
                             }

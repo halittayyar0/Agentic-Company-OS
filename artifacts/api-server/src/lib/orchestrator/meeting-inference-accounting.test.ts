@@ -70,6 +70,9 @@ type Fault =
 async function fixture(t: test.TestContext, entry: Entry, fault: Fault) {
   await dbReady;
   let calls = 0;
+  let preparationCalls = 0;
+  let preparationInferenceId: string | null = null;
+  let preparingTools = false;
   let ownershipLost = false;
   const primaryError = new Error("Owned late review ownership loss");
   let loseOwnership: () => Promise<void> = async () => {};
@@ -78,7 +81,62 @@ async function fixture(t: test.TestContext, entry: Entry, fault: Fault) {
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
     const payload = JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
       model: string;
+      tools?: { type: string; function?: { name: string } }[];
     };
+    preparingTools =
+      entry === "task" &&
+      fault === "lost_ack" &&
+      !payload.tools?.some(
+        (tool) => tool.function?.name === "request_user_input",
+      );
+    if (preparingTools) {
+      assert.ok(
+        payload.tools?.some((tool) => tool.function?.name === "load_tools"),
+      );
+      preparationCalls++;
+      assert.equal(preparationCalls, 1, "the owned loader is not replayed");
+      const active = (
+        await db
+          .select()
+          .from(inferenceAttemptsTable)
+          .where(eq(inferenceAttemptsTable.agentId, agent.id))
+      ).filter((attempt) => attempt.state === "dispatched");
+      assert.equal(active.length, 1);
+      preparationInferenceId = active[0].id;
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(
+        JSON.stringify({
+          id: randomUUID(),
+          object: "chat.completion",
+          created: 1,
+          model: payload.model,
+          choices: [
+            {
+              index: 0,
+              finish_reason: "tool_calls",
+              message: {
+                role: "assistant",
+                content: null,
+                tool_calls: [
+                  {
+                    id: randomUUID(),
+                    type: "function",
+                    function: {
+                      name: "load_tools",
+                      arguments: JSON.stringify({
+                        names: ["request_user_input"],
+                      }),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        }),
+      );
+      return;
+    }
     calls++;
     if (fault.startsWith("late_owner")) await loseOwnership();
     response.writeHead(200, { "content-type": "application/json" });
@@ -412,6 +470,9 @@ async function fixture(t: test.TestContext, entry: Entry, fault: Fault) {
     primaryError,
     retry: () => (retry ? retry() : run()),
     calls: () => calls,
+    preparationCalls: () => preparationCalls,
+    preparationInferenceId: () => preparationInferenceId,
+    preparingTools: () => preparingTools,
   };
 }
 
@@ -437,7 +498,7 @@ for (const entry of entries) {
                 get(target, key) {
                   if (key === "insert")
                     return (table: unknown) => {
-                      if (table === usageEventsTable) {
+                      if (table === usageEventsTable && !f.preparingTools()) {
                         inserts++;
                         if (fault === "receipt_outage")
                           return {
@@ -484,14 +545,38 @@ for (const entry of entries) {
       }
       assert.equal(f.calls(), 1);
       assert.equal(await f.published(), fault === "lost_ack" ? 1 : 0);
-      const attempts = await db
+      const allAttempts = await db
         .select()
         .from(inferenceAttemptsTable)
         .where(eq(inferenceAttemptsTable.agentId, f.agent.id));
-      const receipts = await db
+      const allReceipts = await db
         .select()
         .from(usageEventsTable)
         .where(eq(usageEventsTable.agentId, f.agent.id));
+      const preparationId = f.preparationInferenceId();
+      const attempts = allAttempts.filter(
+        (attempt) => attempt.id !== preparationId,
+      );
+      const receipts = allReceipts.filter(
+        (receipt) => receipt.ordinaryInferenceId !== preparationId,
+      );
+      assert.equal(
+        f.preparationCalls(),
+        entry === "task" && fault === "lost_ack" ? 1 : 0,
+      );
+      if (preparationId) {
+        const prepared = allAttempts.filter(
+          (attempt) => attempt.id === preparationId,
+        );
+        const preparedUsage = allReceipts.filter(
+          (receipt) => receipt.ordinaryInferenceId === preparationId,
+        );
+        assert.equal(prepared.length, 1);
+        assert.equal(prepared[0].state, "accounted");
+        assert.equal(preparedUsage.length, 1);
+        assert.equal(preparedUsage[0].totalTokens, 2);
+        assert.equal(preparedUsage[0].usageReported, true);
+      }
       const evidence = await db
         .select()
         .from(inferenceResponseEvidenceTable)

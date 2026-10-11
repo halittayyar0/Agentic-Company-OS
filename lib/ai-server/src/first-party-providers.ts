@@ -6,6 +6,7 @@ import {
   classifyOllamaModel,
   localOllamaReference,
   ollamaRemoteMetadata,
+  ollamaRuntimeCompatibility,
   OllamaBoundaryError,
   parseOllamaModelReference,
   supportedOllamaVersion,
@@ -309,6 +310,7 @@ interface OllamaTagRow {
 
 interface OllamaShowPayload {
   capabilities?: unknown;
+  requires?: unknown;
   details?: unknown;
   remote_host?: unknown;
   remote_model?: unknown;
@@ -453,7 +455,12 @@ async function refreshOllamaCatalogFromEndpoint(
     const entries = await Promise.all(
       rows.map((row) =>
         limit(() =>
-          normalizeOllamaModel(endpoint, row, localEnforcementSupported),
+          normalizeOllamaModel(
+            endpoint,
+            row,
+            localEnforcementSupported,
+            serverVersion,
+          ),
         ),
       ),
     );
@@ -485,6 +492,7 @@ async function normalizeOllamaModel(
   endpoint: ValidatedOllamaEndpoint,
   row: OllamaTagRow,
   localEnforcementSupported: boolean,
+  serverVersion: string | null,
 ): Promise<(ModelCatalogEntry & { provider: "ollama" }) | null> {
   const upstreamId =
     safeOllamaModelId(row.model) ?? safeOllamaModelId(row.name);
@@ -570,6 +578,9 @@ async function normalizeOllamaModel(
     label: upstreamId,
     supportsTools,
     executionLocation,
+    ...(executionLocation === "local"
+      ? ollamaRuntimeCompatibility(serverVersion, show?.requires)
+      : {}),
     description: [
       executionLocation === "local"
         ? "Yerel Ollama"
@@ -730,6 +741,12 @@ export async function prepareOllamaInferenceRequest(
   });
   if (!found || found.executionLocation !== authority.boundary)
     throw new OllamaBoundaryError("unknown_locality");
+  if (!cloudModel && found.runtimeCompatibility !== "compatible")
+    throw new OllamaBoundaryError(
+      found.runtimeCompatibility === "update_required"
+        ? "model_update_required"
+        : "model_runtime_unverified",
+    );
   const upstreamModel = cloudModel ? upstream : localOllamaReference(upstream);
   return Object.freeze({
     ...authority,

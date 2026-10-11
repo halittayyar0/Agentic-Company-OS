@@ -27,8 +27,9 @@ export async function getInferenceAccountingSnapshot(
     (value.status === "clear") !== (value.unsettledCount === 0) ||
     !Array.isArray(value.attempts) ||
     value.attempts.length > 20 ||
-    value.attempts.some(
-      (a) =>
+    value.attempts.some((a) => {
+      const usage = a?.usage;
+      return (
         !a ||
         !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
           a.id,
@@ -38,6 +39,8 @@ export async function getInferenceAccountingSnapshot(
         (scopeType === "agent" && a.agentId !== scopeId) ||
         typeof a.modelId !== "string" ||
         typeof a.provider !== "string" ||
+        (a.savedEvidenceAvailable !== undefined &&
+          typeof a.savedEvidenceAvailable !== "boolean") ||
         ![
           "reserved",
           "dispatched",
@@ -49,22 +52,52 @@ export async function getInferenceAccountingSnapshot(
         !timestamp(a.requestDeadlineAt) ||
         (a.dispatchedAt !== null && !timestamp(a.dispatchedAt)) ||
         (a.settledAt !== null && !timestamp(a.settledAt)) ||
-        (a.usage !== null &&
-          (!a.usage ||
+        (usage !== null &&
+          (!usage ||
             ![
-              a.usage.promptTokens,
-              a.usage.completionTokens,
-              a.usage.totalTokens,
+              usage.promptTokens,
+              usage.completionTokens,
+              usage.totalTokens,
             ].every(integer) ||
-            typeof a.usage.usageReported !== "boolean" ||
-            (a.usage.usageReported &&
-              a.usage.totalTokens <
-                a.usage.promptTokens + a.usage.completionTokens) ||
-            (a.usage.reportedCostUsd !== null &&
-              (typeof a.usage.reportedCostUsd !== "string" ||
-                !/^\d+(\.\d+)?$/.test(a.usage.reportedCostUsd))))),
-    )
+            typeof usage.usageReported !== "boolean" ||
+            (usage.usageReported &&
+              usage.totalTokens <
+                usage.promptTokens + usage.completionTokens) ||
+            (usage.reportedCostUsd !== null &&
+              (typeof usage.reportedCostUsd !== "string" ||
+                !/^\d+(\.\d+)?$/.test(usage.reportedCostUsd)))))
+      );
+    })
   )
-    throw new Error("Accounting status cannot be verified");
+    throw new Error("Invalid status");
   return value;
+}
+
+export async function applySavedInferenceUsage(
+  scopeType: "task" | "agent",
+  scopeId: number,
+  attemptId: string,
+) {
+  const value = await customFetch<{
+    scopeType: "task" | "agent";
+    scopeId: number;
+    attemptId: string;
+    outcome: "applied" | "pending";
+  }>(
+    `/api/inference-accounting/${attemptId}/reconcile?scopeType=${scopeType}&scopeId=${scopeId}`,
+    {
+      method: "POST",
+      cache: "no-store",
+      body: JSON.stringify({ acknowledge: true }),
+      signal: AbortSignal.timeout(20000),
+    },
+  );
+  if (
+    value.scopeType !== scopeType ||
+    value.scopeId !== scopeId ||
+    value.attemptId !== attemptId ||
+    !["applied", "pending"].includes(value.outcome)
+  )
+    throw new Error("Invalid outcome");
+  return value.outcome;
 }

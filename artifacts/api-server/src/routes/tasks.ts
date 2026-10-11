@@ -61,9 +61,14 @@ import { redactApprovalCapabilityScope } from "../lib/orchestrator/approval-capa
 import { eligibleCompletionToolNames } from "../lib/task-completion-catalog";
 import { getToolsForAgent } from "../lib/orchestrator/tools";
 import { loadCompletionRequirementResults } from "../lib/orchestrator/completion-requirements";
+import {
+  withRecordedTaskUsage,
+  withRecordedSingleTaskUsage,
+} from "../lib/task-usage-view";
 
 import taskAnswersRouter from "./task-answers";
 import taskBudgetResumeRouter from "./task-budget-resume";
+import taskResponseRetryRouter from "./task-response-retry";
 import {
   createProjectRequest,
   readProjectCreationRequest,
@@ -74,6 +79,7 @@ import {
 const router: IRouter = Router();
 router.use(taskAnswersRouter);
 router.use(taskBudgetResumeRouter);
+router.use(taskResponseRetryRouter);
 class TaskCancellationConflict extends Error {}
 class ApprovedActionInFlightConflict extends Error {}
 
@@ -243,7 +249,7 @@ router.get("/tasks", async (req, res): Promise<void> => {
   const hasMore = rows.length > page.value.limit;
   const tasks = rows.slice(0, page.value.limit);
   setNextCursor(res, tasks, hasMore);
-  res.json(ListTasksResponse.parse(tasks));
+  res.json(ListTasksResponse.parse(await withRecordedTaskUsage(tasks)));
 });
 
 router.post("/tasks", async (req, res): Promise<void> => {
@@ -302,7 +308,11 @@ router.post("/tasks", async (req, res): Promise<void> => {
       }
       res
         .status(outcome.replayed ? 200 : 201)
-        .json(CreateTaskResponse.parse(outcome.task));
+        .json(
+          CreateTaskResponse.parse(
+            await withRecordedSingleTaskUsage(outcome.task),
+          ),
+        );
       return;
     }
     task = await db.transaction((tx) =>
@@ -351,7 +361,9 @@ router.post("/tasks", async (req, res): Promise<void> => {
     throw error;
   }
 
-  res.status(201).json(CreateTaskResponse.parse(task));
+  res
+    .status(201)
+    .json(CreateTaskResponse.parse(await withRecordedSingleTaskUsage(task)));
 });
 
 router.get("/tasks/:taskId", async (req, res): Promise<void> => {
@@ -369,7 +381,7 @@ router.get("/tasks/:taskId", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Task not found" });
     return;
   }
-  res.json(GetTaskResponse.parse(task));
+  res.json(GetTaskResponse.parse(await withRecordedSingleTaskUsage(task)));
 });
 
 router.get("/tasks/:taskId/members", async (req, res): Promise<void> => {
@@ -439,7 +451,7 @@ router.get("/tasks/:taskId/subtasks", async (req, res): Promise<void> => {
   const hasMore = rows.length > page.value.limit;
   const subtasks = rows.slice(0, page.value.limit).reverse();
   setNextCursor(res, subtasks, hasMore);
-  res.json(ListSubtasksResponse.parse(subtasks));
+  res.json(ListSubtasksResponse.parse(await withRecordedTaskUsage(subtasks)));
 });
 
 router.get("/tasks/:taskId/activity", async (req, res): Promise<void> => {
@@ -699,7 +711,7 @@ router.post("/tasks/:taskId/cancel", async (req, res): Promise<void> => {
     throw error;
   }
 
-  res.json(CancelTaskResponse.parse(task));
+  res.json(CancelTaskResponse.parse(await withRecordedSingleTaskUsage(task)));
 });
 
 router.put("/tasks/:taskId/autonomy", async (req, res): Promise<void> => {
@@ -846,7 +858,11 @@ router.put("/tasks/:taskId/autonomy", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(UpdateTaskAutonomyResponse.parse(outcome.task));
+  res.json(
+    UpdateTaskAutonomyResponse.parse(
+      await withRecordedSingleTaskUsage(outcome.task),
+    ),
+  );
 });
 
 export default router;

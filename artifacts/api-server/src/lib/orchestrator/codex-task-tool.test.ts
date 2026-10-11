@@ -21,6 +21,7 @@ import { classifyToolSideEffect } from "./operation-receipts";
 import { isComputerTool } from "./tool-loop-policy";
 import { getCodexTaskCopy } from "../codex-task-copy";
 import { loadCompletionEvidence } from "./completion-evidence";
+import { readRuntimeOperationsConfig } from "../runtime-operations-config";
 test.after(() => closeDatabase());
 
 test("optional native coding is task-only, plan-only, explicitly configured and follows permissions", async (t) => {
@@ -128,6 +129,30 @@ test("native tool refuses model-supplied runtime paths, account and execution co
   );
 });
 
+test("native approval survives the original worker freshness window while its owned worker is alive", async (t) => {
+  const f = await fixture(t);
+  const choice = f.bridge.approve(f.request(), f.authority.binding);
+  void choice.catch(() => {});
+  const approval = await f.pending(choice);
+  const limits = readRuntimeOperationsConfig({ RUNTIME_ROLE: "worker" });
+  assert.equal(limits.workerStaleAfterMs, 15000);
+  await new Promise((resolve) =>
+    setTimeout(resolve, limits.workerStaleAfterMs + 500),
+  );
+  const response = await f.decide(approval.id, {
+    decision: "approved",
+    expectedArgsHash: approval.scope?.argsHash,
+  });
+  assert.equal(response.status, 200);
+  assert.equal(await choice, "accept");
+  assert.deepEqual(await f.authority.readBinding(), f.authority.binding);
+  await db
+    .update(executionPolicyTable)
+    .set({ revision: 2 })
+    .where(eq(executionPolicyTable.revision, 1));
+  assert.equal(await f.authority.readBinding(), null);
+});
+
 for (const mode of [
   "completed",
   "lost_after_consumption",
@@ -176,7 +201,7 @@ for (const mode of [
     const args = { prompt: "Complete the governed fixture" };
     const running = executeCodexTaskTool(f.context, args, dependencies);
     void running.catch(() => {});
-    const approval = await f.pending();
+    const approval = await f.pending(running);
     assert.equal(
       (
         await f.decide(approval.id, {

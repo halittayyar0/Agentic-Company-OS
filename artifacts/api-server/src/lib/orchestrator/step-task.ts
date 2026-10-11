@@ -1,4 +1,5 @@
 import { createTaskToolCatalog } from "./task-tool-catalog";
+import { ollamaRuntimeRecoveryMessage } from "./ollama-runtime-recovery";
 import {
   getToolCopy,
   toolMessage,
@@ -32,7 +33,7 @@ import { redactAuditText } from "../audit-redaction";
 import type { RuntimeOperationsConfig } from "../runtime-operations-config";
 import { getToolsForAgent } from "./tools";
 import { executeTool, type DurableTaskLifecycleIntent } from "./execute-tool";
-import { buildTaskStepSystemPrompt } from "./system-prompt";
+import { buildTaskStepPrompts } from "./system-prompt";
 import { readWorkspaceLocale, type WorkspaceLocale } from "../workspace-locale";
 import {
   ModelProviderSetupRequiredError,
@@ -147,6 +148,37 @@ export interface StepTaskDependencies {
 }
 
 type StepTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+class TaskResponseIncompleteError extends Error {
+  constructor(readonly local: boolean) {
+    super("Task model response ended before completion");
+    this.name = "TaskResponseIncompleteError";
+  }
+}
+
+/** Only app-created task history follows the first policy and owner messages.
+ * Keep exact tool-call/result pairs and the latest correction. Model narration
+ * is not execution evidence; dropping it must never replace durable receipts. */
+function compactLocalTaskHistory(
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+  const history = messages.slice(2);
+  const latestCorrection = history.reduce(
+    (last, message, index) => (message.role === "user" ? index : last),
+    -1,
+  );
+  return [
+    ...messages.slice(0, 2),
+    ...history.flatMap<OpenAI.Chat.Completions.ChatCompletionMessageParam>(
+      (message, index) => {
+        if (message.role === "user" && index !== latestCorrection) return [];
+        if (message.role !== "assistant") return [message];
+        if (!message.tool_calls?.length) return [];
+        return [{ ...message, content: null }];
+      },
+    ),
+  ];
+}
 
 function approvalCategoryAllowed(
   agent: typeof agentsTable.$inferSelect,
@@ -625,14 +657,10 @@ export async function stepTask(
           ],
         }
       : null;
-    const baseSystemPrompt = await buildTaskStepSystemPrompt(
-      agent,
-      task,
-      locale,
-    );
+    const taskPrompts = await buildTaskStepPrompts(agent, task, locale);
     const systemPrompt = exclusivePolicy
-      ? `${baseSystemPrompt}\n\n${exclusiveTurnSystemPrompt(exclusivePolicy, locale)}`
-      : baseSystemPrompt;
+      ? `${taskPrompts.systemPrompt}\n\n${exclusiveTurnSystemPrompt(exclusivePolicy, locale)}`
+      : taskPrompts.systemPrompt;
     const authorizedTools = filterToolsForExclusiveTurn(
       await getToolsForAgent(agent, true, {
         modelId: task.executionModelId ?? agent.modelId,
@@ -657,7 +685,7 @@ export async function stepTask(
       },
       {
         role: "user",
-        content: statusCopy.taskAdvanceInstruction,
+        content: taskPrompts.userPrompt,
       },
     ];
     const modelInput = {
@@ -679,6 +707,7 @@ export async function stepTask(
     let passiveResponsesForRoute = 0;
     let lifecycleRejectionsForRoute = 0;
     let toolRejectionsForRoute = 0;
+    let localContextRecoveryUsed = false;
     const recordedFallbackRoutes = new Set<string>();
 
     const activateRoute = async (
@@ -753,6 +782,20 @@ export async function stepTask(
           await assertTaskInferenceAdmission(task.id, locale);
           attemptModelId = route.modelId;
           attemptProvider = route.provider;
+          // Bind this response to the exact schemas offered to this inference.
+          // Loading optional tools changes only subsequent requests, including
+          // when a loader and an optional call appear in the same response.
+          const requestTools = toolCatalog?.tools ?? authorizedTools;
+          const advertisedToolNames = new Set(
+            requestTools.map((tool) => tool.function.name),
+          );
+          // Keep the original fenced task as the newest user input after every
+          // tool result or protocol correction. Move its one copy instead of
+          // repeating it; preserve assistant/tool pairs and correction text.
+          const history = messages.slice(2);
+          const requestMessages = history.length
+            ? [messages[0], ...history, messages[1]]
+            : messages;
           const result = await runAccountedCompletion(
             {
               provider: route.provider,
@@ -767,8 +810,8 @@ export async function stepTask(
             },
             {
               model: route.modelId,
-              messages,
-              tools: toolCatalog?.tools ?? authorizedTools,
+              messages: requestMessages,
+              tools: requestTools,
               ...completionTokenControl(
                 route.modelId,
                 DEFAULT_MAX_COMPLETION_TOKENS,
@@ -783,7 +826,7 @@ export async function stepTask(
             compatibilityError.status = 422;
             throw compatibilityError;
           }
-          return result;
+          return { ...result, advertisedToolNames };
         },
         onFailure: async (failure) => {
           await leaseHeartbeat.assertOwned();
@@ -874,6 +917,53 @@ export async function stepTask(
       const assistantMessage = completion.choices[0]?.message;
       if (!assistantMessage) break;
 
+      if (completion.choices[0]?.finish_reason === "length") {
+        const local =
+          routed.value.provider === "ollama" &&
+          routed.route.modelId.startsWith("ollama:");
+        const compacted = local ? compactLocalTaskHistory(messages) : messages;
+        const reduced =
+          Buffer.byteLength(JSON.stringify(compacted), "utf8") <
+          Buffer.byteLength(JSON.stringify(messages), "utf8");
+        const recover =
+          local &&
+          !localContextRecoveryUsed &&
+          reduced &&
+          round < maxToolRounds - 1;
+        await persistOwnedStepWrite(async (tx) => {
+          await tx.insert(activityEventsTable).values({
+            agentId: agent.id,
+            taskId: task.id,
+            type: "note",
+            summary: toolMessage(
+              locale,
+              recover
+                ? "taskResponseSpaceReduced"
+                : local
+                  ? "taskResponseIncompleteLocal"
+                  : "taskResponseIncompleteRemote",
+            ),
+            detail: {
+              runtimeEvent: "task_response_incomplete",
+              finishReason: "length",
+              outcome: "blocked_before_execution",
+              modelId: routed.route.modelId,
+              historyCompacted: recover,
+              identicalRequestRetried: false,
+            },
+            severity: "warning",
+          });
+        });
+        // Even valid-looking calls in a truncated batch must not execute.
+        // The accounted receipt above retains every reported token.
+        if (recover) {
+          localContextRecoveryUsed = true;
+          messages.splice(0, messages.length, ...compacted);
+          continue;
+        }
+        throw new TaskResponseIncompleteError(local);
+      }
+
       const toolCalls = assistantMessage.tool_calls ?? [];
       if (toolCalls.length === 0) {
         if (!toolUsed && assistantMessage.content) {
@@ -950,20 +1040,6 @@ export async function stepTask(
           continue;
         }
         const toolName = toolCall.function.name;
-        if (toolName === "load_tools" && toolCatalog) {
-          await leaseHeartbeat.assertOwned();
-          let content: string;
-          try {
-            content = toolCatalog.load(toolCall.function.arguments);
-            succeededToolCall = true;
-          } catch (error) {
-            content =
-              error instanceof Error ? error.message : "Invalid tool selection";
-            rejectedToolCall = true;
-          }
-          messages.push({ role: "tool", tool_call_id: toolCall.id, content });
-          continue;
-        }
         if (exclusivePolicy) {
           const scopeDecision = evaluateExclusiveToolCall(
             exclusivePolicy,
@@ -1001,6 +1077,48 @@ export async function stepTask(
             rejectedToolCall = true;
             continue;
           }
+        }
+        if (!routed.value.advertisedToolNames.has(toolName)) {
+          const content = toolMessage(locale, "toolSchemaUnavailable", {
+            tool: redactAuditText(toolName, 128),
+          });
+          await persistOwnedStepWrite(async (tx) => {
+            await tx.insert(activityEventsTable).values({
+              agentId: agent.id,
+              taskId: task.id,
+              type: "note",
+              summary: content,
+              detail: {
+                runtimeEvent: "tool_call_not_advertised",
+                guard: "model_request_tool_schema",
+                outcome: "blocked_before_execution",
+                blockedTool: redactAuditText(toolName, 128),
+                advertisedTools: [...routed.value.advertisedToolNames],
+              },
+              severity: "warning",
+            });
+          });
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: toolResultForModel(toolName, content),
+          });
+          rejectedToolCall = true;
+          continue;
+        }
+        if (toolName === "load_tools" && toolCatalog) {
+          await leaseHeartbeat.assertOwned();
+          let content: string;
+          try {
+            content = toolCatalog.load(toolCall.function.arguments);
+            succeededToolCall = true;
+          } catch (error) {
+            content =
+              error instanceof Error ? error.message : "Invalid tool selection";
+            rejectedToolCall = true;
+          }
+          messages.push({ role: "tool", tool_call_id: toolCall.id, content });
+          continue;
         }
         if (shouldDeferComputerTool(toolName, computerToolExecutedInBatch)) {
           messages.push({
@@ -1225,12 +1343,24 @@ export async function stepTask(
         completionTokens += error.usage.completion_tokens;
         totalTokens += error.usage.total_tokens;
       }
+    } else if (error instanceof TaskResponseIncompleteError) {
+      stepFailureKind = "model_response_incomplete";
+      stepError = toolMessage(
+        locale,
+        error.local
+          ? "taskResponseIncompleteLocal"
+          : "taskResponseIncompleteRemote",
+      );
     } else if (
       error instanceof ModelProviderSetupRequiredError ||
       findOllamaBoundaryError(error)
     ) {
       stepFailureKind = "provider_setup_required";
-      stepError = PROVIDER_SETUP_MESSAGE[locale];
+      stepError =
+        ollamaRuntimeRecoveryMessage(
+          findOllamaBoundaryError(error)?.code,
+          locale,
+        ) ?? PROVIDER_SETUP_MESSAGE[locale];
     } else if (error instanceof ModelRoutesExhaustedError) {
       stepFailureKind = "model_routes_exhausted";
       exhaustedModelFailures = error.failures;

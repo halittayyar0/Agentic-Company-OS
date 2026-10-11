@@ -1,6 +1,8 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolDe: ToolCopy = {
+  taskResponseRetryQueued:
+    "Die nach einer unvollständigen Antwort pausierte Aufgabe wurde mit Zustimmung erneut eingereiht.",
   inferenceAccountingPending:
     "Für einen Modellaufruf fehlt noch der Nutzungsbeleg ({id}). Weitere Modellaufrufe für diese Arbeit warten, bis die Abrechnung abgeschlossen ist.",
   inferenceAccountingRecovery:
@@ -459,6 +461,12 @@ export const toolDe: ToolCopy = {
   approvalBindingInvalidated:
     "Die genehmigte Browserbindung ist nicht mehr gültig; eine neue Genehmigung ist erforderlich.",
   judgeRunning: "Aufgabe wird geprüft",
+  taskResponseIncompleteLocal:
+    "Die Modellantwort wurde abgeschnitten. Die Aufgabe pausiert. Prüfe die Kontext- und Antwortlimits des aktuellen Ollama-Modells und versuche es dann auf der Aufgabenseite erneut.",
+  taskResponseIncompleteRemote:
+    "Die Modellantwort wurde abgeschnitten. Die Aufgabe pausiert. Prüfe die Kontext- und Antwortlimits des aktuellen Modells und versuche es dann auf der Aufgabenseite erneut.",
+  taskResponseSpaceReduced:
+    "Die Antwort wurde abgeschnitten. Aufgabe und Werkzeugnachweise bleiben erhalten; der Verlauf wurde verkürzt. Ein erneuter Versuch innerhalb des bisherigen Rundenlimits.",
   taskAdvanceInstruction:
     "Führe die Aufgabe einen Schritt weiter. Bewerte den aktuellen Zustand und rufe die passenden Werkzeuge auf.",
   taskOpenInstruction:
@@ -474,6 +482,8 @@ export const toolDe: ToolCopy = {
   taskToolFallbackInstruction:
     "Das vorherige Modell konnte das Werkzeugprotokoll zweimal nicht verwenden. Behalte den Kontext bei und fahre mit einem konkreten Schritt fort, der genau einem zulässigen Werkzeugschema entspricht.",
   operationCompleted: "Vorgang abgeschlossen: {tool}.",
+  toolSchemaUnavailable:
+    "{tool} wurde nicht angeboten und nicht ausgeführt. Nutze angebotene Werkzeuge oder lade ein gelistetes optionales Werkzeug mit load_tools für die nächste Anfrage. Berechtigungen bleiben unverändert.",
   modelFailure: "{reason} ({source})",
   failureRateLimit: "Das Anfragelimit des Modells wurde erreicht.",
   failureTimeout: "Die Modellanfrage hat das Zeitlimit überschritten.",

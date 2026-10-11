@@ -42,6 +42,10 @@ import { createCodexActionTracker } from "../codex-action-scope";
 import { createApprovalsRouter } from "../../routes/approvals";
 import { startTaskLeaseHeartbeat } from "../orchestrator/task-lease-heartbeat";
 import { readRuntimeOperationsConfig } from "../runtime-operations-config";
+import {
+  registerRuntimeInstance,
+  heartbeatRuntimeInstance,
+} from "../orchestrator/runtime-instance-registry";
 import type { ToolRuntimeContext } from "../orchestrator/execute-tool";
 
 export async function fixture(t: TestContext, approvalTimeoutMs?: number) {
@@ -59,18 +63,18 @@ export async function fixture(t: TestContext, approvalTimeoutMs?: number) {
   await db.update(runtimeControlsTable).set({ emergencyStopEnabled: false });
   const now = Date.now(),
     leaseOwner = randomUUID(),
-    workerId = randomUUID(),
     attemptId = randomUUID(),
     logicalId = randomUUID();
-  await db.insert(runtimeInstancesTable).values({
-    id: workerId,
-    role: "worker",
-    state: "healthy",
-    hostname: "fixture",
-    processId: process.pid,
-    buildVersion: "fixture",
-    lastHeartbeatAt: new Date(now),
-  });
+  const config = readRuntimeOperationsConfig({ RUNTIME_ROLE: "worker" });
+  const worker = await registerRuntimeInstance(
+    { role: "worker", schedulerEnabled: true, buildVersion: "fixture" },
+    config,
+  );
+  // A task lease heartbeat does not keep its owning worker fresh. Use the
+  // actual owned registry heartbeat instead of a row that expires mid-test.
+  t.after(() => worker.stopHeartbeat());
+  assert.equal(await heartbeatRuntimeInstance(worker), true);
+  const workerId = worker.id;
   const [agent] = await db
     .insert(agentsTable)
     .values({
@@ -134,7 +138,7 @@ export async function fixture(t: TestContext, approvalTimeoutMs?: number) {
     agentId: agent.id,
     attemptId,
     leaseOwner,
-    config: readRuntimeOperationsConfig({ RUNTIME_ROLE: "worker" }),
+    config,
   });
   const context = {
     agent,

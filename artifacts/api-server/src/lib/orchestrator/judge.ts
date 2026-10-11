@@ -205,11 +205,20 @@ ${
             // Some providers count reasoning inside this ceiling. A tiny cap
             // can consume tokens without producing any verdict, forcing retries.
             ...completionTokenControl(route.modelId, 4096),
+            // Local thinking models otherwise spend this lightweight review's
+            // window on hidden reasoning. The provider applies this only to
+            // verified local models that advertise thinking support.
+            localReasoningEffort: "none",
             responseFormat: { type: "json_object" },
           },
           dependencies.createCompletion,
         );
 
+        // Usage is already recorded. A parseable fragment cannot certify a
+        // review that the provider explicitly reported as incomplete.
+        if (result.completion.choices[0]?.finish_reason === "length") {
+          throw judgeResponseCompatibilityError("incomplete_response");
+        }
         let parsed: Partial<JudgeResult>;
         try {
           const raw = result.completion.choices[0]?.message?.content ?? "{}";
@@ -221,15 +230,18 @@ ${
         if (verdict !== "pass" && verdict !== "warn" && verdict !== "block") {
           throw judgeResponseCompatibilityError("invalid_verdict");
         }
-        return { ...result, verdict, reasoning: parsed.reasoning };
+        if (
+          typeof parsed.reasoning !== "string" ||
+          parsed.reasoning.trim().length === 0
+        ) {
+          throw judgeResponseCompatibilityError("missing_reasoning");
+        }
+        return { ...result, verdict, reasoning: parsed.reasoning.trim() };
       },
     });
     const { provider, verdict, reasoning: parsedReasoning } = routed.value;
     const model = routed.route.modelId;
-    const reasoning =
-      typeof parsedReasoning === "string" && parsedReasoning.length > 0
-        ? redactAuditText(parsedReasoning, 2_000, true)
-        : copy.judgeMissingReason;
+    const reasoning = redactAuditText(parsedReasoning, 2_000, true);
     const safeReasoning = redactActionSummaryInActivity
       ? text("judgeSudoReason", { verdict })
       : reasoning;
@@ -341,7 +353,11 @@ ${
 }
 
 function judgeResponseCompatibilityError(
-  reason: "malformed_json" | "invalid_verdict",
+  reason:
+    | "malformed_json"
+    | "invalid_verdict"
+    | "missing_reasoning"
+    | "incomplete_response",
 ): Error {
   return Object.assign(
     new Error(`Unsupported judge response format (${reason})`),

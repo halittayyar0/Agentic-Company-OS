@@ -1,5 +1,9 @@
 import type { ConnectionCopy } from "../connection-copy";
 export default {
+  modelRuntimeRequirement:
+    "Requires Ollama {version} or later. Update this server, then check the connection again.",
+  modelRuntimeUnverified:
+    "This model's required Ollama version could not be verified. Check the connection before using it.",
   apiProviders: "API provider",
   signedOut: "This account is signed out. Sign in again before using it.",
   signInAgain: "Sign in again",

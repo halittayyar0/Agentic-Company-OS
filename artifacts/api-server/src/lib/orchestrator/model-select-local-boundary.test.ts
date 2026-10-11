@@ -46,6 +46,26 @@ const selection = (modelId: string | null, taskExecutionModelId?: string) =>
     maxRoutes: 4,
   });
 
+test("automatic routing excludes a local model whose required runtime is newer than the server", async () => {
+  const peer = await ownedOllamaPeer({
+    version: "0.18.0",
+    show: { capabilities: ["tools"], requires: "0.30.0" },
+  });
+  try {
+    configureOllama({ baseUrl: peer.origin });
+    await refreshOllamaCatalog(true);
+    assert.throws(() => selection(null), ModelProviderSetupRequiredError);
+    const pinned = selection("ollama:owned:latest");
+    assert.deepEqual(
+      pinned.routes.map((route) => route.modelId),
+      ["ollama:owned:latest"],
+    );
+    assert.equal(peer.completions().length, 0);
+  } finally {
+    await peer.close();
+  }
+});
+
 test("automatic and fallback routes exclude cloud aliases even with consent and free-looking names", async () => {
   const peer = await ownedOllamaPeer({
     tags: [

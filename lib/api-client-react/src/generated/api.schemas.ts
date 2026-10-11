@@ -71,6 +71,7 @@ export interface InferenceAccountingAttempt {
   /** @maxLength 32 */
   provider: string;
   kind: InferenceAccountingAttemptKind;
+  savedEvidenceAvailable?: boolean;
   state: InferenceAccountingAttemptState;
   /** @minimum 0 */
   createdAt: number;
@@ -907,6 +908,18 @@ export const ModelCatalogModelExecutionLocation = {
   unknown: 'unknown',
 } as const;
 
+/**
+ * Local runner compatibility with the model's declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference.
+ */
+export type ModelCatalogModelRuntimeCompatibility = typeof ModelCatalogModelRuntimeCompatibility[keyof typeof ModelCatalogModelRuntimeCompatibility];
+
+
+export const ModelCatalogModelRuntimeCompatibility = {
+  compatible: 'compatible',
+  update_required: 'update_required',
+  unverified: 'unverified',
+} as const;
+
 export interface ModelCatalogModel {
   id: string;
   label: string;
@@ -917,6 +930,14 @@ export interface ModelCatalogModel {
   supportsTools: boolean;
   /** Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation. */
   executionLocation?: ModelCatalogModelExecutionLocation;
+  /** Local runner compatibility with the model's declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference. */
+  runtimeCompatibility?: ModelCatalogModelRuntimeCompatibility;
+  /**
+     * Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.
+     * @maxLength 64
+     * @pattern ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$
+     */
+  requiredOllamaVersion?: string;
   isDefault: boolean;
 }
 
@@ -3369,6 +3390,33 @@ export interface TaskBudgetResumeReceipt {
   recordedAt: string;
 }
 
+export interface TaskResponseRetryInput {
+  blockedAttemptId: string;
+  acknowledge: true;
+}
+
+export interface TaskResponseRetryScope {
+  /** @minimum 1 */
+  taskId: number;
+  canRetry: boolean;
+  blockedAttemptId: string | null;
+}
+
+export type TaskResponseRetryReceiptOutcome = typeof TaskResponseRetryReceiptOutcome[keyof typeof TaskResponseRetryReceiptOutcome];
+
+
+export const TaskResponseRetryReceiptOutcome = {
+  accepted: 'accepted',
+} as const;
+
+export interface TaskResponseRetryReceipt {
+  /** @minimum 1 */
+  taskId: number;
+  blockedAttemptId: string;
+  outcome: TaskResponseRetryReceiptOutcome;
+  recordedAt: string;
+}
+
 export interface TaskResumeInput {
   requestId: string;
   questionId: string;
@@ -4075,6 +4123,51 @@ export type PageLimitParameter = number;
  * Return rows with an id lower than this cursor.
  */
 export type BeforeIdParameter = number;
+
+export type ReconcileInferenceAccountingParams = {
+scopeType: ReconcileInferenceAccountingScopeType;
+/**
+ * @minimum 1
+ * @maximum 2147483647
+ */
+scopeId: number;
+};
+
+export type ReconcileInferenceAccountingScopeType = typeof ReconcileInferenceAccountingScopeType[keyof typeof ReconcileInferenceAccountingScopeType];
+
+
+export const ReconcileInferenceAccountingScopeType = {
+  task: 'task',
+  agent: 'agent',
+} as const;
+
+export type ReconcileInferenceAccountingBody = {
+  acknowledge: true;
+};
+
+export type ReconcileInferenceAccounting200ScopeType = typeof ReconcileInferenceAccounting200ScopeType[keyof typeof ReconcileInferenceAccounting200ScopeType];
+
+
+export const ReconcileInferenceAccounting200ScopeType = {
+  task: 'task',
+  agent: 'agent',
+} as const;
+
+export type ReconcileInferenceAccounting200Outcome = typeof ReconcileInferenceAccounting200Outcome[keyof typeof ReconcileInferenceAccounting200Outcome];
+
+
+export const ReconcileInferenceAccounting200Outcome = {
+  applied: 'applied',
+  pending: 'pending',
+} as const;
+
+export type ReconcileInferenceAccounting200 = {
+  scopeType: ReconcileInferenceAccounting200ScopeType;
+  /** @minimum 1 */
+  scopeId: number;
+  attemptId: string;
+  outcome: ReconcileInferenceAccounting200Outcome;
+};
 
 export type GetInferenceAccountingStatusParams = {
 scopeType: GetInferenceAccountingStatusScopeType;

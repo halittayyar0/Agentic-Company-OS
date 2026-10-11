@@ -2,6 +2,8 @@ export type OllamaExecutionLocation = "local" | "cloud" | "unknown";
 export type OllamaBoundaryErrorCode =
   | "setup_required"
   | "unsupported_version"
+  | "model_update_required"
+  | "model_runtime_unverified"
   | "unknown_locality"
   | "cloud_consent_required"
   | "server_changed"
@@ -12,6 +14,10 @@ const messages: Record<OllamaBoundaryErrorCode, string> = {
   setup_required: "Configure a private Ollama server before using this model.",
   unsupported_version:
     "Local execution requires a verified stable Ollama 0.18.0 or later server.",
+  model_update_required:
+    "This local model requires a newer Ollama server. Update the server and check the connection again.",
+  model_runtime_unverified:
+    "This local model's required Ollama version could not be verified. Check the connection before using it.",
   unknown_locality: "This model's execution location could not be verified.",
   cloud_consent_required:
     "Allow cloud models explicitly for this Ollama server before using this model.",
@@ -30,13 +36,46 @@ export class OllamaBoundaryError extends Error {
   }
 }
 
-export function supportedOllamaVersion(value: unknown): string | null {
+function stableOllamaVersion(value: unknown): number[] | null {
   if (typeof value !== "string" || value.length > 64) return null;
   const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.exec(value);
   if (!match) return null;
   const parts = match.slice(1).map(Number);
   if (parts.some((part) => !Number.isSafeInteger(part))) return null;
-  return parts[0]! > 0 || parts[1]! >= 18 ? value : null;
+  return parts;
+}
+
+export function supportedOllamaVersion(value: unknown): string | null {
+  const parts = stableOllamaVersion(value);
+  return parts && (parts[0]! > 0 || parts[1]! >= 18) ? (value as string) : null;
+}
+
+/** Model requirements describe the local runner, not an explicitly allowed
+ * remote runner. Missing/empty requirements are the legacy Ollama contract;
+ * any declared malformed requirement is unverified, never silently ignored. */
+export function ollamaRuntimeCompatibility(
+  serverVersion: unknown,
+  requiredVersion: unknown,
+): {
+  runtimeCompatibility: "compatible" | "update_required" | "unverified";
+  requiredOllamaVersion?: string;
+} {
+  const server = stableOllamaVersion(supportedOllamaVersion(serverVersion));
+  if (!server) return { runtimeCompatibility: "unverified" };
+  if (requiredVersion === undefined || requiredVersion === "")
+    return { runtimeCompatibility: "compatible" };
+  const required = stableOllamaVersion(requiredVersion);
+  if (!required) return { runtimeCompatibility: "unverified" };
+  let compatible = true;
+  for (let index = 0; index < 3; index++) {
+    if (server[index] === required[index]) continue;
+    compatible = server[index]! > required[index]!;
+    break;
+  }
+  return {
+    runtimeCompatibility: compatible ? "compatible" : "update_required",
+    requiredOllamaVersion: requiredVersion as string,
+  };
 }
 
 export interface OllamaModelReference {

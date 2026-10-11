@@ -6,6 +6,21 @@ export interface SearchableModel {
   tier: string;
   supportsTools: boolean;
   executionLocation?: "local" | "cloud" | "unknown";
+  runtimeCompatibility?: "compatible" | "update_required" | "unverified";
+}
+
+export function modelRuntimeReady(
+  model: Pick<
+    SearchableModel,
+    "id" | "provider" | "executionLocation" | "runtimeCompatibility"
+  >,
+): boolean {
+  const location = ollamaModelLocation(model);
+  return (
+    location === null ||
+    location === "cloud" ||
+    (location === "local" && model.runtimeCompatibility === "compatible")
+  );
 }
 
 export function hasFreeModelIdentifier(

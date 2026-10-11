@@ -42,6 +42,53 @@ tags:
   - name: vm
     description: Per-agent virtual computer (sandbox filesystem + terminal)
 paths:
+  /inference-accounting/{attemptId}/reconcile:
+    post:
+      operationId: reconcileInferenceAccounting
+      tags: [operations]
+      summary: Apply saved usage evidence without requesting inference or resuming work
+      description: Authenticated operator action bound to the exact task or agent scope and request UUID. Consumes only trusted persisted response evidence. Missing or conflicting usage remains fenced. Never accepts token totals, resets budgets, executes model output or resumes a task. Safe duplicate application retains one correction.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: scopeType
+          in: query
+          required: true
+          schema: { type: string, enum: [task, agent] }
+        - name: scopeId
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [acknowledge]
+              properties:
+                acknowledge: { type: boolean, const: true }
+      responses:
+        "200":
+          description: Saved evidence application outcome; pending is not permission to run
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [scopeType, scopeId, attemptId, outcome]
+                properties:
+                  scopeType: { type: string, enum: [task, agent] }
+                  scopeId: { type: integer, minimum: 1 }
+                  attemptId: { type: string, format: uuid }
+                  outcome: { type: string, enum: [applied, pending] }
+        "400": { description: Exact identity and acknowledgement required }
+        "401": { description: Operator authentication required }
+        "409": { description: Scope or saved evidence conflict }
+        "503": { description: Saved evidence cannot be verified }
   /inference-accounting:
     get:
       operationId: getInferenceAccountingStatus
@@ -1592,6 +1639,73 @@ paths:
         "404":
           description: No committed receipt yet; an in-flight request may still commit
 
+  /tasks/{taskId}/response-retry:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      operationId: getTaskResponseRetryScope
+      tags: [tasks]
+      summary: Read the current incomplete response pause without dispatching work
+      description: Advisory snapshot. Retry admission is rechecked under locks during POST.
+      responses:
+        "200":
+          description: Current task and blocked attempt identity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponseRetryScope"
+        "404":
+          description: Task not found
+    post:
+      operationId: retryTaskResponse
+      tags: [tasks]
+      summary: Explicitly retry a task paused after an incomplete model response
+      description: Keeps the task model, usage, cycle and schedule. Requires acknowledgement and the exact blocked attempt. No inference runs in this route. Queue transition and an immutable accepted audit receipt commit together. Replaying acceptance returns the historical receipt without queueing again. Stale scope, emergency stop, inactive owners, live leases, approvals, unfinished effects and exhausted allowance are rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskResponseRetryInput"
+      responses:
+        "200":
+          description: Bound historical acceptance receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponseRetryReceipt"
+        "400":
+          description: Exact identity and acknowledgement required
+        "409":
+          description: Current task scope cannot safely retry; no work was queued
+
+  /tasks/{taskId}/response-retry/{attemptId}:
+    get:
+      operationId: getTaskResponseRetryReceipt
+      tags: [tasks]
+      summary: Inspect an accepted response retry without dispatching work
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: attemptId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Bound historical acceptance receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponseRetryReceipt"
+        "404":
+          description: No committed receipt yet; an in-flight request may still commit
+
   /tasks/{taskId}/question:
     get:
       operationId: getTaskQuestion
@@ -2902,6 +3016,7 @@ components:
         modelId: { type: string, maxLength: 256 }
         provider: { type: string, maxLength: 32 }
         kind: { type: string, enum: [chat, task_step, judge] }
+        savedEvidenceAvailable: { type: boolean }
         state:
           {
             type: string,
@@ -6944,6 +7059,33 @@ components:
           recordedAt,
         ]
 
+    TaskResponseRetryInput:
+      type: object
+      additionalProperties: false
+      properties:
+        blockedAttemptId: { type: string, format: uuid }
+        acknowledge: { type: boolean, enum: [true] }
+      required: [blockedAttemptId, acknowledge]
+
+    TaskResponseRetryScope:
+      type: object
+      additionalProperties: false
+      properties:
+        taskId: { type: integer, minimum: 1 }
+        canRetry: { type: boolean }
+        blockedAttemptId: { type: string, format: uuid, nullable: true }
+      required: [taskId, canRetry, blockedAttemptId]
+
+    TaskResponseRetryReceipt:
+      type: object
+      additionalProperties: false
+      properties:
+        taskId: { type: integer, minimum: 1 }
+        blockedAttemptId: { type: string, format: uuid }
+        outcome: { type: string, enum: [accepted] }
+        recordedAt: { type: string, format: date-time }
+      required: [taskId, blockedAttemptId, outcome, recordedAt]
+
     TaskResumeInput:
       type: object
       additionalProperties: false
@@ -7234,6 +7376,15 @@ components:
           type: string
           enum: [local, cloud, unknown]
           description: Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.
+        runtimeCompatibility:
+          type: string
+          enum: [compatible, update_required, unverified]
+          description: Local runner compatibility with the model's declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference.
+        requiredOllamaVersion:
+          type: string
+          maxLength: 64
+          pattern: '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$'
+          description: Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.
         isDefault:
           type: boolean
       required:

@@ -30,11 +30,22 @@ for (const mode of [
   "unsupported_version",
   "cloud_consent_required",
   "unknown_locality",
+  "model_update_required",
+  "model_runtime_unverified",
 ] as const) {
   test(`${mode} pauses recurring local/cloud work for setup without inference or changing its pin`, async (t) => {
     await dbReady;
     const peer = await ownedOllamaPeer({
       version: mode === "unsupported_version" ? "0.17.0" : "0.18.0",
+      ...(mode === "model_update_required" ||
+      mode === "model_runtime_unverified"
+        ? {
+            show: {
+              capabilities: ["tools"],
+              requires: mode === "model_update_required" ? "0.30.0" : null,
+            },
+          }
+        : {}),
       tags:
         mode === "cloud_consent_required"
           ? [
@@ -147,7 +158,15 @@ for (const mode of [
     assert.equal(after.modelFallbackCount, 0);
     assert.equal(after.leaseOwner, null);
     assert.ok(after.nextAttemptAt);
-    assert.match(after.lastError ?? "", /Connect.*Settings/);
+    assert.match(after.lastError ?? "", /Settings/);
+    if (mode === "model_update_required")
+      assert.match(after.lastError ?? "", /newer Ollama server.*Update/);
+    else if (mode === "model_runtime_unverified")
+      assert.match(
+        after.lastError ?? "",
+        /required Ollama version.*not.*verified/,
+      );
+    else assert.match(after.lastError ?? "", /Connect.*Settings/);
     assert.equal(
       (
         await db

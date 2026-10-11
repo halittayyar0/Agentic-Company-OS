@@ -57,6 +57,7 @@ const models = [
     id: "ollama:local-fixture",
     label: "Local fixture",
     executionLocation: "local",
+    runtimeCompatibility: "compatible",
   },
   {
     id: "ollama-cloud:cloud-fixture:free",
@@ -270,6 +271,7 @@ for (const locale of Object.keys(labels) as Locale[]) {
     page,
   }) => {
     const c = await loadNewAgentCopy(locale);
+    const connection = await loadConnectionCopy(locale);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(
       (value) => localStorage.setItem("acos.locale.v1", value),
@@ -277,7 +279,27 @@ for (const locale of Object.keys(labels) as Locale[]) {
     );
     const harness = await installStudioFixtures(page);
     await page.route("**/api/model-catalog", (route) =>
-      route.fulfill({ json: catalog }),
+      route.fulfill({
+        json: {
+          ...catalog,
+          models: [
+            ...catalog.models,
+            {
+              ...catalog.models[0],
+              id: "ollama:new-runner:latest",
+              label: "New runner fixture",
+              runtimeCompatibility: "update_required",
+              requiredOllamaVersion: "0.30.0",
+            },
+            {
+              ...catalog.models[0],
+              id: "ollama:unverified-runner:latest",
+              label: "Unverified runner fixture",
+              runtimeCompatibility: "unverified",
+            },
+          ],
+        },
+      }),
     );
     await page.goto("/agents/new?template=ux_designer");
     await page.getByText(c.advanced, { exact: true }).click();
@@ -295,6 +317,17 @@ for (const locale of Object.keys(labels) as Locale[]) {
     await expect(cloud).not.toContainText(c.model.free);
     await expect(unknown).toContainText(labels[locale][3]);
     await expect(unknown).toBeDisabled();
+    const newer = page.getByRole("button", { name: /New runner fixture/ });
+    await expect(newer).toBeDisabled();
+    await expect(newer).toContainText(
+      connection.modelRuntimeRequirement.replace("{version}", "0.30.0"),
+    );
+    await expect(newer.locator('bdi[dir="ltr"]')).toHaveText("0.30.0");
+    const unverified = page.getByRole("button", {
+      name: /Unverified runner fixture/,
+    });
+    await expect(unverified).toBeDisabled();
+    await expect(unverified).toContainText(connection.modelRuntimeUnverified);
     await expect(local).toBeEnabled();
     await local.click();
     await expect(local).toHaveAttribute("aria-pressed", "true");

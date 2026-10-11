@@ -16,6 +16,216 @@ import { loadProjectStudioCopy } from "../../artifacts/agentic-company-os/src/li
 import { loadMeetingTurnCopy } from "../../artifacts/agentic-company-os/src/lib/meeting-turn-copy";
 import { setupMessages } from "../../artifacts/agentic-company-os/src/lib/i18n";
 
+const usageCopy = {
+  tr: [
+    "Kayıtlı tokenlar",
+    "Bu görev için denetimler ve bildirilen başarısız çağrılar dahil. Bildirilmeyen kullanım hariç.",
+  ],
+  en: [
+    "Recorded tokens",
+    "For this task: reviews and reported failed calls included; unreported usage excluded.",
+  ],
+  de: [
+    "Erfasste Tokens",
+    "Nur diese Aufgabe: Prüfungen und gemeldete fehlgeschlagene Aufrufe enthalten; nicht gemeldeter Verbrauch ausgeschlossen.",
+  ],
+  ru: [
+    "Учтённые токены",
+    "Для этой задачи: проверки и неудачные вызовы с известным расходом учтены; неизвестный расход не включён.",
+  ],
+  "zh-CN": [
+    "已记录词元",
+    "此任务用量含审核及已报告用量的失败调用，不含未报告用量。",
+  ],
+  "zh-TW": [
+    "已記錄 Token",
+    "此任務用量含審核及已回報用量的失敗呼叫，不含未回報用量。",
+  ],
+  ar: [
+    "الرموز المسجلة",
+    "لهذه المهمة: المراجعات واستخدام الاستدعاءات الفاشلة المُبلّغ عنه مشمولان؛ الاستخدام غير المُبلّغ عنه غير مشمول.",
+  ],
+} as const;
+
+const responseAttemptId = "14a81fd4-654e-4440-bfa0-aa7a5352a311";
+for (const locale of LOCALES) {
+  test(`${locale} phone retries a cut-short response only after an explicit click`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.addInitScript(
+      (selected) => localStorage.setItem("acos.locale.v1", selected),
+      locale,
+    );
+    const harness = await installProjectStudioMocks(page);
+    const c = await loadProjectStudioCopy(locale);
+    let queued = false;
+    const posts: unknown[] = [];
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, {
+        ...project,
+        status: queued ? "in_progress" : "blocked",
+        blockedReason: queued ? null : "runtime_failure",
+        lastError: queued ? null : c.responseRetryHeading,
+      }),
+    );
+    await page.route("**/api/tasks/101/response-retry", (route) => {
+      if (route.request().method() === "GET")
+        return json(route, {
+          taskId: 101,
+          canRetry: !queued,
+          blockedAttemptId: queued ? null : responseAttemptId,
+        });
+      posts.push(route.request().postDataJSON());
+      queued = true;
+      return json(route, {
+        taskId: 101,
+        blockedAttemptId: responseAttemptId,
+        outcome: "accepted",
+        recordedAt: "2026-10-11T08:00:00.000Z",
+      });
+    });
+    await page.goto("/projects/101");
+    await page.addStyleTag({ content: "html { font-size: 32px !important; }" });
+    const panel = page.getByTestId("response-task-retry");
+    await expect(
+      panel.getByText(c.responseRetryHelp, { exact: true }),
+    ).toBeVisible();
+    expect(posts).toEqual([]);
+    await expect(
+      panel.getByRole("button", { name: c.responseRetryAction, exact: true }),
+    ).toBeEnabled();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    expect(
+      await panel.evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+    if (["en", "ar"].includes(locale))
+      await panel.screenshot({
+        path: info.outputPath(`response-retry-${locale}-phone.png`),
+      });
+    await panel
+      .getByRole("button", { name: c.responseRetryAction, exact: true })
+      .click();
+    await expect(
+      panel.getByText(c.responseRetryAccepted, { exact: true }),
+    ).toBeVisible();
+    expect(posts).toEqual([
+      { blockedAttemptId: responseAttemptId, acknowledge: true },
+    ]);
+    expect([...harness.unexpected]).toEqual([]);
+    expect(harness.messagePosts).toEqual([]);
+    expect(harness.meetingCreatePosts).toEqual([]);
+  });
+}
+for (const locale of ["en", "ar"] as const) {
+  test(`${locale} response retry retains an uncertain request across reload and inspects without another POST`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.addInitScript(
+      (selected) => localStorage.setItem("acos.locale.v1", selected),
+      locale,
+    );
+    const harness = await installProjectStudioMocks(page),
+      c = await loadProjectStudioCopy(locale);
+    let posts = 0;
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, {
+        ...project,
+        status: "blocked",
+        blockedReason: "runtime_failure",
+        lastError: c.responseRetryHeading,
+      }),
+    );
+    await page.route("**/api/tasks/101/response-retry", (route) => {
+      if (route.request().method() === "GET")
+        return json(route, {
+          taskId: 101,
+          canRetry: true,
+          blockedAttemptId: responseAttemptId,
+        });
+      posts++;
+      return json(route, { error: "Owned lost response fixture" }, 502);
+    });
+    await page.route(
+      `**/api/tasks/101/response-retry/${responseAttemptId}`,
+      (route) =>
+        json(route, {
+          taskId: 101,
+          blockedAttemptId: responseAttemptId,
+          outcome: "accepted",
+          recordedAt: "2026-10-11T08:00:00.000Z",
+        }),
+    );
+    await page.goto("/projects/101");
+    let panel = page.getByTestId("response-task-retry");
+    await panel
+      .getByRole("button", { name: c.responseRetryAction, exact: true })
+      .click();
+    await expect(
+      panel.getByText(c.responseRetryUnknown, { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    panel = page.getByTestId("response-task-retry");
+    await expect(
+      panel.getByRole("button", { name: c.responseRetryInspect, exact: true }),
+    ).toBeVisible();
+    expect(posts).toBe(1);
+    await panel
+      .getByRole("button", { name: c.responseRetryInspect, exact: true })
+      .click();
+    await expect(
+      panel.getByText(c.responseRetryAccepted, { exact: true }),
+    ).toBeVisible();
+    expect(posts).toBe(1);
+    expect([...harness.unexpected]).toEqual([]);
+  });
+}
+
+for (const locale of LOCALES) {
+  test(`${locale} phone shows recorded task usage and explains missing usage`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.addInitScript(
+      (selected) => localStorage.setItem("acos.locale.v1", selected),
+      locale,
+    );
+    const harness = await installProjectStudioMocks(page);
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, { ...project, tokensUsed: 11441 }),
+    );
+    await page.goto("/projects/101?view=evidence");
+    const [label, help] = usageCopy[locale];
+    const term = page.locator("dt").filter({ hasText: label });
+    await expect(term).toBeVisible();
+    await expect(term.locator("..").locator("dd")).toHaveText(
+      (11441).toLocaleString(locale),
+    );
+    await expect(page.getByText(help, { exact: true })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    expect([...harness.unexpected]).toEqual([]);
+    expect(harness.messagePosts).toEqual([]);
+    expect(harness.meetingCreatePosts).toEqual([]);
+    if (["en", "ar"].includes(locale)) {
+      await page
+        .locator("aside")
+        .filter({ hasText: label })
+        .screenshot({
+          path: info.outputPath(`recorded-usage-${locale}-phone.png`),
+        });
+    }
+  });
+}
+
 for (const locale of LOCALES) {
   test(`${locale} delivery is visible before opening the evidence tab`, async ({
     page,

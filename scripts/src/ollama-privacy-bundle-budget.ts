@@ -7,19 +7,19 @@ import {
 } from "./bundle-source-map";
 const fingerprints: Readonly<Record<string, string>> = {
   "artifacts/agentic-company-os/src/components/agent/agent-model-picker.tsx":
-    "1b659ab102c401390b5af6496d8203d7c705134c40c04c5d84efa73973320f91",
+    "903aca940f90c8cf82d44ace653e609015b2fd57e57dd4b21e641d0e11ffbed8",
   "artifacts/agentic-company-os/src/components/agent/ollama-model-location.tsx":
-    "70a8f7232bd8ff4960f7e92a23933f8abc4a6c28a6761983a976b82034c6a336",
+    "7e9171dc1efc923054ab9da1b008d39fe56b89366b21e68eb3d3d16dade23ec5",
   "artifacts/agentic-company-os/src/components/i18n/language-select.tsx":
     "90b39a1405618610edbbcf9c09028bbc655ef1f303265beec04107d5c00709cd",
   "artifacts/agentic-company-os/src/lib/model-search.ts":
-    "7e67d42fb1d38b312eb9a8a48f906c391e0b3068ecefd9a25e55485be6a10ab5",
+    "2dc88d0fc58b46e4f393674efada7022e3ee7a7a26a563b6246c79efd6515723",
   "artifacts/agentic-company-os/src/lib/new-agent-copy.ts":
     "c5831b32192fc10c587fbbfd6a4ac9dbf2ea9185fb3e7049dafd4346df4630a7",
   "artifacts/agentic-company-os/src/lib/settings-copy.ts":
     "46c96546518e195b5a7dc2039d0a0bea3c413fdcb4c726d6698c35dfcfb942ef",
   "artifacts/agentic-company-os/src/pages/settings.tsx":
-    "ce91dcb57186533ea8edf3d7670ee7759309fc16c098f6243996fe67a0b41e5a",
+    "a2733226019b4fa66bf45130c832ea689b0154cc69a4ce4979c20d32123c33fa",
 };
 export const OLLAMA_PRIVACY_SOURCES = Object.freeze(
   Object.keys(fingerprints).sort(),
@@ -32,6 +32,9 @@ export const OLLAMA_PRIVACY_SOURCES = Object.freeze(
  * accounting to avoid duplicate credit. All seven current source identities
  * and compiler-owned outputs are checked, including unchanged companions.
  * Entry, SDK, vendor, CSS, locale and connection assets receive no credit.
+ * Runtime-version admission shares this same allowance; the control,
+ * ceilings and unchanged companion identities remain fixed. Its authored
+ * warning formatter stays in the existing lazy connection allowance.
  * See docs/bundle-performance.md for the frozen control and update policy.
  */
 export function measureOllamaPrivacyBundle(

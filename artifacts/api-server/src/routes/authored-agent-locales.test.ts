@@ -9,7 +9,7 @@ import {
   WORKSPACE_LOCALES,
   writeWorkspaceLocale,
 } from "../lib/workspace-locale";
-import { getLocalizedAgentTemplate } from "../lib/agent-template-localization";
+import { getLocalizedAgentRuntimePlaybook } from "../lib/agent-template-localization";
 import {
   CreateAgentResponse,
   ListAgentTemplatesResponse,
@@ -191,10 +191,7 @@ test(
           process.chdir(scratch);
           for (const locale of WORKSPACE_LOCALES) {
             await writeWorkspaceLocale(locale);
-            const expected = getLocalizedAgentTemplate(
-              "ceo",
-              locale,
-            )!.defaultSystemPrompt;
+            const expected = getLocalizedAgentRuntimePlaybook("ceo", locale)!;
             assert.equal(
               rolePlaybook(await buildChatSystemPrompt(root)),
               expected,

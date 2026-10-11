@@ -379,6 +379,8 @@ export function createSettingsRouter(
         result.catalog.models.some(
           (model) =>
             model.supportsTools &&
+            (model.executionLocation !== "local" ||
+              model.runtimeCompatibility === "compatible") &&
             result.catalog.providers.some(
               (provider) =>
                 provider.id === model.provider && provider.available,

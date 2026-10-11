@@ -11,6 +11,7 @@ import {
   hasFreeModelIdentifier,
   matchesModelSearch,
   ollamaModelLocation,
+  modelRuntimeReady,
 } from "@/lib/model-search";
 import {
   OllamaModelLocation,
@@ -85,6 +86,7 @@ export function AgentModelPicker({
     !isFetching &&
     Boolean(
       selected?.supportsTools &&
+      modelRuntimeReady(selected) &&
       ollamaModelLocation(selected) !== "unknown" &&
       (ollamaModelLocation(selected) === null || Boolean(locationCopy.data)) &&
       catalog?.providers.some(
@@ -178,6 +180,7 @@ export function AgentModelPicker({
                     type="button"
                     disabled={
                       Boolean(reason) ||
+                      !modelRuntimeReady(model) ||
                       ollamaModelLocation(model) === "unknown" ||
                       (ollamaModelLocation(model) !== null &&
                         !locationCopy.data) ||

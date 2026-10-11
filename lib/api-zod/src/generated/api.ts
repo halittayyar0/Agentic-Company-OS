@@ -9,6 +9,38 @@ import * as zod from 'zod';
 
 
 /**
+ * Authenticated operator action bound to the exact task or agent scope and request UUID. Consumes only trusted persisted response evidence. Missing or conflicting usage remains fenced. Never accepts token totals, resets budgets, executes model output or resumes a task. Safe duplicate application retains one correction.
+ * @summary Apply saved usage evidence without requesting inference or resuming work
+ */
+export const ReconcileInferenceAccountingParams = zod.object({
+  "attemptId": zod.coerce.string().uuid()
+})
+
+export const reconcileInferenceAccountingQueryScopeIdMax = 2147483647;
+
+
+
+export const ReconcileInferenceAccountingQueryParams = zod.object({
+  "scopeType": zod.enum(['task', 'agent']),
+  "scopeId": zod.coerce.number().int().min(1).max(reconcileInferenceAccountingQueryScopeIdMax)
+})
+
+export const ReconcileInferenceAccountingBody = zod.object({
+  "acknowledge": zod.literal(true)
+})
+
+
+
+
+export const ReconcileInferenceAccountingResponse = zod.object({
+  "scopeType": zod.enum(['task', 'agent']),
+  "scopeId": zod.number().int().min(1),
+  "attemptId": zod.string().uuid(),
+  "outcome": zod.enum(['applied', 'pending'])
+})
+
+
+/**
  * Authenticated read-only snapshot. Task scope includes its rooted family and the current owner's unresolved requests. Agent scope includes that agent's requests. Pending means the recorded response window has not elapsed, not verified worker liveness. Clear means no unresolved accounting marker, not task success, budget eligibility or permission to execute. Unknown usage never becomes zero and this endpoint never clears a fence.
  * @summary Inspect model usage accounting without starting or retrying work
  */
@@ -68,6 +100,7 @@ export const GetInferenceAccountingStatusResponse = zod.object({
   "modelId": zod.string().max(getInferenceAccountingStatusResponseAttemptsItemModelIdMax),
   "provider": zod.string().max(getInferenceAccountingStatusResponseAttemptsItemProviderMax),
   "kind": zod.enum(['chat', 'task_step', 'judge']),
+  "savedEvidenceAvailable": zod.boolean().optional(),
   "state": zod.enum(['reserved', 'dispatched', 'uncertain', 'accounted', 'not_dispatched']),
   "createdAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemCreatedAtMin),
   "requestDeadlineAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemRequestDeadlineAtMin),
@@ -3311,6 +3344,76 @@ export const GetTaskBudgetResumeReceiptResponse = zod.object({
 
 
 /**
+ * Advisory snapshot. Retry admission is rechecked under locks during POST.
+ * @summary Read the current incomplete response pause without dispatching work
+ */
+
+
+
+export const GetTaskResponseRetryScopeParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetTaskResponseRetryScopeResponse = zod.object({
+  "taskId": zod.number().int().min(1),
+  "canRetry": zod.boolean(),
+  "blockedAttemptId": zod.string().uuid().nullable()
+})
+
+
+/**
+ * Keeps the task model, usage, cycle and schedule. Requires acknowledgement and the exact blocked attempt. No inference runs in this route. Queue transition and an immutable accepted audit receipt commit together. Replaying acceptance returns the historical receipt without queueing again. Stale scope, emergency stop, inactive owners, live leases, approvals, unfinished effects and exhausted allowance are rejected.
+ * @summary Explicitly retry a task paused after an incomplete model response
+ */
+
+
+
+export const RetryTaskResponseParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1)
+})
+
+export const RetryTaskResponseBody = zod.object({
+  "blockedAttemptId": zod.string().uuid(),
+  "acknowledge": zod.literal(true)
+})
+
+
+
+
+export const RetryTaskResponseResponse = zod.object({
+  "taskId": zod.number().int().min(1),
+  "blockedAttemptId": zod.string().uuid(),
+  "outcome": zod.enum(['accepted']),
+  "recordedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Inspect an accepted response retry without dispatching work
+ */
+
+
+
+export const GetTaskResponseRetryReceiptParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1),
+  "attemptId": zod.coerce.string().uuid()
+})
+
+
+
+
+export const GetTaskResponseRetryReceiptResponse = zod.object({
+  "taskId": zod.number().int().min(1),
+  "blockedAttemptId": zod.string().uuid(),
+  "outcome": zod.enum(['accepted']),
+  "recordedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Read the exact pending question and its current answerability
  */
 
@@ -4209,6 +4312,12 @@ export const GetOrgSummaryResponse = zod.object({
 /**
  * @summary All selectable models grouped by configured server-side provider
  */
+export const getModelCatalogResponseModelsItemRequiredOllamaVersionMax = 64;
+
+
+export const getModelCatalogResponseModelsItemRequiredOllamaVersionRegExp = new RegExp('^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$');
+
+
 export const GetModelCatalogResponse = zod.object({
   "providers": zod.array(zod.object({
   "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
@@ -4223,6 +4332,8 @@ export const GetModelCatalogResponse = zod.object({
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
   "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
+  "runtimeCompatibility": zod.enum(['compatible', 'update_required', 'unverified']).optional().describe('Local runner compatibility with the model\'s declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference.'),
+  "requiredOllamaVersion": zod.string().max(getModelCatalogResponseModelsItemRequiredOllamaVersionMax).regex(getModelCatalogResponseModelsItemRequiredOllamaVersionRegExp).optional().describe('Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.'),
   "isDefault": zod.boolean()
 }))
 })
@@ -4257,6 +4368,10 @@ export const getLlmSettingsResponseOllamaCatalogSyncedAtMin = 0;
 
 export const getLlmSettingsResponseReplitFleetBaseUrlMax = 2048;
 
+export const getLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionMax = 64;
+
+
+export const getLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionRegExp = new RegExp('^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$');
 
 
 export const GetLlmSettingsResponse = zod.object({
@@ -4311,6 +4426,8 @@ export const GetLlmSettingsResponse = zod.object({
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
   "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
+  "runtimeCompatibility": zod.enum(['compatible', 'update_required', 'unverified']).optional().describe('Local runner compatibility with the model\'s declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference.'),
+  "requiredOllamaVersion": zod.string().max(getLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionMax).regex(getLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionRegExp).optional().describe('Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.'),
   "isDefault": zod.boolean()
 }))
 })
@@ -4341,6 +4458,10 @@ export const UpdateLlmSettingsBody = zod.object({
 })
 
 
+export const updateLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionMax = 64;
+
+
+export const updateLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionRegExp = new RegExp('^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$');
 
 
 export const UpdateLlmSettingsResponse = zod.object({
@@ -4362,6 +4483,8 @@ export const UpdateLlmSettingsResponse = zod.object({
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
   "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
+  "runtimeCompatibility": zod.enum(['compatible', 'update_required', 'unverified']).optional().describe('Local runner compatibility with the model\'s declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference.'),
+  "requiredOllamaVersion": zod.string().max(updateLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionMax).regex(updateLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionRegExp).optional().describe('Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.'),
   "isDefault": zod.boolean()
 }))
 })

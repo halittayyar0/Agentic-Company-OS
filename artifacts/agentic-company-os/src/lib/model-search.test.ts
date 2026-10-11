@@ -1,6 +1,36 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { matchesModelSearch, normalizeModelSearch } from "./model-search";
+import {
+  matchesModelSearch,
+  normalizeModelSearch,
+  modelRuntimeReady,
+} from "./model-search";
+
+test("runtime readiness keeps local version admission separate from tool support", () => {
+  const ready = modelRuntimeReady;
+  const local = {
+    id: "ollama:owned:latest",
+    provider: "ollama",
+    executionLocation: "local" as const,
+  };
+  assert.equal(
+    ready({ ...local, runtimeCompatibility: "update_required" }),
+    false,
+  );
+  assert.equal(ready({ ...local, runtimeCompatibility: "unverified" }), false);
+  assert.equal(ready(local), false);
+  assert.equal(ready({ ...local, runtimeCompatibility: "compatible" }), true);
+  assert.equal(ready({ ...local, executionLocation: "unknown" }), false);
+  assert.equal(
+    ready({
+      ...local,
+      id: "ollama-cloud:owned:latest",
+      executionLocation: "cloud",
+    }),
+    true,
+  );
+  assert.equal(ready({ id: "openai:owned", provider: "openai" }), true);
+});
 
 const miniMaxFree = {
   id: "minimax/minimax-m3:free",

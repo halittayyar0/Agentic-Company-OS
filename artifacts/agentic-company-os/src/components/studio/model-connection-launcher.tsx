@@ -1,9 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  getGetModelCatalogQueryKey,
-  type ModelCatalog,
-} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { recoveryCopy } from "@/lib/recovery-copy";
@@ -78,22 +74,7 @@ export function ModelConnectionLauncher({
     return () => document.removeEventListener("keydown", close);
   }, [open, Content]);
   const restore = () => {
-    const data = client.getQueryData<ModelCatalog>(
-      getGetModelCatalogQueryKey(),
-    );
-    if (
-      onReady &&
-      client.getQueryState(getGetModelCatalogQueryKey())?.status ===
-        "success" &&
-      data?.models.some(
-        (model) =>
-          model.supportsTools &&
-          data.providers.some(
-            (provider) => provider.id === model.provider && provider.available,
-          ),
-      )
-    )
-      onReady();
+    if (onReady && module.data?.hasUsableConnectedModel(client)) onReady();
     else opener.current?.focus();
   };
   return (

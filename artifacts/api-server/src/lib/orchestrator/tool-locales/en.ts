@@ -1,6 +1,8 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolEn: ToolCopy = {
+  taskResponseRetryQueued:
+    "The task paused after an incomplete response was queued again with user acknowledgement.",
   inferenceAccountingPending:
     "A model call is awaiting its usage receipt ({id}). Further model calls for this work will wait until accounting completes.",
   inferenceAccountingRecovery:
@@ -416,6 +418,12 @@ export const toolEn: ToolCopy = {
   approvalBindingInvalidated:
     "The approved browser binding is no longer valid; new approval is required.",
   judgeRunning: "Reviewing task",
+  taskResponseIncompleteLocal:
+    "Model response was cut short. Task paused. Check the current Ollama model's context and response limits, then retry from the task page.",
+  taskResponseIncompleteRemote:
+    "Model response was cut short. Task paused. Check the current model's context and response limits, then retry from the task page.",
+  taskResponseSpaceReduced:
+    "Response was cut short. Task and tool evidence were retained while history was reduced; retrying once within the existing round limit.",
   taskAdvanceInstruction:
     "Advance the task by one step. Assess the current state and make appropriate tool calls.",
   taskOpenInstruction:
@@ -431,6 +439,8 @@ export const toolEn: ToolCopy = {
   taskToolFallbackInstruction:
     "The previous model failed to use the tool protocol twice. Keep the same context and continue with one concrete step that exactly matches an allowed tool schema.",
   operationCompleted: "Operation completed: {tool}.",
+  toolSchemaUnavailable:
+    "{tool} was not offered in this request and was not executed. Use an offered tool, or load an indexed optional tool with load_tools and call it in the next request. Permissions are unchanged.",
   modelFailure: "{reason} ({source})",
   failureRateLimit: "The model request limit was reached.",
   failureTimeout: "The model request timed out.",

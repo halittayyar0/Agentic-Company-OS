@@ -183,7 +183,7 @@ function Inspector({ task, subtasks, agents, c }: Props & { c: TraceCopy }) {
     }
   }
   return (
-    <section className="min-w-0 space-y-5 p-4 sm:p-6" aria-label={c.title}>
+    <section className="min-w-0 space-y-5 p-[12px] sm:p-6" aria-label={c.title}>
       <header className="space-y-3">
         <h2 className="text-xl font-semibold tracking-tight">{c.title}</h2>
         <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
@@ -346,7 +346,7 @@ function Inspector({ task, subtasks, agents, c }: Props & { c: TraceCopy }) {
               type="button"
               aria-expanded={selectedId === event.id}
               aria-controls={`trace-event-${event.id}`}
-              className="flex min-h-11 w-full items-start gap-3 rounded-xl p-3 text-start hover:bg-secondary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-11 w-full items-start gap-2 rounded-xl p-[12px] text-start hover:bg-secondary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() =>
                 setSelectedId(selectedId === event.id ? null : event.id)
               }

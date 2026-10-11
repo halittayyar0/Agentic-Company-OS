@@ -7,6 +7,7 @@ import { LoaderCircle, PlugZap } from "lucide-react";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { ModelConnectionLauncher } from "./model-connection-launcher";
+import { modelConnectionReady } from "@/lib/connection-copy";
 
 export default function ProviderSetupNotice({
   onReady,
@@ -31,6 +32,7 @@ export default function ProviderSetupNotice({
   const hasUsableModel = data?.models.some(
     (model) =>
       model.supportsTools &&
+      modelConnectionReady(model) &&
       data.providers.some(
         (provider) => provider.id === model.provider && provider.available,
       ),

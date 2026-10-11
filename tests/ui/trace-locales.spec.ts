@@ -8,6 +8,7 @@ import {
 } from "../../artifacts/agentic-company-os/src/lib/i18n";
 import { loadTraceCopy } from "../../artifacts/agentic-company-os/src/lib/trace-copy";
 import { loadProjectStudioCopy } from "../../artifacts/agentic-company-os/src/lib/project-studio-copy";
+import { toolMessage } from "../../artifacts/api-server/src/lib/orchestrator/tool-localization";
 
 const date = "2026-09-27T09:00:00.000Z";
 const root = {
@@ -85,6 +86,68 @@ const activity = [
     detail: { status: "failed" },
   },
 ];
+
+for (const locale of LOCALES) {
+  test(`${locale} unadvertised tool warning remains readable and exportable on a phone`, async ({
+    page,
+  }, info) => {
+    const c = await loadTraceCopy(locale);
+    const summary = toolMessage(locale, "toolSchemaUnavailable", {
+      tool: "log_note",
+    });
+    const harness = await setup(page, locale, [
+      {
+        ...activity[0],
+        id: 77,
+        summary,
+        severity: "warning",
+        detail: {
+          runtimeEvent: "tool_call_not_advertised",
+          guard: "model_request_tool_schema",
+          outcome: "blocked_before_execution",
+          blockedTool: "log_note",
+          advertisedTools: ["calculate", "complete_task", "load_tools"],
+        },
+      },
+    ] as typeof activity);
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.goto("/projects/101?view=plan");
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "32px";
+    });
+    const region = page.getByRole("region", { name: c.title, exact: true });
+    const message = region.getByText(summary, { exact: true });
+    await expect(message).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(() => document.fonts.ready);
+    await message.scrollIntoViewIfNeeded();
+    await expect(message).toBeInViewport({ ratio: 0.99 });
+    const bounds = await message.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320);
+    expect(bounds!.y).toBeGreaterThanOrEqual(0);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
+    await page.screenshot({
+      path: info.outputPath(`tool-envelope-${locale}-phone.png`),
+    });
+    const downloaded = page.waitForEvent("download");
+    await region.getByRole("button", { name: c.export, exact: true }).click();
+    const file = await downloaded;
+    const payload = JSON.parse(await readFile((await file.path())!, "utf8"));
+    expect(JSON.stringify(payload)).toContain(summary);
+    expect(harness.state.childCalls).toEqual([]);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+        ),
+      )
+      .toBeLessThanOrEqual(1);
+  });
+}
 async function setup(
   page: Page,
   locale: Locale,

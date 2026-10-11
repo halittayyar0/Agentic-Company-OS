@@ -1,5 +1,9 @@
 import type { ConnectionCopy } from "../connection-copy";
 export default {
+  modelRuntimeRequirement:
+    "Erfordert Ollama {version} oder neuer. Aktualisiere diesen Server und prüfe die Verbindung erneut.",
+  modelRuntimeUnverified:
+    "Die erforderliche Ollama-Version dieses Modells konnte nicht bestätigt werden. Prüfe vor der Verwendung die Verbindung.",
   apiProviders: "API-Anbieter",
   signedOut:
     "Dieses Konto ist abgemeldet. Melde dich vor der Nutzung erneut an.",

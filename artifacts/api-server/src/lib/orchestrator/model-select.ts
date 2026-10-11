@@ -233,7 +233,8 @@ function isVerifiedLocalModel(
   return (
     model.provider === "ollama" &&
     model.id.startsWith("ollama:") &&
-    model.executionLocation === "local"
+    model.executionLocation === "local" &&
+    model.runtimeCompatibility === "compatible"
   );
 }
 

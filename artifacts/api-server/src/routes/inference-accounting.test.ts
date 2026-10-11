@@ -118,6 +118,22 @@ test("the real app mounts the read-only accounting scope behind operator authent
   const base = await listen(t, app),
     url = base + `?scopeType=task&scopeId=${task.id}`;
   assert.equal((await fetch(url)).status, 401);
+  assert.equal(
+    (
+      await fetch(
+        `${base}/${randomUUID()}/reconcile?scopeType=task&scopeId=${task.id}`,
+        {
+          method: "POST",
+          headers: {
+            Origin: new URL(base).origin,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ acknowledge: true }),
+        },
+      )
+    ).status,
+    401,
+  );
   const result = await fetch(url, {
     headers: { Authorization: "Bearer " + token },
   });

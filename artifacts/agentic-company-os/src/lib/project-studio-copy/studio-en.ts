@@ -1,5 +1,16 @@
 import type { ProjectStudioCopy } from "../project-studio-copy";
 const copy: ProjectStudioCopy = {
+  responseRetryHeading: "Model work is paused",
+  responseRetryHelp:
+    "Check context and response limits first. Retry preserves task limits and any saved model; automatic routing is rechecked. Continuing can use tokens.",
+  responseRetryAction: "Retry this task",
+  responseRetrySame: "Retry the same request",
+  responseRetryInspect: "Inspect retry receipt",
+  responseRetryAccepted: "Task queued to continue.",
+  responseRetryRejected:
+    "Not resumed. Check task state, owner, approvals and usage limits.",
+  responseRetryUnknown:
+    "Result unconfirmed. Inspect the saved receipt or retry the same request.",
   budgetHeading: "Paused at the usage limit",
   budgetHelp:
     "Checking uses no model tokens and does not reset usage. Resumed work uses your existing allowance. If it is exhausted, raise the configured limits or wait for the rolling daily window to renew.",
@@ -153,7 +164,9 @@ const copy: ProjectStudioCopy = {
   runSummary: "Recorded summary",
   progress: "Progress",
   attempts: "Work attempts",
-  tokens: "Tokens",
+  tokens: "Recorded tokens",
+  tokenUsageHelp:
+    "For this task: reviews and reported failed calls included; unreported usage excluded.",
   model: "Recorded model",
   unknownModel: "No model recorded",
   deliveryHelp:

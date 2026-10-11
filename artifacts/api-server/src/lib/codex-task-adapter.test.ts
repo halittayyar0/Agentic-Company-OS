@@ -77,7 +77,7 @@ function setup(
   t: TestContext,
   mode = "ok",
   startupDelayMs = 0,
-  readyBeforeProtocol = mode === "cleared_approval",
+  readyBeforeProtocol = mode === "cleared_approval" || mode === "ok",
 ) {
   let fixtureChild: ReturnType<typeof spawn> | undefined;
   let current = { ...binding },
@@ -116,10 +116,10 @@ function setup(
       );
       fixtureChild = child;
       t.after(() => child.kill());
-      // These tests exercise approval withdrawal or receipt persistence.
+      // Positive protocol and approval tests own their process readiness.
       // A fixture-owned readiness signal keeps the unchanged request/turn
-      // deadlines independent of native runner load. Other modes retain
-      // their existing startup and timeout behavior.
+      // deadlines independent of native runner load. Explicit cold-start
+      // and other modes retain their existing startup and timeout behavior.
       if (readyBeforeProtocol) {
         await new Promise<void>((resolve, reject) => {
           let bytes = "",
@@ -533,6 +533,34 @@ test("named permissions reject missing or rebound runtime file metadata before l
     });
     assert.equal(fixture.launches, 0);
   }
+});
+
+test("native protocol fixture readiness excludes owned startup from unchanged request and turn deadlines", async (t) => {
+  const fixture = setup(t, "ok", 1100);
+  const result = await runCodexTask(input, fixture.ports);
+  assert.equal(input.requestTimeoutMs, 1000);
+  assert.equal(input.turnTimeoutMs, 1500);
+  assert.equal(result.status, "completed");
+  assert.equal(result.usage?.totalTokens, 25);
+  assert.equal(fixture.launches, 1);
+  assert.equal(fixture.stops, 1);
+});
+
+test("cold native fixture startup still obeys the original request deadline before inference", async (t) => {
+  const fixture = setup(t, "ok", 1100, false);
+  await assert.rejects(
+    runCodexTask(input, fixture.ports),
+    (error: CodexTaskError) => {
+      assert.equal(error.kind, "timeout");
+      assert.equal(error.requestStarted, false);
+      assert.equal(error.cleanupState, "verified");
+      return true;
+    },
+  );
+  assert.equal(input.requestTimeoutMs, 1000);
+  assert.equal(input.turnTimeoutMs, 1500);
+  assert.equal(fixture.launches, 1);
+  assert.equal(fixture.stops, 1);
 });
 
 test("owned Codex terminal completion binds replies before immediately following notifications and retains truthful proof scope", async (t) => {

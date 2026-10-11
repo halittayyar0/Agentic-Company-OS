@@ -19,6 +19,8 @@ export interface ModelCatalogEntry {
   description: string;
   supportsTools: boolean;
   executionLocation?: "local" | "cloud" | "unknown";
+  runtimeCompatibility?: "compatible" | "update_required" | "unverified";
+  requiredOllamaVersion?: string;
 }
 
 export const MODEL_CATALOG: ModelCatalogEntry[] = [

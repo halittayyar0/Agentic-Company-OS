@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import {
   db,
   taskAttemptsTable,
+  activityEventsTable,
   type Task,
   type TaskAttempt,
   type TaskAttemptState,
@@ -51,6 +52,30 @@ const TERMINAL_ATTEMPT_STATES = new Set<TaskAttemptState>([
   "lost",
 ]);
 
+function recoverableAttempt() {
+  return or(
+    inArray(taskAttemptsTable.state, ["lost", "retrying"]),
+    and(
+      eq(taskAttemptsTable.state, "blocked"),
+      inArray(taskAttemptsTable.failureKind, [
+        "model_response_incomplete",
+        "inference_accounting",
+      ]),
+      // Only the app-owned receipt of an explicit retry admits a blocked
+      // response attempt. Preserving its logical execution keeps replay keys
+      // for previously recorded effects across this manual continuation.
+      sql`exists (select 1 from ${activityEventsTable}
+        where ${activityEventsTable.taskId} = ${taskAttemptsTable.taskId}
+          and ${activityEventsTable.type} = 'task_status_changed'
+          and ${activityEventsTable.detail}->>'runtimeEvent' = 'task_response_retry_recorded'
+          and ${activityEventsTable.detail}->>'blockedAttemptId' = ${taskAttemptsTable.id}
+          and ${activityEventsTable.detail}->'receipt'->>'blockedAttemptId' = ${taskAttemptsTable.id}
+          and ${activityEventsTable.detail}->'receipt'->>'taskId' = ${taskAttemptsTable.taskId}::text
+          and ${activityEventsTable.detail}->'receipt'->>'outcome' = 'accepted')`,
+    ),
+  );
+}
+
 export async function recoveryParentForTask(
   task: Pick<Task, "id" | "stepAttempts">,
   executor: TaskAttemptExecutor = db,
@@ -63,7 +88,7 @@ export async function recoveryParentForTask(
       and(
         eq(taskAttemptsTable.taskId, task.id),
         eq(taskAttemptsTable.attemptNumber, task.stepAttempts - 1),
-        inArray(taskAttemptsTable.state, ["lost", "retrying"]),
+        recoverableAttempt(),
       ),
     )
     .orderBy(
@@ -90,7 +115,7 @@ async function createTaskAttemptWithExecutor(
           eq(taskAttemptsTable.taskId, input.task.id),
           eq(taskAttemptsTable.agentId, input.task.ownerAgentId),
           eq(taskAttemptsTable.cycleNumber, input.task.cycleCount),
-          inArray(taskAttemptsTable.state, ["lost", "retrying"]),
+          recoverableAttempt(),
         ),
       )
       .limit(1);

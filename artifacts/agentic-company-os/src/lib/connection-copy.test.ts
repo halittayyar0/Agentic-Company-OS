@@ -15,6 +15,11 @@ test("seven authored connection packs explain server-bound consent, usage and un
     for (const [key, value] of Object.entries(copy))
       assert.ok(value.trim(), `${locale}.${key}`);
     assert.ok(copy.localRequirement.includes("0.18.0"), locale);
+    assert.equal(
+      copy.modelRuntimeRequirement.split("{version}").length,
+      2,
+      locale,
+    );
     for (const key of [
       "allowCloud",
       "localLocation",
@@ -23,6 +28,8 @@ test("seven authored connection packs explain server-bound consent, usage and un
       "cloudUsage",
       "cloudOn",
       "cloudOff",
+      "modelRuntimeRequirement",
+      "modelRuntimeUnverified",
     ] as const) {
       if (locale !== "en")
         assert.notEqual(copy[key], reference[key], `${locale}.${key}`);

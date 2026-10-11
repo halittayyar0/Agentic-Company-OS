@@ -30,6 +30,7 @@ import {
   hasFreeModelIdentifier,
   matchesModelSearch,
   ollamaModelLocation,
+  modelRuntimeReady,
 } from "@/lib/model-search";
 import { useLocale } from "@/components/i18n/locale-provider";
 import {
@@ -297,6 +298,7 @@ export function ModelPicker({
                                 !locationCopy.data) ||
                               !group.available ||
                               !canRunAgentTools ||
+                              !modelRuntimeReady(model) ||
                               ollamaModelLocation(model) === "unknown"
                             }
                             title={unavailableReason}

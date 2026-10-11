@@ -32,8 +32,43 @@ Gzip measurements use level 9. The Settings contribution is removed from the old
 
 The connection-copy loader originally belonged to the guided-model connection chunk. Its separately emitted version remains in the same connection budget: 28,000 raw / 10,500 gzip bytes with one selected language; all seven authored packs have their existing separate limits. Compiler ownership binds the loader and each language pack to that scope. Each emitted chunk is counted once.
 
+## Local model runtime admission
+
+The running server can satisfy the local-selector floor while failing a model's
+declared minimum version. Runtime readiness and its visible recovery guidance
+share the existing model privacy allowance above. The frozen control and every
+raw/gzip ceiling remain unchanged. The warning formatter lives in the lazy
+connection-copy module and is charged to the existing connection allowance.
+
+The 2026-10-11 production measurement is 1,971 raw / 850 gzip bytes above the
+original model-choice control; Settings accounts for 507 raw / 181 gzip within
+that same total. The four changed model-choice source fingerprints were rebound
+to those measured bytes; the three unchanged companion fingerprints remain
+identical. Compiled-byte ownership and tampering checks still apply.
+
 ## Content hashes
 
 The build uses Rollup's [hexadecimal content-hash character set](https://rollupjs.org/configuration-options/#output-hashcharacters). Repeated dependency paths compress better with its smaller alphabet. The filename length stays at eight characters, and the evidence manifest continues to verify the final files with full SHA-256 digests.
 
 When changing build options, compare the emitted module inventory, media digests and compiled runtime bodies, then run the complete bundle checker and relevant browser journeys. Record the exact source revision for every test result.
+
+## Shared dependency compression
+
+Saved-usage recovery uses a named locale tuple to avoid repeating field names in
+all seven lazy language files. Its complete panel, largest selected pack and
+verified reader wiring measured 7,960 raw / 3,306 gzip bytes; all packs measured
+7,671 raw / 3,894 gzip bytes. The existing 8 KB / 3.5 KB feature and 11 KB / 6 KB
+all-language ceilings remain unchanged. No code was moved into unrelated chunks
+for budget credit. See the
+[saved-usage verification](./verification/2026-10-11-saved-usage-recovery.md).
+
+The build applies a pinned Terser pass only to `vendor-core` and `vendor-ui`
+after the normal browser-target transform. Application chunks keep their
+existing compiler, source ownership checks and normalized runtime fingerprints.
+Property mangling and unsafe compression are disabled; source maps compose with
+the preceding transform. Existing budget ceilings remain unchanged.
+
+The [2026-10-11 recovery verification](./verification/2026-10-11-incomplete-response-recovery.md)
+records 6,871 raw bytes and 6,265 gzip bytes saved across the two emitted vendor
+files. All original bundle checks and 203 relevant browser cases passed on its
+recorded source. The record also identifies the remaining runtime release gates.

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { GetInferenceAccountingStatusResponse } from "@workspace/api-zod";
+type Reader = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /** One statement observes scope, markers and their keyed usage receipts.
  * No provider, lease mutation, task resume or accounting reconciliation. */
@@ -8,6 +9,7 @@ export async function readInferenceAccountingStatus(
   scopeType: "task" | "agent",
   scopeId: number,
   now = new Date(),
+  reader: Reader = db,
 ) {
   if (
     !Number.isSafeInteger(scopeId) ||
@@ -25,14 +27,17 @@ export async function readInferenceAccountingStatus(
     scopeType === "task"
       ? sql`i.scope_key = 'task:' || t.root_id::text OR (i.agent_id=t.agent_id AND (i.state IN ('reserved','dispatched','uncertain') OR i.evidence_conflict_at IS NOT NULL))`
       : sql`i.agent_id=t.agent_id`;
-  const result = await db.execute(sql`WITH RECURSIVE ancestors AS (
+  const result = await reader.execute(sql`WITH RECURSIVE ancestors AS (
       SELECT id,parent_task_id FROM tasks WHERE id=${scopeType === "task" ? scopeId : -1}
       UNION SELECT t.id,t.parent_task_id FROM tasks t JOIN ancestors a ON t.id=a.parent_task_id
     ), root AS (SELECT id FROM ancestors WHERE parent_task_id IS NULL),
     target AS (${target}), matched AS (
       SELECT i.*, u.id AS usage_id, u.prompt_tokens, u.completion_tokens, u.total_tokens,
         u.usage_reported, u.reported_cost_usd,
-        (i.state IN ('reserved','dispatched','uncertain') OR i.evidence_conflict_at IS NOT NULL) AS unsettled
+        (i.state IN ('reserved','dispatched','uncertain') OR i.evidence_conflict_at IS NOT NULL) AS unsettled,
+        (i.state IN ('dispatched','uncertain') AND i.evidence_conflict_at IS NULL AND u.id IS NOT NULL
+          AND EXISTS (SELECT 1 FROM inference_response_evidence e WHERE e.attempt_id=i.id
+            AND e.invocation_owner_id=i.invocation_owner_id AND e.model_id=i.model_id AND e.provider=i.provider)) AS saved_evidence_available
       FROM inference_attempts i CROSS JOIN target t
       LEFT JOIN effective_usage_events u ON u.ordinary_inference_id=i.id
       WHERE ${matches}
@@ -44,6 +49,7 @@ export async function readInferenceAccountingStatus(
       coalesce((SELECT jsonb_agg(jsonb_build_object(
         'id', m.id, 'agentId', m.agent_id, 'taskId', m.task_id,
         'modelId', m.model_id, 'provider', m.provider, 'kind', m.kind, 'state', CASE WHEN m.evidence_conflict_at IS NOT NULL THEN 'uncertain' ELSE m.state END,
+        'savedEvidenceAvailable', m.saved_evidence_available,
         'createdAt', floor(extract(epoch FROM m.created_at)*1000)::bigint,
         'requestDeadlineAt', floor(extract(epoch FROM m.request_deadline_at)*1000)::bigint,
         'dispatchedAt', floor(extract(epoch FROM m.dispatched_at)*1000)::bigint,

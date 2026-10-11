@@ -1,5 +1,7 @@
 import {
   AGENT_TEMPLATES,
+  commonManagerRules,
+  commonSpecialistRules,
   type AgentTemplateDefinition,
 } from "./agent-templates";
 import {
@@ -56,6 +58,33 @@ export function getLocalizedAgentTemplate(
   return getLocalizedAgentTemplates(locale).find(
     (template) => template.key === key,
   );
+}
+
+/** Role expertise is kept verbatim. The runtime already supplies the shared
+ * execution, delegation, evidence and approval policy once, ahead of the role.
+ * Visible templates retain the complete authored contract for editing/export. */
+export function getLocalizedAgentRuntimePlaybook(
+  key: string,
+  locale: WorkspaceLocale,
+): string | undefined {
+  const template = getLocalizedAgentTemplate(key, locale);
+  if (!template) return undefined;
+  const specialist = specialistKeys.has(key as AgentTemplateKey);
+  const rules =
+    locale === "tr"
+      ? specialist
+        ? commonSpecialistRules
+        : commonManagerRules
+      : specialist
+        ? catalogs[locale].specialistRules
+        : catalogs[locale].managerRules;
+  const suffix = [`\n\n${rules}`, `\n${rules}`].find((value) =>
+    template.defaultSystemPrompt.endsWith(value),
+  );
+  // Preserve an unfamiliar authored contract rather than guessing at a cut.
+  return suffix
+    ? template.defaultSystemPrompt.slice(0, -suffix.length)
+    : template.defaultSystemPrompt;
 }
 
 const turkishHandoff: HandoffCopy = {

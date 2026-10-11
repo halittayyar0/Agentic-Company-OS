@@ -3,6 +3,7 @@ export type TaskStepFailureKind =
   | "provider_setup_required"
   | "chatgpt_plan"
   | "inference_accounting"
+  | "model_response_incomplete"
   | "runtime";
 
 export interface TaskRetryDecision {
@@ -25,6 +26,11 @@ export function taskRetryDecision(params: {
   now?: number;
 }): TaskRetryDecision {
   const failureCount = Math.max(1, Math.floor(params.consecutiveFailures));
+  // A clipped task response cannot authorize effects. Repeating the same
+  // context/output configuration spends again without resolving the limit.
+  if (params.failureKind === "model_response_incomplete") {
+    return { shouldBlock: true, retryDelayMs: 0 };
+  }
   const backoff = Math.min(
     15 * 60_000,
     30_000 * 2 ** Math.min(10, Math.max(0, failureCount - 1)),

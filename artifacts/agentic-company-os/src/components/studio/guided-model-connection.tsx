@@ -1,6 +1,13 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getGetModelCatalogQueryKey } from "@workspace/api-client-react";
+import {
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
+import {
+  getGetModelCatalogQueryKey,
+  type ModelCatalog,
+} from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { LanguagePackStatus } from "@/components/i18n/language-pack-status";
@@ -14,7 +21,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { loadConnectionCopy, type ConnectionCopy } from "@/lib/connection-copy";
+import {
+  loadConnectionCopy,
+  localModelRuntimeHint,
+  modelConnectionReady,
+  type ConnectionCopy,
+} from "@/lib/connection-copy";
 import {
   connectionSettingsKey,
   readConnectionSettings,
@@ -23,6 +35,26 @@ import {
 } from "@/lib/connection-api";
 
 type Choice = "ollama" | "chatgpt" | "api";
+
+/** Recovery runs after this lazy screen loaded. Keep connection discovery and
+ * version admission out of the initial composer bundle. */
+export function hasUsableConnectedModel(client: QueryClient): boolean {
+  const key = getGetModelCatalogQueryKey();
+  const data = client.getQueryData<ModelCatalog>(key);
+  return (
+    client.getQueryState(key)?.status === "success" &&
+    Boolean(
+      data?.models.some(
+        (model) =>
+          model.supportsTools &&
+          modelConnectionReady(model) &&
+          data.providers.some(
+            (provider) => provider.id === model.provider && provider.available,
+          ),
+      ),
+    )
+  );
+}
 export default function GuidedModelConnection({
   onClose,
   restoreFocus,
@@ -429,7 +461,8 @@ function ProviderForm({
           {state.data.catalog.models.some(
             (model) =>
               model.provider === (choice === "ollama" ? "ollama" : provider) &&
-              model.supportsTools,
+              model.supportsTools &&
+              modelConnectionReady(model),
           ) ? null : (
             <p className="text-sm text-muted-foreground">{c.none}</p>
           )}
@@ -441,26 +474,40 @@ function ProviderForm({
                   (choice === "ollama" ? "ollama" : provider),
               )
               .slice(0, 24)
-              .map((model) => (
-                <li key={model.id} className="[overflow-wrap:anywhere]">
-                  <bdi>{model.label}</bdi> ·{" "}
-                  {model.provider === "ollama" ? (
-                    <>
-                      <span>
-                        {model.executionLocation === "local" &&
-                        model.id.startsWith("ollama:")
-                          ? c.localLocation
-                          : model.executionLocation === "cloud" &&
-                              model.id.startsWith("ollama-cloud:")
-                            ? c.cloudLocation
-                            : c.unknownLocation}
-                      </span>
-                      {" · "}
-                    </>
-                  ) : null}
-                  {model.supportsTools ? c.tools : c.chatOnly}
-                </li>
-              ))}
+              .map((model) => {
+                const hint =
+                  model.provider === "ollama" &&
+                  model.executionLocation === "local"
+                    ? localModelRuntimeHint(model, c)
+                    : null;
+                return (
+                  <li key={model.id} className="[overflow-wrap:anywhere]">
+                    <bdi>{model.label}</bdi> ·{" "}
+                    {model.provider === "ollama" ? (
+                      <>
+                        <span>
+                          {model.executionLocation === "local" &&
+                          model.id.startsWith("ollama:")
+                            ? c.localLocation
+                            : model.executionLocation === "cloud" &&
+                                model.id.startsWith("ollama-cloud:")
+                              ? c.cloudLocation
+                              : c.unknownLocation}
+                        </span>
+                        {" · "}
+                      </>
+                    ) : null}
+                    {model.supportsTools ? c.tools : c.chatOnly}
+                    {hint ? (
+                      <p className="mt-1 text-muted-foreground">
+                        {hint[0]}
+                        <bdi dir="ltr">{hint[1]}</bdi>
+                        {hint[2]}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
           </ul>
         </div>
       ) : null}

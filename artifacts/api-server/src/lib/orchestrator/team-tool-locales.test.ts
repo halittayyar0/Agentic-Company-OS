@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
 import fsp from "node:fs/promises";
@@ -268,6 +269,8 @@ async function finalizeClaimedTool(
     .set({ state: "claimed" })
     .where(eq(taskAttemptsTable.id, ctx.runtimeAttemptId!));
   const createCompletion: typeof createChatCompletion = async (params) => {
+    const loading = await loadFixtureTaskTools(params, [name]);
+    if (loading) return loading;
     await params.beforeRequest?.();
     return {
       provider: "replit",
