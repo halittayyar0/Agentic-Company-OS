@@ -17,6 +17,9 @@ import {
   readRuntimeConfig,
   readRuntimeConfigSnapshot,
   normalizeRuntimeOllamaBaseUrl,
+  normalizeRuntimeOllamaCloudOrigin,
+  effectiveOllamaCloudOrigin,
+  applyRuntimeConfigPatch,
   ProviderConfigConflict,
   type RuntimeConfig,
 } from "./runtime-config";
@@ -43,6 +46,8 @@ function normalizeConfig(config: RuntimeConfig): RuntimeConfig {
     openrouterApiKey: normalize(config.openrouterApiKey),
     openaiApiKey: normalize(config.openaiApiKey),
     ollamaBaseUrl: normalizeRuntimeOllamaBaseUrl(config.ollamaBaseUrl) ?? null,
+    ollamaCloudOrigin:
+      normalizeRuntimeOllamaCloudOrigin(config.ollamaCloudOrigin) ?? null,
   };
 }
 
@@ -65,6 +70,9 @@ function assertProviderConfig(value: unknown): RuntimeConfig {
     openrouterApiKey: record.openrouterApiKey as string | null | undefined,
     openaiApiKey: record.openaiApiKey as string | null | undefined,
     ollamaBaseUrl: normalizeRuntimeOllamaBaseUrl(record.ollamaBaseUrl),
+    ollamaCloudOrigin: normalizeRuntimeOllamaCloudOrigin(
+      record.ollamaCloudOrigin,
+    ),
   });
 }
 
@@ -179,6 +187,7 @@ async function ensureProviderConfigCurrent(
             desired.config.ollamaBaseUrl ??
             environment.OLLAMA_BASE_URL?.trim() ??
             null,
+          cloudOrigin: effectiveOllamaCloudOrigin(desired.config, environment),
         });
         appliedRevision = desired.revision;
         // A runtime is not eligible to make even catalog/provider requests
@@ -289,7 +298,9 @@ export async function updateProviderRuntimeConfig(
         secret,
       ),
     );
-    const config = normalizeConfig({ ...currentConfig, ...patch });
+    const config = normalizeConfig(
+      applyRuntimeConfigPatch(currentConfig, patch, environment),
+    );
     const envelope = encryptRuntimeEnvelope(config, secret);
     const [updated] = await transaction
       .update(providerRuntimeConfigTable)

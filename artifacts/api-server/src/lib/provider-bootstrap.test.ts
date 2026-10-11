@@ -97,3 +97,36 @@ test("provider bootstrap prefers a saved local endpoint and null restores enviro
     assert.equal(configured, saved ?? "http://127.0.0.1:11434/v1");
   }
 });
+
+test("bootstrap applies consent only to the saved canonical origin across roles and environment changes", async () => {
+  for (const role of ["api", "worker", "combined"]) {
+    for (const [saved, address, consent] of [
+      [null, "http://127.0.0.1:11434/v1", "http://127.0.0.1:11434"],
+      [null, "http://127.0.0.1:11435/v1", null],
+      ["http://192.168.1.2:11434/v1", "http://127.0.0.1:11434/v1", null],
+    ] as const) {
+      let configured: unknown;
+      await bootstrapProviders(
+        { RUNTIME_ROLE: role, OLLAMA_BASE_URL: address },
+        {
+          readRuntimeConfig: async () => ({
+            ollamaBaseUrl: saved,
+            ollamaCloudOrigin: "http://127.0.0.1:11434",
+          }),
+          configureOpenRouter: () => undefined,
+          configureDirectOpenAI: () => undefined,
+          configureOllama: (value) => {
+            configured = value;
+          },
+          configureRequestObserver: () => undefined,
+          logProviderRequest: () => undefined,
+          refreshModelCatalog: async () => undefined,
+        },
+      );
+      assert.deepEqual(configured, {
+        baseUrl: saved ?? address,
+        cloudOrigin: consent,
+      });
+    }
+  }
+});

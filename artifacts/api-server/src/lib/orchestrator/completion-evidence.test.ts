@@ -9,6 +9,7 @@ import {
   tasksTable,
   taskAttemptsTable,
   operationReceiptsTable,
+  approvalRequestsTable,
   sourceChangesTable,
   runtimeInstancesTable,
 } from "@workspace/db";
@@ -56,8 +57,164 @@ async function fixture() {
     state: "running",
     logicalExecutionId,
   });
-  return { agent, task, attemptId, logicalExecutionId };
+  return { agent, task, attemptId, logicalExecutionId, workerInstanceId };
 }
+
+test("completion tool counts include earlier actions beyond the sample and isolate task, cycle and approval scope", async () => {
+  const f = await fixture();
+  const other = await fixture();
+  const [approval] = await db
+    .insert(approvalRequestsTable)
+    .values({
+      agentId: f.agent.id,
+      taskId: f.task.id,
+      category: "other",
+      title: "PRIVATE_title",
+      description: "PRIVATE_description",
+    })
+    .returning();
+  const nextAttempt = randomUUID();
+  await db.insert(taskAttemptsTable).values({
+    id: nextAttempt,
+    taskId: f.task.id,
+    agentId: f.agent.id,
+    workerInstanceId: f.workerInstanceId,
+    leaseOwner: randomUUID(),
+    attemptNumber: 2,
+    cycleNumber: 1,
+    state: "running",
+    logicalExecutionId: randomUUID(),
+  });
+  const insert = async (
+    toolName: string,
+    extra: Partial<typeof operationReceiptsTable.$inferInsert> = {},
+  ) => {
+    const id = randomUUID();
+    await db.insert(operationReceiptsTable).values({
+      id,
+      operationKey: id,
+      replayKey: null,
+      executionKind: "task_step",
+      logicalExecutionId: f.logicalExecutionId,
+      taskId: f.task.id,
+      agentId: f.agent.id,
+      originAttemptId: f.attemptId,
+      sideEffectClass: "read_only",
+      state: "succeeded",
+      toolName,
+      argumentHash: "0".repeat(64),
+      resultData: { output: "PRIVATE_output", ok: true },
+      reservedAt: new Date(Date.now() - 60_000),
+      finishedAt: new Date(),
+      ...extra,
+    });
+  };
+  await insert("calculate");
+  await insert("calculate", { state: "failed" });
+  await insert("calculate", {
+    state: "unknown",
+    reconciliationDecision: "confirmed_applied",
+    reconciliationNote: "PRIVATE_reconciliation",
+    reconciliationActorId: "PRIVATE_operator",
+    reconciledAt: new Date(),
+  });
+  for (let index = 0; index < 16; index++)
+    await insert("log_note", { reservedAt: new Date(Date.now() + index) });
+  await insert("request_approval", {
+    executionKind: "approved_action",
+    originAttemptId: null,
+    approvalId: approval.id,
+    reservedAt: new Date(Date.now() + 100),
+  });
+  await insert("web_search", {
+    executionKind: "approved_action",
+    originAttemptId: null,
+    approvalId: approval.id,
+    reservedAt: new Date(f.task.createdAt.getTime() - 1000),
+  });
+  await insert("calculate", { originAttemptId: nextAttempt });
+  await insert("calculate", {
+    taskId: other.task.id,
+    agentId: other.agent.id,
+    originAttemptId: other.attemptId,
+  });
+  await insert("complete_task");
+  const evidence = await loadCompletionEvidence(f.task);
+  assert.equal(evidence.receiptTotal, 20);
+  assert.equal(evidence.receipts.length, 12);
+  assert.equal(evidence.receiptsTruncated, true);
+  assert.ok(evidence.receipts.every((row) => row.tool !== "calculate"));
+  assert.equal(evidence.toolCountsTruncated, false);
+  assert.deepEqual(evidence.toolCounts, [
+    {
+      tool: "calculate",
+      state: "failed",
+      reconciliationDecision: null,
+      count: 1,
+    },
+    {
+      tool: "calculate",
+      state: "succeeded",
+      reconciliationDecision: null,
+      count: 1,
+    },
+    {
+      tool: "calculate",
+      state: "unknown",
+      reconciliationDecision: "confirmed_applied",
+      count: 1,
+    },
+    {
+      tool: "log_note",
+      state: "succeeded",
+      reconciliationDecision: null,
+      count: 16,
+    },
+    {
+      tool: "request_approval",
+      state: "succeeded",
+      reconciliationDecision: null,
+      count: 1,
+    },
+  ]);
+  assert.doesNotMatch(JSON.stringify(evidence), /PRIVATE_/);
+});
+
+test("completion tool counts stay bounded and disclose omitted or malformed names", async () => {
+  const f = await fixture();
+  for (let index = 0; index < 130; index++) {
+    const id = randomUUID();
+    await db.insert(operationReceiptsTable).values({
+      id,
+      operationKey: id,
+      replayKey: null,
+      executionKind: "task_step",
+      logicalExecutionId: f.logicalExecutionId,
+      taskId: f.task.id,
+      agentId: f.agent.id,
+      originAttemptId: f.attemptId,
+      sideEffectClass: "read_only",
+      state: "succeeded",
+      toolName:
+        index === 0
+          ? "../../PRIVATE_invalid_tool"
+          : `custom_${String(index).padStart(3, "0")}`,
+      argumentHash: "0".repeat(64),
+      resultData: { text: "PRIVATE_output" },
+      finishedAt: new Date(),
+    });
+  }
+  const evidence = await loadCompletionEvidence(f.task);
+  assert.equal(evidence.receiptTotal, 130);
+  assert.equal(evidence.toolCountsTruncated, true);
+  assert.ok(evidence.toolCounts.length <= 128);
+  assert.ok(
+    evidence.toolCounts.every((row) =>
+      /^[a-zA-Z][a-zA-Z0-9_]{0,79}$/u.test(row.tool),
+    ),
+  );
+  assert.doesNotMatch(JSON.stringify(evidence.toolCounts), /PRIVATE_/);
+});
 
 test("native turn receipts cannot advertise deliverable proof or copy private native transcripts into completion review", async () => {
   const f = await fixture();

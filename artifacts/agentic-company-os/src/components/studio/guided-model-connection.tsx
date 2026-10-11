@@ -154,6 +154,7 @@ function ProviderForm({
   const [provider, setProvider] = useState<"openai" | "openrouter">("openai");
   const [value, setValue] = useState<string | null>(null);
   const [baseRevision, setBaseRevision] = useState<number | null>(null);
+  const [cloudDraft, setCloudDraft] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false),
     [needsReview, setNeedsReview] = useState(false);
   const [notice, setNotice] = useState<
@@ -174,6 +175,11 @@ function ProviderForm({
           : "",
       );
       setBaseRevision(state.data.revision);
+      setCloudDraft(
+        typeof state.data.ollama.cloudEnabled === "boolean"
+          ? state.data.ollama.cloudEnabled
+          : null,
+      );
     }
   }, [state.data, state.isFetching, state.isError, value, choice]);
   const blocked =
@@ -187,6 +193,13 @@ function ProviderForm({
     const current = await state.refetch();
     if (!current.isError && current.data) {
       setBaseRevision(current.data.revision);
+      setCloudDraft(
+        typeof current.data.ollama.cloudEnabled !== "boolean"
+          ? null
+          : value?.trim() === current.data.ollama.baseUrl
+            ? current.data.ollama.cloudEnabled
+            : false,
+      );
       setNeedsReview(false);
       setNotice(null);
       await client.invalidateQueries({
@@ -208,7 +221,12 @@ function ProviderForm({
     try {
       const patch =
         choice === "ollama"
-          ? { ollamaBaseUrl: restore ? null : value!.trim() }
+          ? {
+              ollamaBaseUrl: restore ? null : value!.trim(),
+              ...(cloudDraft === null
+                ? {}
+                : { ollamaCloudEnabled: restore ? false : cloudDraft }),
+            }
           : provider === "openai"
             ? { openaiApiKey: value!.trim() }
             : { openrouterApiKey: value!.trim() };
@@ -227,10 +245,24 @@ function ProviderForm({
       if (choice === "api") setValue("");
       const current = await state.refetch();
       if (!current.isError && current.data?.revision === receipt.revision) {
+        if (
+          choice === "ollama" &&
+          cloudDraft !== null &&
+          current.data.ollama.cloudEnabled !== (restore ? false : cloudDraft)
+        )
+          throw new Error("Cloud permission readback is unconfirmed");
         setBaseRevision(receipt.revision);
         setNeedsReview(false);
         if (restore && choice === "ollama")
           setValue(current.data.ollama.baseUrl ?? "");
+        if (choice === "ollama")
+          setCloudDraft(
+            typeof current.data.ollama.cloudEnabled === "boolean"
+              ? current.data.ollama.cloudEnabled
+              : null,
+          );
+      } else if (choice === "ollama" && cloudDraft !== null) {
+        setNotice("unconfirmed");
       }
       await Promise.allSettled([
         client.invalidateQueries({ queryKey: getGetModelCatalogQueryKey() }),
@@ -303,6 +335,8 @@ function ProviderForm({
           className="min-h-11 min-w-0"
           onChange={(event) => {
             setValue(event.target.value);
+            if (choice === "ollama" && cloudDraft !== null)
+              setCloudDraft(false);
             if (!needsReview) setNotice(null);
           }}
         />
@@ -312,6 +346,44 @@ function ProviderForm({
         >
           {choice === "ollama" ? c.endpointHint : c.keyHint}
         </p>
+        {choice === "ollama" ? (
+          <div className="space-y-3 rounded-control border bg-secondary/30 p-3">
+            <p className="text-sm leading-6">
+              {state.data?.ollama.localEnforcementSupported === true
+                ? c.localVerified
+                : c.localRequirement}
+            </p>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={cloudDraft === true}
+                disabled={
+                  blocked ||
+                  cloudDraft === null ||
+                  (state.data?.ollama.localEnforcementSupported !== true &&
+                    cloudDraft !== true)
+                }
+                aria-describedby={`${id}-cloud-usage`}
+                className="h-5 w-5 shrink-0 accent-primary"
+                onChange={(event) => setCloudDraft(event.target.checked)}
+              />
+              <span>{c.allowCloud}</span>
+            </label>
+            <p
+              id={`${id}-cloud-usage`}
+              className="text-sm leading-6 text-muted-foreground"
+            >
+              {c.cloudUsage}
+            </p>
+            <p className="text-sm leading-6 text-muted-foreground">
+              {typeof state.data?.ollama.cloudEnabled !== "boolean"
+                ? c.unknown
+                : state.data.ollama.cloudEnabled
+                  ? c.cloudOn
+                  : c.cloudOff}
+            </p>
+          </div>
+        ) : null}
         <Button
           type="submit"
           disabled={blocked || !value?.trim()}
@@ -372,6 +444,20 @@ function ProviderForm({
               .map((model) => (
                 <li key={model.id} className="[overflow-wrap:anywhere]">
                   <bdi>{model.label}</bdi> ·{" "}
+                  {model.provider === "ollama" ? (
+                    <>
+                      <span>
+                        {model.executionLocation === "local" &&
+                        model.id.startsWith("ollama:")
+                          ? c.localLocation
+                          : model.executionLocation === "cloud" &&
+                              model.id.startsWith("ollama-cloud:")
+                            ? c.cloudLocation
+                            : c.unknownLocation}
+                      </span>
+                      {" · "}
+                    </>
+                  ) : null}
                   {model.supportsTools ? c.tools : c.chatOnly}
                 </li>
               ))}

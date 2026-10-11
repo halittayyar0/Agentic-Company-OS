@@ -8,6 +8,17 @@ export default {
     "连接时，你的任务会保留在这里。保存连接后，正在等待提供商的现有任务可能会继续执行。",
   local: "本地模型",
   localHint: "使用本机或私有服务器上的 Ollama。",
+  allowCloud: "允许此服务器使用云端模型",
+  cloudUsage:
+    "云端模型会将提示发送至 Ollama 云端，并使用该账户的适用配额或付费额度。保存不会发送模型请求。",
+  localLocation: "在本地运行",
+  cloudLocation: "使用 Ollama 云端",
+  unknownLocation: "运行位置未验证",
+  localRequirement:
+    "强制本地运行需要 Ollama 0.18.0 或更高版本。请更新此服务器，再检查连接。",
+  localVerified: "本地模型使用此服务器的硬件。工具支持会单独显示。",
+  cloudOff: "已保存服务器的云端权限已关闭。",
+  cloudOn: "已保存服务器的云端权限已开启。",
   chatgptHint: "使用符合条件的 ChatGPT 套餐；仍受权限和配额限制。",
   api: "API 密钥",
   apiHint: "用你自己的密钥连接 OpenAI 或 OpenRouter。提供商可能收费。",

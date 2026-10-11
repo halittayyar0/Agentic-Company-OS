@@ -147,6 +147,7 @@ export * from './messageInput';
 export * from './messageRole';
 export * from './modelCatalog';
 export * from './modelCatalogModel';
+export * from './modelCatalogModelExecutionLocation';
 export * from './modelCatalogProvider';
 export * from './modelProviderId';
 export * from './modelTier';

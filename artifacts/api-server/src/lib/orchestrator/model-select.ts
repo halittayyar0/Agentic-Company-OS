@@ -10,6 +10,7 @@ import {
   type ComplexityHint,
   type ModelPurpose,
   type ModelTier,
+  type ModelCatalogEntry,
 } from "@workspace/ai-server";
 
 /**
@@ -109,7 +110,7 @@ export function selectModel(params: {
     );
     const provider = catalogModel?.provider ?? resolveModelProvider(candidate);
     const toolCompatible = catalogModel?.supportsTools !== false;
-    if (provider === "chatgpt") {
+    if (provider === "chatgpt" || provider === "ollama") {
       // A disconnected plan is a connection problem, not permission to bill an API.
       return { modelId: candidate, provider, usedFallback: false };
     }
@@ -177,7 +178,7 @@ export function selectModel(params: {
       MODEL_CATALOG.find((entry) => entry.id === autoModel)?.tier ?? "standard";
     const localModel = getFullModelCatalog()
       .models.filter(
-        (model) => model.provider === "ollama" && model.supportsTools,
+        (model) => isVerifiedLocalModel(model) && model.supportsTools,
       )
       .sort((left, right) => {
         const tierDelta =
@@ -222,7 +223,18 @@ function fallbackRouteLimit(): number {
 }
 
 function isFreeModel(modelId: string, provider?: string | null): boolean {
-  return provider === "ollama" || /:free$/iu.test(modelId);
+  if (provider === "ollama") return modelId.startsWith("ollama:");
+  return /:free$/iu.test(modelId);
+}
+
+function isVerifiedLocalModel(
+  model: ModelCatalogEntry & { provider: string },
+): boolean {
+  return (
+    model.provider === "ollama" &&
+    model.id.startsWith("ollama:") &&
+    model.executionLocation === "local"
+  );
 }
 
 /**
@@ -300,11 +312,14 @@ export function selectModelPlan(params: {
   };
   // Plan failures retain their selected account/model. Another model or API is
   // a new user choice, not a transparent replay of potentially consumed usage.
-  if (selected.provider === "chatgpt")
+  if (
+    selected.provider === "chatgpt" ||
+    (selected.provider === "ollama" && !selected.modelId.startsWith("ollama:"))
+  )
     return { primary, routes: [primary], freeOnly: false };
   const freeOnly =
     source !== "automatic" && isFreeModel(selected.modelId, selected.provider);
-  const localOnly = source !== "automatic" && selected.provider === "ollama";
+  const localOnly = selected.provider === "ollama";
   const providerAvailability = new Map(
     catalog.providers.map((provider) => [provider.id, provider.available]),
   );
@@ -314,6 +329,7 @@ export function selectModelPlan(params: {
       (model) =>
         !seen.has(model.id) &&
         model.provider !== "chatgpt" &&
+        (model.provider !== "ollama" || isVerifiedLocalModel(model)) &&
         model.supportsTools &&
         providerAvailability.get(model.provider) === true &&
         TIER_RANK[model.tier] <= TIER_RANK[selectedTier] &&

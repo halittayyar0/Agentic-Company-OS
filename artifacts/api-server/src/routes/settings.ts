@@ -14,11 +14,14 @@ import {
   OPENROUTER_BASE_URL,
   refreshModelCatalog,
   resolveOllamaEndpoint,
+  validateOllamaBaseUrl,
 } from "@workspace/ai-server";
 import { logger } from "../lib/logger";
 import {
   ProviderConfigConflict,
   normalizeRuntimeOllamaBaseUrl,
+  effectiveOllamaCloudOrigin,
+  applyRuntimeConfigPatch,
   writeRuntimeConfigSnapshot,
   type RuntimeConfig,
 } from "../lib/runtime-config";
@@ -50,6 +53,7 @@ const PutLlmBody = z
   .object({
     openrouterApiKey: z.string().trim().max(512).nullish(),
     openaiApiKey: z.string().trim().max(512).nullish(),
+    ollamaCloudEnabled: z.boolean().optional(),
     ollamaBaseUrl: z
       .string()
       .trim()
@@ -78,7 +82,13 @@ const PutLlmBody = z
     (body) =>
       body.openrouterApiKey !== undefined ||
       body.openaiApiKey !== undefined ||
-      body.ollamaBaseUrl !== undefined,
+      body.ollamaBaseUrl !== undefined ||
+      body.ollamaCloudEnabled !== undefined,
+  )
+  .refine(
+    (body) =>
+      body.ollamaCloudEnabled === undefined ||
+      body.expectedRevision !== undefined,
   );
 const TestLlmBody = z
   .object({
@@ -150,7 +160,7 @@ export function createSettingsRouter(
       environment.RUNTIME_ROLE === "api" ||
       environment.RUNTIME_ROLE === "worker"
         ? updateProviderRuntimeConfig(patch, environment, expectedRevision)
-        : writeRuntimeConfigSnapshot(patch, expectedRevision));
+        : writeRuntimeConfigSnapshot(patch, expectedRevision, environment));
   // In combined mode file writes and local client application must preserve the
   // same ordering. Split runtimes additionally fence revisions in PostgreSQL.
   let writes: Promise<unknown> = Promise.resolve();
@@ -227,6 +237,18 @@ export function createSettingsRouter(
         ollama: {
           configured: isOllamaConfigured(),
           reachable: ollama.reachable,
+          cloudEnabled: ollama.cloudEnabled,
+          serverVersion: ollama.serverVersion,
+          localEnforcementSupported: ollama.localEnforcementSupported,
+          localModelCount: ollama.models.filter(
+            (model) => model.executionLocation === "local",
+          ).length,
+          cloudModelCount: ollama.models.filter(
+            (model) => model.executionLocation === "cloud",
+          ).length,
+          unknownModelCount: ollama.models.filter(
+            (model) => model.executionLocation === "unknown",
+          ).length,
           baseUrl: safeOllamaUrl(),
           hasAddressInEnv: Boolean(environment.OLLAMA_BASE_URL?.trim()),
           addressSource: state.config.ollamaBaseUrl?.trim()
@@ -267,8 +289,13 @@ export function createSettingsRouter(
       });
       return;
     }
-    const { openrouterApiKey, openaiApiKey, ollamaBaseUrl, expectedRevision } =
-      parsed.data;
+    const {
+      openrouterApiKey,
+      openaiApiKey,
+      ollamaBaseUrl,
+      ollamaCloudEnabled,
+      expectedRevision,
+    } = parsed.data;
     const patch = {
       ...(openrouterApiKey !== undefined ? { openrouterApiKey } : {}),
       ...(openaiApiKey !== undefined ? { openaiApiKey } : {}),
@@ -276,6 +303,33 @@ export function createSettingsRouter(
     };
     try {
       const result = await serialize(async () => {
+        const before = await readState();
+        if (
+          expectedRevision !== undefined &&
+          before.revision !== expectedRevision
+        )
+          throw new ProviderConfigConflict();
+        const next = applyRuntimeConfigPatch(before.config, patch, environment);
+        if (ollamaCloudEnabled !== undefined) {
+          const address =
+            next.ollamaBaseUrl ?? environment.OLLAMA_BASE_URL?.trim();
+          next.ollamaCloudOrigin = ollamaCloudEnabled
+            ? address
+              ? validateOllamaBaseUrl(address).origin
+              : null
+            : null;
+          if (ollamaCloudEnabled && !next.ollamaCloudOrigin)
+            throw new Error(
+              "Ollama cloud consent needs a valid configured server.",
+            );
+        }
+        if (
+          ollamaCloudEnabled !== undefined ||
+          next.ollamaCloudOrigin !== before.config.ollamaCloudOrigin
+        )
+          Object.assign(patch, {
+            ollamaCloudOrigin: next.ollamaCloudOrigin ?? null,
+          });
         const update = await writeState(patch, expectedRevision);
         configureOpenRouter({ apiKey: update.config.openrouterApiKey ?? null });
         configureDirectOpenAI({ apiKey: update.config.openaiApiKey ?? null });
@@ -283,8 +337,20 @@ export function createSettingsRouter(
           baseUrl:
             update.config.ollamaBaseUrl ??
             (environment.OLLAMA_BASE_URL?.trim() || null),
+          cloudOrigin: effectiveOllamaCloudOrigin(update.config, environment),
         });
         await refresh();
+        if (ollamaCloudEnabled === true) {
+          const snapshot = getOllamaCatalogSnapshot();
+          if (
+            !snapshot.cloudEnabled ||
+            !snapshot.reachable ||
+            !snapshot.localEnforcementSupported
+          )
+            throw new Error(
+              "Ollama cloud consent readiness could not be confirmed.",
+            );
+        }
         const current = catalog();
         return {
           ok: true as const,
@@ -301,7 +367,7 @@ export function createSettingsRouter(
           providers: Object.keys(patch).map((key) =>
             key === "openaiApiKey"
               ? "openai"
-              : key === "ollamaBaseUrl"
+              : key === "ollamaBaseUrl" || key === "ollamaCloudOrigin"
                 ? "ollama"
                 : "openrouter",
           ),

@@ -8,7 +8,11 @@ import {
 import { logger } from "./logger";
 import { chatgptConnectionRuntime } from "./chatgpt-connection-runtime";
 import { configureChatGPTPlanRuntime } from "./chatgpt-plan-runtime";
-import { readRuntimeConfig, type RuntimeConfig } from "./runtime-config";
+import {
+  readRuntimeConfig,
+  effectiveOllamaCloudOrigin,
+  type RuntimeConfig,
+} from "./runtime-config";
 import {
   installProviderRuntimeConfigGuard,
   prepareProviderRuntimeConfig,
@@ -18,7 +22,10 @@ export interface ProviderBootstrapDependencies {
   readRuntimeConfig(): Promise<RuntimeConfig>;
   configureOpenRouter(input: { apiKey: string | null }): void;
   configureDirectOpenAI(input: { apiKey: string | null }): void;
-  configureOllama(input: { baseUrl: string | null }): void;
+  configureOllama(input: {
+    baseUrl: string | null;
+    cloudOrigin?: string | null;
+  }): void;
   configureChatGPTProvider?(): void;
   configureRequestObserver(observer: (metadata: unknown) => void): void;
   logProviderRequest(metadata: unknown): void;
@@ -73,6 +80,9 @@ export async function bootstrapProviders(
     baseUrl:
       providerConfig.ollamaBaseUrl ??
       (environment.OLLAMA_BASE_URL?.trim() || null),
+    ...(providerConfig.ollamaCloudOrigin !== undefined
+      ? { cloudOrigin: effectiveOllamaCloudOrigin(providerConfig, environment) }
+      : {}),
   });
   dependencies.configureChatGPTProvider?.();
   dependencies.configureRequestObserver((metadata) => {

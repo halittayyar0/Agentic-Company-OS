@@ -3655,6 +3655,24 @@ components:
           type: boolean
         reachable:
           type: boolean
+        cloudEnabled:
+          type: boolean
+          description: Explicit consent for this exact private server origin. Missing on older servers; absence never grants cloud permission.
+        serverVersion:
+          type: [string, "null"]
+          maxLength: 64
+        localEnforcementSupported:
+          type: boolean
+          description: Whether the reported stable server version enforces local selectors. Missing or false cannot prove local execution.
+        localModelCount:
+          type: integer
+          minimum: 0
+        cloudModelCount:
+          type: integer
+          minimum: 0
+        unknownModelCount:
+          type: integer
+          minimum: 0
         baseUrl:
           type: [string, "null"]
           format: uri
@@ -3708,6 +3726,9 @@ components:
           type: [string, "null"]
           maxLength: 2048
           description: Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.
+        ollamaCloudEnabled:
+          type: boolean
+          description: Explicitly enable or disable cloud models on the selected server. Requires expectedRevision; the backend binds consent to the canonical effective origin.
 
     UpdateLlmSettingsResult:
       type: object
@@ -7084,6 +7105,10 @@ components:
         supportsTools:
           type: boolean
           description: Whether the model can execute the function tools required by an agent run.
+        executionLocation:
+          type: string
+          enum: [local, cloud, unknown]
+          description: Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.
         isDefault:
           type: boolean
       required:

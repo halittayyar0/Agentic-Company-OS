@@ -15,6 +15,7 @@ import {
   completionTokenControl,
   chatGPTPlanHistoryMessage,
   PlanInferenceError,
+  findOllamaBoundaryError,
   DEFAULT_MAX_COMPLETION_TOKENS,
 } from "@workspace/ai-server";
 import {
@@ -1224,7 +1225,10 @@ export async function stepTask(
         completionTokens += error.usage.completion_tokens;
         totalTokens += error.usage.total_tokens;
       }
-    } else if (error instanceof ModelProviderSetupRequiredError) {
+    } else if (
+      error instanceof ModelProviderSetupRequiredError ||
+      findOllamaBoundaryError(error)
+    ) {
       stepFailureKind = "provider_setup_required";
       stepError = PROVIDER_SETUP_MESSAGE[locale];
     } else if (error instanceof ModelRoutesExhaustedError) {

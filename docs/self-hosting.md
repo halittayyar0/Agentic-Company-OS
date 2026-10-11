@@ -62,6 +62,10 @@ require their own accepted evidence; a green offline gate is not that proof.
 
 ## Source installation prerequisites
 
+For an existing Ollama server, review [local model addresses and cloud permission](./local-models.md).
+The app requires a running server version of 0.18.0 or later; setup does not install
+Ollama or download model weights.
+
 - 64-bit host supported by Node.js 24 and the repository's native dependencies
 - Node.js 24
 - Corepack and the pnpm version pinned in the root `package.json` `packageManager` field

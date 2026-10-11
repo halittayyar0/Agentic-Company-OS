@@ -24,6 +24,12 @@ bağlantı etkin kalabilir.
 
 ## Başlatmadan önce kontrol et
 
+Görevler başlangıçta yalnız hesaplama, tamamlama ve araç yükleme şemalarını
+kullanır. Rehber, soru ve onay araçları dahil diğer yetkili araçlar gerektiğinde
+eksiksiz şemalarıyla yüklenir. Yüklemek izin vermez. İlk istek küçülür; bazı
+akışlar ek model çağrısı gerektirir. Küçük yerel modellerin gerçek bir görevle
+denenmesi gerekir.
+
 Modelin listelenmesi, bağlanması ve denenmesi farklı durumlardır. Gelişmiş
 Ayarlardaki açık model testi istek gönderir; kaydetmek göndermez. Önceden
 başlatılmış, sağlayıcı bekleyen işler bağlantı kaydedilince devam edebilir.
@@ -47,3 +53,11 @@ maliyeti bilinmiyor olarak kalır.
 ## İsteğe bağlı kodlama kurulumu
 
 Container kurulumunda ayrı ve varsayılan olarak kapalı **Codex kodlama çalışanı** seçeneği vardır. Linux x64 motoru, Compose 2.24.4 veya üstü ve terminal izni gerekir. Kod araç paketini seçmek bunu etkinleştirmez. Uygun hesabını kurulumdan sonra bağla; diğer görevler seçtiğin sağlayıcıda kalır. AppArmor sunucusunda yöneticinin paketteki profili yüklemesi gerekir. [Kurulum gereksinimlerine](./self-hosting.md#optional-coding-workers) bak.
+
+## Yerel model verimliliği (geliştirme dalı)
+
+Araç kullanılan işlerde, düşünme destekli yerel modellere varsayılan olarak `reasoning_effort: none` gönderilir. Gelişmiş API çağrıları `localReasoningEffort` ile bunu seçebilir. Araçsız sohbet modelin varsayılanını kullanır; bulut modellerine bu ayar eklenmez. Destek ve sonuç modele bağlıdır. Kısaltılan ortak iç politika İngilizcedir; seçtiğin dil ve yerelleştirilmiş veya özel rol metni korunur.
+
+## Tamamlanma denetimi (geliştirme dalı)
+
+Tamamlanma denetçisi, istenen her işlemi bu görev döngüsündeki araç kayıtlarıyla karşılaştırır. Doğru cevap, istenen işlemin yerine geçmez. Son kayıt örneklerine ek olarak döngü boyunca sınırlı araç sayaçlarını okur; kırpılmış kayıtlarda bir işlem görünmemesi, hiç yapılmadığını kanıtlamaz. Mevcut denetim çağrısı kullanılır. Kayıt metadatası ve model kararı, dosyaların, testlerin veya sonuçların kalitesini garanti etmez.

@@ -24,6 +24,13 @@ Umgebungsverbindung kann aktiv bleiben.
 
 ## Vor dem Start prüfen
 
+Aufgaben senden anfangs nur die Schemata für Berechnung, Abschluss und
+Werkzeugladen. Weitere erlaubte Werkzeuge, einschließlich Anleitungen, Fragen
+und Freigabeanfragen, werden bei Bedarf vollständig geladen. Laden erteilt
+keine Berechtigung. Die erste Anfrage wird kleiner; manche Abläufe benötigen
+einen zusätzlichen Modellaufruf. Kleine lokale Modelle brauchen weiterhin
+einen Test mit einer echten Aufgabe.
+
 Erkannt, verbunden und getestet sind verschiedene Zustände. Der ausdrückliche
 Modelltest in den erweiterten Einstellungen sendet eine Anfrage; Speichern tut
 das nicht. Bereits gestartete, wartende Aufträge können nach dem Speichern
@@ -49,3 +56,11 @@ auch wenn der Tokenverbrauch vollständig gemeldet wurde.
 ## Optionale Einrichtung für Programmieraufgaben
 
 Der Container-Installer bietet eine separate, zunächst deaktivierte Option **Codex für Programmieraufgaben**. Sie erfordert eine Linux-x64-Engine, Compose ab 2.24.4 und Terminalzugriff. Das Werkzeugpaket Code aktiviert sie nicht. Verbinde nach der Einrichtung ein berechtigtes Konto; andere Aufgaben nutzen weiterhin deinen gewählten Anbieter. Bei AppArmor muss die Administration das mitgelieferte Profil laden. Siehe die [Installationsvoraussetzungen](./self-hosting.md#optional-coding-workers).
+
+## Effizienz lokaler Modelle (Entwicklungszweig)
+
+Bei Werkzeugaufrufen erhalten lokale Modelle mit Denkfunktion standardmäßig `reasoning_effort: none`. API-Aufrufer können `localReasoningEffort` ausdrücklich setzen. Chats ohne Werkzeuge behalten den Modellstandard; Cloud-Modelle erhalten diese Einstellung nicht. Unterstützung und Ergebnis hängen vom Modell ab. Die kurze gemeinsame interne Richtlinie ist Englisch; die gewählte Sprache und der vollständige lokalisierte oder eigene Rollentext bleiben erhalten.
+
+## Abschlussprüfung (Entwicklungszweig)
+
+Die Abschlussprüfung vergleicht jede geforderte Aktion mit den Werkzeugaufzeichnungen dieses Aufgabenzyklus. Eine richtige Antwort ersetzt keine verlangte Aktion. Neben den letzten Belegen liest sie begrenzte Werkzeugzähler für den gesamten Zyklus; gekürzte Aufzeichnungen beweisen nicht, dass eine Aktion nie stattgefunden hat. Dafür wird der bestehende Prüfaufruf genutzt. Metadaten und Modellurteil garantieren keine Qualität von Dateien, Tests oder Ergebnissen.

@@ -22,7 +22,24 @@ at the phone; a container's points at the container. Use a private address
 reachable from the installed runtime. **Use installation default** removes the
 saved override; an environment connection can remain.
 
+Ollama requires 0.18.0 or later. Local, cloud and unverified models have separate
+labels; cloud permission is off by default and resets when the server address
+changes. [Local models, private addresses and cloud permission](./local-models.md).
+
 ## Review before starting
+
+Task workflows initially send only calculation, completion and tool loading schemas.
+Other authorized tools, including guides, questions and approval requests, load
+with their full schemas when needed. Loading grants no permission. This reduces
+the initial request size; some workflows need an extra model call, and small
+local models still require a real task test.
+
+In the development branch, local thinking models receive `reasoning_effort: none` by default during tool
+workflows, to preserve the output budget for actions. Advanced API callers can
+set `localReasoningEffort` explicitly. Plain chat without tools keeps the model
+default; cloud models keep their existing behavior. Support and results depend
+on the model. Shared internal policy is concise English; your selected language
+and complete localized/custom role playbook remain in the request.
 
 Discovered, connected and tested are different states. The explicit model test
 in advanced Settings sends a request; saving does not. Existing jobs already
@@ -47,3 +64,7 @@ when token usage is complete.
 ## Optional coding installation
 
 The container installer has a separate, unchecked **Codex coding worker** option. It requires a Linux x64 engine, Compose 2.24.4 or later and terminal permission. Selecting the Code tool pack does not enable it. Connect an eligible account after setup; other tasks retain your chosen provider. AppArmor hosts require the bundled profile to be loaded by an administrator. See the [installation requirements](./self-hosting.md#optional-coding-workers).
+
+## Completion review (development branch)
+
+The completion reviewer checks each required action against recorded tool use for this task cycle. A correct answer does not replace a requested action. It reads bounded counts across the cycle as well as recent receipts; truncated records cannot prove an action never happened. This uses the existing review call. Metadata and a model verdict do not guarantee the quality of files, tests or results.

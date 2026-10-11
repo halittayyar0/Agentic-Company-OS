@@ -4,6 +4,7 @@ import {
   buildSyntheticFixtureArguments,
   resolveSyntheticFault,
   type SyntheticFaultPlan,
+  type SyntheticFaultPlanEntry,
   type SyntheticFaultSource,
   type SyntheticStepIdentity,
 } from "./synthetic-fault-plan";
@@ -248,10 +249,17 @@ function malformedCompletion(
 export function createSyntheticCompletion(
   options: SyntheticCompletionOptions,
 ): typeof createChatCompletion {
+  let selectedFault: Readonly<SyntheticFaultPlanEntry> | undefined;
   return async (params) => {
-    const fault = options.faultSource
+    const resolvedFault = options.faultSource
       ? await options.faultSource.resolve(options.identity)
       : resolveSyntheticFault(options.faultPlan, options.identity);
+    // One factory belongs to one claimed task attempt. Keep its injected
+    // outcome through bounded model retries even if the control window closes
+    // while a timeout is pending. Each call still validates the live control;
+    // the next claimed task gets a new factory and can recover after clearing.
+    selectedFault ??= Object.freeze({ ...resolvedFault });
+    const fault = selectedFault;
     if (fault.outcome === "timeout") {
       return waitForSyntheticTimeout(fault.delayMs ?? 5_000, params.signal);
     }

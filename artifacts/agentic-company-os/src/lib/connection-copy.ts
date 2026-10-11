@@ -7,6 +7,15 @@ export type ConnectionCopy = {
   description: string;
   local: string;
   localHint: string;
+  allowCloud: string;
+  cloudUsage: string;
+  localLocation: string;
+  cloudLocation: string;
+  unknownLocation: string;
+  localRequirement: string;
+  localVerified: string;
+  cloudOff: string;
+  cloudOn: string;
   chatgptHint: string;
   api: string;
   apiHint: string;

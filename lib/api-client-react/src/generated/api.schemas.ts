@@ -824,6 +824,21 @@ export const OllamaSettingsError = {
 export interface OllamaSettings {
   configured: boolean;
   reachable: boolean;
+  /** Explicit consent for this exact private server origin. Missing on older servers; absence never grants cloud permission. */
+  cloudEnabled?: boolean;
+  /**
+     * @maxLength 64
+     * @nullable
+     */
+  serverVersion?: string | null;
+  /** Whether the reported stable server version enforces local selectors. Missing or false cannot prove local execution. */
+  localEnforcementSupported?: boolean;
+  /** @minimum 0 */
+  localModelCount?: number;
+  /** @minimum 0 */
+  cloudModelCount?: number;
+  /** @minimum 0 */
+  unknownModelCount?: number;
   /**
      * @maxLength 2048
      * @nullable
@@ -880,6 +895,18 @@ export const ModelTier = {
   reasoning: 'reasoning',
 } as const;
 
+/**
+ * Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.
+ */
+export type ModelCatalogModelExecutionLocation = typeof ModelCatalogModelExecutionLocation[keyof typeof ModelCatalogModelExecutionLocation];
+
+
+export const ModelCatalogModelExecutionLocation = {
+  local: 'local',
+  cloud: 'cloud',
+  unknown: 'unknown',
+} as const;
+
 export interface ModelCatalogModel {
   id: string;
   label: string;
@@ -888,6 +915,8 @@ export interface ModelCatalogModel {
   description: string;
   /** Whether the model can execute the function tools required by an agent run. */
   supportsTools: boolean;
+  /** Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation. */
+  executionLocation?: ModelCatalogModelExecutionLocation;
   isDefault: boolean;
 }
 
@@ -933,6 +962,8 @@ export interface UpdateLlmSettingsInput {
      * @nullable
      */
   ollamaBaseUrl?: string | null;
+  /** Explicitly enable or disable cloud models on the selected server. Requires expectedRevision; the backend binds consent to the canonical effective origin. */
+  ollamaCloudEnabled?: boolean;
 }
 
 export interface UpdateLlmSettingsResult {

@@ -9,6 +9,19 @@ export default {
     "Dein Auftrag bleibt hier, während du die Verbindung einrichtest. Bereits wartende Aufträge können nach dem Speichern weiterlaufen.",
   local: "Lokales Modell",
   localHint: "Nutze Ollama auf diesem Computer oder einem privaten Server.",
+  allowCloud: "Cloud-Modelle für diesen Server erlauben",
+  cloudUsage:
+    "Cloud-Modelle senden Eingaben an die Ollama-Cloud und nutzen das Kontingent oder die kostenpflichtige Nutzung dieses Kontos. Speichern sendet keine Modellanfrage.",
+  localLocation: "Läuft lokal",
+  cloudLocation: "Nutzt die Ollama-Cloud",
+  unknownLocation: "Ausführungsort ungeprüft",
+  localRequirement:
+    "Die erzwungene lokale Ausführung benötigt Ollama 0.18.0 oder neuer. Aktualisiere diesen Server und prüfe die Verbindung erneut.",
+  localVerified:
+    "Lokale Modelle nutzen die Hardware dieses Servers. Die Werkzeugunterstützung wird separat angezeigt.",
+  cloudOff:
+    "Die Cloud-Berechtigung ist für den gespeicherten Server deaktiviert.",
+  cloudOn: "Die Cloud-Berechtigung ist für den gespeicherten Server aktiviert.",
   chatgptHint:
     "Nutze einen berechtigten ChatGPT-Tarif; Berechtigungen und Kontingente gelten weiterhin.",
   api: "API-Schlüssel",

@@ -8,6 +8,18 @@ export default {
     "Bağlantıyı kurarken işin bu ekranda kalır. Sağlayıcı bekleyen mevcut işler bağlantı kaydedilince devam edebilir.",
   local: "Yerel model",
   localHint: "Bu bilgisayardaki veya özel sunucudaki Ollama’yı kullan.",
+  allowCloud: "Bu sunucu için bulut modellerine izin ver",
+  cloudUsage:
+    "Bulut modelleri istemleri Ollama bulutuna gönderir ve o hesabın kullanım hakkını veya ücretlerini kullanır. Kaydetmek model isteği göndermez.",
+  localLocation: "Yerelde çalışır",
+  cloudLocation: "Ollama bulutunu kullanır",
+  unknownLocation: "Konum doğrulanamadı",
+  localRequirement:
+    "Yerel çalışmanın zorunlu tutulması için Ollama 0.18.0 veya sonrası gerekir. Sunucuyu güncelle, sonra bağlantıyı yeniden denetle.",
+  localVerified:
+    "Yerel modeller bu sunucunun donanımını kullanır. Araç desteği ayrıca gösterilir.",
+  cloudOff: "Kaydedilen sunucu için bulut izni kapalı.",
+  cloudOn: "Kaydedilen sunucu için bulut izni açık.",
   chatgptHint: "Uygun ChatGPT planını kullan; izinler ve kota geçerlidir.",
   api: "API anahtarı",
   apiHint:

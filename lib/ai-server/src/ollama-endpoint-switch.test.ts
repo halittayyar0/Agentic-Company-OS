@@ -10,6 +10,8 @@ test("changing local servers removes the prior model catalog before discovery", 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (input) => {
     const url = new URL(input instanceof Request ? input.url : String(input));
+    if (url.pathname === "/api/version")
+      return Response.json({ version: "0.18.0" });
     return Response.json(
       url.pathname === "/api/tags"
         ? { models: [{ name: "old-model" }] }
@@ -28,6 +30,9 @@ test("changing local servers removes the prior model catalog before discovery", 
       fetchedAt: null,
       reachable: false,
       error: null,
+      serverVersion: null,
+      localEnforcementSupported: false,
+      cloudEnabled: false,
     });
   } finally {
     configureOllama({ baseUrl: null });
@@ -48,6 +53,8 @@ test("late discovery from the previous server cannot overwrite the new server or
     });
     globalThis.fetch = (async (input) => {
       const url = new URL(input instanceof Request ? input.url : String(input));
+      if (url.pathname === "/api/version")
+        return Response.json({ version: "0.18.0" });
       if (url.port === "11434" && url.pathname === "/api/tags") {
         announceOld();
         await oldGate;

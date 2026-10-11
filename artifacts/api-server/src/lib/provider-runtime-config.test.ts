@@ -5,10 +5,12 @@ import {
   configureOpenRouter,
   configureOllama,
   createChatCompletion,
+  getOllamaCatalogSnapshot,
   resolveOllamaEndpoint,
 } from "@workspace/ai-server";
 import { eq } from "drizzle-orm";
 import { encryptRuntimeEnvelope } from "./runtime-control-crypto";
+import { ownedOllamaPeer } from "../../../../lib/ai-server/src/testing/ollama-boundary-peer";
 
 test("split provider configuration revisions are monotonic and merge concurrent patches", async () => {
   const previous = {
@@ -18,7 +20,14 @@ test("split provider configuration revisions are monotonic and merge concurrent 
   };
   process.env.RUNTIME_ROLE = "api";
   process.env.RUNTIME_CONTROL_KEY = "provider-runtime-config-test-key-32-bytes";
-  delete process.env.DATABASE_URL;
+  if (process.env.DATABASE_URL) {
+    assert.equal(process.env.OLLAMA_CONSENT_POSTGRES_DISPOSABLE, "1");
+    const target = new URL(process.env.DATABASE_URL);
+    assert.equal(target.protocol, "postgresql:");
+    assert.equal(target.hostname, "127.0.0.1");
+    assert.equal(target.pathname, "/agentic_ollama_consent_test");
+    assert.ok(Number(target.port) > 1024 && target.port !== "5432");
+  }
   try {
     const {
       closeDatabase,
@@ -196,6 +205,7 @@ test("split provider configuration revisions are monotonic and merge concurrent 
     const [localStored] = await db.select().from(providerRuntimeConfigTable);
     assert.equal(localStored?.revision, 5);
     assert.equal(localStored?.ciphertext.includes(localAddress), false);
+    let expectedLocalRevision = 5;
     globalThis.fetch = (async (input, init) => {
       const request =
         input instanceof Request
@@ -205,22 +215,189 @@ test("split provider configuration revisions are monotonic and merge concurrent 
         .select()
         .from(providerRuntimeConfigAcksTable)
         .where(eq(providerRuntimeConfigAcksTable.runtimeInstanceId, runtimeId));
-      assert.equal(ack?.appliedRevision, 5);
+      assert.equal(ack?.appliedRevision, expectedLocalRevision);
       assert.equal(ack?.state, "applied");
       assert.notEqual(new URL(request.url).pathname, "/v1/chat/completions");
       return Response.json(
         new URL(request.url).hostname === "openrouter.ai"
           ? { data: [] }
-          : { models: [] },
+          : new URL(request.url).pathname === "/api/version"
+            ? { version: "0.18.0" }
+            : { models: [] },
       );
     }) as typeof fetch;
     try {
       await syncProviderRuntimeConfig(process.env);
       assert.equal(resolveOllamaEndpoint()?.openAIBaseUrl, localAddress);
+      assert.equal(getOllamaCatalogSnapshot().cloudEnabled, false);
+      const cloud = await updateProviderRuntimeConfig(
+        { ollamaCloudOrigin: "http://192.168.1.2:11434" },
+        process.env,
+        5,
+      );
+      assert.equal(cloud.revision, 6);
+      assert.equal(cloud.config.ollamaCloudOrigin, "http://192.168.1.2:11434");
+      expectedLocalRevision = 6;
+      await syncProviderRuntimeConfig(process.env);
+      assert.equal(getOllamaCatalogSnapshot().cloudEnabled, true);
+      const [cloudStored] = await db.select().from(providerRuntimeConfigTable);
+      assert.equal(
+        cloudStored.ciphertext.includes("http://192.168.1.2:11434"),
+        false,
+      );
+      await assert.rejects(
+        updateProviderRuntimeConfig(
+          { ollamaCloudOrigin: "http://192.168.1.2:11434/v1" },
+          process.env,
+          6,
+        ),
+      );
+      const changes = await Promise.allSettled([
+        updateProviderRuntimeConfig(
+          { ollamaCloudOrigin: null },
+          process.env,
+          6,
+        ),
+        updateProviderRuntimeConfig(
+          { ollamaBaseUrl: "http://192.168.1.3:11434" },
+          process.env,
+          6,
+        ),
+      ]);
+      assert.equal(
+        changes.filter((result) => result.status === "fulfilled").length,
+        1,
+      );
+      assert.equal(
+        changes.filter((result) => result.status === "rejected").length,
+        1,
+      );
+      expectedLocalRevision = 7;
+      await syncProviderRuntimeConfig(process.env);
+      assert.equal(getOllamaCatalogSnapshot().cloudEnabled, false);
     } finally {
       globalThis.fetch = originalFetch;
       configureOllama({ baseUrl: null });
     }
+    // API writes durable state without directly configuring this worker.
+    // Exercise both admission and actual SDK retry dispatch against owned peers.
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      if (url.hostname === "openrouter.ai")
+        return Response.json({ data: [], total_count: 0 });
+      assert.equal(
+        url.hostname,
+        "127.0.0.1",
+        "Only owned completion peers are allowed",
+      );
+      return originalFetch(input, init);
+    }) as typeof fetch;
+    const outcomes: Array<{
+      phase: string;
+      change: string;
+      rejected: boolean;
+      requests: number;
+      replacementRequests: number;
+      admissions: number;
+    }> = [];
+    const workerEnvironment = { ...process.env, RUNTIME_ROLE: "worker" };
+    installProviderRuntimeConfigGuard(workerEnvironment);
+    for (const phase of ["admission", "retry"]) {
+      for (const change of ["consent", "address"]) {
+        const replacement = await ownedOllamaPeer();
+        let changed = false,
+          admissions = 0;
+        let revoke: () => Promise<void>;
+        const original = await ownedOllamaPeer({
+          tags: [
+            {
+              name: "remote:latest",
+              remote_host: "https://ollama.com",
+              remote_model: "remote:large",
+            },
+          ],
+          complete: async (body, response) => {
+            if (phase === "retry" && !changed) {
+              changed = true;
+              await revoke();
+              response.statusCode = 429;
+              response.setHeader("retry-after-ms", "1");
+              response.end(
+                JSON.stringify({ error: { message: "owned rate limit" } }),
+              );
+            } else
+              response.end(
+                JSON.stringify({
+                  id: "owned",
+                  object: "chat.completion",
+                  created: 0,
+                  model: body.model,
+                  choices: [],
+                }),
+              );
+          },
+        });
+        try {
+          await updateProviderRuntimeConfig({
+            openaiApiKey: null,
+            openrouterApiKey: null,
+            ollamaBaseUrl: original.origin,
+            ollamaCloudOrigin: original.origin,
+          });
+          await syncProviderRuntimeConfig(workerEnvironment);
+          revoke = async () => {
+            await updateProviderRuntimeConfig(
+              change === "consent"
+                ? { ollamaCloudOrigin: null }
+                : {
+                    ollamaBaseUrl: replacement.origin,
+                    ollamaCloudOrigin: null,
+                  },
+            );
+          };
+          const rejected = await createChatCompletion({
+            model: "ollama-cloud:remote:latest",
+            messages: [
+              { role: "user", content: "owned durable revision probe" },
+            ],
+            maxTokens: 8,
+            disableRetries: false,
+            beforeRequest: async () => {
+              admissions++;
+              if (phase === "admission") await revoke();
+            },
+          }).then(
+            () => false,
+            () => true,
+          );
+          outcomes.push({
+            phase,
+            change,
+            rejected,
+            requests: original.completions().length,
+            replacementRequests: replacement.completions().length,
+            admissions,
+          });
+        } finally {
+          await original.close();
+          await replacement.close();
+        }
+      }
+    }
+    assert.deepEqual(
+      outcomes,
+      ["admission", "retry"].flatMap((phase) =>
+        ["consent", "address"].map((change) => ({
+          phase,
+          change,
+          rejected: true,
+          requests: phase === "admission" ? 0 : 1,
+          replacementRequests: 0,
+          admissions: 1,
+        })),
+      ),
+    );
+    globalThis.fetch = originalFetch;
     resetProviderRuntimeConfigForTest();
     configureOpenRouter({ apiKey: null });
     configureDirectOpenAI({ apiKey: null });
