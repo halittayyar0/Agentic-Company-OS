@@ -10,6 +10,7 @@ import { chromium, expect } from "@playwright/test";
 import { runNativeInstallSmoke } from "../setup/native-install-smoke";
 import { createConnectionSaveDiagnostics } from "./connection-save-diagnostics";
 import { waitForNativeReadWindow } from "./native-read-window";
+import { isControlledArithmeticReview } from "./controlled-arithmetic-peer";
 
 // Explicit offline acceptance, not a model-quality test. The real installer owns
 // a new PostgreSQL cluster, API and two workers. Only the model HTTP peer is fake.
@@ -94,7 +95,7 @@ const peer = createServer(async (req, res) => {
     } else if (route === "/v1/chat/completions" && method === "POST") {
       assert.equal(body.model, model + ":local");
       assert.notEqual(body.stream, true);
-      const judge = body.response_format?.type === "json_object";
+      const judge = isControlledArithmeticReview(body.response_format);
       const messages: Array<Record<string, unknown>> = body.messages;
       assert.ok(Array.isArray(messages));
       const calculated = messages.some(

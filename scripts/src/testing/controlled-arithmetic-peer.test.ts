@@ -97,9 +97,29 @@ test("owned arithmetic peer exposes bounded discovery and the tool-result comple
       messages: [],
       response_format: { type: "json_object" },
     });
+    await send({
+      model: peer.model + ":local",
+      messages: [],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "agentic_completion_review",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              verdict: { type: "string", enum: ["pass", "warn", "block"] },
+              reasoning: { type: "string" },
+            },
+            required: ["verdict", "reasoning"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
     assert.deepEqual(
       peer.requests.filter((row) => row.kind).map((row) => row.kind),
-      ["calculate", "complete_task", "judge"],
+      ["calculate", "complete_task", "judge", "judge"],
     );
     assert.deepEqual(peer.unexpected, []);
   } finally {
@@ -115,6 +135,22 @@ test("wrong models and exhausted fixture request limits cannot silently produce 
       body: JSON.stringify({ model: "foreign-model" }),
     });
     assert.equal(wrong.status, 400);
+    const malformedReview = await fetch(
+      peer.endpoint + "/v1/chat/completions",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          model: peer.model + ":local",
+          messages: [],
+          response_format: {
+            type: "json_schema",
+            json_schema: { name: "agentic_completion_review", schema: {} },
+          },
+        }),
+      },
+    );
+    assert.equal(malformedReview.status, 400);
+    assert.equal(peer.requests.length, 0);
     assert.equal((await fetch(peer.endpoint + "/api/tags")).status, 200);
     assert.equal((await fetch(peer.endpoint + "/api/tags")).status, 400);
     assert.equal(peer.requests.length, 1);
