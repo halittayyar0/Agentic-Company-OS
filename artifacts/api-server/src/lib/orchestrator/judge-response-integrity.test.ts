@@ -14,6 +14,23 @@ import { runJudge } from "./judge";
 
 test.after(() => closeDatabase());
 
+const expectedLocalReviewFormat = {
+  type: "json_schema",
+  json_schema: {
+    name: "agentic_completion_review",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        verdict: { type: "string", enum: ["pass", "warn", "block"] },
+        reasoning: { type: "string" },
+      },
+      required: ["verdict", "reasoning"],
+      additionalProperties: false,
+    },
+  },
+};
+
 async function fixture(
   t: test.TestContext,
   answer: unknown,
@@ -113,22 +130,10 @@ for (const purpose of ["completion", "approval"] as const) {
       4096,
       "existing review ceiling stays unchanged",
     );
-    assert.deepEqual(peer.completions()[0]!.body.response_format, {
-      type: "json_schema",
-      json_schema: {
-        name: "agentic_completion_review",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            verdict: { type: "string", enum: ["pass", "warn", "block"] },
-            reasoning: { type: "string" },
-          },
-          required: ["verdict", "reasoning"],
-          additionalProperties: false,
-        },
-      },
-    });
+    assert.deepEqual(
+      peer.completions()[0]!.body.response_format,
+      expectedLocalReviewFormat,
+    );
   });
 
   for (const [name, answer] of [
@@ -188,7 +193,6 @@ for (const purpose of ["completion", "approval"] as const) {
     assert.equal(peer.completions().length, 1);
     const body = peer.completions()[0]!.body;
     assert.equal(body.reasoning_effort, undefined);
-    assert.equal(body.response_format.type, "json_schema");
-    assert.equal(body.response_format.json_schema.strict, true);
+    assert.deepEqual(body.response_format, expectedLocalReviewFormat);
   });
 }
