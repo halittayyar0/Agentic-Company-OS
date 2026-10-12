@@ -6,6 +6,7 @@ import { readExecutionPolicy, policyAllowsTool } from "../execution-policy";
 import { codexTaskMayBeOffered } from "../codex-task-capability";
 import { getCodexTaskCopy } from "../codex-task-copy";
 import type { WorkspaceLocale } from "../workspace-locale";
+import type { RuntimeTransaction } from "./runtime-emergency-stop";
 
 type ToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
 
@@ -100,13 +101,14 @@ const completeTaskTool: ToolDef = {
   function: {
     name: "complete_task",
     description:
-      "Uzerinde calistigin mevcut gorevi tamamlandi olarak isaretler. Bir denetim (judge) kontrolunden gecer.",
+      "Submit the actual completed result for review. This finishes the current task only after required operations and review succeed.",
     parameters: {
       type: "object",
       properties: {
         resultSummary: {
           type: "string",
-          description: "Gorevin sonucunun ozeti -- ne yapildi, ne elde edildi",
+          description:
+            "Report the actual outcome and requested deliverables from completed work, including values produced by tools. Do not restate a plan, an intention, or work still to do.",
         },
       },
       required: ["resultSummary"],
@@ -493,7 +495,11 @@ import { readCapabilityPacks, toolPack } from "../capabilities/extension-store";
 export async function getToolsForAgent(
   agent: Agent,
   hasActiveTask: boolean,
-  context: { modelId?: string | null; locale?: WorkspaceLocale } = {},
+  context: {
+    modelId?: string | null;
+    locale?: WorkspaceLocale;
+    connection?: RuntimeTransaction;
+  } = {},
 ): Promise<ToolDef[]> {
   const permissions = agent.permissions;
   // Approval is also available in direct chat. If no task exists, the
@@ -539,7 +545,10 @@ export async function getToolsForAgent(
       });
   }
 
-  if (permissions.canUseSudo && (await isCanonicalRootCeo(agent))) {
+  if (
+    permissions.canUseSudo &&
+    (await isCanonicalRootCeo(agent, context.connection))
+  ) {
     tools.push(vmRunSudoCommandTool);
   }
 
@@ -560,8 +569,8 @@ export async function getToolsForAgent(
     tools.push(updateTaskProgressTool, completeTaskTool, requestUserInputTool);
   }
 
-  const policy = await readExecutionPolicy();
-  const packs = await readCapabilityPacks();
+  const policy = await readExecutionPolicy(context.connection);
+  const packs = await readCapabilityPacks(context.connection);
   return tools.filter(
     (tool) =>
       tool.type === "function" &&

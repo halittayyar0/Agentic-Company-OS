@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 import { createHash, randomUUID } from "node:crypto";
 import http from "node:http";
 import test, { after, type TestContext } from "node:test";
@@ -18,6 +19,7 @@ import {
   taskAttemptsTable,
   tasksTable,
 } from "@workspace/db";
+import type { CompletionRequirement } from "@workspace/db/completion-requirements";
 import { readRuntimeOperationsConfig } from "../runtime-operations-config";
 import { deleteEntry, readTextFile } from "../vm/sandbox";
 import {
@@ -128,6 +130,7 @@ async function createClaimedFixture(
   t: TestContext,
   name: string,
   autonomyMode: "finite" | "continuous" = "finite",
+  completionRequirements: CompletionRequirement[] = [],
 ) {
   await dbReady;
   const runtime = await registerWorker(t);
@@ -159,6 +162,7 @@ async function createClaimedFixture(
       ownerAgentId: agent.id,
       status: "pending",
       autonomyMode,
+      completionRequirements,
       cadenceSeconds: autonomyMode === "continuous" ? 60 : undefined,
       createdByUser: true,
     })
@@ -270,6 +274,7 @@ function toolBatchCompletion(
 }
 
 let judgeServer: http.Server | null = null;
+let judgeRequestCount = 0;
 let previousJudgeKey: string | undefined;
 let previousJudgeUrl: string | undefined;
 
@@ -292,6 +297,7 @@ async function startJudgeServer(_t: TestContext): Promise<void> {
   previousJudgeKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
   previousJudgeUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
   const server = http.createServer(async (request, response) => {
+    judgeRequestCount++;
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
     const payload = JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
@@ -329,6 +335,181 @@ async function startJudgeServer(_t: TestContext): Promise<void> {
   judgeServer = server;
 }
 
+test("saved owner operation requirements reject premature completion before reviewer calls or lifecycle reservation in every locale", async (t) => {
+  await startJudgeServer(t);
+  for (const locale of WORKSPACE_LOCALES) {
+    const fixture = await createClaimedFixture(
+      t,
+      `Missing owner operation ${locale}`,
+      "finite",
+      [{ kind: "tool_succeeded", tool: "calculate" }],
+    );
+    const beforeReviews = judgeRequestCount;
+    const rejected: string[] = [];
+    await stepTask(fixture.claimed, {
+      locale,
+      createCompletion: async (params) => {
+        await params.beforeRequest?.();
+        return toolCompletion(params.model, "complete_task", {
+          resultSummary: "The answer is 391, but no operation was executed.",
+        });
+      },
+      runtimeOperationsConfig: workerConfig,
+      runTool: async (ctx, name, args) => {
+        const result = await executeTool(ctx, name, args);
+        if (name === "complete_task") {
+          assert.equal(result.toolOutcome, "rejected");
+          assert.equal(result.durableTaskLifecycleIntent, undefined);
+          rejected.push(result.content);
+        }
+        return result;
+      },
+    });
+    const [task] = await db
+      .select()
+      .from(tasksTable)
+      .where(eq(tasksTable.id, fixture.task.id));
+    assert.equal(task.status, "in_progress", locale);
+    assert.equal(task.completedAt, null, locale);
+    assert.equal(judgeRequestCount, beforeReviews, locale);
+    assert.ok(
+      rejected.length > 0,
+      "A storage or provider failure is not a requirement rejection",
+    );
+    for (const content of rejected)
+      assert.equal(
+        content,
+        toolMessage(locale, "teamCompletionRequirementsMissing", {
+          tools: "calculate",
+        }),
+      );
+    const receipts = await db
+      .select()
+      .from(operationReceiptsTable)
+      .where(
+        and(
+          eq(operationReceiptsTable.taskId, fixture.task.id),
+          eq(operationReceiptsTable.toolName, "complete_task"),
+        ),
+      );
+    assert.equal(receipts.length, 0, locale);
+    assert.deepEqual(task.completionRequirements, [
+      { kind: "tool_succeeded", tool: "calculate" },
+    ]);
+  }
+});
+
+test("saved owner operation requirements stay visible and real successful work needs fresh recurring evidence", async (t) => {
+  await startJudgeServer(t);
+  const fixture = await createClaimedFixture(
+    t,
+    "Required recurring calculation",
+    "continuous",
+    [{ kind: "tool_succeeded", tool: "calculate" }],
+  );
+  let calls = 0,
+    ownerConditionVisible = false,
+    actualCalculation = false;
+  const beforeReviews = judgeRequestCount;
+  await stepTask(fixture.claimed, {
+    locale: "en",
+    createCompletion: async (params) => {
+      await params.beforeRequest?.();
+      const system = String(params.messages[0]?.content ?? "");
+      const user = String(
+        params.messages.find((message) => message.role === "user")?.content ??
+          "",
+      );
+      const requirements =
+        /<completion_requirements>([\s\S]*?)<\/completion_requirements>/.exec(
+          user,
+        );
+      if (requirements) {
+        assert.deepEqual(
+          JSON.parse(requirements[1]),
+          fixture.task.completionRequirements,
+        );
+      }
+      ownerConditionVisible ||=
+        requirements !== null &&
+        user.includes('<task_context trust="untrusted-data">') &&
+        !system.includes("<completion_requirements>");
+      return ++calls === 1
+        ? toolCompletion(params.model, "calculate", {
+            operation: "multiply",
+            values: [17, 23],
+          })
+        : toolCompletion(params.model, "complete_task", {
+            resultSummary: "The executed calculation returned 391.",
+          });
+    },
+    runTool: async (ctx, name, args) => {
+      const result = await executeTool(ctx, name, args);
+      if (name === "calculate")
+        actualCalculation =
+          result.toolOutcome === "succeeded" && result.content.includes("391");
+      return result;
+    },
+    runtimeOperationsConfig: workerConfig,
+  });
+  const [completedCycle] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, fixture.task.id));
+  assert.equal(actualCalculation, true);
+  assert.equal(completedCycle.cycleCount, 1);
+  assert.equal(judgeRequestCount, beforeReviews + 1);
+  assert.equal(
+    ownerConditionVisible,
+    true,
+    "The worker must receive the saved owner conditions",
+  );
+  // Advance eligibility only; the production cadence and cycle scope stay intact.
+  await db
+    .update(tasksTable)
+    .set({ nextAttemptAt: new Date(0), lastSteppedAt: new Date(0) })
+    .where(eq(tasksTable.id, fixture.task.id));
+  const next = (await claimDueTasks(fixture.runtime, workerConfig)).find(
+    (task) => task.id === fixture.task.id,
+  );
+  assert.ok(next);
+  const reviewsAfterFirstCycle = judgeRequestCount;
+  const missing: string[] = [];
+  await stepTask(next, {
+    locale: "en",
+    createCompletion: async (params) => {
+      await params.beforeRequest?.();
+      return toolCompletion(params.model, "complete_task", {
+        resultSummary: "Reuse the previous cycle's calculation.",
+      });
+    },
+    runTool: async (ctx, name, args) => {
+      const result = await executeTool(ctx, name, args);
+      if (name === "complete_task" && result.toolOutcome === "rejected")
+        missing.push(result.content);
+      return result;
+    },
+    runtimeOperationsConfig: workerConfig,
+  });
+  const [secondCycle] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, fixture.task.id));
+  assert.equal(secondCycle.cycleCount, 1);
+  assert.equal(secondCycle.status, "in_progress");
+  assert.equal(judgeRequestCount, reviewsAfterFirstCycle);
+  assert.ok(missing.length > 0);
+  assert.ok(
+    missing.every(
+      (content) =>
+        content ===
+        toolMessage("en", "teamCompletionRequirementsMissing", {
+          tools: "calculate",
+        }),
+    ),
+  );
+});
+
 test("durable lifecycle tools leave no partial terminal state when the step crashes before finalization", async (t) => {
   await startJudgeServer(t);
   const cases = [
@@ -362,6 +543,10 @@ test("durable lifecycle tools leave no partial terminal state when the step cras
       const crash = new Error(`synthetic crash after ${lifecycle.toolName}`);
       await stepTask(fixture.claimed, {
         createCompletion: async (params) => {
+          const loading = await loadFixtureTaskTools(params, [
+            lifecycle.toolName,
+          ]);
+          if (loading) return loading;
           await params.beforeRequest?.();
           return toolCompletion(
             params.model,
@@ -467,6 +652,10 @@ test("all durable lifecycle finalizers roll back on replaced-owner and emergency
         });
         await stepWithBarrier(fixture.claimed, {
           createCompletion: async (params) => {
+            const loading = await loadFixtureTaskTools(params, [
+              lifecycle.toolName,
+            ]);
+            if (loading) return loading;
             await params.beforeRequest?.();
             return toolCompletion(
               params.model,
@@ -642,6 +831,10 @@ test("a durable lifecycle mutation and its operation receipt succeed in one fina
   await stepTask(fixture.claimed, {
     locale: "tr",
     createCompletion: async (params) => {
+      const loading = await loadFixtureTaskTools(params, [
+        "request_user_input",
+      ]);
+      if (loading) return loading;
       await params.beforeRequest?.();
       return toolCompletion(params.model, "request_user_input", { question });
     },
@@ -748,6 +941,8 @@ test("all lifecycle finalizers preserve the reserved language and exact source a
         await stepTask(fixture.claimed, {
           locale: locale === "en" ? "ar" : "en",
           createCompletion: async (params) => {
+            const loading = await loadFixtureTaskTools(params, [toolName]);
+            if (loading) return loading;
             await params.beforeRequest?.();
             return toolCompletion(params.model, toolName, args);
           },
@@ -898,6 +1093,11 @@ test("a deferred durable operation stops its tool batch and schedules the attemp
   const dispatched: string[] = [];
   await stepTask(fixture.claimed, {
     createCompletion: async (params) => {
+      const loading = await loadFixtureTaskTools(params, [
+        "request_user_input",
+        "post_company_message",
+      ]);
+      if (loading) return loading;
       await params.beforeRequest?.();
       return toolBatchCompletion(params.model, [
         {
@@ -1668,6 +1868,10 @@ test("slot filling starts and heartbeats each claim before the next claim transa
         leaseHeartbeatRuntime: manualHeartbeatRuntime,
         afterInitialLeaseHeartbeat: lifecycle.afterInitialLeaseHeartbeat,
         createCompletion: async (params) => {
+          const loading = await loadFixtureTaskTools(params, [
+            "request_user_input",
+          ]);
+          if (loading) return loading;
           await params.beforeRequest?.();
           providerCalls += 1;
           if (providerCalls === 1) firstProviderStarted.resolve();
@@ -1870,6 +2074,10 @@ test("two schedulers never create a delayed five-claim first batch", async (t) =
       runtimeOperationsConfig: workerConfig,
       leaseHeartbeatRuntime: manualHeartbeatRuntime,
       createCompletion: async (params) => {
+        const loading = await loadFixtureTaskTools(params, [
+          "request_user_input",
+        ]);
+        if (loading) return loading;
         await params.beforeRequest?.();
         providerCalls += 1;
         if (providerCalls === allClaims.length) providerStarted.resolve();

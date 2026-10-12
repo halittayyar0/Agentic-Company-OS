@@ -30,6 +30,37 @@ function storage() {
     },
   };
 }
+test("unresolved starts retain the exact selected conditions through reload and reject altered recovery input", () => {
+  const store = storage();
+  const selected = {
+    ...draft,
+    completionRequirements: [
+      { kind: "tool_succeeded" as const, tool: "calculate" },
+    ],
+  };
+  const request = beginProjectStart(selected, id, store);
+  assert.ok(request);
+  assert.deepEqual(
+    request.input.completionRequirements,
+    selected.completionRequirements,
+  );
+  assert.deepEqual(readProjectStart(store).request, request);
+  selected.completionRequirements.length = 0;
+  assert.equal(
+    beginProjectStart(selected, "11829287-003c-4515-b7cc-6d15d97773be", store),
+    null,
+  );
+  assert.equal(request.input.completionRequirements?.length, 1);
+  const tampered = {
+    ...request,
+    input: { ...request.input, completionRequirements: [] },
+  };
+  const raw = JSON.stringify(tampered);
+  store.setItem(projectStartKey, raw);
+  assert.equal(readProjectStart(store).error, true);
+  assert.equal(beginProjectStart(draft, id, store), null);
+  assert.equal(store.getItem(projectStartKey), raw);
+});
 test("a saved request freezes the submitted draft and blocks a second identity across reload", () => {
   const store = storage(),
     request = beginProjectStart(draft, id, store);

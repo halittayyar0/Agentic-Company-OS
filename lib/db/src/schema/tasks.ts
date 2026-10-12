@@ -3,6 +3,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   serial,
@@ -14,6 +15,7 @@ import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { agentsTable } from "./agents";
+import type { CompletionRequirement } from "../completion-requirements";
 
 export const taskStatusValues = [
   "pending",
@@ -52,6 +54,10 @@ export const tasksTable = pgTable(
     id: serial("id").primaryKey(),
     title: text("title").notNull(),
     brief: text("brief").notNull(),
+    completionRequirements: jsonb("completion_requirements")
+      .$type<CompletionRequirement[]>()
+      .notNull()
+      .default([]),
     status: text("status").notNull().default("pending"),
     priority: text("priority").notNull().default("normal"),
     ownerAgentId: integer("owner_agent_id")
@@ -120,6 +126,10 @@ export const tasksTable = pgTable(
       table.nextAttemptAt,
       table.leaseExpiresAt,
       table.updatedAt,
+    ),
+    check(
+      "tasks_completion_requirements_check",
+      sql`public.acos_valid_completion_requirements(${table.completionRequirements})`,
     ),
     check(
       "tasks_status_check",

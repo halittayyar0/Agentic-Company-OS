@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import {
   db,
@@ -10,6 +9,7 @@ import {
   createProjectWithinTransaction,
   TaskOwnerUnavailable,
   ActiveWorkforceUnavailable,
+  TaskCompletionRequirementsUnavailable,
   type ProjectCreationInput,
 } from "./create-project";
 import {
@@ -18,6 +18,7 @@ import {
 } from "./orchestrator/runtime-emergency-stop";
 import { RuntimeCapacityError } from "./orchestrator/runtime-capacity";
 import { ExecutionPolicyDenied } from "./execution-policy";
+import { taskCreationInputDigest } from "./task-creation-identity";
 
 export class TaskCreationRequestError extends Error {
   constructor(
@@ -36,25 +37,12 @@ export function taskCreationRequestId(value: string): string {
     throw new TaskCreationRequestError("TASK_CREATION_REQUEST_INVALID");
   return value.toLowerCase();
 }
-function digest(input: ProjectCreationInput) {
-  return createHash("sha256")
-    .update(
-      JSON.stringify([
-        "task-creation-v1",
-        input.title.trim(),
-        input.brief,
-        input.ownerAgentId ?? null,
-        input.priority ?? "normal",
-        input.dueAt?.toISOString() ?? null,
-        input.autonomyMode ?? "finite",
-        input.autonomyMode === "continuous"
-          ? (input.cadenceSeconds ?? 3600)
-          : null,
-      ]),
-    )
-    .digest("hex");
-}
 function rejection(error: unknown): TaskCreationFailureCode | undefined {
+  // The coordinator's permitted catalog changed before admission. Persist the
+  // existing permission-denial outcome so exact recovery can prepare a new
+  // request, and an old request cannot start later when access changes again.
+  if (error instanceof TaskCompletionRequirementsUnavailable)
+    return "EXECUTION_POLICY_DENIED";
   if (
     error instanceof EmergencyStopError ||
     error instanceof RuntimeCapacityError ||
@@ -96,7 +84,7 @@ export async function createProjectRequest(
   rawId: string,
 ) {
   const requestId = taskCreationRequestId(rawId),
-    requestHash = digest(input);
+    requestHash = taskCreationInputDigest(input);
   return db.transaction(async (tx) => {
     // Existing global control lock serializes API replicas before any agent lock.
     // Reading an accepted request under a stop never authorizes another dispatch.

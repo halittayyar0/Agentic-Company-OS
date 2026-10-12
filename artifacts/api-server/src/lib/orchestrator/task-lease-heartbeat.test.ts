@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 import { randomUUID } from "node:crypto";
 import test, { type TestContext } from "node:test";
 import { and, eq } from "drizzle-orm";
@@ -508,6 +509,8 @@ test("two deterministic heartbeat ticks renew task, agent, and running attempt d
   let dispatchedTools = 0;
   let dispatchedContext: ToolRuntimeContext | undefined;
   const createCompletion: typeof createChatCompletion = async (params) => {
+    const loading = await loadFixtureTaskTools(params, ["request_user_input"]);
+    if (loading) return loading;
     await params.beforeRequest?.();
     selectedModel = params.model;
     providerStarted.resolve();
@@ -732,6 +735,8 @@ test("step shutdown awaits an in-flight renewal, clears its unref'd timer, and c
   const providerResult =
     createDeferred<Awaited<ReturnType<typeof createChatCompletion>>>();
   const createCompletion: typeof createChatCompletion = async (params) => {
+    const loading = await loadFixtureTaskTools(params, ["request_user_input"]);
+    if (loading) return loading;
     await params.beforeRequest?.();
     providerStarted.resolve();
     return providerResult.promise.then((result) => ({

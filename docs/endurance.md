@@ -34,6 +34,23 @@ the exact `postgres`, `initdb`, `pg_ctl`, `pg_isready`, and `psql` executables,
 the Node executable, and `pnpm-lock.yaml` into runtime provenance. Use it as
 runtime evidence, not as a production hardening proof.
 
+The endurance provider also follows the task tool-loading protocol: an optional
+tool must appear in the current request's schemas before the provider calls
+it. Otherwise it returns only `load_tools`, with its own response identifier
+and synthetic usage; the action follows in a separate request. The owned
+fixture schema is added only by the endurance runner. It remains absent from
+the normal catalog and dispatcher. These offline records are workload evidence,
+not measured real-model tokens or human ChatGPT plan usage.
+
+Provider faults target an exact task, physical attempt, and cycle. The
+synthetic completion keeps the selected outcome for that claimed attempt's
+bounded model retries, including when a pending timeout outlives the control
+window. Clearing the control releases later task attempts. Every retry still
+validates the live control file, so rollback or malformed control cannot be
+hidden by the retained outcome. Real providers keep their normal retry and
+fallback behavior; the fault observer still requires an exact durable incident
+and recovery within its existing deadline.
+
 A 24-hour schedule injects six worker losses plus provider timeout, rate-limit,
 malformed-output, PostgreSQL-unavailable, SSE-disconnect, and emergency-stop
 faults. The report passes only when all expected responsibilities complete,

@@ -12,7 +12,6 @@ import {
   useListProjectMembers,
   useListSubtasks,
   useListTaskActivity,
-  type Agent,
 } from "@workspace/api-client-react";
 import {
   Activity,
@@ -22,9 +21,7 @@ import {
   ExternalLink,
   Radar,
   RotateCcw,
-  UsersRound,
 } from "lucide-react";
-import { AgentAvatar } from "@/components/agent/agent-avatar";
 import { HandoffSpine } from "@/components/studio/handoff-spine";
 import { ProjectChatPanel } from "@/components/studio/project-chat-panel";
 import { ProjectWorkbench } from "@/components/studio/project-workbench";
@@ -52,6 +49,12 @@ import { ErrorBoundary } from "@/components/error-boundary";
 const BudgetTaskResume = lazy(
   () => import("@/components/tasks/budget-task-resume"),
 );
+const ResponseTaskRetry = lazy(
+  () => import("@/components/tasks/response-task-retry"),
+);
+const ProjectTeamSummary = lazy(
+  () => import("@/components/studio/project-team-summary"),
+);
 const CodingSessionRecovery = lazy(
   () => import("@/components/tasks/coding-session-recovery"),
 );
@@ -60,6 +63,9 @@ const InferenceAccountingPanel = lazy(
 );
 const ProjectReuseActions = lazy(
   () => import("@/components/studio/project-reuse-actions"),
+);
+const CompletionRequirementsPanel = lazy(
+  () => import("@/components/tasks/completion-requirements-panel"),
 );
 
 function hasBudgetResumeRecovery(taskId: number) {
@@ -412,6 +418,17 @@ function ProjectDetail({
                 <CodingSessionRecovery key={taskId} taskId={taskId} />
               </Suspense>
             </ErrorBoundary>
+            {!!project.completionRequirements?.length && (
+              <ErrorBoundary resetKey={taskId}>
+                <Suspense fallback={null}>
+                  <CompletionRequirementsPanel
+                    key={taskId}
+                    taskId={taskId}
+                    requirements={project.completionRequirements}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            )}
             {isRootProject && (
               <Suspense fallback={null}>
                 <ProjectReuseActions
@@ -422,13 +439,15 @@ function ProjectDetail({
             )}
           </div>
 
-          <ProjectTeamSummary
-            c={c}
-            members={projectMembers}
-            owner={owner}
-            loading={agentsLoading || membersQuery.isLoading}
-            memberCount={membersQuery.data?.length ?? projectMembers.length}
-          />
+          <Suspense fallback={<Skeleton className="h-28 rounded-[22px]" />}>
+            <ProjectTeamSummary
+              c={c}
+              members={projectMembers}
+              owner={owner}
+              loading={agentsLoading || membersQuery.isLoading}
+              memberCount={membersQuery.data?.length ?? projectMembers.length}
+            />
+          </Suspense>
         </div>
 
         <HandoffSpine
@@ -467,6 +486,20 @@ function ProjectDetail({
         </div>
       )}
       {project.blockedReason !== "budget" ? warning : null}
+      <Suspense fallback={null}>
+        <ResponseTaskRetry
+          key={taskId}
+          taskId={taskId}
+          paused={
+            project.status === "blocked" &&
+            project.blockedReason === "runtime_failure"
+          }
+          c={c}
+          onResumed={() =>
+            taskHeadingRef.current?.focus({ preventScroll: true })
+          }
+        />
+      </Suspense>
 
       <BlockedTaskResume
         task={project}
@@ -545,77 +578,6 @@ function ProjectDetail({
         </div>
       </section>
     </div>
-  );
-}
-
-function ProjectTeamSummary({
-  c,
-  members,
-  owner,
-  loading,
-  memberCount,
-}: {
-  c: ProjectStudioCopy;
-  members: Agent[];
-  owner: Agent | undefined;
-  loading: boolean;
-  memberCount: number;
-}) {
-  const { locale } = useLocale();
-  if (loading) {
-    return (
-      <div className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-        <Skeleton className="h-5 w-28 rounded-full" />
-        <div className="mt-3 flex gap-1">
-          {Array.from({ length: 5 }, (_, index) => (
-            <Skeleton key={index} className="size-9 rounded-full" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <aside className="rounded-[22px] border border-border/70 bg-background/35 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-2 text-[12px] font-semibold text-muted-foreground">
-          <UsersRound size={14} className="text-primary" aria-hidden /> {c.team}
-        </p>
-        <span className="rounded-full bg-secondary px-2.5 py-1 text-[12px] font-semibold text-muted-foreground">
-          {studioText(c.members, { count: memberCount.toLocaleString(locale) })}
-        </span>
-      </div>
-
-      {members.length ? (
-        <div className="mt-3 flex items-center" aria-label={c.memberLabel}>
-          <div className="flex flex-wrap gap-1">
-            {members.slice(0, 8).map((member) => (
-              <Link
-                key={member.id}
-                href={`/agents/${member.id}`}
-                aria-label={`${member.name}, ${member.role}`}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full ring-2 ring-card transition-transform duration-300 hover:z-10 hover:-translate-y-1"
-              >
-                <AgentAvatar agent={member} size="sm" showStatus />
-              </Link>
-            ))}
-          </div>
-          {memberCount > 8 ? (
-            <span className="ms-2 flex size-8 items-center justify-center rounded-full border border-border bg-secondary text-[12px] font-bold">
-              +{memberCount - 8}
-            </span>
-          ) : null}
-        </div>
-      ) : (
-        <p className="mt-3 text-xs text-muted-foreground">{c.emptyTeam}</p>
-      )}
-
-      {owner ? (
-        <p className="mt-3 text-[12px] leading-4 text-muted-foreground">
-          {studioText(c.coordinatorHelp, { name: owner.name })}
-        </p>
-      ) : null}
-    </aside>
   );
 }
 

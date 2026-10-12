@@ -1,7 +1,8 @@
 import path from "path";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+import { minify } from "terser";
 import { bundleBudgetManifest } from "./bundle-budget-manifest";
 
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
@@ -26,9 +27,43 @@ const localApiTarget =
   process.env.LOCAL_API_TARGET ??
   (process.env.REPL_ID === undefined ? "http://127.0.0.1:5000" : undefined);
 
+/** Compress shared dependencies after the normal browser-target transform.
+ * Application chunks retain the compiler used by the source ownership checks. */
+function compressSharedVendors(): Plugin {
+  return {
+    name: "acos-compress-shared-vendors",
+    apply: "build",
+    enforce: "post",
+    renderChunk: {
+      order: "post",
+      async handler(code, chunk) {
+        if (!/^vendor-(core|ui)$/.test(chunk.name)) return null;
+        const result = await minify(code, {
+          module: true,
+          sourceMap: true,
+          compress: { passes: 2, unsafe: false },
+          mangle: { properties: false },
+          format: { ascii_only: false, comments: "some" },
+        });
+        if (!result.code) throw new Error("Shared vendor compression failed");
+        return {
+          code: result.code,
+          map:
+            typeof result.map === "string"
+              ? result.map
+              : result.map
+                ? JSON.stringify(result.map)
+                : null,
+        };
+      },
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
+    compressSharedVendors(),
     bundleBudgetManifest(
       path.resolve(import.meta.dirname, "../.."),
       path.resolve(import.meta.dirname, "dist/bundle-budget-manifest.json"),
@@ -68,6 +103,9 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
+        // Repeated content-hash paths compress better with a smaller alphabet.
+        // Keep the same eight-character names and SHA-256 evidence manifest.
+        hashCharacters: "hex",
         manualChunks(id) {
           const moduleId = id.replaceAll("\\", "/");
           if (moduleId.endsWith("/src/lib/completion-review-view.ts"))

@@ -1,0 +1,53 @@
+import type { CompletionRequirementsCopy } from "../completion-requirements-copy";
+const copy = {
+  unavailableActive:
+    "The coordinator can no longer use this operation. Review the existing permissions in Settings. The saved condition remains in force.",
+  title: "Completion conditions",
+  optional: "Optional",
+  help: "Choose operations that must succeed in this project before it can finish. Recurring work needs fresh success in each cycle.",
+  limit: "Choose up to eight operations.",
+  loading: "Checking permitted operations…",
+  loadError: "Operations could not be checked. Your choices are preserved.",
+  retry: "Check again",
+  empty: "No eligible operations are currently available.",
+  search: "Find an operation",
+  selected: "Selected",
+  remove: "Remove condition",
+  unavailable:
+    "The coordinator cannot currently use this operation. Remove it before starting or review the existing permissions in Settings.",
+  satisfied: "Success recorded",
+  missing: "Success not recorded",
+  cycle: "Cycle",
+  observed: "Checked",
+  sourceHelp:
+    "These are persisted execution records for this cycle. A successful operation does not certify the final answer; the normal review still applies.",
+  permissionHelp:
+    "Choosing a condition does not grant permissions, enable tools or start work.",
+  other: "Installed operation",
+  labels: {
+    calculate: "Calculate numbers",
+    analyze_text: "Analyze text",
+    compare_text: "Compare text",
+    inspect_json: "Inspect JSON",
+    profile_csv: "Profile CSV data",
+    convert_datetime: "Convert date and time",
+    inspect_url: "Inspect a URL",
+    hash_text: "Fingerprint text",
+    vm_run_command: "Run a command",
+    vm_run_sudo_command: "Run an elevated command",
+    vm_list_files: "List files",
+    vm_read_file: "Read a file",
+    vm_write_file: "Write a file",
+    computer_observe: "Observe the computer",
+    browser_open: "Open a web page",
+    browser_snapshot: "Inspect a web page",
+    browser_click: "Click on a web page",
+    browser_type: "Type on a web page",
+    browser_scroll: "Scroll a web page",
+    browser_extract_text: "Extract page text",
+    browser_wait: "Wait for a web page",
+    browser_save_screenshot: "Save a page screenshot",
+    run_extension: "Run an installed extension",
+  },
+} satisfies CompletionRequirementsCopy;
+export default copy;

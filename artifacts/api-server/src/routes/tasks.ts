@@ -3,6 +3,8 @@ import {
   createProjectWithinTransaction,
   TaskOwnerUnavailable,
   ActiveWorkforceUnavailable,
+  TaskCompletionRequirementsUnavailable,
+  selectProjectOwner,
 } from "../lib/create-project";
 import {
   and,
@@ -26,6 +28,10 @@ import {
   taskStatusValues,
 } from "@workspace/db";
 import {
+  parseCompletionRequirements,
+  type CompletionRequirement,
+} from "@workspace/db/completion-requirements";
+import {
   ListTasksResponse,
   CreateTaskBody,
   CreateTaskResponse,
@@ -38,6 +44,8 @@ import {
   UpdateTaskAutonomyResponse,
   GetTaskCreationRequestParams,
   GetTaskCreationRequestResponse,
+  GetTaskCompletionToolsResponse,
+  GetTaskCompletionRequirementsResponse,
 } from "@workspace/api-zod";
 import { RuntimeCapacityError } from "../lib/orchestrator/runtime-capacity";
 import {
@@ -50,9 +58,17 @@ import {
 import { redactAuditText } from "../lib/audit-redaction";
 import { lockAndAssertExecutionAllowed } from "../lib/orchestrator/runtime-emergency-stop";
 import { redactApprovalCapabilityScope } from "../lib/orchestrator/approval-capability-redaction";
+import { eligibleCompletionToolNames } from "../lib/task-completion-catalog";
+import { getToolsForAgent } from "../lib/orchestrator/tools";
+import { loadCompletionRequirementResults } from "../lib/orchestrator/completion-requirements";
+import {
+  withRecordedTaskUsage,
+  withRecordedSingleTaskUsage,
+} from "../lib/task-usage-view";
 
 import taskAnswersRouter from "./task-answers";
 import taskBudgetResumeRouter from "./task-budget-resume";
+import taskResponseRetryRouter from "./task-response-retry";
 import {
   createProjectRequest,
   readProjectCreationRequest,
@@ -63,8 +79,97 @@ import {
 const router: IRouter = Router();
 router.use(taskAnswersRouter);
 router.use(taskBudgetResumeRouter);
+router.use(taskResponseRetryRouter);
 class TaskCancellationConflict extends Error {}
 class ApprovedActionInFlightConflict extends Error {}
+
+router.get("/task-completion-tools", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const ownerId = parsePositiveInteger(req.query.ownerAgentId, "ownerAgentId", {
+    optional: true,
+  });
+  if (
+    !ownerId.ok ||
+    Object.keys(req.query).some((key) => key !== "ownerAgentId")
+  ) {
+    res.status(400).json({ code: "TASK_COMPLETION_CATALOG_INVALID" });
+    return;
+  }
+  const catalog = await db.transaction(
+    async (tx) => {
+      const active = await tx
+        .select()
+        .from(agentsTable)
+        .where(eq(agentsTable.isActive, true))
+        .orderBy(agentsTable.id);
+      const owner = selectProjectOwner(active, ownerId.value);
+      return owner
+        ? {
+            ownerAgentId: owner.id,
+            tools: eligibleCompletionToolNames(
+              await getToolsForAgent(owner, true, { connection: tx }),
+            ),
+          }
+        : null;
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
+  if (!catalog) {
+    res.status(404).json({ code: "TASK_COMPLETION_OWNER_UNAVAILABLE" });
+    return;
+  }
+  res.json(GetTaskCompletionToolsResponse.strict().parse(catalog));
+});
+
+router.get(
+  "/tasks/:taskId/completion-requirements",
+  async (req, res): Promise<void> => {
+    res.setHeader("Cache-Control", "no-store");
+    const taskId = parsePositiveInteger(req.params.taskId, "taskId");
+    if (!taskId.ok || Object.keys(req.query).length) {
+      res.status(400).json({ code: "TASK_COMPLETION_SNAPSHOT_INVALID" });
+      return;
+    }
+    const snapshot = await db.transaction(
+      async (tx) => {
+        const [task] = await tx
+          .select()
+          .from(tasksTable)
+          .where(eq(tasksTable.id, taskId.value));
+        if (!task) return null;
+        const [owner] = await tx
+          .select()
+          .from(agentsTable)
+          .where(eq(agentsTable.id, task.ownerAgentId));
+        const available = new Set(
+          owner?.isActive
+            ? eligibleCompletionToolNames(
+                await getToolsForAgent(owner, true, { connection: tx }),
+              )
+            : [],
+        );
+        const result = await loadCompletionRequirementResults(task, tx);
+        return {
+          source: "persisted_current_cycle" as const,
+          taskId: task.id,
+          cycleNumber: task.cycleCount,
+          taskStatus: task.status,
+          observedAt: new Date().toISOString(),
+          requirements: result.requirements.map((item) => ({
+            ...item,
+            available: available.has(item.tool),
+          })),
+        };
+      },
+      { isolationLevel: "repeatable read", accessMode: "read only" },
+    );
+    if (!snapshot) {
+      res.status(404).json({ code: "TASK_NOT_FOUND" });
+      return;
+    }
+    res.json(GetTaskCompletionRequirementsResponse.strict().parse(snapshot));
+  },
+);
 
 router.get(
   "/task-creation-requests/:requestId",
@@ -144,10 +249,23 @@ router.get("/tasks", async (req, res): Promise<void> => {
   const hasMore = rows.length > page.value.limit;
   const tasks = rows.slice(0, page.value.limit);
   setNextCursor(res, tasks, hasMore);
-  res.json(ListTasksResponse.parse(tasks));
+  res.json(ListTasksResponse.parse(await withRecordedTaskUsage(tasks)));
 });
 
 router.post("/tasks", async (req, res): Promise<void> => {
+  let completionRequirements: CompletionRequirement[];
+  try {
+    // Validate the raw object before generated coercion can strip extra keys.
+    completionRequirements = parseCompletionRequirements(
+      req.body?.completionRequirements,
+    );
+  } catch {
+    res.status(400).json({
+      code: "TASK_COMPLETION_REQUIREMENTS_INVALID",
+      error: "Completion requirements must be supported, unique operations.",
+    });
+    return;
+  }
   const parsed = CreateTaskBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -156,6 +274,7 @@ router.post("/tasks", async (req, res): Promise<void> => {
   const input = {
     ...parsed.data,
     title: parsed.data.title.trim(),
+    completionRequirements,
   };
   if (input.title.length === 0 || input.brief.trim().length === 0) {
     res.status(400).json({ error: "Task title and brief cannot be blank." });
@@ -189,13 +308,24 @@ router.post("/tasks", async (req, res): Promise<void> => {
       }
       res
         .status(outcome.replayed ? 200 : 201)
-        .json(CreateTaskResponse.parse(outcome.task));
+        .json(
+          CreateTaskResponse.parse(
+            await withRecordedSingleTaskUsage(outcome.task),
+          ),
+        );
       return;
     }
     task = await db.transaction((tx) =>
       createProjectWithinTransaction(tx, input),
     );
   } catch (error) {
+    if (error instanceof TaskCompletionRequirementsUnavailable) {
+      res.status(400).json({
+        code: error.code,
+        error: "The selected owner cannot currently use a required operation.",
+      });
+      return;
+    }
     if (error instanceof TaskCreationRequestError) {
       res
         .status(
@@ -231,7 +361,9 @@ router.post("/tasks", async (req, res): Promise<void> => {
     throw error;
   }
 
-  res.status(201).json(CreateTaskResponse.parse(task));
+  res
+    .status(201)
+    .json(CreateTaskResponse.parse(await withRecordedSingleTaskUsage(task)));
 });
 
 router.get("/tasks/:taskId", async (req, res): Promise<void> => {
@@ -249,7 +381,7 @@ router.get("/tasks/:taskId", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Task not found" });
     return;
   }
-  res.json(GetTaskResponse.parse(task));
+  res.json(GetTaskResponse.parse(await withRecordedSingleTaskUsage(task)));
 });
 
 router.get("/tasks/:taskId/members", async (req, res): Promise<void> => {
@@ -319,7 +451,7 @@ router.get("/tasks/:taskId/subtasks", async (req, res): Promise<void> => {
   const hasMore = rows.length > page.value.limit;
   const subtasks = rows.slice(0, page.value.limit).reverse();
   setNextCursor(res, subtasks, hasMore);
-  res.json(ListSubtasksResponse.parse(subtasks));
+  res.json(ListSubtasksResponse.parse(await withRecordedTaskUsage(subtasks)));
 });
 
 router.get("/tasks/:taskId/activity", async (req, res): Promise<void> => {
@@ -579,7 +711,7 @@ router.post("/tasks/:taskId/cancel", async (req, res): Promise<void> => {
     throw error;
   }
 
-  res.json(CancelTaskResponse.parse(task));
+  res.json(CancelTaskResponse.parse(await withRecordedSingleTaskUsage(task)));
 });
 
 router.put("/tasks/:taskId/autonomy", async (req, res): Promise<void> => {
@@ -726,7 +858,11 @@ router.put("/tasks/:taskId/autonomy", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(UpdateTaskAutonomyResponse.parse(outcome.task));
+  res.json(
+    UpdateTaskAutonomyResponse.parse(
+      await withRecordedSingleTaskUsage(outcome.task),
+    ),
+  );
 });
 
 export default router;

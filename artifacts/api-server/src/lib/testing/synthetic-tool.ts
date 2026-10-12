@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type OpenAI from "openai";
 import {
   runDurableExternalEffect,
   type ToolExecutionResult,
@@ -28,6 +29,31 @@ export interface SyntheticToolExecutorOptions {
     cycleCount: number;
   };
 }
+
+// Only the dedicated endurance runner adds this schema. The production
+// catalog and dispatcher deliberately do not expose this database fixture.
+export const syntheticFixtureTool: OpenAI.Chat.Completions.ChatCompletionTool =
+  {
+    type: "function",
+    function: {
+      name: SYNTHETIC_FIXTURE_TOOL_NAME,
+      description:
+        "Persist one owned, deterministic endurance fixture work unit.",
+      parameters: {
+        type: "object",
+        properties: {
+          runId: { type: "string", maxLength: 128 },
+          operationKey: {
+            type: "string",
+            pattern: "^synthetic:v1:[a-f0-9]{64}$",
+          },
+          value: { type: "string", pattern: "^work-unit:[a-f0-9]{32}$" },
+        },
+        required: ["runId", "operationKey", "value"],
+        additionalProperties: false,
+      },
+    },
+  };
 
 function result(
   content: string,

@@ -1,5 +1,7 @@
 /** App-authored tool prose. Source text and machine identifiers stay literal. */
 export const toolTr = {
+  taskResponseRetryQueued:
+    "Kullanıcının onayıyla kesilmiş yanıt görevi yeniden sıraya alındı.",
   budgetFamilyResumed:
     "Kullanım sınırı kontrol edildi; {count} iş yeniden sıraya alındı.",
   pathInvalid: "Hata: path bir metin olmalı.",
@@ -211,6 +213,8 @@ export const toolTr = {
     "ENGELLENDİ: bağlı alt görev taskId={id} halen {status}; önce alt görev sonucunu çöz veya iptal et.",
   teamCompletionRejected:
     "Denetim bu tamamlanmayı reddetti: {reason} Lütfen görevi orijinal talimatla uyumlu hale getirip tekrar dene.",
+  teamCompletionRequirementsMissing:
+    "Görev tamamlanamaz: bu döngüde {tools} için geçerli başarı kaydı yok. Gerekli işlemleri mevcut yetkilerinle yürüt; sonuç ayrıca denetlenecek.",
   teamCyclePrepared:
     "Bu çalışma döngüsü {at} için atomik sonlandırmaya hazırlandı.",
   teamCompletionPrepared: "Görev tamamlanması atomik sonlandırmaya hazırlandı.",
@@ -375,6 +379,12 @@ export const toolTr = {
   approvalBindingInvalidated:
     "Onaylı tarayıcı bağlantısı geçersizleşti; yeni onay gerekiyor.",
   judgeRunning: "Görev denetimi çalışıyor",
+  taskResponseIncompleteLocal:
+    "Model yanıtı yarıda kesildi. Görev duraklatıldı. Mevcut Ollama modelinin bağlam ve yanıt sınırlarını kontrol ettikten sonra görev sayfasından yeniden deneyin.",
+  taskResponseIncompleteRemote:
+    "Model yanıtı yarıda kesildi. Görev duraklatıldı. Mevcut modelin bağlam ve yanıt sınırlarını kontrol ettikten sonra görev sayfasından yeniden deneyin.",
+  taskResponseSpaceReduced:
+    "Yanıt yarıda kesildi. Görev ve araç kanıtları korunarak geçmiş küçültüldü; mevcut tur sınırı içinde bir kez yeniden deneniyor.",
   taskAdvanceInstruction:
     "Görevi bir adım ilerlet. Mevcut durumu değerlendir ve uygun araç çağrılarını yap.",
   taskOpenInstruction:
@@ -390,6 +400,8 @@ export const toolTr = {
   taskToolFallbackInstruction:
     "Önceki model araç protokolünü iki kez kullanamadı. Aynı bağlamı koru; izinli araç şemasına tam uyan tek bir somut adımla devam et.",
   operationCompleted: "İşlem tamamlandı: {tool}.",
+  toolSchemaUnavailable:
+    "{tool} bu istekte sunulmadığı için çalıştırılmadı. Sunulan bir aracı kullan veya dizindeki ek aracı load_tools ile yükleyip sonraki istekte çağır. İzinler değişmedi.",
   modelFailure: "{reason} ({source})",
   failureRateLimit: "Modelin istek sınırına ulaşıldı.",
   failureTimeout: "Model isteği zaman aşımına uğradı.",

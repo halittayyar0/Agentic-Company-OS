@@ -9,6 +9,7 @@ import type { RunAgentTurnDependencies } from "./run-agent-turn";
 import { WORKSPACE_LOCALES } from "../workspace-locale";
 import { getToolCopy, toolMessage } from "./tool-localization";
 import { terminalMessage } from "../vm/terminal-localization";
+import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 
 delete process.env.DATABASE_URL;
 delete process.env.RUNTIME_ROLE;
@@ -249,16 +250,21 @@ for (const locale of WORKSPACE_LOCALES) {
           throw Object.assign(new Error("private upstream detail"), {
             status: 401,
           });
+        const loading = await loadFixtureTaskTools(params, [
+          "request_user_input",
+        ]);
+        if (loading) return loading;
         await params.beforeRequest?.();
         return reply(params.model);
       },
     };
     await stepTask(task, deps);
     assert.equal(await initial, getToolCopy(locale).taskAnalyzing);
-    assert.deepEqual(
-      models,
-      routes.map((route) => route.modelId),
-    );
+    assert.deepEqual(models, [
+      routes[0].modelId,
+      routes[1].modelId,
+      routes[1].modelId,
+    ]);
     assert.deepEqual(
       actions,
       models.map((model) => toolMessage(locale, "taskModelRunning", { model })),
@@ -509,6 +515,7 @@ for (const locale of WORKSPACE_LOCALES) {
       const { task } = await fixture();
       process.env.MAX_AGENT_TOOL_CALLS_PER_ROUND = "4";
       let calls = 0;
+      let loadingCalls = 0;
       const sent: string[] = [];
       const original = "Original source {model} $& 原文";
       const deps: StepTaskDependencies = {
@@ -516,6 +523,14 @@ for (const locale of WORKSPACE_LOCALES) {
         runtimeOperationsConfig: config,
         selectModelPlan: plan,
         createCompletion: async (params) => {
+          const loading = await loadFixtureTaskTools(params, [
+            "request_user_input",
+            ...(scenario === "tool" ? ["vm_read_file"] : []),
+          ]);
+          if (loading) {
+            loadingCalls++;
+            return loading;
+          }
           await params.beforeRequest?.();
           sent.push(
             ...params.messages
@@ -573,10 +588,17 @@ for (const locale of WORKSPACE_LOCALES) {
                   }),
                 ]
               : [c.taskLifecycleFallbackInstruction];
-      assert.ok(sent.includes(c.taskAdvanceInstruction), JSON.stringify(sent));
+      assert.ok(
+        sent.some((text) =>
+          text.startsWith(`${c.taskAdvanceInstruction}\n\n<task_context`),
+        ),
+        JSON.stringify(sent),
+      );
       for (const text of expected)
         assert.ok(sent.includes(text), JSON.stringify(sent));
       assert.equal(calls, scenario === "batch" ? 2 : 3);
+      assert.equal(loadingCalls, 1);
+      assert.ok(calls + loadingCalls <= 4);
       const receipts = await db
         .select()
         .from(operationReceiptsTable)

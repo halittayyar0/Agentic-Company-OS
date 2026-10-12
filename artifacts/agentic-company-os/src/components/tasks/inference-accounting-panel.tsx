@@ -1,11 +1,20 @@
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { useDocumentVisible } from "@/hooks/use-page-activity";
 import { loadInferenceAccountingCopy } from "@/lib/inference-accounting-copy";
-import { getInferenceAccountingSnapshot } from "@/lib/inference-accounting-api";
+import {
+  applySavedInferenceUsage,
+  getInferenceAccountingSnapshot,
+} from "@/lib/inference-accounting-api";
 import { setupMessages } from "@/lib/i18n";
+
+function paragraph(content: ReactNode, muted = false) {
+  return (
+    <p className={muted ? "text-muted-foreground" : "leading-6"}>{content}</p>
+  );
+}
 
 export default function InferenceAccountingPanel({
   scopeType,
@@ -17,6 +26,17 @@ export default function InferenceAccountingPanel({
   const { locale, t } = useLocale(),
     visible = useDocumentVisible();
   const [open, setOpen] = useState(false);
+  const client = useQueryClient(),
+    guard = useRef(false),
+    alive = useRef(true);
+  const [applying, setApplying] = useState<string | null>(null),
+    [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   const copy = useQuery({
     queryKey: ["inference-accounting-copy", locale],
     queryFn: () => loadInferenceAccountingCopy(locale),
@@ -35,9 +55,40 @@ export default function InferenceAccountingPanel({
   useEffect(() => {
     if (query.isError || (query.data && query.data.status !== "clear"))
       setOpen(true);
-  }, [query.data?.status, query.isError]);
+    if (
+      !query.isError &&
+      query.data?.status === "clear" &&
+      scopeType === "task"
+    )
+      void client.invalidateQueries({
+        queryKey: ["task-response-retry", scopeId],
+      });
+  }, [query.data?.status, query.isError, scopeType, scopeId, client]);
   const c = copy.data,
     snapshot = query.data;
+  const apply = async (attemptId: string) => {
+    if (guard.current || !c) return;
+    guard.current = true;
+    setApplying(attemptId);
+    setRecoveryNotice(null);
+    try {
+      const outcome = await applySavedInferenceUsage(
+        scopeType,
+        scopeId,
+        attemptId,
+      );
+      if (!alive.current) return;
+      setRecoveryNotice(outcome === "applied" ? c[2] : c[3]);
+    } catch {
+      if (alive.current) setRecoveryNotice(c[4]);
+    } finally {
+      guard.current = false;
+      if (alive.current) {
+        setApplying(null);
+        void query.refetch({ cancelRefetch: false });
+      }
+    }
+  };
   if (!c)
     return (
       <section
@@ -57,6 +108,31 @@ export default function InferenceAccountingPanel({
         )}
       </section>
     );
+  const [
+    recover,
+    recoverHelp,
+    ,
+    ,
+    ,
+    title,
+    clear,
+    pending,
+    recovery_required,
+    pendingHelp,
+    recoveryHelp,
+    clearHelp,
+    inspect,
+    error,
+    observed,
+    request,
+    tokens,
+    lowerBound,
+    complete,
+    unknownUsage,
+    unknownCost,
+    more,
+    states,
+  ] = c;
   return (
     <details
       data-inference-accounting
@@ -68,69 +144,83 @@ export default function InferenceAccountingPanel({
       className="mx-auto mt-4 min-w-0 max-w-[1680px] rounded-panel border bg-card p-4 text-sm sm:p-5"
     >
       <summary className="min-h-11 cursor-pointer break-words rounded-control font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
-        {c.title}
+        {title}
         <span className="mt-1 block font-normal text-muted-foreground">
           {query.isError
-            ? c.error
+            ? error
             : snapshot
-              ? c[snapshot.status]
+              ? { clear, pending, recovery_required }[snapshot.status]
               : t("loadingScreen")}
         </span>
       </summary>
       <div className="mt-3 min-w-0 space-y-3">
-        {query.isError && <p role="alert">{c.error}</p>}
+        {recoveryNotice && (
+          <p role="status" className="break-words leading-6">
+            {recoveryNotice}
+          </p>
+        )}
+        {query.isError && <p role="alert">{error}</p>}
         {snapshot && (
           <>
             <p role="status" className="leading-6">
               {snapshot.status === "pending"
-                ? c.pendingHelp
+                ? pendingHelp
                 : snapshot.status === "recovery_required"
-                  ? c.recoveryHelp
-                  : c.clearHelp}
+                  ? recoveryHelp
+                  : clearHelp}
             </p>
-            <p className="text-muted-foreground">
-              {c.observed}:{" "}
-              <time dateTime={new Date(snapshot.observedAt).toISOString()}>
-                {new Date(snapshot.observedAt).toLocaleString(locale)}
-              </time>
-            </p>
-            <ul className="space-y-3" aria-label={c.title}>
+            {paragraph(
+              <>
+                {observed}:{" "}
+                <time dateTime={new Date(snapshot.observedAt).toISOString()}>
+                  {new Date(snapshot.observedAt).toLocaleString(locale)}
+                </time>
+              </>,
+              true,
+            )}
+            {snapshot.attempts.some((a) => a.savedEvidenceAvailable) &&
+              paragraph(recoverHelp)}
+            <ul className="space-y-3" aria-label={title}>
               {snapshot.attempts.map((a) => (
                 <li
                   key={a.id}
                   className="min-w-0 space-y-2 rounded-control border p-3"
                 >
-                  <p className="font-medium">{c.states[a.state]}</p>
-                  <p className="break-words">
-                    <bdi>
-                      {a.provider} · {a.modelId}
-                    </bdi>
+                  <p className="font-medium">{states[a.state]}</p>
+                  <bdi className="block break-words">
+                    {a.provider} · {a.modelId}
+                  </bdi>
+                  <p className="break-all font-mono">
+                    {request}: <bdi>{a.id}</bdi>
                   </p>
-                  <dl className="min-w-0">
-                    <dt className="text-muted-foreground">{c.request}</dt>
-                    <dd className="break-all font-mono">
-                      <bdi>{a.id}</bdi>
-                    </dd>
-                  </dl>
-                  <p>
-                    {a.usage
-                      ? `${a.usage.usageReported ? c.complete : c.lowerBound}: ${a.usage.totalTokens.toLocaleString(locale)} ${c.tokens}`
-                      : c.unknownUsage}
-                  </p>
-                  <p className="text-muted-foreground">
-                    {a.usage?.reportedCostUsd !== null &&
-                    a.usage?.reportedCostUsd !== undefined ? (
+                  {paragraph(
+                    a.usage
+                      ? `${a.usage.usageReported ? complete : lowerBound}: ${a.usage.totalTokens.toLocaleString(locale)} ${tokens}`
+                      : unknownUsage,
+                  )}
+                  {paragraph(
+                    a.usage?.reportedCostUsd != null ? (
                       <bdi>USD {a.usage.reportedCostUsd}</bdi>
                     ) : (
-                      c.unknownCost
-                    )}
-                  </p>
+                      unknownCost
+                    ),
+                    true,
+                  )}
+                  {a.savedEvidenceAvailable && (
+                    <Button
+                      variant="outline"
+                      className="min-h-11 h-auto max-w-full whitespace-normal text-start"
+                      disabled={!!applying || query.isError || query.isFetching}
+                      aria-busy={applying === a.id}
+                      onClick={() => void apply(a.id)}
+                    >
+                      {applying === a.id ? t("loadingScreen") : recover}
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
-            {snapshot.hasMore && (
-              <p className="text-muted-foreground">{c.more}</p>
-            )}
+            {snapshot.hasMore && paragraph(more, true)}
           </>
         )}
         <Button
@@ -140,7 +230,7 @@ export default function InferenceAccountingPanel({
           aria-busy={query.isFetching}
           onClick={() => void query.refetch({ cancelRefetch: false })}
         >
-          {c.inspect}
+          {inspect}
         </Button>
       </div>
     </details>

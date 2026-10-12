@@ -192,6 +192,25 @@ jobs:
       - name: Check formatting
         run: pnpm run format:check
 
+      - name: Prove pinned Ollama local-only and cloud-disabled boundary
+        timeout-minutes: 15
+        env:
+          ACOS_OLLAMA_BOUNDARY_SMOKE: "1"
+        run: |
+          curl --fail --location --retry 2 --max-time 600 \
+            --output "$RUNNER_TEMP/ollama-v0.18.0-linux-amd64.tar.zst" \
+            https://github.com/ollama/ollama/releases/download/v0.18.0/ollama-linux-amd64.tar.zst
+          pnpm test:ollama:native "$RUNNER_TEMP/ollama-v0.18.0-linux-amd64.tar.zst" "$RUNNER_TEMP/ollama-local-boundary.json"
+
+      - name: Preserve released Ollama boundary receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ollama-local-boundary-linux
+          path: ${{ runner.temp }}/ollama-local-boundary.json
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Audit production dependencies
         run: pnpm run security:audit
 
@@ -409,6 +428,26 @@ jobs:
             throw "Portable PostgreSQL is not a supported 17.x toolchain"
           }
           "ENDURANCE_POSTGRES_ROOT=$postgresRoot" >> $env:GITHUB_ENV
+
+      - name: Prove pinned Ollama local-only and cloud-disabled boundary
+        timeout-minutes: 15
+        env:
+          ACOS_OLLAMA_BOUNDARY_SMOKE: "1"
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP "ollama-v0.18.0-windows-amd64.zip"
+          curl.exe --fail --location --retry 2 --max-time 600 --output $archive https://github.com/ollama/ollama/releases/download/v0.18.0/ollama-windows-amd64.zip
+          if ($LASTEXITCODE -ne 0) { throw "Pinned Ollama archive download failed" }
+          pnpm test:ollama:native $archive (Join-Path $env:RUNNER_TEMP "ollama-local-boundary.json")
+          if ($LASTEXITCODE -ne 0) { throw "Pinned Ollama boundary proof failed" }
+
+      - name: Preserve released Ollama boundary receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ollama-local-boundary-windows
+          path: ${{ runner.temp }}/ollama-local-boundary.json
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Install browser for source and native runtime tests
         run: pnpm exec playwright install chromium

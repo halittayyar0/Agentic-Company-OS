@@ -9,8 +9,15 @@ import {
   tasksTable,
   activityEventsTable,
   runtimeControlsTable,
+  operationReceiptsTable,
+  approvalRequestsTable,
 } from "@workspace/db";
 import app from "../app";
+import {
+  GetTaskCompletionToolsResponse,
+  GetTaskCompletionRequirementsResponse,
+  GetTaskCreationRequestResponse,
+} from "@workspace/api-zod";
 
 // Losing the first HTTP response must not let a retry create a second job.
 async function fixture(t: TestContext) {
@@ -35,8 +42,15 @@ async function fixture(t: TestContext) {
   assert.ok(address && typeof address === "object");
   t.after(async () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    if (createdIds.length)
+    if (createdIds.length) {
+      await db
+        .delete(operationReceiptsTable)
+        .where(inArray(operationReceiptsTable.taskId, createdIds));
+      await db
+        .delete(approvalRequestsTable)
+        .where(inArray(approvalRequestsTable.taskId, createdIds));
       await db.delete(tasksTable).where(inArray(tasksTable.id, createdIds));
+    }
     await db.delete(agentsTable).where(eq(agentsTable.id, agent!.id));
   });
   const input = {
@@ -60,6 +74,145 @@ async function fixture(t: TestContext) {
   };
   return { input, send, request, agent: agent! };
 }
+
+test("completion choices expose only permitted operation names without granting capabilities or executing work", async (t) => {
+  const { agent, request } = await fixture(t);
+  const permissions = {
+    ...agent.permissions,
+    canUseTerminal: false,
+    canUseSudo: false,
+  };
+  await db
+    .update(agentsTable)
+    .set({ permissions })
+    .where(eq(agentsTable.id, agent.id));
+  const response = await request(
+    `/task-completion-tools?ownerAgentId=${agent.id}`,
+  );
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const data = GetTaskCompletionToolsResponse.strict().parse(
+    await response.json(),
+  );
+  assert.deepEqual(Object.keys(data).sort(), ["ownerAgentId", "tools"]);
+  assert.equal(data.ownerAgentId, agent.id);
+  assert.ok(data.tools.includes("calculate"));
+  for (const name of [
+    "complete_task",
+    "delegate_task",
+    "request_approval",
+    "vm_codex_task",
+    "vm_run_command",
+  ])
+    assert.equal(data.tools.includes(name), false);
+  assert.ok(data.tools.every((name: unknown) => typeof name === "string"));
+  assert.equal(
+    (await request(`/task-completion-tools?ownerAgentId=${agent.id}&execute=1`))
+      .status,
+    400,
+  );
+  await db
+    .update(agentsTable)
+    .set({ isActive: false })
+    .where(eq(agentsTable.id, agent.id));
+  assert.equal(
+    (await request(`/task-completion-tools?ownerAgentId=${agent.id}`)).status,
+    404,
+  );
+  const [after] = await db
+    .select()
+    .from(agentsTable)
+    .where(eq(agentsTable.id, agent.id));
+  assert.deepEqual(after.permissions, permissions);
+  assert.equal(
+    (
+      await db
+        .select()
+        .from(tasksTable)
+        .where(eq(tasksTable.ownerAgentId, agent.id))
+    ).length,
+    0,
+  );
+});
+
+test("visible completion conditions use exact current-cycle receipts and retain missing permissions without exposing results", async (t) => {
+  const { input, send, request, agent } = await fixture(t);
+  const created = await send({
+    ...input,
+    completionRequirements: [{ kind: "tool_succeeded", tool: "calculate" }],
+  });
+  assert.equal(created.response.status, 201);
+  const taskId = Number(created.data.id);
+  const url = `/tasks/${taskId}/completion-requirements`;
+  const response = await request(url);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const absent = GetTaskCompletionRequirementsResponse.strict().parse(
+    await response.json(),
+  );
+  assert.equal(absent.taskId, taskId);
+  assert.equal(absent.cycleNumber, 0);
+  assert.deepEqual(absent.requirements, [
+    {
+      kind: "tool_succeeded",
+      tool: "calculate",
+      satisfied: false,
+      available: true,
+    },
+  ]);
+  const id = randomUUID(),
+    now = new Date();
+  const [approval] = await db
+    .insert(approvalRequestsTable)
+    .values({
+      agentId: agent.id,
+      taskId,
+      category: "other",
+      title: "PRIVATE_TITLE",
+      description: "PRIVATE_DESCRIPTION",
+    })
+    .returning();
+  await db.insert(operationReceiptsTable).values({
+    id,
+    operationKey: id,
+    executionKind: "approved_action",
+    logicalExecutionId: randomUUID(),
+    taskId,
+    agentId: agent.id,
+    approvalId: approval.id,
+    sideEffectClass: "read_only",
+    state: "succeeded",
+    toolName: "calculate",
+    argumentHash: "0".repeat(64),
+    resultData: { ok: true, raw: "PRIVATE_RESULT" },
+    reservedAt: now,
+    finishedAt: now,
+  });
+  const satisfied = GetTaskCompletionRequirementsResponse.strict().parse(
+    await (await request(url)).json(),
+  );
+  assert.equal(satisfied.requirements[0].satisfied, true);
+  assert.equal(JSON.stringify(satisfied).includes("PRIVATE_RESULT"), false);
+  await db
+    .update(agentsTable)
+    .set({ isActive: false })
+    .where(eq(agentsTable.id, agent.id));
+  const unavailable = GetTaskCompletionRequirementsResponse.strict().parse(
+    await (await request(url)).json(),
+  );
+  assert.equal(unavailable.requirements[0].available, false);
+  assert.equal(unavailable.requirements[0].satisfied, true);
+  await db
+    .update(tasksTable)
+    .set({ cycleCount: 1, lastCycleCompletedAt: new Date(now.getTime() + 1) })
+    .where(eq(tasksTable.id, taskId));
+  const next = GetTaskCompletionRequirementsResponse.strict().parse(
+    await (await request(url)).json(),
+  );
+  assert.equal(next.cycleNumber, 1);
+  assert.equal(next.requirements[0].satisfied, false);
+  assert.equal((await request(url + "?raw=1")).status, 400);
+});
 
 test("project creation replays the same request identity instead of duplicating work", async (t) => {
   const { input, send } = await fixture(t);
@@ -85,6 +238,136 @@ test("project creation replays the same request identity instead of duplicating 
     activity.filter((event) => event.type === "task_created").length,
     1,
   );
+});
+
+test("an exact owner operation contract is persisted once across concurrent creation retries", async (t) => {
+  const { input, send } = await fixture(t);
+  const completionRequirements = [
+    { kind: "tool_succeeded", tool: "calculate" },
+  ];
+  const results = await Promise.all(
+    Array.from({ length: 3 }, () => send({ ...input, completionRequirements })),
+  );
+  assert.equal(new Set(results.map((result) => result.data.id)).size, 1);
+  assert.deepEqual(
+    results.map((result) => result.response.status).sort(),
+    [200, 200, 201],
+  );
+  for (const result of results)
+    assert.deepEqual(
+      result.data.completionRequirements,
+      completionRequirements,
+    );
+  const [saved] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, Number(results[0]!.data.id)));
+  assert.ok(saved);
+  assert.deepEqual(
+    Reflect.get(saved, "completionRequirements"),
+    completionRequirements,
+  );
+  const removed = await send(input);
+  assert.equal(removed.response.status, 409);
+  assert.equal(removed.data.code, "TASK_CREATION_REQUEST_CONFLICT");
+});
+
+test("raw completion conditions cannot gain lifecycle proof or lose unexpected fields during API coercion", async (t) => {
+  const { input, send } = await fixture(t);
+  for (const completionRequirements of [
+    [{ kind: "tool_succeeded", tool: "complete_task" }],
+    [{ kind: "tool_succeeded", tool: "calculate", optional: true }],
+    [
+      { kind: "tool_succeeded", tool: "calculate" },
+      { kind: "tool_succeeded", tool: "calculate" },
+    ],
+  ]) {
+    const result = await send({ ...input, completionRequirements });
+    assert.equal(result.response.status, 400);
+    assert.equal(result.data.code, "TASK_COMPLETION_REQUIREMENTS_INVALID");
+  }
+  assert.equal(
+    (
+      await db
+        .select()
+        .from(tasksTable)
+        .where(eq(tasksTable.title, input.title))
+    ).length,
+    0,
+  );
+});
+
+test("a missing required capability refuses creation without enabling it or starting a project", async (t) => {
+  const { input, send, agent } = await fixture(t);
+  const permissions = structuredClone(agent.permissions);
+  const result = await send({
+    ...input,
+    completionRequirements: [
+      { kind: "tool_succeeded", tool: "never_registered_tool" },
+    ],
+  });
+  assert.equal(result.response.status, 423);
+  assert.equal(result.data.code, "EXECUTION_POLICY_DENIED");
+  assert.equal(
+    (
+      await db
+        .select()
+        .from(tasksTable)
+        .where(eq(tasksTable.title, input.title))
+    ).length,
+    0,
+  );
+  const [current] = await db
+    .select()
+    .from(agentsTable)
+    .where(eq(agentsTable.id, agent.id));
+  assert.deepEqual(current?.permissions, permissions);
+});
+
+test("revoked operation conditions have a durable rejection and never restart through an old request after permission repair", async (t) => {
+  const { input, send, request, agent } = await fixture(t);
+  const completionRequirements = [
+    { kind: "tool_succeeded" as const, tool: "vm_run_command" },
+  ];
+  const selected = { ...input, completionRequirements };
+  await db
+    .update(agentsTable)
+    .set({ permissions: { ...agent.permissions, canUseTerminal: false } })
+    .where(eq(agentsTable.id, agent.id));
+  const rejected = await send(selected);
+  assert.equal(rejected.response.status, 423);
+  assert.equal(rejected.data.code, "EXECUTION_POLICY_DENIED");
+  const receipt = GetTaskCreationRequestResponse.strict().parse(
+    await (await request(`/task-creation-requests/${input.requestId}`)).json(),
+  );
+  assert.deepEqual(receipt, {
+    requestId: input.requestId,
+    state: "rejected",
+    taskId: null,
+    failureCode: "EXECUTION_POLICY_DENIED",
+    createdAt: receipt.createdAt,
+  });
+  await db
+    .update(agentsTable)
+    .set({ permissions: agent.permissions })
+    .where(eq(agentsTable.id, agent.id));
+  assert.equal((await send(selected)).response.status, 423);
+  assert.equal(
+    (await send({ ...selected, completionRequirements: [] })).response.status,
+    409,
+  );
+  assert.equal(
+    (
+      await db
+        .select()
+        .from(tasksTable)
+        .where(eq(tasksTable.title, input.title))
+    ).length,
+    0,
+  );
+  const fresh = await send({ ...selected, requestId: randomUUID() });
+  assert.equal(fresh.response.status, 201);
+  assert.deepEqual(fresh.data.completionRequirements, completionRequirements);
 });
 
 test("concurrent project request replay commits one project and rejects changed input", async (t) => {

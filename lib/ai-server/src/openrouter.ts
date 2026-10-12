@@ -16,13 +16,16 @@ import {
   getDirectOpenAIClient,
   getDirectOpenAIModelCatalog,
   getOllamaCatalogSnapshot,
-  getOllamaClient,
+  assertOllamaRequestCurrent,
   isDirectOpenAIConfigured,
   isOllamaConfigured,
   refreshOllamaCatalog,
+  prepareOllamaInferenceRequest,
   resolveDirectOpenAIModelId,
   resolveOllamaModelId,
+  resolveOllamaCloudModelId,
 } from "./first-party-providers";
+import { findOllamaBoundaryError } from "./ollama-model-boundary";
 import {
   MODEL_CATALOG,
   getChatCompletionExtraParams,
@@ -462,7 +465,11 @@ export function resolveModelProvider(modelId: string): ModelProvider | null {
   if (!modelId) return null;
   if (isKnownModelId(modelId)) return "replit";
   if (resolveDirectOpenAIModelId(modelId)) return "openai";
-  if (resolveOllamaModelId(modelId)) return "ollama";
+  if (modelId.startsWith("ollama:") || modelId.startsWith("ollama-cloud:")) {
+    return resolveOllamaModelId(modelId) || resolveOllamaCloudModelId(modelId)
+      ? "ollama"
+      : null;
+  }
   const hit = OPENROUTER_MODEL_CATALOG.some((m) => m.id === modelId);
   if (hit) return "openrouter";
   // OpenRouter supports aliases and newly published ids before a local cache
@@ -477,7 +484,10 @@ export interface UnifiedChatCompletionParams {
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
   tools?: OpenAI.Chat.Completions.ChatCompletionTool[];
   maxTokens?: number;
-  responseFormat?: { type: "json_object" | "text" };
+  /** Local Ollama thinking models only. Tool workflows default to none to keep
+   * reasoning from consuming the output budget before an action is produced. */
+  localReasoningEffort?: "none" | "low" | "medium" | "high";
+  responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming["response_format"];
   signal?: AbortSignal;
   /** Diagnostics can opt out of SDK retries to bound billable attempts. */
   disableRetries?: boolean;
@@ -777,23 +787,54 @@ export async function createChatCompletion(
       }
     }
 
-    const ollamaModel = resolveOllamaModelId(model);
-    if (ollamaModel) {
-      const client = getOllamaClient();
-      await dispatch();
-      const completion = await client.chat.completions.create(
-        {
-          model: ollamaModel,
-          messages,
-          tools: tools && tools.length > 0 ? tools : undefined,
-          max_tokens: maxTokens,
-          ...(responseFormat ? { response_format: responseFormat } : {}),
-        },
-        {
-          signal: boundedSignal,
-          maxRetries: params.disableRetries ? 0 : undefined,
+    if (model.startsWith("ollama:") || model.startsWith("ollama-cloud:")) {
+      const guard = providerRequestGuard;
+      const request = await prepareOllamaInferenceRequest(
+        model,
+        boundedSignal,
+        async () => {
+          await guard?.();
+          boundedSignal.throwIfAborted();
         },
       );
+      await dispatch();
+      assertOllamaRequestCurrent(request);
+      let completion: OpenAI.Chat.Completions.ChatCompletion;
+      try {
+        completion = await request.client.chat.completions.create(
+          {
+            model: request.upstreamModel,
+            messages,
+            tools: tools && tools.length > 0 ? tools : undefined,
+            max_tokens: maxTokens,
+            // Local tool decisions and structured reviews should not vary
+            // through default sampling. This controls generation, never the
+            // selected action, verdict, permissions or acceptance checks.
+            ...(request.boundary === "local" &&
+            (tools?.length ||
+              (responseFormat && responseFormat.type !== "text"))
+              ? { temperature: 0 }
+              : {}),
+            ...(request.boundary === "local" && request.supportsThinking
+              ? {
+                  // Ollama 0.18 supports "none"; the pinned OpenAI SDK's
+                  // older enum does not. Limit this extension to this field.
+                  reasoning_effort: (params.localReasoningEffort ??
+                    (tools?.length
+                      ? "none"
+                      : undefined)) as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming["reasoning_effort"],
+                }
+              : {}),
+            ...(responseFormat ? { response_format: responseFormat } : {}),
+          },
+          {
+            signal: boundedSignal,
+            maxRetries: params.disableRetries ? 0 : undefined,
+          },
+        );
+      } catch (error) {
+        throw findOllamaBoundaryError(error) ?? error;
+      }
       await observeCompletionResponseUsage(params, completion, "ollama");
       return { completion, provider: "ollama" as const };
     }

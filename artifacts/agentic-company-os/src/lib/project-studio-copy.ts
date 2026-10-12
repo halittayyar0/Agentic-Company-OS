@@ -1,5 +1,13 @@
 import type { Locale } from "./i18n";
 export type ProjectStudioCopy = {
+  responseRetryHeading: string;
+  responseRetryHelp: string;
+  responseRetryAction: string;
+  responseRetrySame: string;
+  responseRetryInspect: string;
+  responseRetryAccepted: string;
+  responseRetryRejected: string;
+  responseRetryUnknown: string;
   budgetHeading: string;
   budgetHelp: string;
   budgetGuide: string;
@@ -125,6 +133,7 @@ export type ProjectStudioCopy = {
   progress: string;
   attempts: string;
   tokens: string;
+  tokenUsageHelp: string;
   model: string;
   unknownModel: string;
   deliverySummary: string;

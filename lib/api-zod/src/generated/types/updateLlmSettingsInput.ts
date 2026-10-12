@@ -29,4 +29,6 @@ export interface UpdateLlmSettingsInput {
      * @nullable
      */
   ollamaBaseUrl?: string | null;
+  /** Explicitly enable or disable cloud models on the selected server. Requires expectedRevision; the backend binds consent to the canonical effective origin. */
+  ollamaCloudEnabled?: boolean;
 }

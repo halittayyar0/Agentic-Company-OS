@@ -57,6 +57,11 @@ export interface WallClockRuntimeDriver extends FaultInjectionControls {
     observer: SoakEvidenceObserver,
     context: WallClockCaptureContext,
   ): Promise<void>;
+  /** Drain the last persisted minute within the existing evidence deadline. */
+  captureFinalHealthEvidence?(
+    observer: SoakEvidenceObserver,
+    signal?: AbortSignal,
+  ): Promise<void>;
   createBrowserSession(
     signal?: AbortSignal,
     cleanupTimeoutMs?: number,
@@ -355,6 +360,8 @@ export async function runWallClockSoak(
     ];
     try {
       await Promise.all(jobs);
+      controller.signal.throwIfAborted();
+      await driver.captureFinalHealthEvidence?.(observer, controller.signal);
     } catch (error) {
       runFailure = failureMessage(error);
       controller.abort(error);

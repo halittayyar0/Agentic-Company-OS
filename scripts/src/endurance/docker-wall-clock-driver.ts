@@ -1374,6 +1374,16 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
         `Responsibility cycle lag ${maxResponsibilityCycleLag} exceeds the ${MAX_RESPONSIBILITY_CYCLE_LAG}-cycle recovery bound`,
       );
     }
+    this.ingestHealthEvidence(observer, snapshot);
+    this.lastEvidenceAt = snapshot.generatedAt;
+  }
+
+  private ingestHealthEvidence(
+    observer: SoakEvidenceObserver,
+    snapshot: ProjectOperationsEvidence,
+  ): void {
+    if (!this.runStartedAt)
+      throw new Error("Endurance health coverage is not initialized");
     const runStartedMs = new Date(this.runStartedAt).getTime();
     const firstHealthBucketMs = Math.floor(runStartedMs / 60_000) * 60_000;
     const healthCoverageEndMs =
@@ -1437,7 +1447,6 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
         schedulerTickAgeMs: sample.schedulerTickAgeMs,
       });
     }
-    this.lastEvidenceAt = snapshot.generatedAt;
   }
 
   private async assertHealthyTopology(
@@ -1942,6 +1951,51 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       await this.ingestMinuteEvidence(observer, snapshot, context.minute);
     } else {
       await this.observeFaultEvidence(observer, snapshot, context);
+    }
+  }
+
+  async captureFinalHealthEvidence(
+    observer: SoakEvidenceObserver,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (!this.runStartedAt)
+      throw new Error("Endurance health coverage is not initialized");
+    const finalBucket = new Date(
+      Math.floor(Date.parse(this.runStartedAt) / 60_000) * 60_000 +
+        (this.requiredHealthBuckets - 1) * 60_000,
+    ).toISOString();
+    const deadline = new AbortController();
+    const timer = setTimeout(
+      () =>
+        deadline.abort(
+          new Error(
+            `Final health bucket ${finalBucket} was not persisted within the evidence deadline`,
+          ),
+        ),
+      this.faultEvidenceTimeoutMs,
+    );
+    const boundedSignal = signal
+      ? AbortSignal.any([signal, deadline.signal])
+      : deadline.signal;
+    try {
+      // Worker sampling has its own phase. A read at the duration boundary can
+      // precede its final commit. Wait for that actual bucket, never manufacture
+      // rows or credit another minute. Earlier gaps still fail the report.
+      const polls = Math.ceil(this.faultEvidenceTimeoutMs / 1_000);
+      for (let poll = 0; ; poll += 1) {
+        boundedSignal.throwIfAborted();
+        if (this.persistedHealthBuckets.has(finalBucket)) return;
+        const snapshot = await this.readProjectOperations(boundedSignal);
+        this.ingestHealthEvidence(observer, snapshot);
+        if (this.persistedHealthBuckets.has(finalBucket)) return;
+        if (poll >= polls)
+          throw new Error(
+            `Final health bucket ${finalBucket} was not persisted within the evidence deadline`,
+          );
+        await this.sleepImpl(1_000, boundedSignal);
+      }
+    } finally {
+      clearTimeout(timer);
     }
   }
 

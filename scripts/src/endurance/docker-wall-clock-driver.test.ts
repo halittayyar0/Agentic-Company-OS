@@ -497,6 +497,119 @@ test("health coverage excludes pre-run and tail buckets without inventing missin
   }
 });
 
+for (const scenario of [
+  {
+    name: "delayed terminal bucket",
+    terminal: true,
+    missingMinute: null,
+    count: 10,
+  },
+  { name: "genuine earlier gap", terminal: true, missingMinute: 2, count: 9 },
+  {
+    name: "missing terminal bucket",
+    terminal: false,
+    missingMinute: null,
+    count: 9,
+  },
+]) {
+  test(`final health capture preserves actual coverage for ${scenario.name}`, async () => {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "agentic-final-health-"),
+    );
+    let now = new Date("2026-10-11T14:40:00.069Z");
+    let snapshot = operationsSnapshot({ cursor: "1" });
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const pathname = new URL(String(input)).pathname;
+      if (pathname === "/api/readyz") return Response.json({ status: "ready" });
+      if (pathname === "/api/ops/instances")
+        return Response.json({
+          instances: ["api", "worker", "worker"].map((role, index) => ({
+            id: `instance-${index}`,
+            role,
+            effectiveState: "healthy",
+            schedulerEnabled: role === "worker",
+          })),
+        });
+      if (pathname === "/api/tasks" && init?.method === "POST")
+        return Response.json({ id: 7 }, { status: 201 });
+      if (pathname === "/api/tasks/7/operations")
+        return Response.json(snapshot);
+      return Response.json({ error: "not found" }, { status: 404 });
+    };
+    const health = (minute: number) => ({
+      bucketAt: `2026-10-11T14:${39 + minute}:00.000Z`,
+      sampledAt: `2026-10-11T14:${40 + minute}:07.261Z`,
+      runtimeTruthState: "live",
+      healthyWorkerCount: 2,
+      staleWorkerCount: 0,
+      schedulerTickAgeMs: 105,
+    });
+    const samples = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+      .filter((minute) => minute !== scenario.missingMinute)
+      .map(health);
+    const driver = new DockerWallClockDriver({
+      runId: "final-health-test",
+      seed: 240_901,
+      durationHours: 1 / 6,
+      workspaceRoot: process.cwd(),
+      controlDirectory: directory,
+      baseUrl: "http://127.0.0.1:5000",
+      operatorToken: "local-operator-secret",
+      harness: harness([]),
+      fetchImpl,
+      now: () => now,
+      faultEvidenceTimeoutMs: 10_000,
+      sleep: async (milliseconds, signal) => {
+        signal?.throwIfAborted();
+        now = new Date(now.getTime() + milliseconds);
+        snapshot = operationsSnapshot({
+          cursor: "3",
+          generatedAt: now.toISOString(),
+          healthSamples:
+            scenario.terminal && now >= new Date("2026-10-11T14:50:07.261Z")
+              ? [...samples, health(10)]
+              : samples,
+        });
+      },
+    });
+    const observer = new RecordingSoakEvidenceObserver({
+      expectedResponsibilities: 100,
+    });
+    try {
+      await driver.start();
+      now = new Date("2026-10-11T14:50:02.965Z");
+      snapshot = operationsSnapshot({
+        cursor: "2",
+        generatedAt: now.toISOString(),
+        healthSamples: samples,
+      });
+      await driver.captureEvidence(observer, { kind: "minute", minute: 1 });
+      if (scenario.terminal) await driver.captureFinalHealthEvidence(observer);
+      else
+        await assert.rejects(
+          driver.captureFinalHealthEvidence(observer),
+          /final health bucket.*not persisted/iu,
+        );
+      assert.equal(
+        observer.finalize().metrics.healthSampleBuckets,
+        scenario.count,
+      );
+      assert.deepEqual(
+        observer.healthObservations.map((row) => row.minute),
+        scenario.missingMinute === 2
+          ? [1, 3, 4, 5, 6, 7, 8, 9, 10]
+          : scenario.terminal
+            ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            : [1, 2, 3, 4, 5, 6, 7, 8, 9],
+      );
+      assert.ok(now.getTime() <= Date.parse("2026-10-11T14:50:12.965Z"));
+    } finally {
+      await driver.stop({ keepData: false });
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}
+
 test("first-cycle diagnosis identifies unclaimed and lost agents without copying unsafe attempt states", async () => {
   const directory = await mkdtemp(
     path.join(tmpdir(), "agentic-incomplete-responsibility-"),

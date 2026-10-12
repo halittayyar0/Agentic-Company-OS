@@ -76,6 +76,35 @@ test("backup proof restores a binary archive into a fresh database and checks ap
   );
 });
 
+test("additional restored data is inspected read-only and a mismatch still drops the owned restore database", async () => {
+  const f = await fixture();
+  let inspected = false;
+  await assert.rejects(
+    proveDatabaseBackup({
+      database: "source_fixture",
+      dumpPath: f.archive,
+      connectionArgs: [],
+      command: f.run,
+      verifyAdditionalRestoredData: async (read) => {
+        inspected = true;
+        await read("SELECT completion_requirements FROM tasks");
+        throw Error("restored_conditions_mismatch");
+      },
+    }),
+    /restored_conditions_mismatch/u,
+  );
+  assert.equal(inspected, true);
+  const sql = f.calls
+    .find(
+      (call) =>
+        call.args.includes("-c") &&
+        call.args.at(-1)?.includes("SELECT completion_requirements"),
+    )
+    ?.args.at(-1);
+  assert.match(sql ?? "", /^BEGIN READ ONLY;[\s\S]*ROLLBACK;$/u);
+  assert.ok(f.calls.some((call) => call.command === "dropdb"));
+});
+
 test("corrupt backup fails before creating a restore database", async () => {
   const f = await fixture({ corrupt: true });
   await assert.rejects(

@@ -5,6 +5,35 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-12
+
+### Added
+
+- Optional owner-selected completion conditions for up to eight permitted tool
+  operations. Exact current-cycle execution records are checked before review;
+  selections remain in draft and start recovery, with no new model call or
+  permission grant. Seven-language selection and status panels distinguish
+  execution success, missing capabilities and answer quality.
+- Persist permission rejections when a selected operation becomes unavailable
+  before project admission. A repaired permission cannot revive an old rejected
+  request; the owner can explicitly prepare a new start.
+
+### Fixed
+
+- Use deterministic sampling for local tool calls and structured reviews to
+  reduce inconsistent operation selection. Plain text and cloud requests keep
+  their existing settings; correct results still require execution and review.
+- Give local Ollama completion and approval reviews an explicit verdict/reasoning
+  JSON schema. All three verdicts remain available; incomplete or invalid replies
+  still fail closed and retain reported usage. Review token limits, task budgets,
+  permissions and paid-provider response modes remain unchanged.
+- Explain the completion tool in English and ask the model to report actual
+  completed outcomes, including tool-produced values, rather than planned work.
+- Write native Ollama boundary receipts through an exclusively created file
+  descriptor. Competing writers cannot overwrite an existing receipt or redirect
+  its contents by changing the pathname. Existing preflight checks, probe
+  deadlines, cleanup assertions and privacy boundaries remain in place.
+
 ## [0.5.0] - 2026-10-09
 
 Reuse your saved instructions without losing current drafts, and recover a

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { eq } from "drizzle-orm";
@@ -32,7 +33,8 @@ test("malformed nonterminal tools use bounded fallback then durable backoff", as
   };
   process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
   process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
-  process.env.MAX_AGENT_TOOL_ROUNDS = "4";
+  // One schema-loading response, then the original four malformed responses.
+  process.env.MAX_AGENT_TOOL_ROUNDS = "5";
   process.env.MODEL_FALLBACK_MAX_ROUTES = "2";
   const leaseOwner = `task:rejected-tools:${Date.now()}`;
   const leaseExpiresAt = new Date(Date.now() + 15 * 60_000);
@@ -89,6 +91,8 @@ test("malformed nonterminal tools use bounded fallback then durable backoff", as
 
   let attempts = 0;
   const fakeCompletion: typeof createChatCompletion = async (params) => {
+    const loading = await loadFixtureTaskTools(params, ["vm_write_file"]);
+    if (loading) return loading;
     await params.beforeRequest?.();
     attempts += 1;
     return {
@@ -314,6 +318,11 @@ test("an unknown operation stops the batch and blocks before another model call"
 
   let providerCalls = 0;
   const fakeCompletion: typeof createChatCompletion = async (params) => {
+    const loading = await loadFixtureTaskTools(params, [
+      "vm_run_command",
+      "log_note",
+    ]);
+    if (loading) return loading;
     await params.beforeRequest?.();
     providerCalls += 1;
     return {

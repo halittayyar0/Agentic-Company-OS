@@ -65,6 +65,7 @@ import type {
   GetInferenceAccountingStatusParams,
   GetOperationsOverviewParams,
   GetProjectOperationsParams,
+  GetTaskCompletionToolsParams,
   HealthStatus,
   InferenceAccountingSnapshot,
   ListActivityParams,
@@ -119,6 +120,9 @@ import type {
   ProjectMember,
   ProjectOperationsSnapshot,
   ReadinessStatus,
+  ReconcileInferenceAccounting200,
+  ReconcileInferenceAccountingBody,
+  ReconcileInferenceAccountingParams,
   ReconcileOperationInput,
   ResetAgentAvatarParams,
   RetryChatGPTPlanBody,
@@ -133,10 +137,15 @@ import type {
   TaskBudgetResumeInput,
   TaskBudgetResumeReceipt,
   TaskBudgetResumeStatus,
+  TaskCompletionSnapshot,
+  TaskCompletionTools,
   TaskCreationReceipt,
   TaskCreationRequestId,
   TaskInput,
   TaskQuestion,
+  TaskResponseRetryInput,
+  TaskResponseRetryReceipt,
+  TaskResponseRetryScope,
   TaskResumeInput,
   TestLlmInput,
   UpdateCapabilityPacksBody,
@@ -187,6 +196,88 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getReconcileInferenceAccountingUrl = (attemptId: string,
+    params: ReconcileInferenceAccountingParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/inference-accounting/${attemptId}/reconcile?${stringifiedParams}` : `/api/inference-accounting/${attemptId}/reconcile`
+}
+
+/**
+ * Authenticated operator action bound to the exact task or agent scope and request UUID. Consumes only trusted persisted response evidence. Missing or conflicting usage remains fenced. Never accepts token totals, resets budgets, executes model output or resumes a task. Safe duplicate application retains one correction.
+ * @summary Apply saved usage evidence without requesting inference or resuming work
+ */
+export const reconcileInferenceAccounting = async (attemptId: string,
+    reconcileInferenceAccountingBody: ReconcileInferenceAccountingBody,
+    params: ReconcileInferenceAccountingParams, options?: Parameters<typeof customFetch>[1]): Promise<ReconcileInferenceAccounting200> => {
+
+  return customFetch<ReconcileInferenceAccounting200>(getReconcileInferenceAccountingUrl(attemptId,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reconcileInferenceAccountingBody)
+  }
+);}
+
+
+
+
+
+export const getReconcileInferenceAccountingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileInferenceAccounting>>, TError,{attemptId: string;data: BodyType<ReconcileInferenceAccountingBody>;params: ReconcileInferenceAccountingParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileInferenceAccounting>>, TError,{attemptId: string;data: BodyType<ReconcileInferenceAccountingBody>;params: ReconcileInferenceAccountingParams}, TContext> => {
+
+const mutationKey = ['reconcileInferenceAccounting'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileInferenceAccounting>>, {attemptId: string;data: BodyType<ReconcileInferenceAccountingBody>;params: ReconcileInferenceAccountingParams}> = (props) => {
+          const {attemptId,data,params} = props ?? {};
+
+          return  reconcileInferenceAccounting(attemptId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileInferenceAccountingMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileInferenceAccounting>>>
+    export type ReconcileInferenceAccountingMutationBody = BodyType<ReconcileInferenceAccountingBody>
+    export type ReconcileInferenceAccountingMutationError = ErrorType<void>
+
+    /**
+ * @summary Apply saved usage evidence without requesting inference or resuming work
+ */
+export const useReconcileInferenceAccounting = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileInferenceAccounting>>, TError,{attemptId: string;data: BodyType<ReconcileInferenceAccountingBody>;params: ReconcileInferenceAccountingParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileInferenceAccounting>>,
+        TError,
+        {attemptId: string;data: BodyType<ReconcileInferenceAccountingBody>;params: ReconcileInferenceAccountingParams},
+        TContext
+      > => {
+      return useMutation(getReconcileInferenceAccountingMutationOptions(options));
+    }
 
 export const getGetInferenceAccountingStatusUrl = (params: GetInferenceAccountingStatusParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3947,6 +4038,167 @@ export const useSendCompanyMessage = <TError = ErrorType<unknown>,
       return useMutation(getSendCompanyMessageMutationOptions(options));
     }
 
+export const getGetTaskCompletionToolsUrl = (params?: GetTaskCompletionToolsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/task-completion-tools?${stringifiedParams}` : `/api/task-completion-tools`
+}
+
+/**
+ * @summary Read eligible operations from the coordinator's current permitted catalog
+ */
+export const getTaskCompletionTools = async (params?: GetTaskCompletionToolsParams, options?: Parameters<typeof customFetch>[1]): Promise<TaskCompletionTools> => {
+
+  return customFetch<TaskCompletionTools>(getGetTaskCompletionToolsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskCompletionToolsQueryKey = (params?: GetTaskCompletionToolsParams,) => {
+    return [
+    `/api/task-completion-tools`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTaskCompletionToolsQueryOptions = <TData = Awaited<ReturnType<typeof getTaskCompletionTools>>, TError = ErrorType<void>>(params?: GetTaskCompletionToolsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionTools>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskCompletionToolsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskCompletionTools>>> = ({ signal }) => getTaskCompletionTools(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionTools>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskCompletionToolsQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskCompletionTools>>>
+export type GetTaskCompletionToolsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read eligible operations from the coordinator's current permitted catalog
+ */
+
+export function useGetTaskCompletionTools<TData = Awaited<ReturnType<typeof getTaskCompletionTools>>, TError = ErrorType<void>>(
+ params?: GetTaskCompletionToolsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionTools>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskCompletionToolsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTaskCompletionRequirementsUrl = (taskId: number,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/completion-requirements`
+}
+
+/**
+ * @summary Read exact current-cycle execution conditions without raw arguments or results
+ */
+export const getTaskCompletionRequirements = async (taskId: number, options?: Parameters<typeof customFetch>[1]): Promise<TaskCompletionSnapshot> => {
+
+  return customFetch<TaskCompletionSnapshot>(getGetTaskCompletionRequirementsUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskCompletionRequirementsQueryKey = (taskId: number,) => {
+    return [
+    `/api/tasks/${taskId}/completion-requirements`
+    ] as const;
+    }
+
+
+export const getGetTaskCompletionRequirementsQueryOptions = <TData = Awaited<ReturnType<typeof getTaskCompletionRequirements>>, TError = ErrorType<void>>(taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionRequirements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskCompletionRequirementsQueryKey(taskId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskCompletionRequirements>>> = ({ signal }) => getTaskCompletionRequirements(taskId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionRequirements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskCompletionRequirementsQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskCompletionRequirements>>>
+export type GetTaskCompletionRequirementsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read exact current-cycle execution conditions without raw arguments or results
+ */
+
+export function useGetTaskCompletionRequirements<TData = Awaited<ReturnType<typeof getTaskCompletionRequirements>>, TError = ErrorType<void>>(
+ taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskCompletionRequirements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskCompletionRequirementsQueryOptions(taskId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListTasksUrl = (params?: ListTasksParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -4948,6 +5200,239 @@ export function useGetTaskBudgetResumeReceipt<TData = Awaited<ReturnType<typeof 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetTaskBudgetResumeReceiptQueryOptions(taskId,requestId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTaskResponseRetryScopeUrl = (taskId: number,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/response-retry`
+}
+
+/**
+ * Advisory snapshot. Retry admission is rechecked under locks during POST.
+ * @summary Read the current incomplete response pause without dispatching work
+ */
+export const getTaskResponseRetryScope = async (taskId: number, options?: Parameters<typeof customFetch>[1]): Promise<TaskResponseRetryScope> => {
+
+  return customFetch<TaskResponseRetryScope>(getGetTaskResponseRetryScopeUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskResponseRetryScopeQueryKey = (taskId: number,) => {
+    return [
+    `/api/tasks/${taskId}/response-retry`
+    ] as const;
+    }
+
+
+export const getGetTaskResponseRetryScopeQueryOptions = <TData = Awaited<ReturnType<typeof getTaskResponseRetryScope>>, TError = ErrorType<void>>(taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskResponseRetryScope>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskResponseRetryScopeQueryKey(taskId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskResponseRetryScope>>> = ({ signal }) => getTaskResponseRetryScope(taskId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskResponseRetryScope>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskResponseRetryScopeQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskResponseRetryScope>>>
+export type GetTaskResponseRetryScopeQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the current incomplete response pause without dispatching work
+ */
+
+export function useGetTaskResponseRetryScope<TData = Awaited<ReturnType<typeof getTaskResponseRetryScope>>, TError = ErrorType<void>>(
+ taskId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskResponseRetryScope>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskResponseRetryScopeQueryOptions(taskId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRetryTaskResponseUrl = (taskId: number,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/response-retry`
+}
+
+/**
+ * Keeps the task model, usage, cycle and schedule. Requires acknowledgement and the exact blocked attempt. No inference runs in this route. Queue transition and an immutable accepted audit receipt commit together. Replaying acceptance returns the historical receipt without queueing again. Stale scope, emergency stop, inactive owners, live leases, approvals, unfinished effects and exhausted allowance are rejected.
+ * @summary Explicitly retry a task paused after an incomplete model response
+ */
+export const retryTaskResponse = async (taskId: number,
+    taskResponseRetryInput: TaskResponseRetryInput, options?: Parameters<typeof customFetch>[1]): Promise<TaskResponseRetryReceipt> => {
+
+  return customFetch<TaskResponseRetryReceipt>(getRetryTaskResponseUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(taskResponseRetryInput)
+  }
+);}
+
+
+
+
+
+export const getRetryTaskResponseMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryTaskResponse>>, TError,{taskId: number;data: BodyType<TaskResponseRetryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryTaskResponse>>, TError,{taskId: number;data: BodyType<TaskResponseRetryInput>}, TContext> => {
+
+const mutationKey = ['retryTaskResponse'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryTaskResponse>>, {taskId: number;data: BodyType<TaskResponseRetryInput>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  retryTaskResponse(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryTaskResponseMutationResult = NonNullable<Awaited<ReturnType<typeof retryTaskResponse>>>
+    export type RetryTaskResponseMutationBody = BodyType<TaskResponseRetryInput>
+    export type RetryTaskResponseMutationError = ErrorType<void>
+
+    /**
+ * @summary Explicitly retry a task paused after an incomplete model response
+ */
+export const useRetryTaskResponse = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryTaskResponse>>, TError,{taskId: number;data: BodyType<TaskResponseRetryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retryTaskResponse>>,
+        TError,
+        {taskId: number;data: BodyType<TaskResponseRetryInput>},
+        TContext
+      > => {
+      return useMutation(getRetryTaskResponseMutationOptions(options));
+    }
+
+export const getGetTaskResponseRetryReceiptUrl = (taskId: number,
+    attemptId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/response-retry/${attemptId}`
+}
+
+/**
+ * @summary Inspect an accepted response retry without dispatching work
+ */
+export const getTaskResponseRetryReceipt = async (taskId: number,
+    attemptId: string, options?: Parameters<typeof customFetch>[1]): Promise<TaskResponseRetryReceipt> => {
+
+  return customFetch<TaskResponseRetryReceipt>(getGetTaskResponseRetryReceiptUrl(taskId,attemptId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskResponseRetryReceiptQueryKey = (taskId: number,
+    attemptId: string,) => {
+    return [
+    `/api/tasks/${taskId}/response-retry/${attemptId}`
+    ] as const;
+    }
+
+
+export const getGetTaskResponseRetryReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getTaskResponseRetryReceipt>>, TError = ErrorType<void>>(taskId: number,
+    attemptId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskResponseRetryReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskResponseRetryReceiptQueryKey(taskId,attemptId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskResponseRetryReceipt>>> = ({ signal }) => getTaskResponseRetryReceipt(taskId,attemptId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: taskId !== null && taskId !== undefined && attemptId !== null && attemptId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskResponseRetryReceipt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskResponseRetryReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskResponseRetryReceipt>>>
+export type GetTaskResponseRetryReceiptQueryError = ErrorType<void>
+
+
+/**
+ * @summary Inspect an accepted response retry without dispatching work
+ */
+
+export function useGetTaskResponseRetryReceipt<TData = Awaited<ReturnType<typeof getTaskResponseRetryReceipt>>, TError = ErrorType<void>>(
+ taskId: number,
+    attemptId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskResponseRetryReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskResponseRetryReceiptQueryOptions(taskId,attemptId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

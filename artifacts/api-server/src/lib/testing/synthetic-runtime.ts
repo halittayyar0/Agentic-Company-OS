@@ -8,6 +8,7 @@ import {
 import type { RuntimeOperationsConfig } from "../runtime-operations-config";
 import type { SyntheticRuntimeConfiguration } from "../runtime-security";
 import { executeTool } from "../orchestrator/execute-tool";
+import { getToolsForAgent } from "../orchestrator/tools";
 import { stepTask, type StepTaskDependencies } from "../orchestrator/step-task";
 import type { ClaimedTask } from "../orchestrator/task-attempt-store";
 import {
@@ -16,7 +17,10 @@ import {
   type SyntheticDelegation,
 } from "./synthetic-completion";
 import { createFileBackedSyntheticFaultSource } from "./synthetic-fault-plan";
-import { createSyntheticToolExecutor } from "./synthetic-tool";
+import {
+  createSyntheticToolExecutor,
+  syntheticFixtureTool,
+} from "./synthetic-tool";
 
 interface SyntheticClaimedTaskLifecycle {
   afterInitialLeaseHeartbeat(): void;
@@ -161,6 +165,10 @@ export function createSyntheticClaimedTaskRunner(input: {
     const syntheticToolExecutor = createSyntheticToolExecutor(shared);
     const dependencies: StepTaskDependencies = {
       runtimeOperationsConfig: input.runtimeOperationsConfig,
+      getTools: async (...args) => [
+        ...(await getToolsForAgent(...args)),
+        syntheticFixtureTool,
+      ],
       createCompletion: createSyntheticCompletion(shared),
       selectModelPlan: () => ({
         primary: {

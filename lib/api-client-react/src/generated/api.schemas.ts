@@ -71,6 +71,7 @@ export interface InferenceAccountingAttempt {
   /** @maxLength 32 */
   provider: string;
   kind: InferenceAccountingAttemptKind;
+  savedEvidenceAvailable?: boolean;
   state: InferenceAccountingAttemptState;
   /** @minimum 0 */
   createdAt: number;
@@ -824,6 +825,21 @@ export const OllamaSettingsError = {
 export interface OllamaSettings {
   configured: boolean;
   reachable: boolean;
+  /** Explicit consent for this exact private server origin. Missing on older servers; absence never grants cloud permission. */
+  cloudEnabled?: boolean;
+  /**
+     * @maxLength 64
+     * @nullable
+     */
+  serverVersion?: string | null;
+  /** Whether the reported stable server version enforces local selectors. Missing or false cannot prove local execution. */
+  localEnforcementSupported?: boolean;
+  /** @minimum 0 */
+  localModelCount?: number;
+  /** @minimum 0 */
+  cloudModelCount?: number;
+  /** @minimum 0 */
+  unknownModelCount?: number;
   /**
      * @maxLength 2048
      * @nullable
@@ -880,6 +896,30 @@ export const ModelTier = {
   reasoning: 'reasoning',
 } as const;
 
+/**
+ * Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.
+ */
+export type ModelCatalogModelExecutionLocation = typeof ModelCatalogModelExecutionLocation[keyof typeof ModelCatalogModelExecutionLocation];
+
+
+export const ModelCatalogModelExecutionLocation = {
+  local: 'local',
+  cloud: 'cloud',
+  unknown: 'unknown',
+} as const;
+
+/**
+ * Local runner compatibility with the model's declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference.
+ */
+export type ModelCatalogModelRuntimeCompatibility = typeof ModelCatalogModelRuntimeCompatibility[keyof typeof ModelCatalogModelRuntimeCompatibility];
+
+
+export const ModelCatalogModelRuntimeCompatibility = {
+  compatible: 'compatible',
+  update_required: 'update_required',
+  unverified: 'unverified',
+} as const;
+
 export interface ModelCatalogModel {
   id: string;
   label: string;
@@ -888,6 +928,16 @@ export interface ModelCatalogModel {
   description: string;
   /** Whether the model can execute the function tools required by an agent run. */
   supportsTools: boolean;
+  /** Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation. */
+  executionLocation?: ModelCatalogModelExecutionLocation;
+  /** Local runner compatibility with the model's declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference. */
+  runtimeCompatibility?: ModelCatalogModelRuntimeCompatibility;
+  /**
+     * Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.
+     * @maxLength 64
+     * @pattern ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$
+     */
+  requiredOllamaVersion?: string;
   isDefault: boolean;
 }
 
@@ -933,6 +983,8 @@ export interface UpdateLlmSettingsInput {
      * @nullable
      */
   ollamaBaseUrl?: string | null;
+  /** Explicitly enable or disable cloud models on the selected server. Requires expectedRevision; the backend binds consent to the canonical effective origin. */
+  ollamaCloudEnabled?: boolean;
 }
 
 export interface UpdateLlmSettingsResult {
@@ -2094,6 +2146,30 @@ export interface WorkforceBlueprintInstallInput {
   cadenceSeconds?: number;
 }
 
+export type TaskCompletionRequirementKind = typeof TaskCompletionRequirementKind[keyof typeof TaskCompletionRequirementKind];
+
+
+export const TaskCompletionRequirementKind = {
+  tool_succeeded: 'tool_succeeded',
+} as const;
+
+export interface TaskCompletionRequirement {
+  kind: TaskCompletionRequirementKind;
+  /**
+     * Exact eligible tool name in the selected coordinator's current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.
+     * @minLength 1
+     * @maxLength 80
+     * @pattern ^[a-zA-Z][a-zA-Z0-9_]{0,79}$
+     */
+  tool: string;
+}
+
+/**
+ * Optional owner-selected tools that must have a verified successful receipt in this task's current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.
+ * @maxItems 8
+ */
+export type TaskCompletionRequirements = TaskCompletionRequirement[];
+
 export type TaskPriority = typeof TaskPriority[keyof typeof TaskPriority];
 
 
@@ -2123,6 +2199,7 @@ export interface Task {
   id: number;
   title: string;
   brief: string;
+  completionRequirements?: TaskCompletionRequirements;
   status: TaskStatus;
   priority: TaskPriority;
   ownerAgentId: number;
@@ -3144,6 +3221,7 @@ export interface TaskInput {
      * @maxLength 8000
      */
   brief: string;
+  completionRequirements?: TaskCompletionRequirements;
   /** Optional backwards-compatible coordinator override; every active agent still joins the project. */
   ownerAgentId?: number;
   priority?: TaskPriority;
@@ -3154,6 +3232,47 @@ export interface TaskInput {
      * @maximum 604800
      */
   cadenceSeconds?: number;
+}
+
+export interface TaskCompletionTools {
+  /** @minimum 1 */
+  ownerAgentId: number;
+  /** @items.pattern ^[a-zA-Z][a-zA-Z0-9_]{0,79}$ */
+  tools: string[];
+}
+
+export type TaskCompletionSnapshotSource = typeof TaskCompletionSnapshotSource[keyof typeof TaskCompletionSnapshotSource];
+
+
+export const TaskCompletionSnapshotSource = {
+  persisted_current_cycle: 'persisted_current_cycle',
+} as const;
+
+export type TaskCompletionRequirementStateKind = typeof TaskCompletionRequirementStateKind[keyof typeof TaskCompletionRequirementStateKind];
+
+
+export const TaskCompletionRequirementStateKind = {
+  tool_succeeded: 'tool_succeeded',
+} as const;
+
+export interface TaskCompletionRequirementState {
+  kind: TaskCompletionRequirementStateKind;
+  /** @pattern ^[a-zA-Z][a-zA-Z0-9_]{0,79}$ */
+  tool: string;
+  satisfied: boolean;
+  available: boolean;
+}
+
+export interface TaskCompletionSnapshot {
+  source: TaskCompletionSnapshotSource;
+  /** @minimum 1 */
+  taskId: number;
+  /** @minimum 0 */
+  cycleNumber: number;
+  taskStatus: TaskStatus;
+  observedAt: string;
+  /** @maxItems 8 */
+  requirements: TaskCompletionRequirementState[];
 }
 
 export type TaskCreationReceiptState = typeof TaskCreationReceiptState[keyof typeof TaskCreationReceiptState];
@@ -3268,6 +3387,33 @@ export interface TaskBudgetResumeReceipt {
      * @maximum 1000
      */
   stillPausedCount: number;
+  recordedAt: string;
+}
+
+export interface TaskResponseRetryInput {
+  blockedAttemptId: string;
+  acknowledge: true;
+}
+
+export interface TaskResponseRetryScope {
+  /** @minimum 1 */
+  taskId: number;
+  canRetry: boolean;
+  blockedAttemptId: string | null;
+}
+
+export type TaskResponseRetryReceiptOutcome = typeof TaskResponseRetryReceiptOutcome[keyof typeof TaskResponseRetryReceiptOutcome];
+
+
+export const TaskResponseRetryReceiptOutcome = {
+  accepted: 'accepted',
+} as const;
+
+export interface TaskResponseRetryReceipt {
+  /** @minimum 1 */
+  taskId: number;
+  blockedAttemptId: string;
+  outcome: TaskResponseRetryReceiptOutcome;
   recordedAt: string;
 }
 
@@ -3978,6 +4124,51 @@ export type PageLimitParameter = number;
  */
 export type BeforeIdParameter = number;
 
+export type ReconcileInferenceAccountingParams = {
+scopeType: ReconcileInferenceAccountingScopeType;
+/**
+ * @minimum 1
+ * @maximum 2147483647
+ */
+scopeId: number;
+};
+
+export type ReconcileInferenceAccountingScopeType = typeof ReconcileInferenceAccountingScopeType[keyof typeof ReconcileInferenceAccountingScopeType];
+
+
+export const ReconcileInferenceAccountingScopeType = {
+  task: 'task',
+  agent: 'agent',
+} as const;
+
+export type ReconcileInferenceAccountingBody = {
+  acknowledge: true;
+};
+
+export type ReconcileInferenceAccounting200ScopeType = typeof ReconcileInferenceAccounting200ScopeType[keyof typeof ReconcileInferenceAccounting200ScopeType];
+
+
+export const ReconcileInferenceAccounting200ScopeType = {
+  task: 'task',
+  agent: 'agent',
+} as const;
+
+export type ReconcileInferenceAccounting200Outcome = typeof ReconcileInferenceAccounting200Outcome[keyof typeof ReconcileInferenceAccounting200Outcome];
+
+
+export const ReconcileInferenceAccounting200Outcome = {
+  applied: 'applied',
+  pending: 'pending',
+} as const;
+
+export type ReconcileInferenceAccounting200 = {
+  scopeType: ReconcileInferenceAccounting200ScopeType;
+  /** @minimum 1 */
+  scopeId: number;
+  attemptId: string;
+  outcome: ReconcileInferenceAccounting200Outcome;
+};
+
 export type GetInferenceAccountingStatusParams = {
 scopeType: GetInferenceAccountingStatusScopeType;
 /**
@@ -4174,6 +4365,13 @@ limit?: PageLimitParameter;
  * @minimum 1
  */
 beforeId?: BeforeIdParameter;
+};
+
+export type GetTaskCompletionToolsParams = {
+/**
+ * @minimum 1
+ */
+ownerAgentId?: number;
 };
 
 export type ListTasksParams = {

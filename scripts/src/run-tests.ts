@@ -75,7 +75,7 @@ console.log(
 const child = spawn(
   process.execPath,
   [
-    // Node 24's V8 can abort while freeing PGlite WASM code on Windows.
+    // Node 24's V8 can abort while freeing PGlite WASM import wrappers.
     // Keep the workaround inside test child processes until the fix lands.
     ...(process.env.TEST_DISABLE_WASM_CODE_GC === "1"
       ? ["--no-wasm-code-gc"]

@@ -1,5 +1,46 @@
 # How task completion is reviewed
 
+## Choose completion conditions
+
+When creating a project, expand **Completion conditions (Optional)** and choose
+up to eight operations from the coordinator's current permitted tools. For
+example, select **Calculate numbers** when the work must actually use the
+calculator. Text-only work can leave this section empty.
+
+These conditions are saved with the project and are included in the existing
+agent context. They grant no permissions, activate no packs and perform no
+operations. The agent cannot remove them. Before completion review starts, the
+server checks exact persisted success for this task and cycle. Missing success
+rejects completion without an additional model request or completion intent.
+Terminal operations additionally require a recorded successful zero exit code.
+Failed, pending, unknown or operator-reconciled outcomes do not satisfy a
+condition. A Codex turn is not an eligible condition.
+
+The project header shows current-cycle records and missing capabilities. If a
+record cannot be refreshed, the panel does not keep advertising stale success.
+Recurring work needs new success in every cycle. A successful tool call still
+does not establish that its arguments or final answer meet the brief; the
+ordinary semantic review remains necessary.
+
+Selections survive draft reload and exact start recovery. If capability access
+changes before admission, a request with a saved identity receives a persisted
+permission rejection. Use **Prepare a new start**, review or remove the
+condition, then explicitly start with a new identity. Retrying the rejected
+identity cannot start work after permission changes. Requests without a recovery
+identity return the existing unavailable-condition error without starting work.
+
+**Use brief again** also prepares saved conditions for a new project, where they
+can be reviewed before starting. Personal text guides preserve instructions
+only; they do not silently add executable conditions.
+
+The chooser and status panel are authored in English, Turkish, German, Russian,
+Simplified Chinese, Traditional Chinese and Arabic. See the
+[localized guide](completion-conditions-languages.md). This implementation does
+not establish that a real local model reliably follows arbitrary briefs or that
+ChatGPT account inference has been tested.
+
+## Review the full result
+
 Before an agent finishes a task or a recurring cycle, the existing economical
 review model compares the task brief and completion report. It also receives a
 short snapshot of the recorded work for that task and cycle.

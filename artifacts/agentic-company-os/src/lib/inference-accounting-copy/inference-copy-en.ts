@@ -1,31 +1,32 @@
 import type { InferenceAccountingCopy } from "../inference-accounting-copy";
-export default {
-  title: "Model usage records",
-  clear: "No unresolved usage",
-  pending: "Response window open",
-  recovery_required: "Usage needs verification",
-  pendingHelp:
-    "A response may still arrive. This status does not confirm that the agent is running.",
-  recoveryHelp:
-    "Usage could not be verified. Further model requests in this scope stay paused. Keep the request ID for diagnosis. Checking status does not resend the request.",
-  clearHelp:
-    "No unresolved usage record is blocking this scope. This does not mean the task succeeded or grant permission to run it.",
-  inspect: "Check saved records",
-  error:
-    "Current status cannot be verified. Previously shown records are kept.",
-  observed: "Last observed",
-  request: "Request ID",
-  tokens: "tokens",
-  lowerBound: "Reported minimum",
-  complete: "Reported usage",
-  unknownUsage: "Usage unknown",
-  unknownCost: "Cost not reported",
-  more: "Only the latest 20 records are shown; unresolved records appear first.",
-  states: {
+export default [
+  "Apply usage",
+  "Apply this call's saved usage only. No model call or task restart.",
+  "Usage applied; no work restarted.",
+  "No applicable usage. Check records.",
+  "Application unconfirmed. Check records.",
+  "Model usage records",
+  "No unresolved usage",
+  "Response window open",
+  "Usage needs verification",
+  "A response may arrive; agent activity is unconfirmed.",
+  "Usage unconfirmed; new calls paused. Keep the request ID. Checking records does not resend.",
+  "No usage block; task success and run permission are separate.",
+  "Check saved records",
+  "Status unconfirmed; previous records kept.",
+  "Last observed",
+  "Request ID",
+  "tokens",
+  "Reported minimum",
+  "Reported usage",
+  "Usage unknown",
+  "Cost not reported",
+  "Latest 20 records; unresolved first.",
+  {
     reserved: "Prepared; not dispatched",
     dispatched: "Dispatched; awaiting accounting",
     uncertain: "Usage unconfirmed",
     accounted: "Usage recorded",
     not_dispatched: "Not dispatched",
   },
-} satisfies InferenceAccountingCopy;
+] satisfies InferenceAccountingCopy;

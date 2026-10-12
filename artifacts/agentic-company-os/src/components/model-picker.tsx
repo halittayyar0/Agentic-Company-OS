@@ -26,7 +26,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PROVIDER_META } from "@/lib/format";
-import { matchesModelSearch } from "@/lib/model-search";
+import {
+  hasFreeModelIdentifier,
+  matchesModelSearch,
+  ollamaModelLocation,
+  modelRuntimeReady,
+} from "@/lib/model-search";
+import { useLocale } from "@/components/i18n/locale-provider";
+import {
+  OllamaModelLocation,
+  useOllamaLocationCopy,
+} from "./agent/ollama-model-location";
+import { LanguagePackStatus } from "@/components/i18n/language-pack-status";
 import { PulseDot, TierChip } from "@/components/fx";
 
 export interface ModelSelectionValue {
@@ -63,6 +74,7 @@ export function ModelPicker({
   className?: string;
   disabled?: boolean;
 }) {
+  const { locale } = useLocale();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [expandedProviders, setExpandedProviders] = useState<
@@ -78,6 +90,10 @@ export function ModelPicker({
     query: { staleTime: 30_000, queryKey: getGetModelCatalogQueryKey() },
   });
   const models = catalogData?.models ?? [];
+  const needsLocationCopy = models.some(
+    (model) => ollamaModelLocation(model) !== null,
+  );
+  const locationCopy = useOllamaLocationCopy(locale, needsLocationCopy);
   const providers = catalogData?.providers ?? [];
 
   const current = useMemo(
@@ -168,6 +184,12 @@ export function ModelPicker({
           </div>
 
           <CommandList className="max-h-[420px]">
+            {needsLocationCopy && !locationCopy.data ? (
+              <LanguagePackStatus
+                error={locationCopy.isError}
+                buttonClassName="min-h-11"
+              />
+            ) : null}
             {isLoading ? (
               <div
                 className="py-6 text-center text-sm text-muted-foreground"
@@ -271,7 +293,14 @@ export function ModelPicker({
                           <CommandItem
                             key={model.id}
                             value={model.id}
-                            disabled={!group.available || !canRunAgentTools}
+                            disabled={
+                              (ollamaModelLocation(model) !== null &&
+                                !locationCopy.data) ||
+                              !group.available ||
+                              !canRunAgentTools ||
+                              !modelRuntimeReady(model) ||
+                              ollamaModelLocation(model) === "unknown"
+                            }
                             title={unavailableReason}
                             onSelect={() => {
                               onChange({
@@ -306,7 +335,7 @@ export function ModelPicker({
                                     varsayılan
                                   </span>
                                 )}
-                                {model.id.endsWith(":free") && (
+                                {hasFreeModelIdentifier(model) && (
                                   <span className="shrink-0 rounded border border-emerald-400/30 bg-emerald-500/10 px-1 py-px text-[12px] font-bold uppercase text-emerald-300">
                                     ücretsiz
                                   </span>
@@ -316,6 +345,10 @@ export function ModelPicker({
                                     araç yok · yalnız sohbet
                                   </span>
                                 )}
+                                <OllamaModelLocation
+                                  model={model}
+                                  locale={locale}
+                                />
                               </div>
                               <span className="line-clamp-1 text-[12px] text-muted-foreground">
                                 {model.description}

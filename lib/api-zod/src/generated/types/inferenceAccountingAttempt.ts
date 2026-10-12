@@ -23,6 +23,7 @@ export interface InferenceAccountingAttempt {
   /** @maxLength 32 */
   provider: string;
   kind: InferenceAccountingAttemptKind;
+  savedEvidenceAvailable?: boolean;
   state: InferenceAccountingAttemptState;
   /** @minimum 0 */
   createdAt: number;

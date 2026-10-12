@@ -1,30 +1,32 @@
 import type { InferenceAccountingCopy } from "../inference-accounting-copy";
-export default {
-  title: "Model kullanım kayıtları",
-  clear: "Belirsiz kullanım kaydı yok",
-  pending: "Yanıt süresi henüz dolmadı",
-  recovery_required: "Kullanım doğrulanmalı",
-  pendingHelp:
-    "Bir yanıt hâlâ gelebilir. Bu durum ajanın çalıştığını doğrulamaz.",
-  recoveryHelp:
-    "Kullanım doğrulanamadı. Bu kapsamdaki yeni model istekleri bekletiliyor. İnceleme için istek kimliğini saklayın. Durum kontrolü isteği yeniden göndermez.",
-  clearHelp:
-    "Bu kapsamı bekleten belirsiz kullanım kaydı yok. Bu, görevin başarıyla tamamlandığı veya çalıştırma izni verildiği anlamına gelmez.",
-  inspect: "Kayıtları kontrol et",
-  error: "Güncel durum doğrulanamıyor. Önceden gösterilen kayıtlar korunuyor.",
-  observed: "Son kontrol",
-  request: "İstek kimliği",
-  tokens: "token",
-  lowerBound: "Bildirilen en az kullanım",
-  complete: "Bildirilen kullanım",
-  unknownUsage: "Kullanım bilinmiyor",
-  unknownCost: "Maliyet bildirilmedi",
-  more: "Son 20 kayıt gösteriliyor; belirsiz kayıtlar önce gelir.",
-  states: {
+export default [
+  "Kullanımı uygula",
+  "Yalnızca kayıtlı kullanımı düzeltir. Model çağırmaz veya görevi sürdürmez.",
+  "Kullanım uygulandı; iş yeniden başlatılmadı.",
+  "Uygun kayıt yok. Kayıtları kontrol edin.",
+  "Uygulama doğrulanamadı. Kayıtları kontrol edin.",
+  "Model kullanım kayıtları",
+  "Belirsiz kullanım kaydı yok",
+  "Yanıt süresi henüz dolmadı",
+  "Kullanım doğrulanmalı",
+  "Yanıt gelebilir; ajanın çalıştığı doğrulanmadı.",
+  "Kullanım belirsiz; yeni istekler bekliyor. İstek kimliğini saklayın. Kontrol isteği tekrarlamaz.",
+  "Kullanım engeli yok; görev başarısı ve çalışma izni ayrıca kontrol edilir.",
+  "Kayıtları kontrol et",
+  "Durum doğrulanamadı; önceki kayıtlar korundu.",
+  "Son kontrol",
+  "İstek kimliği",
+  "token",
+  "Bildirilen en az kullanım",
+  "Bildirilen kullanım",
+  "Kullanım bilinmiyor",
+  "Maliyet bildirilmedi",
+  "Son 20 kayıt; belirsiz olanlar önce.",
+  {
     reserved: "Hazırlandı; gönderilmedi",
     dispatched: "Gönderildi; kullanım kaydı bekleniyor",
     uncertain: "Kullanım doğrulanmadı",
     accounted: "Kullanım kaydedildi",
     not_dispatched: "Gönderilmedi",
   },
-} satisfies InferenceAccountingCopy;
+] satisfies InferenceAccountingCopy;

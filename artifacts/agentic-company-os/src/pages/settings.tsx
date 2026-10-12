@@ -24,7 +24,16 @@ import {
 import { LANGUAGE_OPTIONS, isLocale } from "@/lib/i18n";
 import { loadSettingsCopy, type SettingsCopy } from "@/lib/settings-copy";
 import { applyColorMode, getSavedColorMode, type ColorMode } from "@/lib/theme";
-import { matchesModelSearch } from "@/lib/model-search";
+import {
+  hasFreeModelIdentifier,
+  matchesModelSearch,
+  ollamaModelLocation,
+  modelRuntimeReady,
+} from "@/lib/model-search";
+import {
+  OllamaModelLocation,
+  useOllamaLocationCopy,
+} from "@/components/agent/ollama-model-location";
 import { ModelConnectionLauncher } from "@/components/studio/model-connection-launcher";
 
 const SourceWorkspaceSettings = lazy(() =>
@@ -119,6 +128,10 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
     refetchInterval: busy ? false : 30_000,
   });
   const data = query.data;
+  const needsLocationCopy = Boolean(
+    data?.catalog.models.some((model) => ollamaModelLocation(model) !== null),
+  );
+  const locationCopy = useOllamaLocationCopy(locale, needsLocationCopy);
   const validRevision =
     !!data && Number.isSafeInteger(data.revision) && data.revision >= 0;
   const blocked =
@@ -131,7 +144,7 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
           model.description,
           c[model.tier],
           model.supportsTools ? c.tools : c.chatOnly,
-          model.id.endsWith(":free") ? c.freeIdentifier : "",
+          hasFreeModelIdentifier(model) ? c.freeIdentifier : "",
         ].join(" "),
       },
       search,
@@ -428,15 +441,26 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                 );
                 const chosenModel =
                   models.find((model) => model.id === selection[provider]) ??
-                  models.find(
-                    (model) =>
-                      model.supportsTools && model.id.endsWith(":free"),
-                  ) ??
-                  models.find(
-                    (model) => model.supportsTools && model.tier === "economy",
-                  ) ??
-                  models.find((model) => model.supportsTools) ??
-                  models[0];
+                  (provider === "ollama"
+                    ? (models.find(
+                        (model) =>
+                          ollamaModelLocation(model) === "local" &&
+                          modelRuntimeReady(model) &&
+                          model.supportsTools,
+                      ) ??
+                      models.find(
+                        (model) => ollamaModelLocation(model) === "local",
+                      ))
+                    : (models.find(
+                        (model) =>
+                          model.supportsTools && hasFreeModelIdentifier(model),
+                      ) ??
+                      models.find(
+                        (model) =>
+                          model.supportsTools && model.tier === "economy",
+                      ) ??
+                      models.find((model) => model.supportsTools) ??
+                      models[0]));
                 const chosen = chosenModel?.id ?? "";
                 const available = data.catalog.providers.some(
                   (item) => item.id === provider && item.available,
@@ -542,6 +566,18 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                     )}
                     {available && models.length > 0 ? (
                       <div className="space-y-2">
+                        {provider === "ollama" && !locationCopy.data ? (
+                          <LanguagePackStatus
+                            error={locationCopy.isError}
+                            buttonClassName="min-h-11"
+                          />
+                        ) : null}
+                        {chosenModel ? (
+                          <OllamaModelLocation
+                            model={chosenModel}
+                            locale={locale}
+                          />
+                        ) : null}
                         <label
                           className="block text-sm font-medium"
                           htmlFor={provider + "-model"}
@@ -553,7 +589,10 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                             id={provider + "-model"}
                             dir="ltr"
                             className={selectClass}
-                            disabled={busy}
+                            disabled={
+                              busy ||
+                              (provider === "ollama" && !locationCopy.data)
+                            }
                             value={chosen}
                             onChange={(e) =>
                               setSelection((old) => ({
@@ -562,8 +601,19 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                               }))
                             }
                           >
+                            {!chosen ? (
+                              <option value="" disabled>
+                                {c.unavailable}
+                              </option>
+                            ) : null}
                             {models.map((model) => (
-                              <option key={model.id} value={model.id}>
+                              <option
+                                key={model.id}
+                                value={model.id}
+                                disabled={
+                                  ollamaModelLocation(model) === "unknown"
+                                }
+                              >
                                 {model.label} · {model.id}
                               </option>
                             ))}
@@ -571,7 +621,14 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                           <Button
                             variant="outline"
                             className="shrink-0"
-                            disabled={blocked || ops.controlsBlocked}
+                            disabled={
+                              blocked ||
+                              ops.controlsBlocked ||
+                              !chosenModel ||
+                              !modelRuntimeReady(chosenModel) ||
+                              ollamaModelLocation(chosenModel) === "unknown" ||
+                              (provider === "ollama" && !locationCopy.data)
+                            }
                             onClick={(e) =>
                               ask(
                                 {
@@ -709,7 +766,8 @@ function SettingsContent({ c }: { c: SettingsCopy }) {
                   {model.isDefault && (
                     <p className="text-sm">{c.defaultModel}</p>
                   )}
-                  {model.id.endsWith(":free") && (
+                  <OllamaModelLocation model={model} locale={locale} />
+                  {hasFreeModelIdentifier(model) && (
                     <p className="text-sm">{c.freeIdentifier}</p>
                   )}
                   <p className="text-xs text-muted-foreground">{c.source}</p>

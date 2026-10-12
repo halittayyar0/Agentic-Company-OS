@@ -13,8 +13,736 @@ import { LOCALES } from "../../artifacts/agentic-company-os/src/lib/i18n";
 import { loadExpertChatCopy } from "../../artifacts/agentic-company-os/src/lib/expert-chat-copy";
 import { loadComputerCopy } from "../../artifacts/agentic-company-os/src/lib/computer-copy";
 import { loadProjectStudioCopy } from "../../artifacts/agentic-company-os/src/lib/project-studio-copy";
+import { loadResponseRetryRepairCopy } from "../../artifacts/agentic-company-os/src/lib/response-retry-repair-copy";
 import { loadMeetingTurnCopy } from "../../artifacts/agentic-company-os/src/lib/meeting-turn-copy";
 import { setupMessages } from "../../artifacts/agentic-company-os/src/lib/i18n";
+
+const usageCopy = {
+  tr: [
+    "Kayıtlı tokenlar",
+    "Bu görev için denetimler ve bildirilen başarısız çağrılar dahil. Bildirilmeyen kullanım hariç.",
+  ],
+  en: [
+    "Recorded tokens",
+    "For this task: reviews and reported failed calls included; unreported usage excluded.",
+  ],
+  de: [
+    "Erfasste Tokens",
+    "Nur diese Aufgabe: Prüfungen und gemeldete fehlgeschlagene Aufrufe enthalten; nicht gemeldeter Verbrauch ausgeschlossen.",
+  ],
+  ru: [
+    "Учтённые токены",
+    "Для этой задачи: проверки и неудачные вызовы с известным расходом учтены; неизвестный расход не включён.",
+  ],
+  "zh-CN": [
+    "已记录词元",
+    "此任务用量含审核及已报告用量的失败调用，不含未报告用量。",
+  ],
+  "zh-TW": [
+    "已記錄 Token",
+    "此任務用量含審核及已回報用量的失敗呼叫，不含未回報用量。",
+  ],
+  ar: [
+    "الرموز المسجلة",
+    "لهذه المهمة: المراجعات واستخدام الاستدعاءات الفاشلة المُبلّغ عنه مشمولان؛ الاستخدام غير المُبلّغ عنه غير مشمول.",
+  ],
+} as const;
+
+const responseAttemptId = "14a81fd4-654e-4440-bfa0-aa7a5352a311";
+const retryStorageKey = "acos.response-retry.v1.101";
+const adjacentRetry = JSON.stringify({
+  taskId: 102,
+  blockedAttemptId: responseAttemptId,
+});
+async function retryStorageFixture(
+  page: Page,
+  locale: (typeof LOCALES)[number],
+  raw?: string,
+) {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.addInitScript(
+    ({ locale, raw, key, adjacent }) => {
+      localStorage.setItem("acos.locale.v1", locale);
+      sessionStorage.setItem("acos.response-retry.v1.102", adjacent);
+      if (raw !== undefined) sessionStorage.setItem(key, raw);
+    },
+    { locale, raw, key: retryStorageKey, adjacent: adjacentRetry },
+  );
+  const harness = await installProjectStudioMocks(page);
+  const r = await loadResponseRetryRepairCopy(locale);
+  const c = {
+    ...(await loadProjectStudioCopy(locale)),
+    responseRetryStorage: r[0],
+    responseRetryRepairHelp: r[1],
+    responseRetryRepairAction: r[2],
+    responseRetryRepaired: r[3],
+    responseRetryRepairChanged: r[4],
+    responseRetryRepairFailed: r[5],
+  };
+  await page.route("**/api/tasks/101", (route) =>
+    json(route, {
+      ...project,
+      status: "blocked",
+      blockedReason: "runtime_failure",
+      lastError: c.responseRetryHeading,
+    }),
+  );
+  return { harness, c };
+}
+
+for (const locale of LOCALES) {
+  test(`${locale} damaged retry repair checks fresh scope and waits for a separate task retry`, async ({
+    page,
+  }, info) => {
+    const { harness, c } = await retryStorageFixture(page, locale, "{");
+    let gets = 0;
+    const posts: unknown[] = [];
+    await page.route("**/api/tasks/101/response-retry", (route) => {
+      if (route.request().method() === "GET") {
+        gets++;
+        return json(route, {
+          taskId: 101,
+          canRetry: true,
+          blockedAttemptId: responseAttemptId,
+        });
+      }
+      posts.push(route.request().postDataJSON());
+      return json(route, {
+        taskId: 101,
+        blockedAttemptId: responseAttemptId,
+        outcome: "accepted",
+        recordedAt: "2026-10-11T08:00:00.000Z",
+      });
+    });
+    await page.goto("/projects/101");
+    await page.addStyleTag({ content: "html { font-size: 32px !important; }" });
+    const panel = page.getByTestId("response-task-retry");
+    const retry = panel.getByRole("button", {
+      name: c.responseRetryAction,
+      exact: true,
+    });
+    const repair = panel.getByRole("button", {
+      name: c.responseRetryRepairAction,
+      exact: true,
+    });
+    await expect(retry).toBeDisabled();
+    await panel
+      .getByRole("button", { name: c.checkState, exact: true })
+      .click();
+    await expect(repair).toBeEnabled();
+    expect(
+      await page.evaluate(
+        (key) => sessionStorage.getItem(key),
+        retryStorageKey,
+      ),
+    ).toBe("{");
+    expect(posts).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    expect(
+      await panel.evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+    expect(
+      await repair.evaluate((node) => ({
+        height: node.getBoundingClientRect().height,
+        fits: node.scrollWidth <= node.clientWidth,
+      })),
+    ).toEqual({ height: expect.any(Number), fits: true });
+    expect((await repair.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    if (["en", "ar"].includes(locale))
+      await panel.screenshot({
+        path: info.outputPath(`damaged-retry-${locale}-phone.png`),
+      });
+    const before = gets;
+    await repair.focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      panel.getByText(c.responseRetryRepaired, { exact: true }),
+    ).toBeVisible();
+    expect(gets).toBeGreaterThan(before);
+    expect(
+      await page.evaluate(
+        (key) => sessionStorage.getItem(key),
+        retryStorageKey,
+      ),
+    ).toBeNull();
+    expect(
+      await page.evaluate(() =>
+        sessionStorage.getItem("acos.response-retry.v1.102"),
+      ),
+    ).toBe(adjacentRetry);
+    await expect(retry).toBeEnabled();
+    expect(posts).toEqual([]);
+    await retry.click();
+    await expect(
+      panel.getByText(c.responseRetryAccepted, { exact: true }),
+    ).toBeVisible();
+    expect(posts).toEqual([
+      { blockedAttemptId: responseAttemptId, acknowledge: true },
+    ]);
+    expect([...harness.unexpected]).toEqual([]);
+  });
+}
+
+for (const locale of ["en", "ar"] as const)
+  for (const accepted of [true, false]) {
+    test(`${locale} response retry cleanup ${accepted ? "accepted" : "rejected"} shows receipt guidance without false answer status`, async ({
+      page,
+    }, info) => {
+      const { harness, c } = await retryStorageFixture(page, locale);
+      await page.addInitScript(() => {
+        const remove = Storage.prototype.removeItem;
+        Storage.prototype.removeItem = function (key) {
+          if (key === "acos.response-retry.v1.101")
+            throw new DOMException("Owned cleanup denial", "SecurityError");
+          return remove.call(this, key);
+        };
+      });
+      let posts = 0,
+        inspections = 0;
+      const receipt = {
+        taskId: 101,
+        blockedAttemptId: responseAttemptId,
+        outcome: "accepted",
+        recordedAt: "2026-10-11T08:00:00.000Z",
+      };
+      await page.route("**/api/tasks/101/response-retry", (route) => {
+        if (route.request().method() === "GET")
+          return json(route, {
+            taskId: 101,
+            canRetry: posts === 0,
+            blockedAttemptId: posts === 0 ? responseAttemptId : null,
+          });
+        posts++;
+        return accepted
+          ? json(route, receipt)
+          : json(route, { error: "Owned scope rejection" }, 409);
+      });
+      await page.route(
+        `**/api/tasks/101/response-retry/${responseAttemptId}`,
+        (route) => {
+          inspections++;
+          return accepted
+            ? json(route, receipt)
+            : json(route, { error: "No accepted receipt" }, 409);
+        },
+      );
+      await page.goto("/projects/101");
+      await page.addStyleTag({
+        content: "html { font-size: 32px !important; }",
+      });
+      const panel = page.getByTestId("response-task-retry");
+      await panel
+        .getByRole("button", { name: c.responseRetryAction, exact: true })
+        .click();
+      await expect(
+        panel.getByText(
+          accepted ? c.responseRetryAccepted : c.responseRetryRejected,
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(panel.getByRole("alert")).toHaveText(c.responseRetryStorage);
+      await expect(
+        panel.getByText(c.answerStorage, { exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        panel.getByRole("button", {
+          name: c.responseRetryRepairAction,
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      expect(
+        JSON.parse(
+          (await page.evaluate(
+            (key) => sessionStorage.getItem(key),
+            retryStorageKey,
+          ))!,
+        ),
+      ).toEqual({ taskId: 101, blockedAttemptId: responseAttemptId });
+      expect(posts).toBe(1);
+      const inspect = panel.getByRole("button", {
+        name: c.responseRetryInspect,
+        exact: true,
+      });
+      expect(
+        await inspect.evaluate(
+          (node) => node.scrollHeight <= node.clientHeight,
+        ),
+      ).toBe(true);
+      expect((await inspect.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      expect(
+        await panel.evaluate((node) => node.scrollWidth <= node.clientWidth),
+      ).toBe(true);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await panel.screenshot({
+        path: info.outputPath(`cleanup-${locale}-${accepted}-phone.png`),
+      });
+      await panel
+        .getByRole("button", { name: c.responseRetryInspect, exact: true })
+        .click();
+      await expect.poll(() => inspections).toBe(1);
+      await expect(panel.getByRole("alert")).toHaveText(c.responseRetryStorage);
+      expect(posts).toBe(1);
+      expect([...harness.unexpected]).toEqual([]);
+    });
+  }
+
+for (const failure of [
+  "scope-error",
+  "foreign-scope",
+  "changed-valid",
+  "changed-damaged",
+  "denied-remove",
+  "silent-remove",
+  "readback-error",
+] as const) {
+  test(`damaged retry repair refuses ${failure} without dispatching work`, async ({
+    page,
+  }) => {
+    const { harness, c } = await retryStorageFixture(page, "en", "{");
+    if (["denied-remove", "silent-remove", "readback-error"].includes(failure))
+      await page.addInitScript((mode) => {
+        const remove = Storage.prototype.removeItem,
+          get = Storage.prototype.getItem;
+        let removed = false;
+        Storage.prototype.removeItem = function (key) {
+          if (key !== "acos.response-retry.v1.101")
+            return remove.call(this, key);
+          if (mode === "denied-remove")
+            throw new DOMException("Owned removal denial", "SecurityError");
+          if (mode === "silent-remove") return;
+          remove.call(this, key);
+          removed = true;
+        };
+        Storage.prototype.getItem = function (key) {
+          if (removed && key === "acos.response-retry.v1.101")
+            throw new DOMException("Owned readback denial", "SecurityError");
+          return get.call(this, key);
+        };
+      }, failure);
+    let repairing = false,
+      posts = 0;
+    await page.route("**/api/tasks/101/response-retry", async (route) => {
+      if (route.request().method() !== "GET") posts++;
+      if (repairing) {
+        if (failure === "scope-error")
+          return json(route, { error: "Owned offline snapshot" }, 503);
+        if (failure === "foreign-scope")
+          return json(route, {
+            taskId: 102,
+            canRetry: true,
+            blockedAttemptId: responseAttemptId,
+          });
+        if (failure === "changed-valid" || failure === "changed-damaged")
+          await page.evaluate(
+            ({ key, raw }) => sessionStorage.setItem(key, raw),
+            {
+              key: retryStorageKey,
+              raw:
+                failure === "changed-valid"
+                  ? JSON.stringify({
+                      taskId: 101,
+                      blockedAttemptId: responseAttemptId,
+                    })
+                  : "{changed",
+            },
+          );
+      }
+      return json(route, {
+        taskId: 101,
+        canRetry: true,
+        blockedAttemptId: responseAttemptId,
+      });
+    });
+    await page.goto("/projects/101");
+    const panel = page.getByTestId("response-task-retry"),
+      repair = panel.getByRole("button", {
+        name: c.responseRetryRepairAction,
+        exact: true,
+      });
+    await expect(repair).toBeEnabled();
+    repairing = true;
+    await repair.click();
+    await expect(
+      panel.getByText(
+        failure.startsWith("changed")
+          ? c.responseRetryRepairChanged
+          : c.responseRetryRepairFailed,
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      panel.getByText(c.responseRetryRepaired, { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      panel.getByRole("button", { name: c.responseRetryAction, exact: true }),
+    ).toBeDisabled();
+    if (failure !== "readback-error")
+      expect(
+        await page.evaluate(
+          (key) => sessionStorage.getItem(key),
+          retryStorageKey,
+        ),
+      ).toBe(
+        failure === "changed-valid"
+          ? JSON.stringify({ taskId: 101, blockedAttemptId: responseAttemptId })
+          : failure === "changed-damaged"
+            ? "{changed"
+            : "{",
+      );
+    expect(
+      await page.evaluate(() =>
+        sessionStorage.getItem("acos.response-retry.v1.102"),
+      ),
+    ).toBe(adjacentRetry);
+    expect(posts).toBe(0);
+    expect([...harness.unexpected]).toEqual([]);
+  });
+}
+
+test("damaged retry repair does not remove details after navigating away during its scope check", async ({
+  page,
+}) => {
+  const { harness, c } = await retryStorageFixture(page, "en", "{");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.route("**/api/tasks?rootOnly=true&limit=100", (route) =>
+    json(route, [project]),
+  );
+  let repairing = false,
+    pending = false,
+    posts = 0;
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/tasks/101/response-retry", async (route) => {
+    if (route.request().method() !== "GET") posts++;
+    if (repairing) {
+      pending = true;
+      await held;
+    }
+    await json(route, {
+      taskId: 101,
+      canRetry: true,
+      blockedAttemptId: responseAttemptId,
+    });
+  });
+  await page.goto("/projects/101");
+  const panel = page.getByTestId("response-task-retry"),
+    repair = panel.getByRole("button", {
+      name: c.responseRetryRepairAction,
+      exact: true,
+    });
+  await expect(repair).toBeEnabled();
+  repairing = true;
+  try {
+    await repair.click();
+    await expect.poll(() => pending).toBe(true);
+    await page.locator('a[href="/"]').first().click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(panel).toHaveCount(0);
+  } finally {
+    release();
+  }
+  expect(
+    await page.evaluate((key) => sessionStorage.getItem(key), retryStorageKey),
+  ).toBe("{");
+  expect(
+    await page.evaluate(() =>
+      sessionStorage.getItem("acos.response-retry.v1.102"),
+    ),
+  ).toBe(adjacentRetry);
+  expect(posts).toBe(0);
+  expect([...harness.unexpected]).toEqual([]);
+});
+
+test("damaged retry repair cannot enable a task that is no longer retryable", async ({
+  page,
+}) => {
+  const { harness, c } = await retryStorageFixture(page, "en", "{");
+  let posts = 0;
+  await page.route("**/api/tasks/101/response-retry", (route) => {
+    if (route.request().method() !== "GET") posts++;
+    return json(route, {
+      taskId: 101,
+      canRetry: false,
+      blockedAttemptId: null,
+    });
+  });
+  await page.goto("/projects/101");
+  const panel = page.getByTestId("response-task-retry");
+  await panel
+    .getByRole("button", { name: c.responseRetryRepairAction, exact: true })
+    .click();
+  await expect(
+    panel.getByText(c.responseRetryRepaired, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: c.responseRetryAction, exact: true }),
+  ).toBeDisabled();
+  expect(
+    await page.evaluate((key) => sessionStorage.getItem(key), retryStorageKey),
+  ).toBeNull();
+  expect(posts).toBe(0);
+  expect([...harness.unexpected]).toEqual([]);
+});
+
+test("damaged retry repair keeps the entry when its language file fails to load", async ({
+  page,
+}) => {
+  const { harness, c } = await retryStorageFixture(page, "en", "{");
+  let posts = 0;
+  await page.route(/\/assets\/retry-repair-en-[^/]+\.js$/, (route) =>
+    route.fulfill({ status: 503, contentType: "text/javascript", body: "" }),
+  );
+  await page.route("**/api/tasks/101/response-retry", (route) => {
+    if (route.request().method() !== "GET") posts++;
+    return json(route, {
+      taskId: 101,
+      canRetry: true,
+      blockedAttemptId: responseAttemptId,
+    });
+  });
+  await page.goto("/projects/101");
+  const panel = page.getByTestId("response-task-retry");
+  await expect(panel.getByRole("alert")).toHaveText(
+    setupMessages.en.languageFileError,
+  );
+  await expect(
+    panel.getByRole("button", {
+      name: c.responseRetryRepairAction,
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: c.responseRetryAction, exact: true }),
+  ).toBeDisabled();
+  expect(
+    await page.evaluate((key) => sessionStorage.getItem(key), retryStorageKey),
+  ).toBe("{");
+  expect(posts).toBe(0);
+  expect([...harness.unexpected]).toEqual([]);
+});
+
+test("valid unresolved response retry exposes receipt inspection and cannot be repaired away", async ({
+  page,
+}) => {
+  const raw = JSON.stringify({
+    taskId: 101,
+    blockedAttemptId: responseAttemptId,
+    legacyHint: "compatible saved identity",
+  });
+  const { harness, c } = await retryStorageFixture(page, "en", raw);
+  let posts = 0;
+  await page.route("**/api/tasks/101/response-retry", (route) => {
+    if (route.request().method() !== "GET") posts++;
+    return json(route, {
+      taskId: 101,
+      canRetry: true,
+      blockedAttemptId: responseAttemptId,
+    });
+  });
+  await page.goto("/projects/101");
+  const panel = page.getByTestId("response-task-retry");
+  await expect(
+    panel.getByRole("button", { name: c.responseRetryInspect, exact: true }),
+  ).toBeEnabled();
+  await expect(
+    panel.getByRole("button", {
+      name: c.responseRetryRepairAction,
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate((key) => sessionStorage.getItem(key), retryStorageKey),
+  ).toBe(raw);
+  expect(posts).toBe(0);
+  expect([...harness.unexpected]).toEqual([]);
+});
+for (const locale of LOCALES) {
+  test(`${locale} phone retries a cut-short response only after an explicit click`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.addInitScript(
+      (selected) => localStorage.setItem("acos.locale.v1", selected),
+      locale,
+    );
+    const harness = await installProjectStudioMocks(page);
+    const c = await loadProjectStudioCopy(locale);
+    let queued = false;
+    const posts: unknown[] = [];
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, {
+        ...project,
+        status: queued ? "in_progress" : "blocked",
+        blockedReason: queued ? null : "runtime_failure",
+        lastError: queued ? null : c.responseRetryHeading,
+      }),
+    );
+    await page.route("**/api/tasks/101/response-retry", (route) => {
+      if (route.request().method() === "GET")
+        return json(route, {
+          taskId: 101,
+          canRetry: !queued,
+          blockedAttemptId: queued ? null : responseAttemptId,
+        });
+      posts.push(route.request().postDataJSON());
+      queued = true;
+      return json(route, {
+        taskId: 101,
+        blockedAttemptId: responseAttemptId,
+        outcome: "accepted",
+        recordedAt: "2026-10-11T08:00:00.000Z",
+      });
+    });
+    await page.goto("/projects/101");
+    await page.addStyleTag({ content: "html { font-size: 32px !important; }" });
+    const panel = page.getByTestId("response-task-retry");
+    await expect(
+      panel.getByText(c.responseRetryHelp, { exact: true }),
+    ).toBeVisible();
+    expect(posts).toEqual([]);
+    await expect(
+      panel.getByRole("button", { name: c.responseRetryAction, exact: true }),
+    ).toBeEnabled();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    expect(
+      await panel.evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+    if (["en", "ar"].includes(locale))
+      await panel.screenshot({
+        path: info.outputPath(`response-retry-${locale}-phone.png`),
+      });
+    await panel
+      .getByRole("button", { name: c.responseRetryAction, exact: true })
+      .click();
+    await expect(
+      panel.getByText(c.responseRetryAccepted, { exact: true }),
+    ).toBeVisible();
+    expect(posts).toEqual([
+      { blockedAttemptId: responseAttemptId, acknowledge: true },
+    ]);
+    expect([...harness.unexpected]).toEqual([]);
+    expect(harness.messagePosts).toEqual([]);
+    expect(harness.meetingCreatePosts).toEqual([]);
+  });
+}
+for (const locale of ["en", "ar"] as const) {
+  test(`${locale} response retry retains an uncertain request across reload and inspects without another POST`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.addInitScript(
+      (selected) => localStorage.setItem("acos.locale.v1", selected),
+      locale,
+    );
+    const harness = await installProjectStudioMocks(page),
+      c = await loadProjectStudioCopy(locale);
+    let posts = 0;
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, {
+        ...project,
+        status: "blocked",
+        blockedReason: "runtime_failure",
+        lastError: c.responseRetryHeading,
+      }),
+    );
+    await page.route("**/api/tasks/101/response-retry", (route) => {
+      if (route.request().method() === "GET")
+        return json(route, {
+          taskId: 101,
+          canRetry: true,
+          blockedAttemptId: responseAttemptId,
+        });
+      posts++;
+      return json(route, { error: "Owned lost response fixture" }, 502);
+    });
+    await page.route(
+      `**/api/tasks/101/response-retry/${responseAttemptId}`,
+      (route) =>
+        json(route, {
+          taskId: 101,
+          blockedAttemptId: responseAttemptId,
+          outcome: "accepted",
+          recordedAt: "2026-10-11T08:00:00.000Z",
+        }),
+    );
+    await page.goto("/projects/101");
+    let panel = page.getByTestId("response-task-retry");
+    await panel
+      .getByRole("button", { name: c.responseRetryAction, exact: true })
+      .click();
+    await expect(
+      panel.getByText(c.responseRetryUnknown, { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    panel = page.getByTestId("response-task-retry");
+    await expect(
+      panel.getByRole("button", { name: c.responseRetryInspect, exact: true }),
+    ).toBeVisible();
+    expect(posts).toBe(1);
+    await panel
+      .getByRole("button", { name: c.responseRetryInspect, exact: true })
+      .click();
+    await expect(
+      panel.getByText(c.responseRetryAccepted, { exact: true }),
+    ).toBeVisible();
+    expect(posts).toBe(1);
+    expect([...harness.unexpected]).toEqual([]);
+  });
+}
+
+for (const locale of LOCALES) {
+  test(`${locale} phone shows recorded task usage and explains missing usage`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.addInitScript(
+      (selected) => localStorage.setItem("acos.locale.v1", selected),
+      locale,
+    );
+    const harness = await installProjectStudioMocks(page);
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, { ...project, tokensUsed: 11441 }),
+    );
+    await page.goto("/projects/101?view=evidence");
+    const [label, help] = usageCopy[locale];
+    const term = page.locator("dt").filter({ hasText: label });
+    await expect(term).toBeVisible();
+    await expect(term.locator("..").locator("dd")).toHaveText(
+      (11441).toLocaleString(locale),
+    );
+    await expect(page.getByText(help, { exact: true })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    expect([...harness.unexpected]).toEqual([]);
+    expect(harness.messagePosts).toEqual([]);
+    expect(harness.meetingCreatePosts).toEqual([]);
+    if (["en", "ar"].includes(locale)) {
+      await page
+        .locator("aside")
+        .filter({ hasText: label })
+        .screenshot({
+          path: info.outputPath(`recorded-usage-${locale}-phone.png`),
+        });
+    }
+  });
+}
 
 for (const locale of LOCALES) {
   test(`${locale} delivery is visible before opening the evidence tab`, async ({

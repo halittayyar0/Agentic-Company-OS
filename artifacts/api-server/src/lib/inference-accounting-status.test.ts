@@ -10,10 +10,70 @@ import {
   tasksTable,
   inferenceAttemptsTable,
   usageEventsTable,
+  inferenceResponseEvidenceTable,
 } from "@workspace/db";
 import { readInferenceAccountingStatus } from "./inference-accounting-status";
 
 test.after(() => closeDatabase());
+
+test("status advertises saved evidence only inside the unresolved scope without applying it", async (t) => {
+  const f = await fixture(t);
+  const owner = randomUUID();
+  await db
+    .update(inferenceAttemptsTable)
+    .set({ invocationOwnerId: owner })
+    .where(eq(inferenceAttemptsTable.id, f.id));
+  const missing = await readInferenceAccountingStatus("task", f.root.id, f.now);
+  assert.equal(
+    (missing!.attempts[0] as unknown as Record<string, unknown>)
+      .savedEvidenceAvailable,
+    false,
+  );
+  await db.insert(usageEventsTable).values({
+    ordinaryInferenceId: f.id,
+    agentId: f.agent.id,
+    taskId: f.child.id,
+    modelId: "fixture-model",
+    provider: "ollama",
+    kind: "chat",
+    usageReported: false,
+    totalTokens: 0,
+  });
+  await db.insert(inferenceResponseEvidenceTable).values({
+    attemptId: f.id,
+    invocationOwnerId: owner,
+    modelId: "fixture-model",
+    provider: "ollama",
+    responseId: "saved-response",
+    promptTokens: 2,
+    completionTokens: 3,
+    totalTokens: 5,
+  });
+  const saved = await readInferenceAccountingStatus("task", f.child.id, f.now);
+  assert.equal(
+    (saved!.attempts[0] as unknown as Record<string, unknown>)
+      .savedEvidenceAvailable,
+    true,
+  );
+  assert.equal(saved!.status, "pending");
+  assert.equal(saved!.attempts[0].usage!.usageReported, false);
+  assert.equal(saved!.attempts[0].usage!.totalTokens, 0);
+  await db
+    .update(inferenceAttemptsTable)
+    .set({ evidenceConflictAt: f.now })
+    .where(eq(inferenceAttemptsTable.id, f.id));
+  const conflict = await readInferenceAccountingStatus(
+    "task",
+    f.root.id,
+    f.now,
+  );
+  assert.equal(
+    (conflict!.attempts[0] as unknown as Record<string, unknown>)
+      .savedEvidenceAvailable,
+    false,
+  );
+  assert.equal(conflict!.status, "recovery_required");
+});
 async function fixture(t: test.TestContext) {
   await dbReady;
   const [agent] = await db
@@ -57,6 +117,9 @@ async function fixture(t: test.TestContext) {
     requestDeadlineAt: new Date(now.getTime() + 10000),
   });
   t.after(async () => {
+    await db
+      .delete(inferenceResponseEvidenceTable)
+      .where(eq(inferenceResponseEvidenceTable.attemptId, id));
     await db
       .delete(usageEventsTable)
       .where(eq(usageEventsTable.agentId, agent.id));

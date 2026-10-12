@@ -42,6 +42,53 @@ tags:
   - name: vm
     description: Per-agent virtual computer (sandbox filesystem + terminal)
 paths:
+  /inference-accounting/{attemptId}/reconcile:
+    post:
+      operationId: reconcileInferenceAccounting
+      tags: [operations]
+      summary: Apply saved usage evidence without requesting inference or resuming work
+      description: Authenticated operator action bound to the exact task or agent scope and request UUID. Consumes only trusted persisted response evidence. Missing or conflicting usage remains fenced. Never accepts token totals, resets budgets, executes model output or resumes a task. Safe duplicate application retains one correction.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: scopeType
+          in: query
+          required: true
+          schema: { type: string, enum: [task, agent] }
+        - name: scopeId
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [acknowledge]
+              properties:
+                acknowledge: { type: boolean, const: true }
+      responses:
+        "200":
+          description: Saved evidence application outcome; pending is not permission to run
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [scopeType, scopeId, attemptId, outcome]
+                properties:
+                  scopeType: { type: string, enum: [task, agent] }
+                  scopeId: { type: integer, minimum: 1 }
+                  attemptId: { type: string, format: uuid }
+                  outcome: { type: string, enum: [applied, pending] }
+        "400": { description: Exact identity and acknowledgement required }
+        "401": { description: Operator authentication required }
+        "409": { description: Scope or saved evidence conflict }
+        "503": { description: Saved evidence cannot be verified }
   /inference-accounting:
     get:
       operationId: getInferenceAccountingStatus
@@ -1230,6 +1277,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/CompanyMessageResponse"
 
+  /task-completion-tools:
+    get:
+      operationId: getTaskCompletionTools
+      tags: [tasks]
+      summary: Read eligible operations from the coordinator's current permitted catalog
+      parameters:
+        - name: ownerAgentId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Names only; does not grant permissions or execute work
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskCompletionTools"
+        "404":
+          description: No active coordinator is available
+
+  /tasks/{taskId}/completion-requirements:
+    get:
+      operationId: getTaskCompletionRequirements
+      tags: [tasks]
+      summary: Read exact current-cycle execution conditions without raw arguments or results
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Consistent persisted snapshot; successful execution does not certify answer quality
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskCompletionSnapshot"
+        "404":
+          description: Task does not exist
+
   /tasks:
     get:
       operationId: listTasks
@@ -1546,6 +1636,73 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TaskBudgetResumeReceipt"
+        "404":
+          description: No committed receipt yet; an in-flight request may still commit
+
+  /tasks/{taskId}/response-retry:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      operationId: getTaskResponseRetryScope
+      tags: [tasks]
+      summary: Read the current incomplete response pause without dispatching work
+      description: Advisory snapshot. Retry admission is rechecked under locks during POST.
+      responses:
+        "200":
+          description: Current task and blocked attempt identity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponseRetryScope"
+        "404":
+          description: Task not found
+    post:
+      operationId: retryTaskResponse
+      tags: [tasks]
+      summary: Explicitly retry a task paused after an incomplete model response
+      description: Keeps the task model, usage, cycle and schedule. Requires acknowledgement and the exact blocked attempt. No inference runs in this route. Queue transition and an immutable accepted audit receipt commit together. Replaying acceptance returns the historical receipt without queueing again. Stale scope, emergency stop, inactive owners, live leases, approvals, unfinished effects and exhausted allowance are rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskResponseRetryInput"
+      responses:
+        "200":
+          description: Bound historical acceptance receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponseRetryReceipt"
+        "400":
+          description: Exact identity and acknowledgement required
+        "409":
+          description: Current task scope cannot safely retry; no work was queued
+
+  /tasks/{taskId}/response-retry/{attemptId}:
+    get:
+      operationId: getTaskResponseRetryReceipt
+      tags: [tasks]
+      summary: Inspect an accepted response retry without dispatching work
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: attemptId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Bound historical acceptance receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponseRetryReceipt"
         "404":
           description: No committed receipt yet; an in-flight request may still commit
 
@@ -2859,6 +3016,7 @@ components:
         modelId: { type: string, maxLength: 256 }
         provider: { type: string, maxLength: 32 }
         kind: { type: string, enum: [chat, task_step, judge] }
+        savedEvidenceAvailable: { type: boolean }
         state:
           {
             type: string,
@@ -3655,6 +3813,24 @@ components:
           type: boolean
         reachable:
           type: boolean
+        cloudEnabled:
+          type: boolean
+          description: Explicit consent for this exact private server origin. Missing on older servers; absence never grants cloud permission.
+        serverVersion:
+          type: [string, "null"]
+          maxLength: 64
+        localEnforcementSupported:
+          type: boolean
+          description: Whether the reported stable server version enforces local selectors. Missing or false cannot prove local execution.
+        localModelCount:
+          type: integer
+          minimum: 0
+        cloudModelCount:
+          type: integer
+          minimum: 0
+        unknownModelCount:
+          type: integer
+          minimum: 0
         baseUrl:
           type: [string, "null"]
           format: uri
@@ -3708,6 +3884,9 @@ components:
           type: [string, "null"]
           maxLength: 2048
           description: Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.
+        ollamaCloudEnabled:
+          type: boolean
+          description: Explicitly enable or disable cloud models on the selected server. Requires expectedRevision; the backend binds consent to the canonical effective origin.
 
     UpdateLlmSettingsResult:
       type: object
@@ -6518,6 +6697,8 @@ components:
           type: string
         brief:
           type: string
+        completionRequirements:
+          $ref: "#/components/schemas/TaskCompletionRequirements"
         status:
           $ref: "#/components/schemas/TaskStatus"
         priority:
@@ -6648,6 +6829,8 @@ components:
           type: string
           minLength: 1
           maxLength: 8000
+        completionRequirements:
+          $ref: "#/components/schemas/TaskCompletionRequirements"
         ownerAgentId:
           type: number
           description: Optional backwards-compatible coordinator override; every active agent still joins the project.
@@ -6665,6 +6848,84 @@ components:
       required:
         - title
         - brief
+
+    TaskCompletionTools:
+      type: object
+      additionalProperties: false
+      properties:
+        ownerAgentId:
+          type: integer
+          minimum: 1
+        tools:
+          type: array
+          items:
+            type: string
+            pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,79}$"
+      required: [ownerAgentId, tools]
+
+    TaskCompletionSnapshot:
+      type: object
+      additionalProperties: false
+      properties:
+        source:
+          type: string
+          enum: [persisted_current_cycle]
+        taskId:
+          type: integer
+          minimum: 1
+        cycleNumber:
+          type: integer
+          minimum: 0
+        taskStatus:
+          $ref: "#/components/schemas/TaskStatus"
+        observedAt:
+          type: string
+          format: date-time
+        requirements:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/TaskCompletionRequirementState"
+      required:
+        [source, taskId, cycleNumber, taskStatus, observedAt, requirements]
+
+    TaskCompletionRequirementState:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          enum: [tool_succeeded]
+        tool:
+          type: string
+          pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,79}$"
+        satisfied:
+          type: boolean
+        available:
+          type: boolean
+      required: [kind, tool, satisfied, available]
+
+    TaskCompletionRequirements:
+      type: array
+      maxItems: 8
+      description: Optional owner-selected tools that must have a verified successful receipt in this task's current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.
+      items:
+        $ref: "#/components/schemas/TaskCompletionRequirement"
+
+    TaskCompletionRequirement:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          enum: [tool_succeeded]
+        tool:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,79}$"
+          description: Exact eligible tool name in the selected coordinator's current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.
+      required: [kind, tool]
 
     TaskCreationRequestId:
       type: string
@@ -6797,6 +7058,33 @@ components:
           stillPausedCount,
           recordedAt,
         ]
+
+    TaskResponseRetryInput:
+      type: object
+      additionalProperties: false
+      properties:
+        blockedAttemptId: { type: string, format: uuid }
+        acknowledge: { type: boolean, enum: [true] }
+      required: [blockedAttemptId, acknowledge]
+
+    TaskResponseRetryScope:
+      type: object
+      additionalProperties: false
+      properties:
+        taskId: { type: integer, minimum: 1 }
+        canRetry: { type: boolean }
+        blockedAttemptId: { type: string, format: uuid, nullable: true }
+      required: [taskId, canRetry, blockedAttemptId]
+
+    TaskResponseRetryReceipt:
+      type: object
+      additionalProperties: false
+      properties:
+        taskId: { type: integer, minimum: 1 }
+        blockedAttemptId: { type: string, format: uuid }
+        outcome: { type: string, enum: [accepted] }
+        recordedAt: { type: string, format: date-time }
+      required: [taskId, blockedAttemptId, outcome, recordedAt]
 
     TaskResumeInput:
       type: object
@@ -7084,6 +7372,19 @@ components:
         supportsTools:
           type: boolean
           description: Whether the model can execute the function tools required by an agent run.
+        executionLocation:
+          type: string
+          enum: [local, cloud, unknown]
+          description: Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.
+        runtimeCompatibility:
+          type: string
+          enum: [compatible, update_required, unverified]
+          description: Local runner compatibility with the model's declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference.
+        requiredOllamaVersion:
+          type: string
+          maxLength: 64
+          pattern: '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$'
+          description: Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.
         isDefault:
           type: boolean
       required:

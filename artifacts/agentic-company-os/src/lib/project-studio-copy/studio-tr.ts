@@ -1,5 +1,16 @@
 import type { ProjectStudioCopy } from "../project-studio-copy";
 const copy: ProjectStudioCopy = {
+  responseRetryHeading: "Model işi bekletiliyor",
+  responseRetryHelp:
+    "Önce bağlam ve yanıt sınırlarını kontrol edin. Yeniden deneme görev sınırlarını ve kayıtlı modeli korur; otomatik yönlendirme yeniden kontrol edilir. Devam eden iş token kullanabilir.",
+  responseRetryAction: "Bu görevi yeniden dene",
+  responseRetrySame: "Aynı isteği yeniden dene",
+  responseRetryInspect: "Yeniden deneme kaydını incele",
+  responseRetryAccepted: "Görev devam etmek üzere sıraya alındı.",
+  responseRetryRejected:
+    "Sürdürülmedi. Görev durumunu, sahibi, onayları ve kullanım sınırlarını kontrol edin.",
+  responseRetryUnknown:
+    "Sonuç doğrulanamadı. Kayıtlı sonucu inceleyin veya aynı isteği yeniden deneyin.",
   budgetHeading: "Kullanım sınırı nedeniyle duraklatıldı",
   budgetHelp:
     "Bu kontrol model kullanmaz ve kullanımı sıfırlamaz. Devam eden işler mevcut kullanım sınırına tabidir. Sınır doluysa yapılandırmadaki sınırı artırın veya günlük pencerenin yenilenmesini bekleyin.",
@@ -153,7 +164,9 @@ const copy: ProjectStudioCopy = {
   runSummary: "Kayıt özeti",
   progress: "İlerleme",
   attempts: "Çalışma turu",
-  tokens: "Token",
+  tokens: "Kayıtlı tokenlar",
+  tokenUsageHelp:
+    "Bu görev için denetimler ve bildirilen başarısız çağrılar dahil. Bildirilmeyen kullanım hariç.",
   model: "Kaydedilen model",
   unknownModel: "Model kaydı yok",
   deliveryHelp:

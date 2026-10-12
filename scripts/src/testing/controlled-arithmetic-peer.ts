@@ -2,6 +2,31 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 
+/** Validate the public local-review wire contract without invoking a model. */
+export function isControlledArithmeticReview(format: unknown): boolean {
+  if (!format || typeof format !== "object") return false;
+  const type = (format as { type?: unknown }).type;
+  if (type === "json_object") return true;
+  if (type !== "json_schema") return false;
+  assert.deepEqual(format, {
+    type: "json_schema",
+    json_schema: {
+      name: "agentic_completion_review",
+      strict: true,
+      schema: {
+        type: "object",
+        properties: {
+          verdict: { type: "string", enum: ["pass", "warn", "block"] },
+          reasoning: { type: "string" },
+        },
+        required: ["verdict", "reasoning"],
+        additionalProperties: false,
+      },
+    },
+  });
+  return true;
+}
+
 /** Owned loopback HTTP fixture. It never calls a provider or judges model quality. */
 export async function createControlledArithmeticPeer({
   maxRequests = 128,
@@ -28,13 +53,18 @@ export async function createControlledArithmeticPeer({
         : {};
       const method = req.method!,
         route = req.url!;
+      if (route === "/api/version" && method === "GET") {
+        requests.push({ method, path: route });
+        res.end(JSON.stringify({ version: "0.18.0" }));
+        return;
+      }
       if (route === "/api/tags" && method === "GET") {
         requests.push({ method, path: route });
         res.end(JSON.stringify({ models: [{ name: model, model }] }));
         return;
       }
       if (route === "/api/show" && method === "POST") {
-        assert.equal(body.model, model);
+        assert.equal(body.model, model + ":local");
         requests.push({ method, path: route });
         res.end(
           JSON.stringify({
@@ -46,7 +76,7 @@ export async function createControlledArithmeticPeer({
       }
       assert.equal(route, "/v1/chat/completions");
       assert.equal(method, "POST");
-      assert.equal(body.model, model);
+      assert.equal(body.model, model + ":local");
       assert.notEqual(body.stream, true);
       const messages: {
         role?: string;
@@ -54,7 +84,7 @@ export async function createControlledArithmeticPeer({
         tool_calls?: { function?: { name?: string } }[];
       }[] = body.messages;
       assert.ok(Array.isArray(messages));
-      const judge = body.response_format?.type === "json_object";
+      const judge = isControlledArithmeticReview(body.response_format);
       const calculated = messages.some((message) =>
         message.tool_calls?.some((call) => call.function?.name === "calculate"),
       );

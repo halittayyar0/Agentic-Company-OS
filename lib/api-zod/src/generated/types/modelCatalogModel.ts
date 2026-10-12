@@ -5,6 +5,8 @@
  * Agentic Company OS API
  * OpenAPI spec version: 0.1.0-alpha.1
  */
+import type { ModelCatalogModelExecutionLocation } from './modelCatalogModelExecutionLocation';
+import type { ModelCatalogModelRuntimeCompatibility } from './modelCatalogModelRuntimeCompatibility';
 import type { ModelProviderId } from './modelProviderId';
 import type { ModelTier } from './modelTier';
 
@@ -16,5 +18,15 @@ export interface ModelCatalogModel {
   description: string;
   /** Whether the model can execute the function tools required by an agent run. */
   supportsTools: boolean;
+  /** Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation. */
+  executionLocation?: ModelCatalogModelExecutionLocation;
+  /** Local runner compatibility with the model's declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference. */
+  runtimeCompatibility?: ModelCatalogModelRuntimeCompatibility;
+  /**
+     * Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.
+     * @maxLength 64
+     * @pattern ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$
+     */
+  requiredOllamaVersion?: string;
   isDefault: boolean;
 }

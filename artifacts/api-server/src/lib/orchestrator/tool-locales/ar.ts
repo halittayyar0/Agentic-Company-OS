@@ -1,6 +1,8 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolAr: ToolCopy = {
+  taskResponseRetryQueued:
+    "أُعيدت المهمة المتوقفة بسبب رد غير مكتمل إلى قائمة الانتظار بعد تأكيد المستخدم.",
   inferenceAccountingPending:
     "بانتظار سجل الاستخدام لاستدعاء النموذج ({id}). ستنتظر الاستدعاءات التالية لهذه المهمة حتى اكتمال التسجيل.",
   inferenceAccountingRecovery:
@@ -239,6 +241,8 @@ export const toolAr: ToolCopy = {
   teamTaskLost: "محظور: أُوقفت المهمة أو فُقدت صلاحية تنفيذها.",
   teamChildUnresolved:
     "محظور: لا تزال المهمة الفرعية المرتبطة taskId={id} في حالة {status}؛ احسم نتيجتها أو ألغها أولًا.",
+  teamCompletionRequirementsMissing:
+    "لا يمكن إكمال المهمة: لا توجد في هذه الدورة سجلات نجاح صالحة للأدوات {tools}. نفّذ العمليات المطلوبة ضمن صلاحياتك الحالية؛ وستظل النتيجة بحاجة إلى مراجعة.",
   teamCompletionRejected:
     "رفضت المراجعة هذا الإكمال: {reason} اجعل المهمة متوافقة مع التعليمات الأصلية ثم أعد المحاولة.",
   teamCyclePrepared: "جُهزت دورة العمل هذه للإنهاء الذري في {at}.",
@@ -396,6 +400,12 @@ export const toolAr: ToolCopy = {
   approvalBindingInvalidated:
     "لم يعد ارتباط المتصفح الموافق عليه صالحًا؛ تلزم موافقة جديدة.",
   judgeRunning: "جارٍ مراجعة المهمة",
+  taskResponseIncompleteLocal:
+    "اقتُطع رد النموذج وتوقفت المهمة مؤقتًا. تحقق من حدود السياق والرد لنموذج Ollama الحالي، ثم أعد المحاولة من صفحة المهمة.",
+  taskResponseIncompleteRemote:
+    "اقتُطع رد النموذج وتوقفت المهمة مؤقتًا. تحقق من حدود السياق والرد للنموذج الحالي، ثم أعد المحاولة من صفحة المهمة.",
+  taskResponseSpaceReduced:
+    "اقتُطع الرد. حُفظت المهمة وأدلة تنفيذ الأدوات مع تقليص السجل، وستُجرى محاولة واحدة ضمن حد الجولات الحالي.",
   taskAdvanceInstruction:
     "قدّم المهمة خطوة واحدة. قيّم الحالة الحالية ونفّذ استدعاءات الأدوات المناسبة.",
   taskOpenInstruction:
@@ -411,6 +421,8 @@ export const toolAr: ToolCopy = {
   taskToolFallbackInstruction:
     "أخفق النموذج السابق مرتين في استخدام بروتوكول الأدوات. حافظ على السياق نفسه وتابع بخطوة محددة واحدة تطابق تمامًا مخطط أداة مسموح بها.",
   operationCompleted: "اكتملت العملية: {tool}.",
+  toolSchemaUnavailable:
+    "لم تُقدّم {tool} في هذا الطلب ولم تُنفّذ. استخدم أداة متاحة، أو حمّل أداة اختيارية من القائمة باستخدام load_tools ثم استدعها في الطلب التالي. لم تتغير الصلاحيات.",
   modelFailure: "{reason} ({source})",
   failureRateLimit: "تم بلوغ حد طلبات النموذج.",
   failureTimeout: "انتهت مهلة طلب النموذج.",

@@ -554,6 +554,7 @@ function ProjectEvidence({
               value={project.lastModelId ?? c.unknownModel}
             />
           </dl>
+          <p className="mt-3 text-xs leading-5">{c.tokenUsageHelp}</p>
         </section>
       </aside>
     </div>

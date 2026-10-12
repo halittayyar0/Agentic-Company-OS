@@ -158,3 +158,85 @@ test("catalog observations reject mutations, redirected origins and arbitrary ca
     diagnostics.observe({ ...valid, ...patch });
   assert.equal(diagnostics.snapshot().totalResponses, 0);
 });
+
+test("auth-status observations identify a quota-blocked reload without retaining account or URL data", () => {
+  const diagnostics = createConnectionSaveDiagnostics("http://127.0.0.1:4173");
+  diagnostics.observe({
+    url: "http://127.0.0.1:4173/api/auth/status?account=secret",
+    method: "GET",
+    status: 429,
+    headers: {
+      "ratelimit-limit": "300",
+      "ratelimit-remaining": "0",
+      "ratelimit-reset": "5",
+      "retry-after": "5",
+      authorization: "Bearer secret",
+    },
+  });
+  const snapshot = diagnostics.snapshot();
+  assert.equal(snapshot.totalResponses, 1);
+  assert.deepEqual(snapshot.responses[0], {
+    resource: "auth-status",
+    atMs: snapshot.responses[0]?.atMs,
+    method: "GET",
+    status: 429,
+    limit: 300,
+    remaining: 0,
+    resetSeconds: 5,
+    retryAfterSeconds: 5,
+  });
+  assert.doesNotMatch(
+    JSON.stringify(snapshot),
+    /secret|account|127\.0\.0\.1|authorization|cookie/u,
+  );
+  diagnostics.observe({
+    url: "http://127.0.0.1:4173/api/auth/status",
+    method: "POST",
+    status: 200,
+    headers: {},
+  });
+  assert.equal(diagnostics.snapshot().totalResponses, 1);
+});
+
+for (const resource of ["agents", "tasks"] as const) {
+  test(`${resource} observations expose a quota-blocked workspace read without retaining query or result data`, () => {
+    const diagnostics = createConnectionSaveDiagnostics(
+      "http://127.0.0.1:4173",
+    );
+    const url = `http://127.0.0.1:4173/api/${resource}?brief=secret`;
+    diagnostics.observe({
+      url,
+      method: "GET",
+      status: 429,
+      headers: {
+        "ratelimit-limit": "300",
+        "ratelimit-remaining": "0",
+        "ratelimit-reset": "5",
+        "retry-after": "5",
+        authorization: "Bearer secret",
+      },
+    });
+    const snapshot = diagnostics.snapshot();
+    assert.equal(snapshot.totalResponses, 1);
+    assert.equal(snapshot.responses[0]?.resource, resource);
+    assert.equal(snapshot.responses[0]?.status, 429);
+    assert.equal(snapshot.responses[0]?.remaining, 0);
+    assert.doesNotMatch(
+      JSON.stringify(snapshot),
+      /secret|brief|127\.0\.0\.1|authorization|cookie/u,
+    );
+    for (const patch of [
+      { method: "POST" },
+      { url: url.replace(`/api/${resource}`, `/api/${resource}/1`) },
+      { url: url.replace("127.0.0.1", "outside.example") },
+    ])
+      diagnostics.observe({
+        url,
+        method: "GET",
+        status: 200,
+        headers: {},
+        ...patch,
+      });
+    assert.equal(diagnostics.snapshot().totalResponses, 1);
+  });
+}

@@ -1,6 +1,8 @@
 import type { ToolCopy } from "../tool-copy";
 
 export const toolZhCN: ToolCopy = {
+  taskResponseRetryQueued:
+    "用户确认后，因响应不完整而暂停的任务已重新加入队列。",
   inferenceAccountingPending:
     "正在等待模型调用的用量记录（{id}）。此项工作的后续模型调用将等待记录完成。",
   inferenceAccountingRecovery:
@@ -213,6 +215,8 @@ export const toolZhCN: ToolCopy = {
   teamTaskLost: "已阻止：任务已停止或执行权限已丢失。",
   teamChildUnresolved:
     "已阻止：子任务 taskId={id} 仍处于 {status} 状态；请先处理该子任务的结果，或将其取消。",
+  teamCompletionRequirementsMissing:
+    "任务无法完成：本轮尚无 {tools} 的有效成功记录。请在现有权限内执行所需操作；结果仍需审核。",
   teamCompletionRejected:
     "审核拒绝了此次完成请求：{reason} 请先让任务符合原始指令，再重试。",
   teamCyclePrepared: "此工作周期已准备好在 {at} 以原子方式完成最终提交。",
@@ -354,6 +358,12 @@ export const toolZhCN: ToolCopy = {
   approvalBindingInvalidated: "已批准的浏览器绑定已失效；需要重新批准。",
   judgeRunning: "正在审核任务",
   taskAdvanceInstruction: "将任务推进一步。评估当前状态并调用适当的工具。",
+  taskResponseIncompleteLocal:
+    "模型回复被截断，任务已暂停。请检查当前 Ollama 模型的上下文和回复长度限制，然后在任务页面重试。",
+  taskResponseIncompleteRemote:
+    "模型回复被截断，任务已暂停。请检查当前模型的上下文和回复长度限制，然后在任务页面重试。",
+  taskResponseSpaceReduced:
+    "回复被截断。已保留任务和工具执行证据并缩减历史，将在原有轮次上限内重试一次。",
   taskOpenInstruction:
     "任务仍未结束。不要在解释后停止：调用下一个安全且具体的工具；需要人工输入时使用 request_user_input；有证据满足验收标准时调用 complete_task。",
   taskPassiveFallbackInstruction:
@@ -367,6 +377,8 @@ export const toolZhCN: ToolCopy = {
   taskToolFallbackInstruction:
     "上一个模型已两次未能使用工具协议。保留相同上下文，并通过一个完全符合允许的工具参数结构的具体步骤继续。",
   operationCompleted: "操作已完成：{tool}。",
+  toolSchemaUnavailable:
+    "本次请求未提供 {tool}，因此未执行。请使用已提供的工具，或先通过 load_tools 加载列表中的可选工具，再在下一次请求中调用。权限未改变。",
   modelFailure: "{reason}（{source}）",
   failureRateLimit: "已达到模型请求限额。",
   failureTimeout: "模型请求超时。",

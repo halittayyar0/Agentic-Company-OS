@@ -22,6 +22,33 @@ const project = {
   provider: "old-provider",
   requestId: "old-uuid",
 };
+
+test("reusing an owner operation contract prepares visible conditions but a personal text guide contains no executable criteria", () => {
+  const completionRequirements = [
+    { kind: "tool_succeeded" as const, tool: "calculate" },
+  ];
+  const saved = { ...project, completionRequirements };
+  assert.deepEqual(
+    prepareProjectText(saved)?.completionRequirements,
+    completionRequirements,
+  );
+  const guide = preparePersonalGuide(
+    saved,
+    "user-explicit-condition",
+    "Test guide",
+  );
+  assert.ok(guide);
+  assert.equal(Object.hasOwn(guide, "completionRequirements"), false);
+  assert.equal(
+    prepareProjectText({
+      ...saved,
+      completionRequirements: [
+        { kind: "tool_succeeded", tool: "complete_task" },
+      ],
+    }),
+    null,
+  );
+});
 test("project reuse copies exact saved root text and narrow attribution only", () => {
   assert.deepEqual(prepareProjectText(project), {
     title: project.title,

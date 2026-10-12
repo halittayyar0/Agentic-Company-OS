@@ -1,27 +1,33 @@
 import type { Locale } from "./i18n";
-export type InferenceAccountingCopy = {
-  title: string;
-  clear: string;
-  pending: string;
-  recovery_required: string;
-  pendingHelp: string;
-  recoveryHelp: string;
-  clearHelp: string;
-  inspect: string;
-  error: string;
-  observed: string;
-  request: string;
-  tokens: string;
-  lowerBound: string;
-  complete: string;
-  unknownUsage: string;
-  unknownCost: string;
-  more: string;
+/** Compact locale data; named tuple entries document the authored order. */
+export type InferenceAccountingCopy = readonly [
+  recover: string,
+  recoverHelp: string,
+  recovered: string,
+  recoveryPending: string,
+  recoveryFailed: string,
+  title: string,
+  clear: string,
+  pending: string,
+  recovery_required: string,
+  pendingHelp: string,
+  recoveryHelp: string,
+  clearHelp: string,
+  inspect: string,
+  error: string,
+  observed: string,
+  request: string,
+  tokens: string,
+  lowerBound: string,
+  complete: string,
+  unknownUsage: string,
+  unknownCost: string,
+  more: string,
   states: Record<
     "reserved" | "dispatched" | "uncertain" | "accounted" | "not_dispatched",
     string
-  >;
-};
+  >,
+];
 const loaders = {
   tr: () => import("./inference-accounting-copy/inference-copy-tr"),
   en: () => import("./inference-accounting-copy/inference-copy-en"),

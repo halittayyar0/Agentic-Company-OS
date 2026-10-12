@@ -78,6 +78,7 @@ import { isCanonicalRootCeo } from "./agent-authority";
 import { avatarColorFor } from "./avatar-color";
 import { runJudge, type JudgeReviewRecord, type JudgeVerdict } from "./judge";
 import { loadCompletionEvidence } from "./completion-evidence";
+import { loadCompletionRequirementResults } from "./completion-requirements";
 import {
   VmError,
   localizedVmErrorMessage,
@@ -6789,6 +6790,17 @@ async function completeTask(
       text("teamChildUnresolved", {
         id: unresolvedSubtask.id,
         status: unresolvedSubtask.status,
+      }),
+      "rejected",
+    );
+  }
+
+  const completion = await loadCompletionRequirementResults(task);
+  const missing = completion.requirements.filter((item) => !item.satisfied);
+  if (missing.length) {
+    return empty(
+      text("teamCompletionRequirementsMissing", {
+        tools: missing.map((item) => item.tool).join(", "),
       }),
       "rejected",
     );

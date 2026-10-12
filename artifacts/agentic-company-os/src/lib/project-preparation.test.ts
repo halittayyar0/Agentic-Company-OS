@@ -16,6 +16,50 @@ const source = {
   status: "completed",
   updatedAt: "2026-10-09T05:00:00.000Z",
 };
+test("project preparation carries explicit conditions while text guides cannot introduce execution requirements", () => {
+  const completionRequirements = [
+    { kind: "tool_succeeded" as const, tool: "calculate" },
+  ];
+  assert.deepEqual(
+    readProjectPreparation({
+      acosSkillDraft: { ...text, source, completionRequirements },
+    }),
+    { ...text, source, completionRequirements },
+  );
+  assert.equal(
+    readProjectPreparation({
+      acosSkillDraft: { ...text, completionRequirements },
+    }),
+    null,
+  );
+  assert.equal(
+    readProjectPreparation({
+      acosSkillDraft: {
+        ...text,
+        source: {
+          kind: "guide",
+          id: "user-example",
+          revision: 1,
+          enabled: false,
+        },
+        completionRequirements,
+      },
+    }),
+    null,
+  );
+  assert.equal(
+    readProjectPreparation({
+      acosSkillDraft: {
+        ...text,
+        source,
+        completionRequirements: [
+          { kind: "tool_succeeded", tool: "vm_codex_task" },
+        ],
+      },
+    }),
+    null,
+  );
+});
 
 test("source timestamps are bounded valid instants and preserve offsets", () => {
   for (const updatedAt of [

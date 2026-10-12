@@ -5,6 +5,47 @@ export interface SearchableModel {
   provider: string;
   tier: string;
   supportsTools: boolean;
+  executionLocation?: "local" | "cloud" | "unknown";
+  runtimeCompatibility?: "compatible" | "update_required" | "unverified";
+}
+
+export function modelRuntimeReady(
+  model: Pick<
+    SearchableModel,
+    "id" | "provider" | "executionLocation" | "runtimeCompatibility"
+  >,
+): boolean {
+  const location = ollamaModelLocation(model);
+  return (
+    location === null ||
+    location === "cloud" ||
+    (location === "local" && model.runtimeCompatibility === "compatible")
+  );
+}
+
+export function hasFreeModelIdentifier(
+  model: Pick<SearchableModel, "id" | "provider">,
+): boolean {
+  return (
+    model.provider !== "ollama" &&
+    !model.id.startsWith("ollama:") &&
+    !model.id.startsWith("ollama-cloud:") &&
+    model.id.endsWith(":free")
+  );
+}
+
+export function ollamaModelLocation(
+  model: Pick<SearchableModel, "id" | "provider" | "executionLocation">,
+): "local" | "cloud" | "unknown" | null {
+  if (model.provider !== "ollama") return null;
+  if (model.executionLocation === "local" && model.id.startsWith("ollama:"))
+    return "local";
+  if (
+    model.executionLocation === "cloud" &&
+    model.id.startsWith("ollama-cloud:")
+  )
+    return "cloud";
+  return "unknown";
 }
 
 /**
@@ -33,7 +74,7 @@ export function matchesModelSearch(
     .filter(Boolean);
   if (terms.length === 0) return true;
 
-  const aliases = model.id.endsWith(":free")
+  const aliases = hasFreeModelIdentifier(model)
     ? "free ücretsiz ucretsiz bedava"
     : "";
   const haystack = normalizeModelSearch(

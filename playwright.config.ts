@@ -9,7 +9,8 @@ export default defineConfig({
   outputDir: "./test-results/ui-release-smoke",
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 1 : 0,
+  // Release acceptance requires every case to pass on its first attempt.
+  retries: 0,
   // Tests own isolated browser contexts; files remain internally serial.
   // The complete 903-case run takes about 23 minutes with two workers.
   workers: 2,

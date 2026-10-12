@@ -123,6 +123,8 @@ If a usage limit pauses work, the project page can check the allowance and resum
 
 Before finishing, the existing reviewer compares the agent's report with a short record of tool results and child-task states. This adds no extra review call; recorded execution still does not guarantee output quality. [Completion review and privacy →](./docs/completion-review.md)
 
+For work that must use a particular tool, choose optional **completion conditions** before starting. The server requires a recorded success for each selected operation in the current cycle, without granting permissions or adding a review call. The project shows missing success and unavailable capabilities in your chosen language. [Choose conditions and understand their limits →](./docs/completion-review.md#choose-completion-conditions)
+
 **You control model costs.** Cloud providers bill your own account; local models use your hardware. Explicit free or local selections do not silently fall back to paid models. Reported usage limits can overshoot by an in-flight request, and missing cost remains unknown. Use provider-side limits for a billing ceiling.
 
 [Routing, delegation and budget settings →](./docs/efficient-work.md)
@@ -161,6 +163,8 @@ A 24-hour soak, physical-phone/carrier acceptance and native-speaker review are 
 Small, focused contributions are welcome: a reproducible bug report, a clearer translation, a useful guide or a tested fix.
 
 **Model connection, v0.4.0 and later:** the [connection walkthrough](./docs/model-connections.md) explains local models, ChatGPT, API keys and keeping your first-job draft. Earlier setup bundles do not include this flow.
+
+**Local model privacy:** Ollama 0.18.0 or later exposes separate local/cloud choices. Cloud use requires explicit permission for that server; unverified models are unavailable. [Private addresses, version guidance and cloud controls →](./docs/local-models.md)
 
 Open **Model usage records** on a project or agent to inspect a request after an interruption. Checking spends no model tokens and never resends the request; unknown usage is not treated as zero. [Reading usage records →](./docs/inference-accounting.md)
 

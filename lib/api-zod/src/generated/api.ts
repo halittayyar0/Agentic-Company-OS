@@ -9,6 +9,38 @@ import * as zod from 'zod';
 
 
 /**
+ * Authenticated operator action bound to the exact task or agent scope and request UUID. Consumes only trusted persisted response evidence. Missing or conflicting usage remains fenced. Never accepts token totals, resets budgets, executes model output or resumes a task. Safe duplicate application retains one correction.
+ * @summary Apply saved usage evidence without requesting inference or resuming work
+ */
+export const ReconcileInferenceAccountingParams = zod.object({
+  "attemptId": zod.coerce.string().uuid()
+})
+
+export const reconcileInferenceAccountingQueryScopeIdMax = 2147483647;
+
+
+
+export const ReconcileInferenceAccountingQueryParams = zod.object({
+  "scopeType": zod.enum(['task', 'agent']),
+  "scopeId": zod.coerce.number().int().min(1).max(reconcileInferenceAccountingQueryScopeIdMax)
+})
+
+export const ReconcileInferenceAccountingBody = zod.object({
+  "acknowledge": zod.literal(true)
+})
+
+
+
+
+export const ReconcileInferenceAccountingResponse = zod.object({
+  "scopeType": zod.enum(['task', 'agent']),
+  "scopeId": zod.number().int().min(1),
+  "attemptId": zod.string().uuid(),
+  "outcome": zod.enum(['applied', 'pending'])
+})
+
+
+/**
  * Authenticated read-only snapshot. Task scope includes its rooted family and the current owner's unresolved requests. Agent scope includes that agent's requests. Pending means the recorded response window has not elapsed, not verified worker liveness. Clear means no unresolved accounting marker, not task success, budget eligibility or permission to execute. Unknown usage never becomes zero and this endpoint never clears a fence.
  * @summary Inspect model usage accounting without starting or retrying work
  */
@@ -68,6 +100,7 @@ export const GetInferenceAccountingStatusResponse = zod.object({
   "modelId": zod.string().max(getInferenceAccountingStatusResponseAttemptsItemModelIdMax),
   "provider": zod.string().max(getInferenceAccountingStatusResponseAttemptsItemProviderMax),
   "kind": zod.enum(['chat', 'task_step', 'judge']),
+  "savedEvidenceAvailable": zod.boolean().optional(),
   "state": zod.enum(['reserved', 'dispatched', 'uncertain', 'accounted', 'not_dispatched']),
   "createdAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemCreatedAtMin),
   "requestDeadlineAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemRequestDeadlineAtMin),
@@ -1259,6 +1292,12 @@ export const installWorkforceBlueprintResponseAgentsItemAvatarVersionMax = 64;
 export const installWorkforceBlueprintResponseAgentsMin = 2;
 export const installWorkforceBlueprintResponseAgentsMax = 12;
 
+export const installWorkforceBlueprintResponseTaskOneCompletionRequirementsItemToolMax = 80;
+
+
+export const installWorkforceBlueprintResponseTaskOneCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const installWorkforceBlueprintResponseTaskOneCompletionRequirementsMax = 8;
+
 export const installWorkforceBlueprintResponseTaskOneModelFallbackCountMin = 0;
 
 export const installWorkforceBlueprintResponseTaskOneCadenceSecondsMin = 60;
@@ -1314,6 +1353,10 @@ export const InstallWorkforceBlueprintResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(installWorkforceBlueprintResponseTaskOneCompletionRequirementsItemToolMax).regex(installWorkforceBlueprintResponseTaskOneCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(installWorkforceBlueprintResponseTaskOneCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -1817,6 +1860,12 @@ export const SendAgentMessageBody = zod.object({
   "modelId": zod.string().min(1).max(sendAgentMessageBodyModelIdMax).optional().describe('Optional per-message model override; wins over the agent\'s saved setting for this turn only. The UI offers the live catalog; safe vendor\/model OpenRouter ids remain forward-compatible, while malformed or Unicode-spoofed ids are rejected.\n')
 })
 
+export const sendAgentMessageResponseCreatedTasksItemCompletionRequirementsItemToolMax = 80;
+
+
+export const sendAgentMessageResponseCreatedTasksItemCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const sendAgentMessageResponseCreatedTasksItemCompletionRequirementsMax = 8;
+
 export const sendAgentMessageResponseCreatedTasksItemModelFallbackCountMin = 0;
 
 export const sendAgentMessageResponseCreatedTasksItemCadenceSecondsMin = 60;
@@ -1854,6 +1903,10 @@ export const SendAgentMessageResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(sendAgentMessageResponseCreatedTasksItemCompletionRequirementsItemToolMax).regex(sendAgentMessageResponseCreatedTasksItemCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(sendAgentMessageResponseCreatedTasksItemCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -1961,6 +2014,12 @@ export const SendAgentRequestBody = zod.object({
 
 export const sendAgentRequestResponseTaskIdMax = 2147483647;
 
+export const sendAgentRequestResponseTaskCompletionRequirementsItemToolMax = 80;
+
+
+export const sendAgentRequestResponseTaskCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const sendAgentRequestResponseTaskCompletionRequirementsMax = 8;
+
 export const sendAgentRequestResponseTaskModelFallbackCountMin = 0;
 
 export const sendAgentRequestResponseTaskCadenceSecondsMin = 60;
@@ -1969,6 +2028,12 @@ export const sendAgentRequestResponseTaskCadenceSecondsMax = 604800;
 export const sendAgentRequestResponseTaskRecoveryCountMin = 0;
 
 export const sendAgentRequestResponseTaskCycleCountMin = 0;
+
+export const sendAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolMax = 80;
+
+
+export const sendAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const sendAgentRequestResponseCreatedTasksItemCompletionRequirementsMax = 8;
 
 export const sendAgentRequestResponseCreatedTasksItemModelFallbackCountMin = 0;
 
@@ -2015,6 +2080,10 @@ export const SendAgentRequestResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(sendAgentRequestResponseTaskCompletionRequirementsItemToolMax).regex(sendAgentRequestResponseTaskCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(sendAgentRequestResponseTaskCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2050,6 +2119,10 @@ export const SendAgentRequestResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(sendAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolMax).regex(sendAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(sendAgentRequestResponseCreatedTasksItemCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2137,6 +2210,12 @@ export const GetAgentRequestParams = zod.object({
 
 export const getAgentRequestResponseTaskIdMax = 2147483647;
 
+export const getAgentRequestResponseTaskCompletionRequirementsItemToolMax = 80;
+
+
+export const getAgentRequestResponseTaskCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const getAgentRequestResponseTaskCompletionRequirementsMax = 8;
+
 export const getAgentRequestResponseTaskModelFallbackCountMin = 0;
 
 export const getAgentRequestResponseTaskCadenceSecondsMin = 60;
@@ -2145,6 +2224,12 @@ export const getAgentRequestResponseTaskCadenceSecondsMax = 604800;
 export const getAgentRequestResponseTaskRecoveryCountMin = 0;
 
 export const getAgentRequestResponseTaskCycleCountMin = 0;
+
+export const getAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolMax = 80;
+
+
+export const getAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const getAgentRequestResponseCreatedTasksItemCompletionRequirementsMax = 8;
 
 export const getAgentRequestResponseCreatedTasksItemModelFallbackCountMin = 0;
 
@@ -2191,6 +2276,10 @@ export const GetAgentRequestResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(getAgentRequestResponseTaskCompletionRequirementsItemToolMax).regex(getAgentRequestResponseTaskCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(getAgentRequestResponseTaskCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2226,6 +2315,10 @@ export const GetAgentRequestResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(getAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolMax).regex(getAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(getAgentRequestResponseCreatedTasksItemCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2502,6 +2595,59 @@ export const SendCompanyMessageResponse = zod.object({
 
 
 /**
+ * @summary Read eligible operations from the coordinator's current permitted catalog
+ */
+
+
+
+export const GetTaskCompletionToolsQueryParams = zod.object({
+  "ownerAgentId": zod.coerce.number().int().min(1).optional()
+})
+
+
+export const getTaskCompletionToolsResponseToolsItemRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+
+
+export const GetTaskCompletionToolsResponse = zod.object({
+  "ownerAgentId": zod.number().int().min(1),
+  "tools": zod.array(zod.string().regex(getTaskCompletionToolsResponseToolsItemRegExp))
+})
+
+
+/**
+ * @summary Read exact current-cycle execution conditions without raw arguments or results
+ */
+
+
+
+export const GetTaskCompletionRequirementsParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1)
+})
+
+
+export const getTaskCompletionRequirementsResponseCycleNumberMin = 0;
+
+export const getTaskCompletionRequirementsResponseRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const getTaskCompletionRequirementsResponseRequirementsMax = 8;
+
+
+
+export const GetTaskCompletionRequirementsResponse = zod.object({
+  "source": zod.enum(['persisted_current_cycle']),
+  "taskId": zod.number().int().min(1),
+  "cycleNumber": zod.number().int().min(getTaskCompletionRequirementsResponseCycleNumberMin),
+  "taskStatus": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
+  "observedAt": zod.coerce.date(),
+  "requirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().regex(getTaskCompletionRequirementsResponseRequirementsItemToolRegExp),
+  "satisfied": zod.boolean(),
+  "available": zod.boolean()
+})).max(getTaskCompletionRequirementsResponseRequirementsMax)
+})
+
+
+/**
  * @summary List tasks
  */
 export const listTasksQueryRootOnlyDefault = false;
@@ -2519,6 +2665,12 @@ export const ListTasksQueryParams = zod.object({
   "beforeId": zod.coerce.number().int().min(1).optional().describe('Return rows with an id lower than this cursor.')
 })
 
+export const listTasksResponseCompletionRequirementsItemToolMax = 80;
+
+
+export const listTasksResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const listTasksResponseCompletionRequirementsMax = 8;
+
 export const listTasksResponseModelFallbackCountMin = 0;
 
 export const listTasksResponseCadenceSecondsMin = 60;
@@ -2534,6 +2686,10 @@ export const ListTasksResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(listTasksResponseCompletionRequirementsItemToolMax).regex(listTasksResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(listTasksResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2577,6 +2733,12 @@ export const createTaskBodyTitleMax = 300;
 
 export const createTaskBodyBriefMax = 8000;
 
+export const createTaskBodyCompletionRequirementsItemToolMax = 80;
+
+
+export const createTaskBodyCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const createTaskBodyCompletionRequirementsMax = 8;
+
 export const createTaskBodyCadenceSecondsMin = 60;
 export const createTaskBodyCadenceSecondsMax = 604800;
 
@@ -2586,12 +2748,22 @@ export const CreateTaskBody = zod.object({
   "requestId": zod.string().uuid().regex(createTaskBodyRequestIdRegExp).optional().describe('Saved caller request identity; matching retries never create another project. Omission retains legacy creation without recovery.'),
   "title": zod.string().min(1).max(createTaskBodyTitleMax),
   "brief": zod.string().min(1).max(createTaskBodyBriefMax),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(createTaskBodyCompletionRequirementsItemToolMax).regex(createTaskBodyCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(createTaskBodyCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "ownerAgentId": zod.number().optional().describe('Optional backwards-compatible coordinator override; every active agent still joins the project.'),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']).optional(),
   "dueAt": zod.coerce.date().optional(),
   "autonomyMode": zod.enum(['finite', 'continuous']).optional(),
   "cadenceSeconds": zod.number().int().min(createTaskBodyCadenceSecondsMin).max(createTaskBodyCadenceSecondsMax).optional()
 })
+
+export const createTaskResponseCompletionRequirementsItemToolMax = 80;
+
+
+export const createTaskResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const createTaskResponseCompletionRequirementsMax = 8;
 
 export const createTaskResponseModelFallbackCountMin = 0;
 
@@ -2608,6 +2780,10 @@ export const CreateTaskResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(createTaskResponseCompletionRequirementsItemToolMax).regex(createTaskResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(createTaskResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2672,6 +2848,12 @@ export const GetTaskParams = zod.object({
   "taskId": zod.coerce.number()
 })
 
+export const getTaskResponseCompletionRequirementsItemToolMax = 80;
+
+
+export const getTaskResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const getTaskResponseCompletionRequirementsMax = 8;
+
 export const getTaskResponseModelFallbackCountMin = 0;
 
 export const getTaskResponseCadenceSecondsMin = 60;
@@ -2687,6 +2869,10 @@ export const GetTaskResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(getTaskResponseCompletionRequirementsItemToolMax).regex(getTaskResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(getTaskResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2738,6 +2924,12 @@ export const ListSubtasksQueryParams = zod.object({
   "beforeId": zod.coerce.number().int().min(1).optional().describe('Return rows with an id lower than this cursor.')
 })
 
+export const listSubtasksResponseCompletionRequirementsItemToolMax = 80;
+
+
+export const listSubtasksResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const listSubtasksResponseCompletionRequirementsMax = 8;
+
 export const listSubtasksResponseModelFallbackCountMin = 0;
 
 export const listSubtasksResponseCadenceSecondsMin = 60;
@@ -2753,6 +2945,10 @@ export const ListSubtasksResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(listSubtasksResponseCompletionRequirementsItemToolMax).regex(listSubtasksResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(listSubtasksResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2883,6 +3079,12 @@ export const CancelTaskParams = zod.object({
   "taskId": zod.coerce.number()
 })
 
+export const cancelTaskResponseCompletionRequirementsItemToolMax = 80;
+
+
+export const cancelTaskResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const cancelTaskResponseCompletionRequirementsMax = 8;
+
 export const cancelTaskResponseModelFallbackCountMin = 0;
 
 export const cancelTaskResponseCadenceSecondsMin = 60;
@@ -2898,6 +3100,10 @@ export const CancelTaskResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(cancelTaskResponseCompletionRequirementsItemToolMax).regex(cancelTaskResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(cancelTaskResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2948,6 +3154,12 @@ export const UpdateTaskAutonomyBody = zod.object({
   "cadenceSeconds": zod.number().int().min(updateTaskAutonomyBodyCadenceSecondsMin).max(updateTaskAutonomyBodyCadenceSecondsMax).optional()
 })
 
+export const updateTaskAutonomyResponseCompletionRequirementsItemToolMax = 80;
+
+
+export const updateTaskAutonomyResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const updateTaskAutonomyResponseCompletionRequirementsMax = 8;
+
 export const updateTaskAutonomyResponseModelFallbackCountMin = 0;
 
 export const updateTaskAutonomyResponseCadenceSecondsMin = 60;
@@ -2963,6 +3175,10 @@ export const UpdateTaskAutonomyResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "brief": zod.string(),
+  "completionRequirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().min(1).max(updateTaskAutonomyResponseCompletionRequirementsItemToolMax).regex(updateTaskAutonomyResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
+})).max(updateTaskAutonomyResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -3123,6 +3339,76 @@ export const GetTaskBudgetResumeReceiptResponse = zod.object({
   "queuedTaskIds": zod.array(zod.number().int().min(1)).max(getTaskBudgetResumeReceiptResponseQueuedTaskIdsMax),
   "queuedCount": zod.number().int().min(getTaskBudgetResumeReceiptResponseQueuedCountMin).max(getTaskBudgetResumeReceiptResponseQueuedCountMax),
   "stillPausedCount": zod.number().int().min(getTaskBudgetResumeReceiptResponseStillPausedCountMin).max(getTaskBudgetResumeReceiptResponseStillPausedCountMax),
+  "recordedAt": zod.coerce.date()
+})
+
+
+/**
+ * Advisory snapshot. Retry admission is rechecked under locks during POST.
+ * @summary Read the current incomplete response pause without dispatching work
+ */
+
+
+
+export const GetTaskResponseRetryScopeParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetTaskResponseRetryScopeResponse = zod.object({
+  "taskId": zod.number().int().min(1),
+  "canRetry": zod.boolean(),
+  "blockedAttemptId": zod.string().uuid().nullable()
+})
+
+
+/**
+ * Keeps the task model, usage, cycle and schedule. Requires acknowledgement and the exact blocked attempt. No inference runs in this route. Queue transition and an immutable accepted audit receipt commit together. Replaying acceptance returns the historical receipt without queueing again. Stale scope, emergency stop, inactive owners, live leases, approvals, unfinished effects and exhausted allowance are rejected.
+ * @summary Explicitly retry a task paused after an incomplete model response
+ */
+
+
+
+export const RetryTaskResponseParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1)
+})
+
+export const RetryTaskResponseBody = zod.object({
+  "blockedAttemptId": zod.string().uuid(),
+  "acknowledge": zod.literal(true)
+})
+
+
+
+
+export const RetryTaskResponseResponse = zod.object({
+  "taskId": zod.number().int().min(1),
+  "blockedAttemptId": zod.string().uuid(),
+  "outcome": zod.enum(['accepted']),
+  "recordedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Inspect an accepted response retry without dispatching work
+ */
+
+
+
+export const GetTaskResponseRetryReceiptParams = zod.object({
+  "taskId": zod.coerce.number().int().min(1),
+  "attemptId": zod.coerce.string().uuid()
+})
+
+
+
+
+export const GetTaskResponseRetryReceiptResponse = zod.object({
+  "taskId": zod.number().int().min(1),
+  "blockedAttemptId": zod.string().uuid(),
+  "outcome": zod.enum(['accepted']),
   "recordedAt": zod.coerce.date()
 })
 
@@ -4026,6 +4312,12 @@ export const GetOrgSummaryResponse = zod.object({
 /**
  * @summary All selectable models grouped by configured server-side provider
  */
+export const getModelCatalogResponseModelsItemRequiredOllamaVersionMax = 64;
+
+
+export const getModelCatalogResponseModelsItemRequiredOllamaVersionRegExp = new RegExp('^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$');
+
+
 export const GetModelCatalogResponse = zod.object({
   "providers": zod.array(zod.object({
   "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
@@ -4039,6 +4331,9 @@ export const GetModelCatalogResponse = zod.object({
   "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
+  "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
+  "runtimeCompatibility": zod.enum(['compatible', 'update_required', 'unverified']).optional().describe('Local runner compatibility with the model\'s declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference.'),
+  "requiredOllamaVersion": zod.string().max(getModelCatalogResponseModelsItemRequiredOllamaVersionMax).regex(getModelCatalogResponseModelsItemRequiredOllamaVersionRegExp).optional().describe('Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.'),
   "isDefault": zod.boolean()
 }))
 })
@@ -4055,6 +4350,14 @@ export const getLlmSettingsResponseOpenrouterBaseUrlMax = 2048;
 
 export const getLlmSettingsResponseOpenaiKeyPreviewMax = 64;
 
+export const getLlmSettingsResponseOllamaServerVersionMax = 64;
+
+export const getLlmSettingsResponseOllamaLocalModelCountMin = 0;
+
+export const getLlmSettingsResponseOllamaCloudModelCountMin = 0;
+
+export const getLlmSettingsResponseOllamaUnknownModelCountMin = 0;
+
 export const getLlmSettingsResponseOllamaBaseUrlMax = 2048;
 
 export const getLlmSettingsResponseOllamaModelCountMin = 0;
@@ -4065,6 +4368,10 @@ export const getLlmSettingsResponseOllamaCatalogSyncedAtMin = 0;
 
 export const getLlmSettingsResponseReplitFleetBaseUrlMax = 2048;
 
+export const getLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionMax = 64;
+
+
+export const getLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionRegExp = new RegExp('^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$');
 
 
 export const GetLlmSettingsResponse = zod.object({
@@ -4087,6 +4394,12 @@ export const GetLlmSettingsResponse = zod.object({
   "ollama": zod.object({
   "configured": zod.boolean(),
   "reachable": zod.boolean(),
+  "cloudEnabled": zod.boolean().optional().describe('Explicit consent for this exact private server origin. Missing on older servers; absence never grants cloud permission.'),
+  "serverVersion": zod.string().max(getLlmSettingsResponseOllamaServerVersionMax).nullish(),
+  "localEnforcementSupported": zod.boolean().optional().describe('Whether the reported stable server version enforces local selectors. Missing or false cannot prove local execution.'),
+  "localModelCount": zod.number().int().min(getLlmSettingsResponseOllamaLocalModelCountMin).optional(),
+  "cloudModelCount": zod.number().int().min(getLlmSettingsResponseOllamaCloudModelCountMin).optional(),
+  "unknownModelCount": zod.number().int().min(getLlmSettingsResponseOllamaUnknownModelCountMin).optional(),
   "baseUrl": zod.string().url().max(getLlmSettingsResponseOllamaBaseUrlMax).nullable(),
   "hasAddressInEnv": zod.boolean(),
   "addressSource": zod.enum(['runtime', 'environment', 'none']),
@@ -4112,6 +4425,9 @@ export const GetLlmSettingsResponse = zod.object({
   "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
+  "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
+  "runtimeCompatibility": zod.enum(['compatible', 'update_required', 'unverified']).optional().describe('Local runner compatibility with the model\'s declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference.'),
+  "requiredOllamaVersion": zod.string().max(getLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionMax).regex(getLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionRegExp).optional().describe('Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.'),
   "isDefault": zod.boolean()
 }))
 })
@@ -4137,10 +4453,15 @@ export const UpdateLlmSettingsBody = zod.object({
   "expectedRevision": zod.number().int().min(updateLlmSettingsBodyExpectedRevisionMin).max(updateLlmSettingsBodyExpectedRevisionMax).optional().describe('The exact stored-credential revision reviewed by the operator. Legacy callers may omit it.'),
   "openrouterApiKey": zod.string().max(updateLlmSettingsBodyOpenrouterApiKeyMax).nullish(),
   "openaiApiKey": zod.string().max(updateLlmSettingsBodyOpenaiApiKeyMax).nullish(),
-  "ollamaBaseUrl": zod.string().max(updateLlmSettingsBodyOllamaBaseUrlMax).nullish().describe('Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.')
+  "ollamaBaseUrl": zod.string().max(updateLlmSettingsBodyOllamaBaseUrlMax).nullish().describe('Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.'),
+  "ollamaCloudEnabled": zod.boolean().optional().describe('Explicitly enable or disable cloud models on the selected server. Requires expectedRevision; the backend binds consent to the canonical effective origin.')
 })
 
 
+export const updateLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionMax = 64;
+
+
+export const updateLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionRegExp = new RegExp('^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$');
 
 
 export const UpdateLlmSettingsResponse = zod.object({
@@ -4161,6 +4482,9 @@ export const UpdateLlmSettingsResponse = zod.object({
   "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
+  "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
+  "runtimeCompatibility": zod.enum(['compatible', 'update_required', 'unverified']).optional().describe('Local runner compatibility with the model\'s declared minimum version at the last connection check. Separate from tool capability. Incompatible or unverified local models cannot dispatch inference.'),
+  "requiredOllamaVersion": zod.string().max(updateLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionMax).regex(updateLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionRegExp).optional().describe('Validated stable minimum version reported by a local model. Missing for legacy models without a declared requirement or malformed metadata.'),
   "isDefault": zod.boolean()
 }))
 })

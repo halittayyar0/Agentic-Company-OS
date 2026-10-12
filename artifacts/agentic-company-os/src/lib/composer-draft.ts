@@ -1,4 +1,5 @@
 import * as z from "zod/v4-mini";
+import { completionRequirementsSchema } from "./completion-requirements-input";
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 const homeSchema = z.strictObject({
   version: z.literal(1),
@@ -6,7 +7,7 @@ const homeSchema = z.strictObject({
   prompt: z.string().check(z.maxLength(7000)),
   mode: z.enum(["team", "engineer", "research", "compare"]),
 });
-const projectSchema = z.strictObject({
+export const projectDraftSchema = z.strictObject({
   version: z.literal(1),
   kind: z.literal("project"),
   title: z.string().check(z.maxLength(300)),
@@ -14,9 +15,10 @@ const projectSchema = z.strictObject({
   priority: z.enum(["low", "normal", "high", "urgent"]),
   autonomyMode: z.enum(["finite", "continuous"]),
   cadenceSeconds: z.literal([900, 3600, 21600, 86400, 604800]),
+  completionRequirements: z.optional(completionRequirementsSchema),
 });
 export type ComposerDraft =
-  z.infer<typeof homeSchema> | z.infer<typeof projectSchema>;
+  z.infer<typeof homeSchema> | z.infer<typeof projectDraftSchema>;
 export function hasComposerDraftInput(draft: ComposerDraft): boolean {
   return draft.kind === "home"
     ? draft.prompt.length > 0 || draft.mode !== "team"
@@ -24,7 +26,8 @@ export function hasComposerDraftInput(draft: ComposerDraft): boolean {
         draft.brief.length > 0 ||
         draft.priority !== "normal" ||
         draft.autonomyMode !== "finite" ||
-        draft.cadenceSeconds !== 3600;
+        draft.cadenceSeconds !== 3600 ||
+        (draft.completionRequirements?.length ?? 0) > 0;
 }
 function parseDraft(value: unknown): ComposerDraft {
   return (
@@ -33,7 +36,7 @@ function parseDraft(value: unknown): ComposerDraft {
     "kind" in value &&
     value.kind === "home"
       ? homeSchema
-      : projectSchema
+      : projectDraftSchema
   ).parse(value);
 }
 export type ComposerDraftKind = ComposerDraft["kind"];

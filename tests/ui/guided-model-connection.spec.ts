@@ -3,6 +3,136 @@ import { installStudioFixtures } from "./helpers/studio-fixtures";
 import { loadConnectionCopy } from "../../artifacts/agentic-company-os/src/lib/connection-copy";
 
 const catalog = { providers: [], models: [] };
+
+for (const [locale, action, hint] of [
+  [
+    "tr",
+    "Model bağla",
+    "Ollama 0.30.0 veya üzeri gerekiyor. Bu sunucuyu güncelleyip bağlantıyı yeniden kontrol edin.",
+  ],
+  [
+    "en",
+    "Connect a model",
+    "Requires Ollama 0.30.0 or later. Update this server, then check the connection again.",
+  ],
+  [
+    "de",
+    "Modell verbinden",
+    "Erfordert Ollama 0.30.0 oder neuer. Aktualisiere diesen Server und prüfe die Verbindung erneut.",
+  ],
+  [
+    "ru",
+    "Подключить",
+    "Требуется Ollama 0.30.0 или новее. Обновите этот сервер и проверьте подключение снова.",
+  ],
+  [
+    "zh-CN",
+    "连接模型",
+    "需要 Ollama 0.30.0 或更高版本。请更新此服务器，然后重新检查连接。",
+  ],
+  [
+    "zh-TW",
+    "連接模型",
+    "需要 Ollama 0.30.0 或更新版本。請更新此伺服器，然後重新檢查連線。",
+  ],
+  [
+    "ar",
+    "اربط نموذجًا",
+    "يتطلب Ollama 0.30.0 أو أحدث. حدّث هذا الخادم، ثم تحقق من الاتصال مجددًا.",
+  ],
+] as const) {
+  test(`${locale} incompatible local runtime explains recovery on a phone without starting work`, async ({
+    page,
+  }, testInfo) => {
+    const c = await loadConnectionCopy(locale);
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.emulateMedia({
+      colorScheme: locale === "ar" ? "light" : "dark",
+      reducedMotion: "reduce",
+    });
+    await page.addInitScript((selected) => {
+      localStorage.setItem("acos.locale.v1", selected);
+      localStorage.setItem(
+        "acos.color-mode.v2",
+        selected === "ar" ? "light" : "dark",
+      );
+    }, locale);
+    const harness = await installStudioFixtures(page);
+    await page.route("**/api/settings/llm", (route) =>
+      route.fulfill({
+        json: {
+          ...settings,
+          ollama: {
+            ...settings.ollama,
+            configured: true,
+            reachable: true,
+            serverVersion: "0.18.0",
+            localEnforcementSupported: true,
+          },
+          catalog: {
+            providers: [{ id: "ollama", label: "Ollama", available: true }],
+            models: [
+              {
+                id: "ollama:qwen35:latest",
+                label: "qwen35:latest",
+                provider: "ollama",
+                tier: "economy",
+                description: "",
+                supportsTools: true,
+                executionLocation: "local",
+                runtimeCompatibility: "update_required",
+                requiredOllamaVersion: "0.30.0",
+                isDefault: false,
+              },
+              {
+                id: "ollama:unknown:latest",
+                label: "unknown:latest",
+                provider: "ollama",
+                tier: "economy",
+                description: "",
+                supportsTools: true,
+                executionLocation: "local",
+                runtimeCompatibility: "unverified",
+                isDefault: false,
+              },
+            ],
+          },
+        },
+      }),
+    );
+    await page.goto("/");
+    await page.getByRole("button", { name: action, exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("button", { name: c.local, exact: true }).click();
+    const model = dialog
+      .getByRole("listitem")
+      .filter({ hasText: "qwen35:latest" });
+    await expect(model.getByText(hint, { exact: true })).toBeVisible();
+    await expect(model).toContainText(c.tools);
+    await expect(model.locator('bdi[dir="ltr"]')).toHaveText("0.30.0");
+    await expect(
+      dialog
+        .getByRole("listitem")
+        .filter({ hasText: "unknown:latest" })
+        .locator("p"),
+    ).toBeVisible();
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "32px";
+    });
+    await expect(model.getByText(hint, { exact: true })).toBeVisible();
+    expect(
+      await dialog.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth + 1,
+      ),
+    ).toBe(true);
+    expect(harness.requests).toEqual([]);
+    expect([...harness.unexpected]).toEqual([]);
+    await testInfo.attach(`runtime-${locale}-phone`, {
+      body: await page.screenshot(),
+      contentType: "image/png",
+    });
+  });
+}
 const settings = {
   revision: 7,
   storage: "local-file",
@@ -362,6 +492,8 @@ test("a ready catalog keeps the connection dialog open until returning focus to 
         id: "ollama:fixture",
         provider: "ollama",
         label: "Fixture local model",
+        executionLocation: "local",
+        runtimeCompatibility: "compatible",
         description: "Synthetic model",
         tier: "standard",
         supportsTools: true,

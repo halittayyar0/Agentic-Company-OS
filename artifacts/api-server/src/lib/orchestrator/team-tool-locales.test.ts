@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
 import fsp from "node:fs/promises";
@@ -268,6 +269,8 @@ async function finalizeClaimedTool(
     .set({ state: "claimed" })
     .where(eq(taskAttemptsTable.id, ctx.runtimeAttemptId!));
   const createCompletion: typeof createChatCompletion = async (params) => {
+    const loading = await loadFixtureTaskTools(params, [name]);
+    if (loading) return loading;
     await params.beforeRequest?.();
     return {
       provider: "replit",
@@ -667,6 +670,30 @@ test("completion review receives failed command evidence and the native turn's l
       (review.detail!.completionEvidence as { receiptTotal: number })
         .receiptTotal,
       2,
+    );
+    const persisted = review.detail!.completionEvidence as {
+      toolCountsTruncated: boolean;
+      toolCounts: { tool: string; state: string; count: number }[];
+    };
+    assert.equal(persisted.toolCountsTruncated, false);
+    assert.deepEqual(
+      persisted.toolCounts.map(({ tool, state, count }) => ({
+        tool,
+        state,
+        count,
+      })),
+      [
+        { tool: "vm_codex_task", state: "succeeded", count: 1 },
+        { tool: "vm_run_command", state: "failed", count: 1 },
+      ],
+    );
+    const reviewEvidence = prompt.match(
+      /<execution_evidence>\n([\s\S]*?)\n<\/execution_evidence>/u,
+    );
+    assert.ok(reviewEvidence, "the judge did not receive execution evidence");
+    assert.deepEqual(
+      JSON.parse(reviewEvidence[1]).toolCounts,
+      persisted.toolCounts,
     );
     await retireFixtureAgent(ctx.agent.id);
   }

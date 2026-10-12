@@ -1,5 +1,14 @@
 import type { ProjectStudioCopy } from "../project-studio-copy";
 const copy: ProjectStudioCopy = {
+  responseRetryHeading: "模型工作已暂停",
+  responseRetryHelp:
+    "请先检查上下文和响应限制。重试保留任务限制及已保存的模型；自动路由会重新检查。继续执行可能消耗词元。",
+  responseRetryAction: "重试此任务",
+  responseRetrySame: "重试同一请求",
+  responseRetryInspect: "查看重试记录",
+  responseRetryAccepted: "任务已加入队列，等待继续。",
+  responseRetryRejected: "未恢复。请检查任务状态、负责人、审批和用量限制。",
+  responseRetryUnknown: "结果尚未确认。请查看保存的记录，或重试同一请求。",
   budgetHeading: "已因使用限额暂停",
   budgetHelp:
     "检查不会消耗模型令牌，也不会重置用量。恢复的任务仍受现有限额约束。如果额度已用完，请提高配置中的限额，或等待滚动日窗口更新。",
@@ -134,7 +143,8 @@ const copy: ProjectStudioCopy = {
   runSummary: "记录摘要",
   progress: "进度",
   attempts: "工作尝试",
-  tokens: "词元",
+  tokens: "已记录词元",
+  tokenUsageHelp: "此任务用量含审核及已报告用量的失败调用，不含未报告用量。",
   model: "记录的模型",
   unknownModel: "未记录模型",
   deliveryHelp: "这是代理保存的交付摘要。可在“{tab}”标签页查看验证记录。",

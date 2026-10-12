@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 import { createHash, randomUUID } from "node:crypto";
 import fsp from "node:fs/promises";
 import os from "node:os";
@@ -109,6 +110,8 @@ for (const toolName of ["vm_run_command", "vm_read_file"] as const) {
         runtimeHandle: runtime,
         runtimeOperationsConfig: config,
         createCompletion: (async (params) => {
+          const loading = await loadFixtureTaskTools(params, [toolName]);
+          if (loading) return loading;
           await params.beforeRequest?.();
           prompts.push(String(params.messages[0].content));
           deferred.push(

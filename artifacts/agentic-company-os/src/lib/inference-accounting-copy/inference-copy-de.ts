@@ -1,31 +1,32 @@
 import type { InferenceAccountingCopy } from "../inference-accounting-copy";
-export default {
-  title: "Modellnutzungsprotokolle",
-  clear: "Keine ungeklärte Nutzung",
-  pending: "Antwortzeit noch offen",
-  recovery_required: "Nutzung muss geprüft werden",
-  pendingHelp:
-    "Eine Antwort kann noch eintreffen. Dieser Status bestätigt nicht, dass der Agent läuft.",
-  recoveryHelp:
-    "Die Nutzung konnte nicht bestätigt werden. Weitere Modellanfragen in diesem Bereich bleiben pausiert. Bewahren Sie die Anfrage-ID zur Prüfung auf. Eine Statusprüfung sendet die Anfrage nicht erneut.",
-  clearHelp:
-    "Kein ungeklärter Nutzungsdatensatz blockiert diesen Bereich. Dies bestätigt weder den Aufgabenerfolg noch eine Ausführungserlaubnis.",
-  inspect: "Gespeicherte Protokolle prüfen",
-  error:
-    "Der aktuelle Status kann nicht bestätigt werden. Bereits angezeigte Protokolle bleiben erhalten.",
-  observed: "Zuletzt geprüft",
-  request: "Anfrage-ID",
-  tokens: "Token",
-  lowerBound: "Gemeldete Mindestnutzung",
-  complete: "Gemeldete Nutzung",
-  unknownUsage: "Nutzung unbekannt",
-  unknownCost: "Kosten nicht gemeldet",
-  more: "Die letzten 20 Einträge werden angezeigt; ungeklärte Einträge stehen zuerst.",
-  states: {
+export default [
+  "Nutzung anwenden",
+  "Nur den gespeicherten Verbrauch erfassen. Keine Modellanfrage oder Aufgabenfortsetzung.",
+  "Verbrauch erfasst; keine Arbeit neu gestartet.",
+  "Kein anwendbarer Beleg. Einträge prüfen.",
+  "Erfassung unbestätigt. Einträge prüfen.",
+  "Modellnutzungsprotokolle",
+  "Keine ungeklärte Nutzung",
+  "Antwortzeit noch offen",
+  "Nutzung muss geprüft werden",
+  "Eine Antwort ist noch möglich; Agentenaktivität unbestätigt.",
+  "Verbrauch ungeklärt; neue Anfragen pausiert. Anfrage-ID behalten. Prüfen sendet nichts erneut.",
+  "Keine Verbrauchssperre; Erfolg und Ausführungserlaubnis bleiben getrennt.",
+  "Gespeicherte Protokolle prüfen",
+  "Status unbestätigt; vorherige Einträge bleiben.",
+  "Zuletzt geprüft",
+  "Anfrage-ID",
+  "Token",
+  "Gemeldete Mindestnutzung",
+  "Gemeldete Nutzung",
+  "Nutzung unbekannt",
+  "Kosten nicht gemeldet",
+  "Letzte 20 Einträge; ungeklärte zuerst.",
+  {
     reserved: "Vorbereitet; nicht gesendet",
     dispatched: "Gesendet; Nutzungsnachweis ausstehend",
     uncertain: "Nutzung unbestätigt",
     accounted: "Nutzung erfasst",
     not_dispatched: "Nicht gesendet",
   },
-} satisfies InferenceAccountingCopy;
+] satisfies InferenceAccountingCopy;

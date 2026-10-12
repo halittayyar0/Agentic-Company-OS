@@ -1,5 +1,16 @@
 import type { ProjectStudioCopy } from "../project-studio-copy";
 const copy: ProjectStudioCopy = {
+  responseRetryHeading: "عمل النموذج متوقف مؤقتًا",
+  responseRetryHelp:
+    "تحقق من حدود السياق والرد أولًا. تحتفظ إعادة المحاولة بحدود المهمة وأي نموذج محفوظ؛ ويُفحص التوجيه التلقائي مجددًا. قد تستهلك المتابعة رموزًا.",
+  responseRetryAction: "إعادة محاولة هذه المهمة",
+  responseRetrySame: "إعادة إرسال الطلب نفسه",
+  responseRetryInspect: "فحص سجل إعادة المحاولة",
+  responseRetryAccepted: "أُضيفت المهمة إلى قائمة الانتظار للمتابعة.",
+  responseRetryRejected:
+    "لم تُستأنف. تحقق من حالة المهمة والوكيل والموافقات وحدود الاستخدام.",
+  responseRetryUnknown:
+    "النتيجة غير مؤكدة. افحص السجل المحفوظ أو أعد إرسال الطلب نفسه.",
   budgetHeading: "تم الإيقاف مؤقتًا عند حد الاستخدام",
   budgetHelp:
     "لا يستهلك التحقق رموز النموذج ولا يعيد ضبط الاستخدام. تخضع الأعمال المستأنفة للحد الحالي. إذا نُفد الحد، فارفع الحدود في الإعدادات أو انتظر تجدد النافذة اليومية المتحركة.",
@@ -148,7 +159,9 @@ const copy: ProjectStudioCopy = {
   runSummary: "ملخص السجل",
   progress: "التقدم",
   attempts: "محاولات العمل",
-  tokens: "الرموز",
+  tokens: "الرموز المسجلة",
+  tokenUsageHelp:
+    "لهذه المهمة: المراجعات واستخدام الاستدعاءات الفاشلة المُبلّغ عنه مشمولان؛ الاستخدام غير المُبلّغ عنه غير مشمول.",
   model: "النموذج المسجل",
   unknownModel: "لا يوجد نموذج مسجل",
   deliveryHelp:

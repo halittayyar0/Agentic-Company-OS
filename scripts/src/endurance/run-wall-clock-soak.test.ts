@@ -332,6 +332,69 @@ test("complete responsibility coverage performs no diagnostic read", async () =>
   );
 });
 
+test("coordinator waits for persisted final health evidence before closing the report", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "agentic-health-flush-"));
+  const stopped = { count: 0 };
+  const lifecycle: string[] = [];
+  const origin = Date.parse("2026-10-11T14:40:00.069Z");
+  let elapsed = 0;
+  const driver = testDriver({
+    directory,
+    stopped,
+    now: () => new Date(origin + elapsed),
+    lifecycle,
+    expectedResponsibilities: 100,
+  });
+  const capture = driver.captureEvidence;
+  // A real driver may have no new bucket at the minute boundary. Model that
+  // boundary through the observer, independently of the runner's implementation.
+  driver.captureEvidence = async (observer, context) => {
+    if (context.kind !== "minute" || context.minute !== 10) {
+      await capture(observer, context);
+      return;
+    }
+    observer.completeResponsibilities(10);
+  };
+  Object.assign(driver, {
+    captureFinalHealthEvidence: async (
+      observer: Parameters<typeof capture>[0],
+    ) => {
+      lifecycle.push("final-health");
+      elapsed = 607_192;
+      observer.observeHealth({
+        minute: 10,
+        reportedState: "healthy",
+        truthState: "healthy",
+      });
+    },
+  });
+  try {
+    const result = await runWallClockSoak(
+      {
+        runId: "final-health-coordinator",
+        seed: 240_901,
+        durationHours: 1 / 6,
+        commitSha: "test-commit",
+        browserOutputDirectory: directory,
+      },
+      driver,
+      {
+        waitUntilOffset: async (offset) => {
+          elapsed = Math.max(elapsed, offset);
+        },
+        browserSleep: async () => undefined,
+      },
+    );
+    assert.equal(result.report.metrics.healthSampleBuckets, 10);
+    assert.equal(result.report.metrics.completedResponsibilities, 100);
+    assert.equal(result.report.completedAt, "2026-10-11T14:50:07.261Z");
+    assert.deepEqual(lifecycle, ["final-health", "provenance", "stop"]);
+    assert.equal(stopped.count, 1);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("coordinator produces verified evidence only after a full virtual wall-clock day", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "agentic-wall-soak-"));
   const stopped = { count: 0 };

@@ -47,6 +47,8 @@ window. Additional PostgreSQL test summaries later in the log are recorded but
 cannot replace the source result. Skips must match the reviewed test names and
 reasons; durations may vary. UI runs must have the expected count and workers,
 with no retries, failures, flaky cases, skipped cases or interrupted cases.
+The UI configuration disables automatic retries. A failed first attempt fails
+the main UI job and preserves its browser failure evidence.
 
 Original workflow event, commit, path, run attempt and job identities are also
 checked for every required Actions producer, including secret scanning, CodeQL
@@ -102,6 +104,14 @@ and fix the cause before preparing new evidence.
 
 ## Updating expected coverage
 
+Wall-clock runners wait for the final planned health bucket to be persisted
+before closing the report. Worker sampling can commit after the duration
+boundary; the wait uses the existing 120-second evidence deadline and remains
+cancellable. Only actual persisted rows count. Earlier gaps, unplanned degraded
+health and a missing terminal bucket still fail; no minute is renumbered and no
+pre-run or tail bucket supplies missing coverage. The report includes the real
+completion time, and a short run remains `verified24h=false`.
+
 When adding or removing tests, update the candidate's expectation file in the
 same reviewed change. Keep all six platform stages. Derive the new source total
 from the complete suite, preserve platform-specific named skips, and change UI
@@ -111,3 +121,17 @@ skip; do not lower counts or enlarge exclusions to accept an unexplained failure
 This command does not prove real ChatGPT account inference, physical-phone
 access or 24-hour operation. Follow the complete [release checklist](./release-checklist.md)
 and retain those limits unless their own requirements have been verified.
+
+## Investigating the pinned local-model startup check
+
+The owned Ollama smoke uses a cleared environment, private temporary home,
+disabled cloud access and no model weights. Its trace setting enables the pinned
+runtime's bootstrap child output so a failed receipt can retain fixed
+`runnerDetails` booleans: runner listener, dummy model initialization, device
+information, Metal device/library phases and discovery failure. Raw output,
+paths, device names, configuration and error text never enter that receipt.
+
+A missing phase means it was not observed; it does not prove a particular cause.
+The existing 20-second readiness limit and all privacy assertions still apply.
+These diagnostics neither fix a failing platform nor admit a release. Retain the
+original failure and verify any subsequent correction on its own exact source.
