@@ -61,6 +61,11 @@ for (const purpose of ["completion", "approval"] as const)
       createCompletion: async (
         input: Parameters<typeof createChatCompletion>[0],
       ) => {
+        assert.deepEqual(
+          input.responseFormat,
+          { type: "json_object" },
+          "nonlocal reviews preserve their existing provider response mode",
+        );
         await input.beforeRequest?.();
         calls++;
         throw Object.assign(new Error("Owned synthetic provider rejection"), {

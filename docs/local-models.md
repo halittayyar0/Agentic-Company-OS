@@ -5,6 +5,12 @@ Ollama **0.18.0 or later** and an installed model that supports tools to run age
 jobs. Saving discovers the catalog; it does not download a model or test inference.
 Review the model and permissions before pressing **Start**.
 
+For Qwen3.5 thinking models, use Ollama **0.40.3 or later**. Earlier runtimes
+can ignore structured-output constraints when thinking is disabled. Local
+reviews request an explicit verdict/reasoning schema; this constrains the reply
+format, not the verdict or the quality of the completed work. A failed review
+does not certify completion. See the [upstream runtime fix](https://github.com/ollama/ollama/pull/15901).
+
 A real Windows CPU installation has completed a bounded first task and displayed
 its saved result at phone width. See the [first-result verification record](./verification/2026-10-11-local-first-result.md)
 for the exact task, actual token counts and limits. Tool support alone does not

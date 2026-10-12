@@ -487,7 +487,7 @@ export interface UnifiedChatCompletionParams {
   /** Local Ollama thinking models only. Tool workflows default to none to keep
    * reasoning from consuming the output budget before an action is produced. */
   localReasoningEffort?: "none" | "low" | "medium" | "high";
-  responseFormat?: { type: "json_object" | "text" };
+  responseFormat?: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming["response_format"];
   signal?: AbortSignal;
   /** Diagnostics can opt out of SDK retries to bound billable attempts. */
   disableRetries?: boolean;

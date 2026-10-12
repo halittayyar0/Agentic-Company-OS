@@ -18,10 +18,11 @@ async function fixture(
   t: test.TestContext,
   answer: unknown,
   finishReason = "stop",
+  thinking = true,
 ) {
   await dbReady;
   const peer = await ownedOllamaPeer({
-    show: { capabilities: ["tools", "thinking"] },
+    show: { capabilities: thinking ? ["tools", "thinking"] : ["tools"] },
     complete: (body, response) =>
       response.end(
         JSON.stringify({
@@ -113,7 +114,20 @@ for (const purpose of ["completion", "approval"] as const) {
       "existing review ceiling stays unchanged",
     );
     assert.deepEqual(peer.completions()[0]!.body.response_format, {
-      type: "json_object",
+      type: "json_schema",
+      json_schema: {
+        name: "agentic_completion_review",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            verdict: { type: "string", enum: ["pass", "warn", "block"] },
+            reasoning: { type: "string" },
+          },
+          required: ["verdict", "reasoning"],
+          additionalProperties: false,
+        },
+      },
     });
   });
 
@@ -151,10 +165,15 @@ for (const purpose of ["completion", "approval"] as const) {
   }
 
   test(`${purpose} valid advisory review preserves the actual reason and stays available`, async (t) => {
-    const { peer, agent } = await fixture(t, {
-      verdict: "warn",
-      reasoning: "  An advisory issue remains.  ",
-    });
+    const { peer, agent } = await fixture(
+      t,
+      {
+        verdict: "warn",
+        reasoning: "  An advisory issue remains.  ",
+      },
+      "stop",
+      false,
+    );
     const review = await runJudge({
       agent,
       taskId: null,
@@ -167,5 +186,9 @@ for (const purpose of ["completion", "approval"] as const) {
     assert.notEqual(review.unavailable, true);
     assert.equal(review.reasoning.trim(), "An advisory issue remains.");
     assert.equal(peer.completions().length, 1);
+    const body = peer.completions()[0]!.body;
+    assert.equal(body.reasoning_effort, undefined);
+    assert.equal(body.response_format.type, "json_schema");
+    assert.equal(body.response_format.json_schema.strict, true);
   });
 }

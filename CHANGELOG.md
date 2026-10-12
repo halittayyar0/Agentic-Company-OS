@@ -5,6 +5,8 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-12
+
 ### Added
 
 - Optional owner-selected completion conditions for up to eight permitted tool
@@ -18,6 +20,12 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Fixed
 
+- Give local Ollama completion and approval reviews an explicit verdict/reasoning
+  JSON schema. All three verdicts remain available; incomplete or invalid replies
+  still fail closed and retain reported usage. Review token limits, task budgets,
+  permissions and paid-provider response modes remain unchanged.
+- Explain the completion tool in English and ask the model to report actual
+  completed outcomes, including tool-produced values, rather than planned work.
 - Write native Ollama boundary receipts through an exclusively created file
   descriptor. Competing writers cannot overwrite an existing receipt or redirect
   its contents by changing the pathname. Existing preflight checks, probe

@@ -101,13 +101,14 @@ const completeTaskTool: ToolDef = {
   function: {
     name: "complete_task",
     description:
-      "Uzerinde calistigin mevcut gorevi tamamlandi olarak isaretler. Bir denetim (judge) kontrolunden gecer.",
+      "Submit the actual completed result for review. This finishes the current task only after required operations and review succeed.",
     parameters: {
       type: "object",
       properties: {
         resultSummary: {
           type: "string",
-          description: "Gorevin sonucunun ozeti -- ne yapildi, ne elde edildi",
+          description:
+            "Report the actual outcome and requested deliverables from completed work, including values produced by tools. Do not restate a plan, an intention, or work still to do.",
         },
       },
       required: ["resultSummary"],

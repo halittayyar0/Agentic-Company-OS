@@ -29,6 +29,26 @@ import { EmergencyStopError } from "./runtime-emergency-stop";
 
 export type JudgeVerdict = "pass" | "warn" | "block";
 
+// An open-ended JSON object can make small local models repeat tokens instead
+// of producing a verdict. Constrain its shape without choosing the verdict;
+// response integrity and persisted completion evidence still decide acceptance.
+const localReviewResponseFormat = {
+  type: "json_schema",
+  json_schema: {
+    name: "agentic_completion_review",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        verdict: { type: "string", enum: ["pass", "warn", "block"] },
+        reasoning: { type: "string" },
+      },
+      required: ["verdict", "reasoning"],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
 export interface JudgeResult {
   verdict: JudgeVerdict;
   reasoning: string;
@@ -209,7 +229,10 @@ ${
             // window on hidden reasoning. The provider applies this only to
             // verified local models that advertise thinking support.
             localReasoningEffort: "none",
-            responseFormat: { type: "json_object" },
+            responseFormat:
+              route.provider === "ollama" && route.modelId.startsWith("ollama:")
+                ? localReviewResponseFormat
+                : { type: "json_object" },
           },
           dependencies.createCompletion,
         );
