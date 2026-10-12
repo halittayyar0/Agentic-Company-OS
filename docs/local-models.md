@@ -11,6 +11,10 @@ reviews request an explicit verdict/reasoning schema; this constrains the reply
 format, not the verdict or the quality of the completed work. A failed review
 does not certify completion. See the [upstream runtime fix](https://github.com/ollama/ollama/pull/15901).
 
+Local tool calls and structured reviews request deterministic sampling. This
+reduces variation; it does not establish that a selected operation or answer is
+correct. Plain text and cloud requests keep their existing sampling settings.
+
 A real Windows CPU installation has completed a bounded first task and displayed
 its saved result at phone width. See the [first-result verification record](./verification/2026-10-11-local-first-result.md)
 for the exact task, actual token counts and limits. Tool support alone does not

@@ -20,6 +20,9 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Fixed
 
+- Use deterministic sampling for local tool calls and structured reviews to
+  reduce inconsistent operation selection. Plain text and cloud requests keep
+  their existing settings; correct results still require execution and review.
 - Give local Ollama completion and approval reviews an explicit verdict/reasoning
   JSON schema. All three verdicts remain available; incomplete or invalid replies
   still fail closed and retain reported usage. Review token limits, task budgets,

@@ -125,6 +125,7 @@ for (const purpose of ["completion", "approval"] as const) {
     assert.equal(review.verdict, "warn");
     assert.equal(peer.completions().length, 1);
     assert.equal(peer.completions()[0]!.body.reasoning_effort, "none");
+    assert.equal(peer.completions()[0]!.body.temperature, 0);
     assert.equal(
       peer.completions()[0]!.body.max_tokens,
       4096,
@@ -193,6 +194,7 @@ for (const purpose of ["completion", "approval"] as const) {
     assert.equal(peer.completions().length, 1);
     const body = peer.completions()[0]!.body;
     assert.equal(body.reasoning_effort, undefined);
+    assert.equal(body.temperature, 0);
     assert.deepEqual(body.response_format, expectedLocalReviewFormat);
   });
 }

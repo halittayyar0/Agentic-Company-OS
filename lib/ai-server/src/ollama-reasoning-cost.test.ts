@@ -31,10 +31,13 @@ test("local thinking tool calls disable hidden reasoning by default and preserve
   };
   await createChatCompletion(params);
   assert.equal(peer.completions()[0]?.body.reasoning_effort, "none");
+  assert.equal(peer.completions()[0]?.body.temperature, 0);
   await createChatCompletion({ ...params, localReasoningEffort: "high" });
   assert.equal(peer.completions()[1]?.body.reasoning_effort, "high");
+  assert.equal(peer.completions()[1]?.body.temperature, 0);
   await createChatCompletion({ ...params, tools: undefined });
   assert.equal(peer.completions()[2]?.body.reasoning_effort, undefined);
+  assert.equal(peer.completions()[2]?.body.temperature, undefined);
   assert.ok(
     peer.completions().every(({ body }) => body.model === "owned:latest:local"),
   );
@@ -52,9 +55,19 @@ test("a model without thinking support receives no reasoning option", async (t) 
     model: "ollama:owned:latest",
     messages: [{ role: "user", content: "Explain the supplied result." }],
     localReasoningEffort: "high",
+    tools: [
+      {
+        type: "function",
+        function: {
+          name: "calculate",
+          parameters: { type: "object", properties: {} },
+        },
+      },
+    ],
     disableRetries: true,
   });
   assert.equal(peer.completions()[0]?.body.reasoning_effort, undefined);
+  assert.equal(peer.completions()[0]?.body.temperature, 0);
 });
 
 test("local reasoning defaults never alter an explicitly selected cloud model", async (t) => {
@@ -94,4 +107,5 @@ test("local reasoning defaults never alter an explicitly selected cloud model", 
   });
   assert.equal(peer.completions()[0]?.body.reasoning_effort, undefined);
   assert.equal(peer.completions()[0]?.body.model, "owned:latest");
+  assert.equal(peer.completions()[0]?.body.temperature, undefined);
 });

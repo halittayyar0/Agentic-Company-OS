@@ -807,6 +807,14 @@ export async function createChatCompletion(
             messages,
             tools: tools && tools.length > 0 ? tools : undefined,
             max_tokens: maxTokens,
+            // Local tool decisions and structured reviews should not vary
+            // through default sampling. This controls generation, never the
+            // selected action, verdict, permissions or acceptance checks.
+            ...(request.boundary === "local" &&
+            (tools?.length ||
+              (responseFormat && responseFormat.type !== "text"))
+              ? { temperature: 0 }
+              : {}),
             ...(request.boundary === "local" && request.supportsThinking
               ? {
                   // Ollama 0.18 supports "none"; the pinned OpenAI SDK's
