@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { createServer } from "node:net";
 import path from "node:path";
-/** OS-owned loopback lease: automatically released on crashes, no stale lock file. */
+/** OS-owned lease: automatically released on crashes, no stale lock file. */
 export async function acquireInstallationLock(
   directory: string,
   appPort: number,
@@ -28,6 +28,13 @@ export async function acquireInstallationLock(
           path: `\\\\.\\pipe\\acos-install-${digest.toString("hex")}`,
           exclusive: true,
         },
+        resolve,
+      );
+    } else if (process.platform === "linux") {
+      // The abstract namespace is released by the kernel even on SIGKILL and
+      // does not compete with outbound connections in the ephemeral TCP range.
+      server.listen(
+        { path: `\0acos-install-${digest.toString("hex")}`, exclusive: true },
         resolve,
       );
     } else {

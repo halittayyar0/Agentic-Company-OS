@@ -1,8 +1,8 @@
 {
   "linux": {
     "source": {
-      "tests": 2639,
-      "passed": 2601,
+      "tests": 2640,
+      "passed": 2603,
       "skippedCases": [
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
         "Linux launcher closes emergency epoch gap before spawn # SKIP",
@@ -28,7 +28,6 @@
         "PostgreSQL retains a family fence across concurrent workers and an owned process crash # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL serializes both orders of real source-check and native-session admission without modifying the original # Actual PostgreSQL row-lock proof requires the disposable native gate",
         "Windows aliases and alternate streams cannot change an unreviewed target # Windows filesystem aliases",
-        "Windows installation lock ignores an unrelated TCP listener at its old coordination port # SKIP",
         "a Windows job relays UTF-8 stdin/stdout and emergency stop kills the owned descendants while an unrelated fixture continues # SKIP",
         "a naturally exited Windows target cannot leave its descendant alive or unregister without a job receipt # SKIP",
         "actual Linux Codex approval files=false enforces the owned named permission boundary without inference # SKIP",
@@ -51,9 +50,10 @@
   },
   "windows": {
     "source": {
-      "tests": 2639,
+      "tests": 2640,
       "passed": 2607,
       "skippedCases": [
+        "Linux installation lock is released when its owning process crashes # SKIP",
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
         "Linux launcher closes emergency epoch gap before spawn # SKIP",
         "Linux launcher owner SIGKILL destroys its actual namespace and detached descendants # SKIP",
@@ -91,9 +91,10 @@
   },
   "macos-arm-source": {
     "source": {
-      "tests": 2639,
+      "tests": 2640,
       "passed": 2601,
       "skippedCases": [
+        "Linux installation lock is released when its owning process crashes # SKIP",
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
         "Linux launcher closes emergency epoch gap before spawn # SKIP",
         "Linux launcher owner SIGKILL destroys its actual namespace and detached descendants # SKIP",
@@ -118,7 +119,6 @@
         "PostgreSQL retains a family fence across concurrent workers and an owned process crash # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL serializes both orders of real source-check and native-session admission without modifying the original # Actual PostgreSQL row-lock proof requires the disposable native gate",
         "Windows aliases and alternate streams cannot change an unreviewed target # Windows filesystem aliases",
-        "Windows installation lock ignores an unrelated TCP listener at its old coordination port # SKIP",
         "a Windows job relays UTF-8 stdin/stdout and emergency stop kills the owned descendants while an unrelated fixture continues # SKIP",
         "a naturally exited Windows target cannot leave its descendant alive or unregister without a job receipt # SKIP",
         "actual Linux Codex approval files=false enforces the owned named permission boundary without inference # SKIP",
@@ -128,6 +128,7 @@
         "actual Linux Codex production driver awaits final admission and cleans up without requesting inference # SKIP",
         "default Linux process factory launches the owned controller with a private home and backend workspace # SKIP",
         "failure during Windows job startup leaves no target process or stale runtime registration # SKIP",
+        "installation lock ignores an unrelated TCP listener at its old coordination port # SKIP",
         "legacy system Bubblewrap is refused before protected helper creation # SKIP",
         "native PostgreSQL file writers wait for the same workspace lock held by another connection # DATABASE_URL is absent; native cross-connection file-lock proof is unavailable",
         "separate PostgreSQL processes reconcile one receipt once and advance one operations event # Requires owned disposable PostgreSQL, no cross-process PGlite claim",
@@ -137,9 +138,10 @@
   },
   "macos-intel-source": {
     "source": {
-      "tests": 2639,
+      "tests": 2640,
       "passed": 2601,
       "skippedCases": [
+        "Linux installation lock is released when its owning process crashes # SKIP",
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
         "Linux launcher closes emergency epoch gap before spawn # SKIP",
         "Linux launcher owner SIGKILL destroys its actual namespace and detached descendants # SKIP",
@@ -164,7 +166,6 @@
         "PostgreSQL retains a family fence across concurrent workers and an owned process crash # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL serializes both orders of real source-check and native-session admission without modifying the original # Actual PostgreSQL row-lock proof requires the disposable native gate",
         "Windows aliases and alternate streams cannot change an unreviewed target # Windows filesystem aliases",
-        "Windows installation lock ignores an unrelated TCP listener at its old coordination port # SKIP",
         "a Windows job relays UTF-8 stdin/stdout and emergency stop kills the owned descendants while an unrelated fixture continues # SKIP",
         "a naturally exited Windows target cannot leave its descendant alive or unregister without a job receipt # SKIP",
         "actual Linux Codex approval files=false enforces the owned named permission boundary without inference # SKIP",
@@ -174,6 +175,7 @@
         "actual Linux Codex production driver awaits final admission and cleans up without requesting inference # SKIP",
         "default Linux process factory launches the owned controller with a private home and backend workspace # SKIP",
         "failure during Windows job startup leaves no target process or stale runtime registration # SKIP",
+        "installation lock ignores an unrelated TCP listener at its old coordination port # SKIP",
         "legacy system Bubblewrap is refused before protected helper creation # SKIP",
         "native PostgreSQL file writers wait for the same workspace lock held by another connection # DATABASE_URL is absent; native cross-connection file-lock proof is unavailable",
         "separate PostgreSQL processes reconcile one receipt once and advance one operations event # Requires owned disposable PostgreSQL, no cross-process PGlite claim",
