@@ -52,6 +52,23 @@ export interface ResponsibilityGapSnapshot {
   expectedCycles: number;
   attemptsTruncated: boolean;
   receiptsTruncated: boolean;
+  inferenceAccounting?: {
+    status: string;
+    observedAt: string;
+    unsettledCount: number;
+    hasMore: boolean;
+    attempts: Array<{
+      id: string;
+      agentId: number;
+      taskId: number | null;
+      state: string;
+      requestDeadlineAt: string;
+      dispatchedAt: string | null;
+      settledAt: string | null;
+      savedEvidenceAvailable: boolean;
+      usagePresent: boolean;
+    }>;
+  };
   gaps: Array<{
     agentId: number;
     cycleNumber: number;
@@ -107,6 +124,72 @@ function states(value: unknown, allowed: Set<string>): string[] {
   return [...new Set(value.map((value) => state(value, allowed)))].sort();
 }
 
+function normalizeAccounting(
+  value: unknown,
+): NonNullable<ResponsibilityGapSnapshot["inferenceAccounting"]> {
+  const input = object(value);
+  if (
+    !Array.isArray(input.attempts) ||
+    input.attempts.length > 20 ||
+    typeof input.hasMore !== "boolean"
+  )
+    throw new TypeError("Invalid responsibility accounting diagnostic");
+  const timestamp = (value: unknown) =>
+    typeof value === "string"
+      ? iso(value)
+      : iso(new Date(integer(value, 0, 8640000000000000)).toISOString());
+  return {
+    status: state(
+      input.status,
+      new Set(["clear", "pending", "recovery_required"]),
+    ),
+    observedAt: timestamp(input.observedAt),
+    unsettledCount: integer(input.unsettledCount),
+    hasMore: input.hasMore,
+    attempts: input.attempts.map((value) => {
+      const attempt = object(value);
+      if (
+        typeof attempt.id !== "string" ||
+        !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/iu.test(
+          attempt.id,
+        ) ||
+        typeof attempt.savedEvidenceAvailable !== "boolean"
+      )
+        throw new TypeError("Invalid responsibility accounting identity");
+      return {
+        id: attempt.id,
+        agentId: integer(attempt.agentId, 1, 2147483647),
+        taskId:
+          attempt.taskId === null
+            ? null
+            : integer(attempt.taskId, 1, 2147483647),
+        state: state(
+          attempt.state,
+          new Set([
+            "reserved",
+            "dispatched",
+            "uncertain",
+            "accounted",
+            "not_dispatched",
+          ]),
+        ),
+        requestDeadlineAt: timestamp(attempt.requestDeadlineAt),
+        dispatchedAt:
+          attempt.dispatchedAt === null
+            ? null
+            : timestamp(attempt.dispatchedAt),
+        settledAt:
+          attempt.settledAt === null ? null : timestamp(attempt.settledAt),
+        savedEvidenceAvailable: attempt.savedEvidenceAvailable,
+        usagePresent:
+          typeof attempt.usagePresent === "boolean"
+            ? attempt.usagePresent
+            : attempt.usage !== null && attempt.usage !== undefined,
+      };
+    }),
+  };
+}
+
 /** Reconstruct a bounded metadata record; never serialize upstream objects. */
 export function normalizeResponsibilityGapSnapshot(
   value: unknown,
@@ -127,6 +210,11 @@ export function normalizeResponsibilityGapSnapshot(
     expectedCycles,
     attemptsTruncated: input.attemptsTruncated,
     receiptsTruncated: input.receiptsTruncated,
+    ...(input.inferenceAccounting === undefined
+      ? {}
+      : {
+          inferenceAccounting: normalizeAccounting(input.inferenceAccounting),
+        }),
     gaps: input.gaps.map((value) => {
       const gap = object(value),
         agentId = integer(gap.agentId, 1, 2147483647);

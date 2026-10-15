@@ -16,6 +16,13 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Fixed
 
+- Recover expired inference reservations that were never dispatched and settle
+  interrupted requests from their exact saved usage evidence. Unknown dispatched
+  usage still blocks the task family; recovery records no successful task result.
+- Retain bounded inference accounting metadata in responsibility diagnostics and
+  redacted Windows runtime logs when native fault verification fails.
+- Keep dialog and confirmation controls in place during entry and exit fades,
+  so a pointer aimed while the window opens still activates the selected control.
 - Compile the Windows process controller directly with the built-in .NET
   compiler, retaining the existing preparation deadline and private output checks.
 - Observe native tool approvals after the owned test peer launches, retaining

@@ -189,6 +189,8 @@ At 320px, 390px, desktop 1440px, and a wide 1680px project canvas:
 
 Controls use 160–200ms transitions. Persisted handoff/recovery may animate for 480–700ms only after the backing event arrives. Repeating status motion is capped and never substitutes for time/label evidence. Reduced-motion mode retains state and focus visibility while removing non-essential animation. At least one normal-motion browser test covers a persisted handoff; reduced-motion coverage remains mandatory.
 
+Dialogs and confirmations use opacity transitions at their final position and size. A pointer aimed during entry must still activate the same control as the animation progresses; interaction must not wait for the fade to finish.
+
 ## Accessibility and localization
 
 - Use the selected workspace language for shared controls, loading states, and accessible names. Turkish is the fallback for isolated component previews; application flows support all seven workspace locales.

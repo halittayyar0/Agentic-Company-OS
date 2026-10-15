@@ -16,6 +16,7 @@ import { createSeededFaultSchedule } from "./fault-injector";
 import type { DurableEnduranceEvent } from "./postgres-harness";
 import { SoakEvidenceObserver } from "./soak-observer";
 import type { WallClockRuntimeDriver } from "./run-wall-clock-soak";
+import { normalizeResponsibilityGapSnapshot } from "./responsibility-diagnostics";
 
 class RecordingSoakEvidenceObserver extends SoakEvidenceObserver {
   readonly healthObservations: Array<{
@@ -274,6 +275,31 @@ test("final responsibility diagnostic includes root cycle9 and retains truncated
     if (pathname === "/api/tasks" && init?.method === "POST")
       return Response.json({ id: 7 }, { status: 201 });
     if (pathname === "/api/tasks/7/operations") return Response.json(snapshot);
+    if (pathname === "/api/inference-accounting")
+      return Response.json({
+        scopeType: "task",
+        scopeId: 7,
+        rootTaskId: 7,
+        status: "recovery_required",
+        observedAt: 1788221400000,
+        unsettledCount: 1,
+        hasMore: false,
+        attempts: [
+          {
+            id: "d485b65a-068b-49b3-be6c-2ed19e3f56be",
+            agentId: 1,
+            taskId: 7,
+            state: "dispatched",
+            requestDeadlineAt: 1788221300000,
+            dispatchedAt: 1788221200000,
+            settledAt: null,
+            savedEvidenceAvailable: false,
+            usage: null,
+            modelId: "PRIVATE_MODEL",
+            lastError: "PRIVATE_ERROR",
+          },
+        ],
+      });
     if (pathname === "/api/tasks/7") {
       taskReads.push(pathname);
       if (failTaskRead)
@@ -361,6 +387,28 @@ test("final responsibility diagnostic includes root cycle9 and retains truncated
       gaps: Array<Record<string, unknown>>;
     };
     assert.equal(diagnostic.attemptsTruncated, true);
+    assert.deepEqual(
+      (diagnostic as unknown as Record<string, unknown>).inferenceAccounting,
+      {
+        status: "recovery_required",
+        observedAt: "2026-09-01T00:10:00.000Z",
+        unsettledCount: 1,
+        hasMore: false,
+        attempts: [
+          {
+            id: "d485b65a-068b-49b3-be6c-2ed19e3f56be",
+            agentId: 1,
+            taskId: 7,
+            state: "dispatched",
+            requestDeadlineAt: "2026-09-01T00:08:20.000Z",
+            dispatchedAt: "2026-09-01T00:06:40.000Z",
+            settledAt: null,
+            savedEvidenceAvailable: false,
+            usagePresent: false,
+          },
+        ],
+      },
+    );
     assert.deepEqual(diagnostic.gaps, [
       {
         agentId: 1,
@@ -380,6 +428,10 @@ test("final responsibility diagnostic includes root cycle9 and retains truncated
       },
     ]);
     assert.deepEqual(taskReads, ["/api/tasks/7"]);
+    assert.deepEqual(
+      normalizeResponsibilityGapSnapshot(diagnostic, 10),
+      diagnostic,
+    );
     assert.doesNotMatch(JSON.stringify(diagnostic), /PRIVATE_/u);
     assert.equal(observer.finalize().metrics.completedResponsibilities, 99);
     failTaskRead = true;

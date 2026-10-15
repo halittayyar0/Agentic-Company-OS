@@ -301,9 +301,18 @@ async function settle(
           )[0];
         if (
           !saved ||
-          Object.entries(values).some(
-            ([key, value]) => saved[key as keyof typeof saved] !== value,
-          )
+          Object.entries(values).some(([key, value]) => {
+            // Restart recovery may already have recorded the exact observed
+            // usage while the original invocation was interrupted. Retain
+            // that immutable failed outcome even if its late runner returns.
+            if (
+              saved.outcome === "failed" &&
+              saved.failureKind === "inference_interrupted" &&
+              (key === "outcome" || key === "failureKind")
+            )
+              return false;
+            return saved[key as keyof typeof saved] !== value;
+          })
         ) {
           // Commit the fence before reporting the conflict. Throwing inside
           // this transaction would roll back uncertainty after a prior commit.
