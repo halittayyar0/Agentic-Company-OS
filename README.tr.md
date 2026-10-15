@@ -62,6 +62,11 @@ Terminalde gösterilen **özel yerel bağlantıyı** aç. Dilini, model sağlay�
 
 **Çıkardığın paketi ve terminalde belirtilen kurulum klasörünü sakla.** Yeniden başlatma ve yarım kalan kuruluma devam etme işlemlerinde bunlar kullanılır. [Yeniden başlatma, yedekleme ve sunucu kurulumu →](./docs/self-hosting.md)
 
+v0.5.2 ve sonrasında, kuruluma başlamadan önce çıkan klasörde
+`node scripts/src/setup/bootstrap.mjs --check` çalıştırarak eksik gereksinimleri
+görebilirsin. Seçenekler için `--help` kullan. Kontrol kurulum başlatmaz ve
+modele istek göndermez; terminal yardımı İngilizce, kurulum ekranı yedi dildir.
+
 ### 3. İlk işini tanımla
 
 Bir proje oluştur, ajan seç ve beklediğin sonucu anlat. Kolayca kontrol edebileceğin bir işle başla:
