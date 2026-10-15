@@ -245,6 +245,11 @@ try {
   } finally {
     await resumed.stopNative();
   }
+} catch (error) {
+  // A partial installation may not have Compose files yet. Preserve the first
+  // failure in the original job log even if disposal also rejects that state.
+  console.error("Container installation primary failure:", error);
+  throw error;
 } finally {
   await installer.stopNative();
   privateDirectory ??= installer.installationDirectory();

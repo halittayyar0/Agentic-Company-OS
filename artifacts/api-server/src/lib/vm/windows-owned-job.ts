@@ -16,13 +16,9 @@ import { registerOwnedAgentRuntime } from "../orchestrator/owned-agent-runtimes"
 import { WINDOWS_OWNED_JOB_SOURCE } from "./windows-owned-job-source";
 
 const executeFile = promisify(execFile);
-// Fixed, credential-free PowerShell/.NET preparation only. Keep trusted test
+// Fixed, credential-free Windows/.NET preparation only. Keep trusted test
 // fixture preparation on the same allowance; launch and cleanup are separate.
 export const WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS = 60_000;
-const COMPILE = String.raw`
-$ErrorActionPreference = 'Stop'
-Add-Type -TypeDefinition ([System.IO.File]::ReadAllText($env:ACOS_JOB_SOURCE)) -OutputAssembly $env:ACOS_JOB_BINARY -OutputType ConsoleApplication
-`;
 const safeFailure = () => new Error("owned_windows_runtime_unsupported");
 const cleanupFailure = () => new Error("owned_runtime_cleanup_unverified");
 const digest = (bytes: Buffer) =>
@@ -37,8 +33,40 @@ async function exactFile(file: string) {
     throw safeFailure();
 }
 
+export function windowsPublicSourceCompilation(
+  systemRoot: string,
+  source: string,
+  output: string,
+) {
+  if (![systemRoot, source, output].every((file) => path.isAbsolute(file)))
+    throw safeFailure();
+  const framework = path.join(
+    systemRoot,
+    "Microsoft.NET",
+    "Framework64",
+    "v4.0.30319",
+  );
+  return {
+    executable: path.join(framework, "csc.exe"),
+    // Ignore ambient response files and name every framework reference. Neither
+    // a shell nor the caller's working directory supplies compiler arguments.
+    args: [
+      "/noconfig",
+      "/nostdlib+",
+      "/nologo",
+      "/target:exe",
+      "/platform:anycpu",
+      "/codepage:65001",
+      `/reference:${path.join(framework, "mscorlib.dll")}`,
+      `/reference:${path.join(framework, "System.dll")}`,
+      `/out:${output}`,
+      source,
+    ],
+  };
+}
+
 /** Prepare before any credential is passed to a child. The public source is
- * compiled using the OS's fixed PowerShell/.NET path into a new private home. */
+ * compiled using the OS's fixed .NET compiler into a new private home. */
 export async function compileWindowsOwnedJob(directory: string) {
   if (process.platform !== "win32") throw safeFailure();
   const systemRoot = process.env.SystemRoot;
@@ -51,39 +79,28 @@ export async function compileWindowsOwnedJob(directory: string) {
   // Elevated Windows tokens otherwise assign a new file to Administrators.
   await storage.write("owned-job.exe", "");
   try {
-    await executeFile(
-      path.join(
-        systemRoot,
-        "System32",
-        "WindowsPowerShell",
-        "v1.0",
-        "powershell.exe",
-      ),
-      [
-        "-NoLogo",
-        "-NoProfile",
-        "-NonInteractive",
-        "-EncodedCommand",
-        Buffer.from(COMPILE, "utf16le").toString("base64"),
-      ],
-      {
-        windowsHide: true,
-        // The frozen full Windows suite measured 31.05s for this public-source,
-        // credential-free compilation. Keep a bounded cold-start allowance.
-        timeout: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
-        maxBuffer: 16_384,
-        env: {
-          SystemRoot: systemRoot,
-          PATH: path.join(systemRoot, "System32"),
-          TEMP: directory,
-          TMP: directory,
-          HOME: directory,
-          USERPROFILE: directory,
-          ACOS_JOB_SOURCE: path.join(directory, "owned-job.cs"),
-          ACOS_JOB_BINARY: executable,
-        },
-      },
+    const compilation = windowsPublicSourceCompilation(
+      systemRoot,
+      path.join(directory, "owned-job.cs"),
+      executable,
     );
+    await exactFile(compilation.executable);
+    await executeFile(compilation.executable, compilation.args, {
+      windowsHide: true,
+      cwd: directory,
+      // Invoke the framework compiler directly, retaining the same bounded
+      // allowance without paying PowerShell's cold startup cost.
+      timeout: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
+      maxBuffer: 16_384,
+      env: {
+        SystemRoot: systemRoot,
+        PATH: path.join(systemRoot, "System32"),
+        TEMP: directory,
+        TMP: directory,
+        HOME: directory,
+        USERPROFILE: directory,
+      },
+    });
     // read verifies inherited owner/SYSTEM-only metadata without exposing any
     // binary bytes. The bounded helper is then hashed as bytes for launch.
     await storage.read("owned-job.exe");

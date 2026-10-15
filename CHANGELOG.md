@@ -16,6 +16,14 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Fixed
 
+- Compile the Windows process controller directly with the built-in .NET
+  compiler, retaining the existing preparation deadline and private output checks.
+- Observe native tool approvals after the owned test peer launches, retaining
+  the existing deadlines and testing admission that exceeds the observation window.
+- Keep Linux installation leases separate from unrelated TCP connections and
+  retain the first container installation error when fixture cleanup also fails.
+- Use three concurrent source test files on the standard Intel Mac runner,
+  preserving the complete suite and existing test and job deadlines.
 - Preserve chronological task and tool history across model rounds, including
   protocol recovery. The original fenced task stays once before its results
   instead of being replayed after them.

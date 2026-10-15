@@ -16,6 +16,7 @@ import test from "node:test";
 import { OwnerPrivateStorage } from "@workspace/ai-server/owner-private-storage";
 import {
   compileWindowsOwnedJob,
+  windowsPublicSourceCompilation,
   launchWindowsOwnedJob,
   WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
 } from "./windows-owned-job";
@@ -82,7 +83,7 @@ test.before(async () => {
   );
   const helperStarted = performance.now();
   try {
-    helper = await compileWindowsOwnedJob(path.join(root, "private-helper"));
+    helper = await compileWindowsOwnedJob(path.join(root, "private helper"));
     preparation.push({
       phase: "helper-preparation",
       compilerDeadlineMs: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
@@ -113,36 +114,22 @@ test.before(async () => {
     HOME: root,
     USERPROFILE: root,
   };
-  const script =
-    "Add-Type -TypeDefinition ([System.IO.File]::ReadAllText($env:ACOS_FIXTURE_SOURCE)) -OutputAssembly $env:ACOS_FIXTURE_BINARY -OutputType ConsoleApplication";
+  const compilation = windowsPublicSourceCompilation(
+    systemRoot,
+    path.join(sourceStorage.directory, "fixture.cs"),
+    fixtureExecutable,
+  );
   const fixtureStarted = performance.now();
   try {
-    await promisify(execFile)(
-      path.join(
-        systemRoot,
-        "System32",
-        "WindowsPowerShell",
-        "v1.0",
-        "powershell.exe",
-      ),
-      [
-        "-NoLogo",
-        "-NoProfile",
-        "-NonInteractive",
-        "-EncodedCommand",
-        Buffer.from(script, "utf16le").toString("base64"),
-      ],
-      {
-        windowsHide: true,
-        timeout: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
-        maxBuffer: 16_384,
-        env: {
-          ...fixtureEnvironment,
-          ACOS_FIXTURE_SOURCE: path.join(sourceStorage.directory, "fixture.cs"),
-          ACOS_FIXTURE_BINARY: fixtureExecutable,
-        },
+    await promisify(execFile)(compilation.executable, compilation.args, {
+      windowsHide: true,
+      cwd: sourceStorage.directory,
+      timeout: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
+      maxBuffer: 16_384,
+      env: {
+        ...fixtureEnvironment,
       },
-    );
+    });
     preparation.push({
       phase: "fixture-compilation",
       compilerDeadlineMs: WINDOWS_PUBLIC_SOURCE_COMPILE_TIMEOUT_MS,
