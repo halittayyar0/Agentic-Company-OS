@@ -16,6 +16,8 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Fixed
 
+- Observe native tool approvals after the owned test peer launches, retaining
+  the existing deadlines and testing admission that exceeds the observation window.
 - Keep Linux installation leases separate from unrelated TCP connections and
   retain the first container installation error when fixture cleanup also fails.
 - Use three concurrent source test files on the standard Intel Mac runner,

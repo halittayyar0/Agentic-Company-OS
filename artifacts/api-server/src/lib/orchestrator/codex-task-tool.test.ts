@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { eq } from "drizzle-orm";
 import {
   db,
@@ -164,9 +165,14 @@ for (const mode of [
       .delete(codexTaskSessionsTable)
       .where(eq(codexTaskSessionsTable.taskId, f.task.id));
     let launches = 0;
+    const launched = Promise.withResolvers<void>();
     const dependencies = {
-      runTask: ((context, input, admission) =>
-        runGovernedCodexTask(context, input, {
+      runTask: (async (context, input, admission) => {
+        // Admission can outlast the approval observation window on a busy host.
+        // Exercise that ordering without changing any runtime or test deadline.
+        if (mode === "lost_after_consumption")
+          await delay(16_000, undefined, { signal: t.signal });
+        return runGovernedCodexTask(context, input, {
           ...admission,
           environment: {
             ALLOW_AGENT_CODEX_TASKS: "true",
@@ -192,15 +198,26 @@ for (const mode of [
               ...ports,
               launch: async (prepared, binding) => {
                 launches++;
-                return ports.launch(prepared, binding);
+                const result = await ports.launch(prepared, binding);
+                launched.resolve();
+                return result;
               },
             };
           },
-        })) as typeof runGovernedCodexTask,
+        });
+      }) as typeof runGovernedCodexTask,
     };
     const args = { prompt: "Complete the governed fixture" };
     const running = executeCodexTaskTool(f.context, args, dependencies);
     void running.catch(() => {});
+    // Start the existing 15-second approval observation after the owned peer
+    // launches. A task that ends during admission must still fail immediately.
+    await Promise.race([
+      launched.promise,
+      running.then(() => {
+        assert.fail("Owned task ended before its native peer launched");
+      }),
+    ]);
     const approval = await f.pending(running);
     assert.equal(
       (
