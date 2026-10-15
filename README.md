@@ -56,6 +56,10 @@ Extract the setup ZIP, then start it from the extracted folder:
 | Windows       | Double-click `START.cmd`             |
 | macOS / Linux | Run `sh START.command` in a terminal |
 
+In v0.5.2 and later, you can check prerequisites first with
+`node scripts/src/setup/bootstrap.mjs --check` from the extracted folder.
+Use `--help` for options. Checking starts no installation or model request.
+
 Open the **private local link** printed in the terminal. Choose your language, model provider, permissions and tool packs. The wizard creates the database and checks that the workspace is ready.
 
 **Keep the extracted bundle and the printed installation directory.** They are used to restart or resume your installation. [Restart, backups and server setup →](./docs/self-hosting.md)

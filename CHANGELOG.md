@@ -5,6 +5,20 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-10-15
+
+### Added
+
+- Setup `--help` and read-only `--check` commands for source and portable
+  installations. Checks explain missing prerequisites without starting services,
+  installing software or making model requests. Optional coding and private
+  phone requirements remain separate from ordinary installation readiness.
+
+### Fixed
+
+- Require Node.js 24 for the container setup launcher as well as native setup.
+- Explain invalid setup arguments without echoing their potentially private values.
+
 ## [0.5.1] - 2026-10-12
 
 ### Added

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -37,6 +37,82 @@ test("portable installer includes an offline evidence verifier", async () => {
       manifest.codingImage,
       `ghcr.io/owner/app@sha256:${"c".repeat(64)}`,
     );
+    const bootstrap = path.join(output, "scripts/src/setup/bootstrap.mjs");
+    const noTools = {
+      cwd: directory,
+      timeout: 10_000,
+      env: {
+        PATH: "",
+        SystemRoot: process.env.SystemRoot,
+        HOME: directory,
+        USERPROFILE: directory,
+        TEMP: directory,
+        TMP: directory,
+      },
+    };
+    const beforeCheck = await readdir(directory);
+    // An empty PATH alone cannot prove zero probes: preflight catches missing
+    // tools. Count every process launch before the bundled entrypoint loads.
+    const forbidProbes = `
+      import { createRequire, syncBuiltinESMExports } from "node:module";
+      const child = createRequire(process.cwd() + "/probe.cjs")("node:child_process");
+      let probes = 0;
+      for (const name of ["exec", "execFile", "spawn", "execSync", "execFileSync", "spawnSync"])
+        child[name] = () => { probes++; throw Error("unexpected setup probe"); };
+      syncBuiltinESMExports();
+      process.on("exit", () => { if (probes) process.exitCode = 9; });
+    `;
+    const preload = `data:text/javascript,${encodeURIComponent(forbidProbes)}`;
+    await assert.rejects(
+      run(
+        process.execPath,
+        [
+          "--import",
+          preload,
+          "--input-type=module",
+          "-e",
+          'import { execFile } from "node:child_process"; try { execFile("probe"); } catch {}',
+        ],
+        noTools,
+      ),
+      (error: unknown) => (error as { code: number }).code === 9,
+    );
+    const help = await run(
+      process.execPath,
+      ["--import", preload, bootstrap, "--help"],
+      noTools,
+    );
+    assert.match(help.stdout, /--check/u);
+    assert.equal(help.stderr, "");
+    await assert.rejects(
+      run(process.execPath, [bootstrap, "--check"], noTools),
+      (error: unknown) => {
+        const result = error as {
+          code: number;
+          stdout: string;
+          stderr: string;
+        };
+        assert.equal(result.code, 1);
+        assert.match(result.stdout, /Container: not ready/u);
+        assert.match(result.stdout, /Native source: not ready/u);
+        assert.match(result.stdout, /source checkout/u);
+        assert.match(result.stdout, /Install Docker/u);
+        assert.doesNotMatch(result.stdout, /ghcr\.io\/owner|private-secret/u);
+        assert.equal(result.stderr, "");
+        return true;
+      },
+    );
+    await assert.rejects(
+      run(process.execPath, [bootstrap, "--private-secret"], noTools),
+      (error: unknown) => {
+        const result = error as { code: number; stderr: string };
+        assert.equal(result.code, 1);
+        assert.match(result.stderr, /Use --help/u);
+        assert.doesNotMatch(result.stderr, /private-secret/u);
+        return true;
+      },
+    );
+    assert.deepEqual(await readdir(directory), beforeCheck);
     for (const file of [
       "compose.coding.yaml",
       "compose.coding-apparmor.yaml",

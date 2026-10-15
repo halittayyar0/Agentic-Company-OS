@@ -22,6 +22,27 @@ Install Node.js 24 and start a Docker Linux engine with Compose v2. Extract the 
 
 The wizard checks the selected installation mode and names missing local requirements. It distinguishes Docker missing from an installed but stopped engine, Windows containers, and missing Compose v2. Follow the indicated step and choose **Check again** without losing your choices. The guide opens in a separate tab so the private setup session stays open. This check does not test provider credentials or guarantee the later installation; the reviewed plan rechecks prerequisites before it runs.
 
+### Check prerequisites from a terminal
+
+Before opening the wizard, run `node scripts/src/setup/bootstrap.mjs --check`
+inside an extracted portable bundle, or `pnpm run setup -- --check` from source.
+Use `--help` for all options. These commands start no installation or model
+request and print no credentials, machine paths or raw service responses.
+`--check` probes installed tools and the current Docker/Tailscale connection;
+it does not install, start or configure those services.
+
+Exit **0** means at least one supported installation mode has its detected
+prerequisites; **1** means neither does. Optional coding workers and phone
+access do not block ordinary setup. Native setup still needs the source
+toolchain and an existing PostgreSQL database. The coding engine probe does
+not verify that the dedicated host AppArmor profile is loaded. A detected
+Tailscale connection still needs private HTTPS configuration. Provider
+credentials, model quality and a successful installation require later checks.
+
+Terminal help is English; the interactive wizard retains seven languages.
+Use diagnostic flags on their own; they cannot be combined with `--resume`
+or `--data-dir`. Resuming an installation starts its services.
+
 ## Optional coding workers
 
 **v0.4.0 and later.** In the container

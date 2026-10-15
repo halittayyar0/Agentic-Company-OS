@@ -60,10 +60,9 @@ export async function detectInstallCapabilities(
     common.push("unsupported_platform");
   if (!["x64", "arm64"].includes(architecture))
     common.push("unsupported_architecture");
+  if (!/^v24\.\d+\.\d+$/u.test(nodeVersion)) common.push("node_24_required");
   const nativeIssues = [...common];
   const containerIssues = [...common];
-  if (!/^v24\.\d+\.\d+$/u.test(nodeVersion))
-    nativeIssues.push("node_24_required");
   const [postgres, docker, compose, engine, phone, engineDetails] =
     await Promise.allSettled([
       run("psql", ["--version"]),

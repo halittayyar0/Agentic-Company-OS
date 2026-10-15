@@ -7,35 +7,21 @@ import { applyInstallationPreferences } from "./preferences";
 import { readInstallation } from "./resume";
 import { readDistribution } from "./distribution";
 import { detectInstallCapabilities } from "./preflight";
+import {
+  parseSetupArguments,
+  setupHelp,
+  SetupArgumentError,
+} from "./cli-options";
+import { setupCheckReport } from "./check-report";
 
-export function parseSetupArguments(argv: string[]) {
-  const args = argv[0] === "--" ? argv.slice(1) : argv;
-  let resume: string | undefined, parent: string | undefined;
-  for (let i = 0; i < args.length; i++) {
-    if (
-      (args[i] === "--resume" || args[i] === "--data-dir") &&
-      args[i + 1] &&
-      !args[i + 1].startsWith("--")
-    ) {
-      if (args[i] === "--resume") {
-        if (resume) throw new Error("Duplicate resume path");
-        resume = path.resolve(args[++i]);
-      } else {
-        if (parent) throw new Error("Duplicate data directory");
-        parent = path.resolve(args[++i]);
-      }
-    } else
-      throw new Error(
-        "Usage: pnpm run setup [--resume <installation directory>] [--data-dir <private parent directory>]",
-      );
-  }
-  if (resume && parent)
-    throw new Error("Resume already identifies its data directory");
-  return { resume, parent };
-}
+export { parseSetupArguments } from "./cli-options";
 export async function launchSetup(argv = process.argv.slice(2)) {
   const args = parseSetupArguments(argv),
     workspaceRoot = fileURLToPath(new URL("../../..", import.meta.url));
+  if (args.help) {
+    process.stdout.write(setupHelp);
+    return;
+  }
   const distribution = await readDistribution(workspaceRoot);
   const capabilities: typeof detectInstallCapabilities = async () => {
     const detected = await detectInstallCapabilities();
@@ -55,6 +41,12 @@ export async function launchSetup(argv = process.argv.slice(2)) {
         }
       : detected;
   };
+  if (args.check) {
+    const report = setupCheckReport(await capabilities());
+    process.stdout.write(report.text);
+    process.exitCode = report.exitCode;
+    return;
+  }
   const pnpmPath = distribution ? process.execPath : process.env.npm_execpath;
   if (!pnpmPath || !path.isAbsolute(pnpmPath))
     throw new Error("Start the installer with pnpm run setup");
@@ -142,9 +134,11 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
 ) {
-  launchSetup().catch(() => {
+  launchSetup().catch((error: unknown) => {
     process.stderr.write(
-      "Setup could not start. Check prerequisites and the installation directory. No credentials were printed.\n",
+      error instanceof SetupArgumentError
+        ? `${error.message}\n`
+        : "Setup could not start. Run with --check to inspect prerequisites, or --help for usage. Check the installation directory. No credentials were printed.\n",
     );
     process.exitCode = 1;
   });
