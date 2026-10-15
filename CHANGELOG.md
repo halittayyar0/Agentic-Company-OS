@@ -16,6 +16,9 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Fixed
 
+- Preserve chronological task and tool history across model rounds, including
+  protocol recovery. The original fenced task stays once before its results
+  instead of being replayed after them.
 - Require Node.js 24 for the container setup launcher as well as native setup.
 - Explain invalid setup arguments without echoing their potentially private values.
 
