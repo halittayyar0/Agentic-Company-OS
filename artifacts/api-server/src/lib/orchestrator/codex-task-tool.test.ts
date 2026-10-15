@@ -165,7 +165,10 @@ for (const mode of [
       .delete(codexTaskSessionsTable)
       .where(eq(codexTaskSessionsTable.taskId, f.task.id));
     let launches = 0;
-    const launched = Promise.withResolvers<void>();
+    let markLaunched!: () => void;
+    const launched = new Promise<void>((resolve) => {
+      markLaunched = resolve;
+    });
     const dependencies = {
       runTask: (async (context, input, admission) => {
         // Admission can outlast the approval observation window on a busy host.
@@ -199,7 +202,7 @@ for (const mode of [
               launch: async (prepared, binding) => {
                 launches++;
                 const result = await ports.launch(prepared, binding);
-                launched.resolve();
+                markLaunched();
                 return result;
               },
             };
@@ -213,7 +216,7 @@ for (const mode of [
     // Start the existing 15-second approval observation after the owned peer
     // launches. A task that ends during admission must still fail immediately.
     await Promise.race([
-      launched.promise,
+      launched,
       running.then(() => {
         assert.fail("Owned task ended before its native peer launched");
       }),
