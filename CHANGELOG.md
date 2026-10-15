@@ -16,6 +16,8 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Fixed
 
+- Use three concurrent source test files on the standard Intel Mac runner,
+  preserving the complete suite and existing test and job deadlines.
 - Preserve chronological task and tool history across model rounds, including
   protocol recovery. The original fenced task stays once before its results
   instead of being replayed after them.
