@@ -16,6 +16,8 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Fixed
 
+- Compile the Windows process controller directly with the built-in .NET
+  compiler, retaining the existing preparation deadline and private output checks.
 - Observe native tool approvals after the owned test peer launches, retaining
   the existing deadlines and testing admission that exceeds the observation window.
 - Keep Linux installation leases separate from unrelated TCP connections and

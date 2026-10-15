@@ -1,4 +1,4 @@
-/** Compiled with the Windows PowerShell/.NET Framework supplied by Windows.
+/** Compiled with the .NET Framework compiler supplied by Windows.
  * Public source, no package download or runtime credential in compiler input.
  * Job lifetime is separate from Codex's filesystem/network sandbox. */
 export const WINDOWS_OWNED_JOB_SOURCE = String.raw`
