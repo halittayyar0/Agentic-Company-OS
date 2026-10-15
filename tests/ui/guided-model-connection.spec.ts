@@ -368,7 +368,15 @@ test("pending ChatGPT sign-in survives closing without replay and cancellation i
       json: { registrations: [], activeRegistrationId: null },
     });
   });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
+  await page.evaluate(() => document.fonts.ready);
+  // Sample the real entry animation without a timing race or a fixed sleep.
+  // A user can begin pointing before the transition has finished.
+  await page.addStyleTag({
+    content:
+      '[role="dialog"][data-state="open"] { animation-duration: 10s !important; animation-timing-function: linear !important; }',
+  });
   const draft = page.locator("#project-outcome");
   await draft.fill("Check my meeting notes and list follow-up actions.");
   const opener = page.getByRole("button", {
@@ -377,7 +385,43 @@ test("pending ChatGPT sign-in survives closing without replay and cancellation i
   });
   await opener.click();
   let dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "ChatGPT", exact: true }).click();
+  const choice = dialog.getByRole("button", { name: "ChatGPT", exact: true });
+  const positions = await choice.evaluate(async (button) => {
+    const surface = button.closest('[role="dialog"]')!;
+    const animation = surface
+      .getAnimations()
+      .find(
+        (entry) =>
+          entry instanceof CSSAnimation && entry.animationName === "enter",
+      );
+    if (!animation?.effect)
+      throw new Error("The dialog entry animation is absent");
+    const duration = animation.effect.getTiming().duration;
+    if (
+      typeof duration !== "number" ||
+      !Number.isFinite(duration) ||
+      duration <= 0
+    )
+      throw new Error("The dialog entry animation has no finite duration");
+    animation.pause();
+    const rectAt = async (progress: number) => {
+      animation.currentTime = progress * duration;
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+      const { x, y, width, height } = button.getBoundingClientRect();
+      return { x, y, width, height };
+    };
+    return { early: await rectAt(0.2), late: await rectAt(0.8) };
+  });
+  for (const property of ["x", "y", "width", "height"] as const)
+    expect(
+      Math.abs(positions.early[property] - positions.late[property]),
+    ).toBeLessThanOrEqual(0.5);
+  await page.mouse.click(
+    positions.early.x + positions.early.width / 2,
+    positions.early.y + positions.early.height / 2,
+  );
   await dialog
     .getByRole("checkbox", {
       name: "The browser and backend run on this same computer.",

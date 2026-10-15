@@ -10,6 +10,7 @@ import { InferenceAccountingError } from "./inference-accounting-errors";
 import { poisonInferenceEvidence } from "./inference-evidence-poison";
 import { appendOperationsChanged } from "../operations/operations-events";
 import { logger } from "../logger";
+import { lockRuntimeControlState } from "./runtime-emergency-stop";
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 /** Caller holds marker lock; no task, lease, output, permission or replay writes.
  * Return conflict instead of throwing so durable poison survives commit. */
@@ -103,16 +104,18 @@ export async function reconcileSavedInferenceEvidence(
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
     throw new Error("Invalid evidence recovery batch size");
   const candidates = await db.execute(sql`SELECT i.id FROM inference_attempts i
-    JOIN inference_response_evidence e ON e.attempt_id=i.id
-    JOIN usage_events u ON u.ordinary_inference_id=i.id
-    WHERE i.state IN ('dispatched','uncertain') AND i.evidence_conflict_at IS NULL
+    LEFT JOIN inference_response_evidence e ON e.attempt_id=i.id
+    LEFT JOIN usage_events u ON u.ordinary_inference_id=i.id
+    WHERE i.evidence_conflict_at IS NULL AND (
+      (i.state='reserved' AND i.request_deadline_at <= now()) OR
+      (i.state IN ('dispatched','uncertain') AND e.attempt_id IS NOT NULL
+        AND (u.id IS NOT NULL OR i.request_deadline_at <= now())))
     ORDER BY i.created_at,i.id LIMIT ${limit}`);
   let applied = 0;
   for (const row of candidates.rows) {
     const id = String(row.id);
     try {
-      if ((await reconcileInferenceResponseEvidence(id)) === "applied")
-        applied++;
+      if (await recoverInterruptedInference(id)) applied++;
     } catch {
       logger.error(
         { attemptId: id, code: "INFERENCE_ACCOUNTING_REQUIRED" },
@@ -121,6 +124,72 @@ export async function reconcileSavedInferenceEvidence(
     }
   }
   return applied;
+}
+
+/** Expired preparation is provably unbilled; expired dispatch needs the exact
+ * owned response evidence. Neither path requests inference or resumes a task.
+ * Control -> marker matches dispatch, so its reserved-state CAS also fences a
+ * late preparer after recovery. A live response still owns its first receipt. */
+async function recoverInterruptedInference(id: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    await lockRuntimeControlState(tx);
+    await tx.execute(
+      sql`SELECT id FROM inference_attempts WHERE id=${id}::uuid FOR UPDATE`,
+    );
+    const [attempt] = await tx
+      .select()
+      .from(attempts)
+      .where(eq(attempts.id, id));
+    if (!attempt || attempt.evidenceConflictAt) return false;
+    const expired = attempt.requestDeadlineAt.getTime() <= Date.now();
+    if (attempt.state === "reserved" && !attempt.dispatchedAt && expired) {
+      await tx
+        .update(attempts)
+        .set({ state: "not_dispatched", settledAt: new Date() })
+        .where(eq(attempts.id, id));
+      return true;
+    }
+    if (!["dispatched", "uncertain"].includes(attempt.state)) return false;
+    const [original] = await tx
+      .select()
+      .from(receipts)
+      .where(eq(receipts.ordinaryInferenceId, id));
+    if (!original) {
+      if (!expired || !attempt.dispatchedAt || !attempt.invocationOwnerId)
+        return false;
+      const [saved] = await tx
+        .select()
+        .from(evidence)
+        .where(eq(evidence.attemptId, id));
+      if (!saved) return false;
+      if (
+        saved.invocationOwnerId !== attempt.invocationOwnerId ||
+        saved.modelId !== attempt.modelId ||
+        saved.provider !== attempt.provider
+      ) {
+        await poisonInferenceEvidence(tx, attempt);
+        return false;
+      }
+      // This records known inference usage, never a successful task outcome.
+      await tx.insert(receipts).values({
+        ordinaryInferenceId: id,
+        agentId: attempt.agentId,
+        taskId: attempt.taskId,
+        kind: attempt.kind,
+        modelId: attempt.modelId,
+        provider: attempt.provider,
+        outcome: "failed",
+        failureKind: "inference_interrupted",
+        promptTokens: saved.promptTokens,
+        completionTokens: saved.completionTokens,
+        totalTokens: saved.totalTokens,
+        usageReported: true,
+        reportedCostUsd: saved.reportedCostUsd,
+        createdAt: saved.observedAt,
+      });
+    }
+    return (await applyInferenceUsageCorrection(tx, id)) === "applied";
+  });
 }
 /** Internal recovery consumes trusted persisted evidence. Never accepts token
  * totals from a browser and never requests inference to reconstruct billing. */

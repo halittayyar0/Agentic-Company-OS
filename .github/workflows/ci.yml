@@ -299,6 +299,7 @@ jobs:
         run: >-
           node --import tsx --test --test-concurrency=1 --test-timeout=60000
           artifacts/api-server/src/lib/orchestrator/inference-accounting-postgres.test.ts
+          artifacts/api-server/src/lib/orchestrator/inference-crash-recovery-postgres.test.ts
 
       - name: Prove PostgreSQL source-check and native-session admission serialization
         env:
@@ -532,6 +533,16 @@ jobs:
             artifacts/endurance-reports/windows-native-wall-clock.json.primary-evidence.jsonl
             artifacts/endurance-reports/windows-native-wall-clock.json.browser/**
           if-no-files-found: warn
+      - name: Preserve redacted native runtime logs on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-native-runtime-failure-logs
+          path: |
+            artifacts/endurance-reports/windows-native-wall-clock.json.native-runtime/**/logs/app-generation-*.log
+            artifacts/endurance-reports/windows-native-wall-clock.json.native-runtime/**/logs/worker-*-generation-*.log
+          if-no-files-found: warn
+          compression-level: 6
 
   container:
     name: Build and exercise production and endurance containers

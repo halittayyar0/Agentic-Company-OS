@@ -995,6 +995,23 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
         return { ...gap, task };
       }),
     );
+    let inferenceAccounting: Record<string, unknown> | undefined;
+    if (gaps.length > 0) {
+      try {
+        const accounting = await this.requestJson(
+          `/api/inference-accounting?scopeType=task&scopeId=${this.requireProjectId()}`,
+          { signal },
+        );
+        if (
+          accounting.scopeType === "task" &&
+          accounting.scopeId === this.requireProjectId() &&
+          accounting.rootTaskId === this.requireProjectId()
+        )
+          inferenceAccounting = accounting;
+      } catch {
+        // Preserve responsibility diagnostics when accounting is unavailable.
+      }
+    }
     signal?.throwIfAborted();
     return normalizeResponsibilityGapSnapshot(
       {
@@ -1002,6 +1019,7 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
         expectedCycles: this.requiredHealthBuckets,
         attemptsTruncated: snapshot.truncation.attempts,
         receiptsTruncated: snapshot.truncation.receipts,
+        ...(inferenceAccounting ? { inferenceAccounting } : {}),
         gaps: details,
       },
       this.requiredHealthBuckets,

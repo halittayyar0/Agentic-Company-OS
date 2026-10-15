@@ -1,7 +1,7 @@
 {
   "linux": {
     "source": {
-      "tests": 2640,
+      "tests": 2641,
       "passed": 2603,
       "skippedCases": [
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
@@ -25,6 +25,7 @@
         "PostgreSQL converges receipt, browser-affinity, and reconciliation races across independent adapters # DATABASE_URL is absent; real PostgreSQL operation-receipt race proof is environment-blocked",
         "PostgreSQL operator identity admits one process and fences stop and expiry across connections # DATABASE_URL is absent; native PostgreSQL operator process race proof is environment-blocked",
         "PostgreSQL production heartbeat and recovery lock ordering cannot deadlock or steal a renewed attempt # DATABASE_URL is absent; real PostgreSQL two-connection race proof is environment-blocked",
+        "PostgreSQL recovers only provably unstarted or fully evidenced requests after worker loss # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL retains a family fence across concurrent workers and an owned process crash # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL serializes both orders of real source-check and native-session admission without modifying the original # Actual PostgreSQL row-lock proof requires the disposable native gate",
         "Windows aliases and alternate streams cannot change an unreviewed target # Windows filesystem aliases",
@@ -50,7 +51,7 @@
   },
   "windows": {
     "source": {
-      "tests": 2640,
+      "tests": 2641,
       "passed": 2607,
       "skippedCases": [
         "Linux installation lock is released when its owning process crashes # SKIP",
@@ -75,6 +76,7 @@
         "PostgreSQL converges receipt, browser-affinity, and reconciliation races across independent adapters # DATABASE_URL is absent; real PostgreSQL operation-receipt race proof is environment-blocked",
         "PostgreSQL operator identity admits one process and fences stop and expiry across connections # DATABASE_URL is absent; native PostgreSQL operator process race proof is environment-blocked",
         "PostgreSQL production heartbeat and recovery lock ordering cannot deadlock or steal a renewed attempt # DATABASE_URL is absent; real PostgreSQL two-connection race proof is environment-blocked",
+        "PostgreSQL recovers only provably unstarted or fully evidenced requests after worker loss # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL retains a family fence across concurrent workers and an owned process crash # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL serializes both orders of real source-check and native-session admission without modifying the original # Actual PostgreSQL row-lock proof requires the disposable native gate",
         "actual Linux Codex approval files=false enforces the owned named permission boundary without inference # SKIP",
@@ -91,7 +93,7 @@
   },
   "macos-arm-source": {
     "source": {
-      "tests": 2640,
+      "tests": 2641,
       "passed": 2601,
       "skippedCases": [
         "Linux installation lock is released when its owning process crashes # SKIP",
@@ -116,6 +118,7 @@
         "PostgreSQL converges receipt, browser-affinity, and reconciliation races across independent adapters # DATABASE_URL is absent; real PostgreSQL operation-receipt race proof is environment-blocked",
         "PostgreSQL operator identity admits one process and fences stop and expiry across connections # DATABASE_URL is absent; native PostgreSQL operator process race proof is environment-blocked",
         "PostgreSQL production heartbeat and recovery lock ordering cannot deadlock or steal a renewed attempt # DATABASE_URL is absent; real PostgreSQL two-connection race proof is environment-blocked",
+        "PostgreSQL recovers only provably unstarted or fully evidenced requests after worker loss # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL retains a family fence across concurrent workers and an owned process crash # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL serializes both orders of real source-check and native-session admission without modifying the original # Actual PostgreSQL row-lock proof requires the disposable native gate",
         "Windows aliases and alternate streams cannot change an unreviewed target # Windows filesystem aliases",
@@ -138,7 +141,7 @@
   },
   "macos-intel-source": {
     "source": {
-      "tests": 2640,
+      "tests": 2641,
       "passed": 2601,
       "skippedCases": [
         "Linux installation lock is released when its owning process crashes # SKIP",
@@ -163,6 +166,7 @@
         "PostgreSQL converges receipt, browser-affinity, and reconciliation races across independent adapters # DATABASE_URL is absent; real PostgreSQL operation-receipt race proof is environment-blocked",
         "PostgreSQL operator identity admits one process and fences stop and expiry across connections # DATABASE_URL is absent; native PostgreSQL operator process race proof is environment-blocked",
         "PostgreSQL production heartbeat and recovery lock ordering cannot deadlock or steal a renewed attempt # DATABASE_URL is absent; real PostgreSQL two-connection race proof is environment-blocked",
+        "PostgreSQL recovers only provably unstarted or fully evidenced requests after worker loss # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL retains a family fence across concurrent workers and an owned process crash # No disposable PostgreSQL supplied; no database was imported or migrated",
         "PostgreSQL serializes both orders of real source-check and native-session admission without modifying the original # Actual PostgreSQL row-lock proof requires the disposable native gate",
         "Windows aliases and alternate streams cannot change an unreviewed target # Windows filesystem aliases",

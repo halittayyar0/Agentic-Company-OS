@@ -17,19 +17,39 @@ async function main() {
     taskId = Number(taskValue);
   assert.ok(Number.isSafeInteger(agentId) && agentId > 0);
   assert.ok(Number.isSafeInteger(taskId) && taskId > 0);
-  assert.ok(mode === "park" || mode === "complete");
+  assert.ok(
+    ["park", "park-reserved", "park-evidenced", "complete"].includes(mode),
+  );
   const { dbReady, closeDatabase } = await import("@workspace/db");
   const { runAccountedCompletion, InferenceAccountingError } =
     await import("../inference-accounting");
   await dbReady;
   let calls = 0;
   const runner: typeof createChatCompletion = async (params) => {
+    if (mode === "park-reserved") {
+      process.send?.({ kind: "reserved", calls });
+      await new Promise<void>((resolve) =>
+        process.once("message", () => resolve()),
+      );
+    }
     await params.beforeRequest?.();
     calls++;
     if (mode === "park") {
       process.send?.({ kind: "dispatched", calls });
       // Parent kills only this owned fixture process after the durable dispatch.
       await new Promise<void>(() => {});
+    }
+    if (mode === "park-evidenced") {
+      await params.onResponseUsage?.({
+        provider: "openrouter",
+        model: params.model,
+        responseId: "owned-offline-fixture",
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      });
+      process.send?.({ kind: "evidenced", calls });
+      await new Promise<void>((resolve) =>
+        process.once("message", () => resolve()),
+      );
     }
     return {
       provider: "openrouter",

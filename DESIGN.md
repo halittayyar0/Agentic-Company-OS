@@ -204,6 +204,7 @@ Canvas and paper remain in normal document flow. A component consumes these toke
 ## Motion
 
 - Controls and disclosure: 160–200ms.
+- Dialogs and confirmations fade at their final position and size. Their entry and exit animations must not move pointer targets or delay interaction.
 - Evidence-backed handoff or recovery transition: 480–700ms.
 - Status pulse: at most 1.8s and only while a real bounded state is active.
 - No infinite scanner, ticker, or animation used to imply agent activity.
