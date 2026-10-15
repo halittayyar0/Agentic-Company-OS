@@ -790,13 +790,9 @@ export async function stepTask(
           const advertisedToolNames = new Set(
             requestTools.map((tool) => tool.function.name),
           );
-          // Keep the original fenced task as the newest user input after every
-          // tool result or protocol correction. Move its one copy instead of
-          // repeating it; preserve assistant/tool pairs and correction text.
-          const history = messages.slice(2);
-          const requestMessages = history.length
-            ? [messages[0], ...history, messages[1]]
-            : messages;
+          // Keep the fenced task once, before the assistant/tool history.
+          // Replaying it after results can look like a fresh request and
+          // displaces later protocol corrections from their original order.
           const result = await runAccountedCompletion(
             {
               provider: route.provider,
@@ -811,7 +807,7 @@ export async function stepTask(
             },
             {
               model: route.modelId,
-              messages: requestMessages,
+              messages,
               tools: requestTools,
               ...completionTokenControl(
                 route.modelId,

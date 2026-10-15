@@ -300,7 +300,7 @@ for (const locale of WORKSPACE_LOCALES) {
 }
 
 for (const locale of WORKSPACE_LOCALES) {
-  test(`${locale}: every recovery and tool round keeps one exact task context in the latest user message`, async (t) => {
+  test(`${locale}: every recovery and tool round appends history after one exact task context`, async (t) => {
     const f = await fixture(t);
     const brief =
       "Use calculate for 17 × 23, report 391, then complete this one task. Do not delegate, create agents, browse or write files.";
@@ -401,18 +401,19 @@ for (const locale of WORKSPACE_LOCALES) {
         requests[0][0],
         "policy and custom expertise must be unchanged",
       );
-      const lastUser = request
-        .filter((message) => message.role === "user")
-        .at(-1);
-      assert.equal(
-        request.at(-1),
-        lastUser,
-        `round ${index + 1}: the task must be the most recent input`,
+      assert.deepEqual(
+        request[1],
+        requests[0][1],
+        `round ${index + 1}: preserve the exact task before its history`,
       );
-      assert.ok(
-        String(lastUser?.content).includes(originalTaskMessage),
-        `round ${index + 1}: preserve the entire exact task message`,
-      );
+      if (index > 0) {
+        const previous = requests[index - 1];
+        assert.deepEqual(
+          request.slice(0, previous.length),
+          previous,
+          `round ${index + 1}: append real results and recovery without replaying the task`,
+        );
+      }
       assert.equal(
         request
           .map((message) => String(message.content))
@@ -595,9 +596,9 @@ for (const locale of WORKSPACE_LOCALES) {
           "policy and custom expertise stay exact",
         );
         assert.deepEqual(
-          requests[2].at(-1),
+          requests[2][1],
           requests[0][1],
-          "the complete original owner task stays latest",
+          "the complete original owner task stays before compacted history",
         );
         const beforeCalculation = requests[1].find(
           (message) => message.role === "tool",
