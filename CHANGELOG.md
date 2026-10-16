@@ -31,6 +31,8 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 - Preserve an already-correct Windows storage owner while creating private
   access rules, so ordinary users can initialize storage on a second NTFS drive.
+- Explain elevated Windows/root launch attempts before creating native data;
+  matching-host Windows acceptance uses a disposable ordinary account.
 - Embed a process-only UTF-8 manifest in private PostgreSQL executables so
   Windows 10 1903+/11 installations can use Unicode package and data paths.
 

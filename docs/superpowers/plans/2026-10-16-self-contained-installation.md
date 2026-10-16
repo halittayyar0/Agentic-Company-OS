@@ -95,3 +95,6 @@ Files: native distribution workflow, archive installation smoke harness, release
 - Independent review revisited final module paths, Windows UTF-8 manifests, provenance-bound PG copy and ACL repair; no remaining Important findings. Fresh committed artifacts, all matching-host CI and actual local-model task remain publication gates.
 
 - The original local full Windows source run finished with 2,674 cases: 2,625 pass, 14 failures, 35 named skips, zero cancellation. All 14 failures arose in five storage-dependent files started before the ACL fix; original output is retained. Re-running those five affected files on D: with the fixed storage implementation, rather than hiding the original result. Final hosted full-source gates remain mandatory.
+
+- The five affected Windows source files passed a complete rerun: 17/17, zero failures or skips. The original failing full run remains retained.
+- Original PR64 native run 38963801286 passed both macOS targets and both Linux targets. Windows exposed the hosted runner full-administrator token, which PostgreSQL correctly refuses. The supported package requires an ordinary account. Add an early native admin/root diagnostic and a CI-only disposable non-administrator fixture; do not weaken PostgreSQL, UAC, storage or machine policy. The two token regressions increase source census to 2,676 with unchanged named skips.

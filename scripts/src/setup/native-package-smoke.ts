@@ -282,6 +282,12 @@ try {
     if (state.phase === "complete" || state.phase === "failed") break;
     await delay(500);
   } while (Date.now() < deadline);
+  proof.lastInstallationState = {
+    phase: state.phase,
+    step: state.step,
+    completedSteps: state.completedSteps,
+    error: state.error,
+  };
   assert.equal(
     state.phase,
     "complete",

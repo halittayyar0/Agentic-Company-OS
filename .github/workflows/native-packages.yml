@@ -144,10 +144,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native package creation failed' }
 
       - name: Prove extracted archive installation, first job, backup and resume
+        if: runner.os != 'Windows'
         timeout-minutes: 20
         run: |
           pnpm exec tsx scripts/src/setup/native-package-smoke.ts --archive $env:NATIVE_PACKAGE_ARCHIVE --evidence $env:NATIVE_PACKAGE_EVIDENCE
           if ($LASTEXITCODE -ne 0) { throw 'Final native archive acceptance failed' }
+
+      - name: Prove Windows archive as an ordinary local user
+        if: runner.os == 'Windows'
+        timeout-minutes: 20
+        run: |
+          & (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe') -NoLogo -NoProfile -NonInteractive -File scripts/test-native-package-windows.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Ordinary-user Windows archive acceptance failed' }
 
       - name: Require source to remain clean after archive acceptance
         run: |
@@ -161,6 +169,7 @@ jobs:
           name: native-package-${{ matrix.target }}-evidence
           path: |
             ${{ runner.temp }}/native-package-${{ matrix.target }}-evidence.json
+            ${{ runner.temp }}/native-package-${{ matrix.target }}-evidence.json.windows-fixture.json
             ${{ runner.temp }}/native-postgres-build.log
             ${{ runner.temp }}/native-postgres-build/runtime/native-build-provenance.json
           if-no-files-found: warn

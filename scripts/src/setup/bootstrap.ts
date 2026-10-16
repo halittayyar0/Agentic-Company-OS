@@ -15,6 +15,7 @@ import {
 } from "./cli-options";
 import { setupCheckReport } from "./check-report";
 import { readNativeDistribution } from "./native-distribution";
+import { assertNativeUser } from "./native-user";
 import {
   openNativeBrowser,
   readNativeLaunchPointer,
@@ -43,6 +44,7 @@ export async function launchSetup(argv = process.argv.slice(2)) {
       (await realpath(process.execPath)) !== (await realpath(bundledNode))
     )
       throw new Error("native_package_node_runtime");
+    await assertNativeUser();
     process.env.PATH = [
       path.dirname(bundledNode),
       path.join(workspaceRoot, "runtime/postgres/bin"),
