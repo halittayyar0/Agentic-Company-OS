@@ -222,11 +222,27 @@ try {
     exit 1
 }
 '@
-    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($childScript))
+    $phase = 'prepare_ordinary_entry'
+    $entry = Join-Path $fixture 'ordinary-user-entry.ps1'
+    $childBytes = [Text.UTF8Encoding]::new($false).GetBytes($childScript)
+    [IO.File]::WriteAllBytes($entry, $childBytes)
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try { $entryHash = [Convert]::ToBase64String($sha256.ComputeHash($childBytes)) } finally { $sha256.Dispose() }
+    $env:ACOS_NATIVE_CI_ENTRY = $entry
+    $env:ACOS_NATIVE_CI_HASH = $entryHash
+    # CreateProcessWithLogonW has a 1,024-character command-line limit. Verify
+    # the exact entry bytes before executing them through this static reader.
+    $trampoline = @'
+$b=[IO.File]::ReadAllBytes($env:ACOS_NATIVE_CI_ENTRY);$s=[Security.Cryptography.SHA256]::Create();$h=[Convert]::ToBase64String($s.ComputeHash($b));$s.Dispose();if($h -cne $env:ACOS_NATIVE_CI_HASH){exit 41};&([scriptblock]::Create([Text.Encoding]::UTF8.GetString($b)))
+'@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($trampoline))
+    $launchArguments = @('-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded)
+    $result.credentialCommandLineCharacters = ('"' + $systemPowerShell + '" ' + ($launchArguments -join ' ')).Length + 1
+    if ($result.credentialCommandLineCharacters -ge 1024) { throw 'windows_native_fixture_commandline_too_long' }
     $phase = 'launch_ordinary_user'
     # Start-Process inherits process environment; paths never enter source text.
     # Alternate credentials require Secondary Logon and a loadable user profile.
-    $process = Start-Process -FilePath $systemPowerShell -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded) -Credential $credential -LoadUserProfile -WindowStyle Hidden -WorkingDirectory $workspace -RedirectStandardOutput (Join-Path $fixture 'private-stdout.log') -RedirectStandardError (Join-Path $fixture 'private-stderr.log') -PassThru
+    $process = Start-Process -FilePath $systemPowerShell -ArgumentList $launchArguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -WorkingDirectory $workspace -RedirectStandardOutput (Join-Path $fixture 'private-stdout.log') -RedirectStandardError (Join-Path $fixture 'private-stderr.log') -PassThru
     $result.processCreated = $true
     $phase = 'archive_acceptance'
     if (-not $process.WaitForExit(18 * 60 * 1000)) {
@@ -287,7 +303,7 @@ try {
     }
     if ($securePassword) { $securePassword.Dispose() }
     $credential = $null
-    foreach ($key in @('ACOS_NATIVE_CI_WORKSPACE', 'ACOS_NATIVE_CI_NODE', 'ACOS_NATIVE_CI_PYTHON', 'ACOS_NATIVE_CI_ARCHIVE', 'ACOS_NATIVE_CI_FIXTURE', 'ACOS_NATIVE_CI_SID')) { [Environment]::SetEnvironmentVariable($key, $null) }
+    foreach ($key in @('ACOS_NATIVE_CI_WORKSPACE', 'ACOS_NATIVE_CI_NODE', 'ACOS_NATIVE_CI_PYTHON', 'ACOS_NATIVE_CI_ARCHIVE', 'ACOS_NATIVE_CI_FIXTURE', 'ACOS_NATIVE_CI_SID', 'ACOS_NATIVE_CI_ENTRY', 'ACOS_NATIVE_CI_HASH')) { [Environment]::SetEnvironmentVariable($key, $null) }
     $result.cleanupVerified = $cleanupOkay
     if (-not $cleanupOkay) { $result.accepted = $false }
     $summary = $result | ConvertTo-Json -Depth 4
