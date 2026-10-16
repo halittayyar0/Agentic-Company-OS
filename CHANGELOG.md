@@ -19,6 +19,10 @@ All notable changes to Agentic Company OS are documented here. The project uses
   checks retain their existing authority.
 - Update reusable-brief guidance to describe the released workflow and distinguish
   bounded task summaries from complete execution memory.
+- Retain sanitized first-observation timings for pinned Ollama startup on success
+  and failure. HTTP readiness, its original 20-second deadline and all cloud and
+  local-selector boundary checks are unchanged. The earlier Apple Silicon
+  initialization timeout remains a separate unresolved observation.
 
 ## [0.5.2] - 2026-10-15
 

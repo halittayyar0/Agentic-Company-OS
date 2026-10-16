@@ -48,6 +48,30 @@ browser, model and distribution acceptance separately. These focused working-tre
 checks do not substitute for those gates. Historical failed observations remain
 separate from accepted runs.
 
+## Retained platform observation and startup telemetry
+
+The first candidate's original PR #60 Apple Silicon job
+`116769417013` (run `38837378249`, attempt 1) failed the pinned Ollama
+20-second HTTP readiness check. Its process was still running after selecting
+the embedded Metal library; loading/discovery had not completed. The original
+receipt and archive are retained. Its exact trigger is not known.
+
+A separately named cold-start diagnostic on commit
+`901b8b3d20d00c9f799a926ea415ea7b6b636efd`, run `38838357286`, used an explicitly
+declared 75-second observational ceiling. That different execution reached HTTP
+readiness in approximately 15.3 seconds, passed the unchanged selector/cloud
+assertions and cleaned up its owned resources. It is not the original gate
+passing and does not establish its failure's cause.
+
+The updated source adds sanitized first-observation offsets to ordinary startup
+receipts on success and failure. These are polling observations, not exact
+upstream phase durations. Two new deterministic cases failed before the helper
+existed; the complete boundary module then passed 19 tests without skips, and
+workspace typechecks passed. Review found no actionable issue in the two changed
+source/test files. The original 20-second readiness limit, 500ms probe timeout,
+100ms polling, single daemon, cloud/selector assertions and cleanup are retained.
+Fresh original candidate/main gates remain required.
+
 ## Boundaries
 
 This remains a bounded view of up to eight relevant summaries. Older useful
