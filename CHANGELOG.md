@@ -5,6 +5,21 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-16
+
+### Fixed
+
+- Keep recorded user answers and useful activity in the next task context when
+  routine lifecycle notifications are frequent. Filter only recognized minimal
+  informational envelopes before the existing eight-event limit. Warnings,
+  uncertain outcomes, retry release, recovery, reconciliation, control changes,
+  sampling and unfamiliar metadata remain eligible; the operator ledger is intact.
+- Order task activity by timestamp and ID so simultaneous events retain the
+  newest evidence consistently. Core policy, permissions, approval and completion
+  checks retain their existing authority.
+- Update reusable-brief guidance to describe the released workflow and distinguish
+  bounded task summaries from complete execution memory.
+
 ## [0.5.2] - 2026-10-15
 
 ### Added

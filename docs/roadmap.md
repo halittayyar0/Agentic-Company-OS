@@ -1,8 +1,8 @@
 # Product roadmap
 
-Last reviewed: 9 October 2026
+Last reviewed: 16 October 2026
 
-Agentic Company OS is a pre-1.0, local-first system for one operator. The roadmap prioritizes a useful first result, recovery and inspectable evidence. Version 0.4.0 source is on main; downloadable releases have separate distribution acceptance. Passing controlled tests does not establish every model's output quality or long-term unattended reliability.
+Agentic Company OS is a pre-1.0, local-first system for one operator. The roadmap prioritizes a useful first result, recovery and inspectable evidence. Downloadable releases have separate distribution acceptance; the [latest release](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) identifies its exact source and verification scope. Passing controlled tests does not establish every model's output quality or long-term unattended reliability.
 
 ## Implemented in 0.4.0
 
@@ -26,10 +26,14 @@ Agentic Company OS is a pre-1.0, local-first system for one operator. The roadma
 - Accept the exact main distribution before moving the latest downloadable release. Ordinary immutable images support Linux x64/ARM64; optional coding requires the separate Linux x64 image and enforced AppArmor profile. Native macOS coding remains unsupported.
 - Complete real private-HTTPS phone, assistive-technology, native-speaker and long-duration acceptance. Keep these distinct from desktop browser emulation and controlled local inference.
 
-## Next useful outcome cycle — unreleased
+## Delivered recovery and reuse
 
-- Recover a project creation after response loss without creating another job. The prepared contract and New-project composer use durable request identity, token-free reads and explicit same-request retries; final candidate release gates remain required.
-- Reuse successful briefs through the existing personal skill and project-composer flows. Retain evidence, editable inputs and visible cost limits before introducing more complex triggers or a workflow builder.
+- Project creation can recover after response loss without creating another job. The New-project composer uses durable request identity, token-free reads and explicit same-request retries. This workflow is available in v0.5.0 and later packages.
+- Reuse saved briefs through the existing personal skill and project-composer flows, with editable inputs, retained drafts and visible cost limits. Copying a brief does not establish a proven method from an agent's result.
+- Task continuation selects useful recent summaries before applying its eight-event bound. Routine lifecycle traffic cannot displace a recorded answer; meaningful operational evidence and the complete operator ledger remain available. See [task-context verification](./verification/2026-10-16-task-context-continuation.md) for scope and remaining limits.
+
+## Next useful outcome cycles
+
 - Measure adoption by first useful result and successful recovery, with opt-in local metrics. Feature count and additional agents are not success criteria.
 
 ## Beta gate: stronger isolation and identity
