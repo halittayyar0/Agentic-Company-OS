@@ -233,7 +233,7 @@ try {
     # CreateProcessWithLogonW has a 1,024-character command-line limit. Verify
     # the exact entry bytes before executing them through this static reader.
     $trampoline = @'
-$b=[IO.File]::ReadAllBytes($env:ACOS_NATIVE_CI_ENTRY);$s=[Security.Cryptography.SHA256]::Create();$h=[Convert]::ToBase64String($s.ComputeHash($b));$s.Dispose();if($h -cne $env:ACOS_NATIVE_CI_HASH){exit 41};&([scriptblock]::Create([Text.Encoding]::UTF8.GetString($b)))
+[Console]::WriteLine(('ENTRY={0};HASH={1};CI={2};SID={3}'-f[bool]$env:ACOS_NATIVE_CI_ENTRY,[bool]$env:ACOS_NATIVE_CI_HASH,[bool]$env:GITHUB_ACTIONS,[bool]$env:ACOS_NATIVE_CI_SID));exit 17
 '@
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($trampoline))
     $launchArguments = @('-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded)
@@ -304,6 +304,13 @@ $b=[IO.File]::ReadAllBytes($env:ACOS_NATIVE_CI_ENTRY);$s=[Security.Cryptography.
     if ($securePassword) { $securePassword.Dispose() }
     $credential = $null
     foreach ($key in @('ACOS_NATIVE_CI_WORKSPACE', 'ACOS_NATIVE_CI_NODE', 'ACOS_NATIVE_CI_PYTHON', 'ACOS_NATIVE_CI_ARCHIVE', 'ACOS_NATIVE_CI_FIXTURE', 'ACOS_NATIVE_CI_SID', 'ACOS_NATIVE_CI_ENTRY', 'ACOS_NATIVE_CI_HASH')) { [Environment]::SetEnvironmentVariable($key, $null) }
+    $probeOutputPath = Join-Path $fixture 'private-stdout.log'
+    if (Test-Path -LiteralPath $probeOutputPath -PathType Leaf) {
+        $probeOutput = [IO.File]::ReadAllText($probeOutputPath).Trim()
+        if ($probeOutput -cmatch '^ENTRY=(True|False);HASH=(True|False);CI=(True|False);SID=(True|False)$') {
+            $result.environmentPresence = [ordered]@{ entry = $Matches[1] -ceq 'True'; hash = $Matches[2] -ceq 'True'; ci = $Matches[3] -ceq 'True'; sid = $Matches[4] -ceq 'True' }
+        }
+    }
     $result.cleanupVerified = $cleanupOkay
     if (-not $cleanupOkay) { $result.accepted = $false }
     $summary = $result | ConvertTo-Json -Depth 4
