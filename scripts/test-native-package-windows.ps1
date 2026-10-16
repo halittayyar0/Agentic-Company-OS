@@ -88,6 +88,9 @@ $result = [ordered]@{
     cleanupVerified = $false
     timedOut = $false
     smokeExitCode = $null
+    processCreated = $false
+    contextParsed = $false
+    ordinaryUserVerified = $false
     secondaryLogonStartMode = $secondaryLogon.StartMode
 }
 
@@ -110,6 +113,34 @@ function Get-FixtureProcesses($Sid) {
         # A process can exit during enumeration. Never infer ownership from its name.
         $owner = Invoke-CimMethod -InputObject $candidate -MethodName GetOwnerSid -ErrorAction SilentlyContinue
         if ($owner -and $owner.ReturnValue -eq 0 -and $owner.Sid -eq $Sid.Value) { $candidate }
+    }
+}
+
+function Get-CiWrappedNativeErrorCodes([string]$Message) {
+    # Start-Process can discard its Win32Exception. Match only known OS error
+    # messages generated in the same locale; never serialize the original text.
+    $suffix = $Message.TrimEnd([char[]]". `r`n`t")
+    foreach ($code in @(2, 3, 5, 6, 8, 50, 87, 123, 126, 127, 193, 203, 206, 267, 740, 1058, 1060, 1062, 1314, 1326, 1330, 1331, 1385, 1907)) {
+        $known = ([ComponentModel.Win32Exception]::new($code)).Message.TrimEnd([char[]]". `r`n`t")
+        if ($known.Length -gt 0 -and $suffix.EndsWith($known, [StringComparison]::OrdinalIgnoreCase)) { [int]$code }
+    }
+}
+
+function Get-CiExceptionDiagnostics([Exception]$Exception) {
+    # Exception messages, ErrorRecords and stack traces can contain credentials
+    # or private paths. Retain only bounded, typed numeric launch diagnostics.
+    $current = $Exception
+    for ($depth = 0; $current -and $depth -lt 5; $depth++) {
+        $entry = [ordered]@{
+            exceptionType = $current.GetType().FullName
+            hresult = [int]$current.HResult
+            wrappedNativeErrorCodes = @(Get-CiWrappedNativeErrorCodes $current.Message)
+        }
+        if ($current -is [ComponentModel.Win32Exception]) {
+            $entry.nativeErrorCode = [int]$current.NativeErrorCode
+        }
+        [pscustomobject]$entry
+        $current = $current.InnerException
     }
 }
 
@@ -148,25 +179,19 @@ try {
     Grant-CiRead $pythonInfo.prefix $true $account.SID
     Grant-CiRead $archive $false $account.SID
 
-    $env:ACOS_NATIVE_CI_WORKSPACE = $workspace
-    $env:ACOS_NATIVE_CI_NODE = $node
-    $env:ACOS_NATIVE_CI_PYTHON = $pythonInfo.executable
-    $env:ACOS_NATIVE_CI_ARCHIVE = $archive
-    $env:ACOS_NATIVE_CI_FIXTURE = $fixture
-    $env:ACOS_NATIVE_CI_SID = $account.SID.Value
     $childScript = @'
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 try {
-    if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows') { throw 'not_ci' }
+    if ($i.schemaVersion -ne 1 -or $i.githubActions -ne 'true' -or $i.runnerOs -ne 'Windows' -or $i.runId -notmatch '^\d+$') { throw 'not_ci' }
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = [Security.Principal.WindowsPrincipal]::new($identity)
-    if ($identity.User.Value -ne $env:ACOS_NATIVE_CI_SID -or $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'wrong_token' }
-    $workspace = $env:ACOS_NATIVE_CI_WORKSPACE
-    $node = $env:ACOS_NATIVE_CI_NODE
-    $python = $env:ACOS_NATIVE_CI_PYTHON
-    $archive = $env:ACOS_NATIVE_CI_ARCHIVE
-    $fixture = $env:ACOS_NATIVE_CI_FIXTURE
+    if ($identity.User.Value -ne $i.expectedSid -or $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'wrong_token' }
+    $workspace = $i.workspace
+    $node = $i.node
+    $python = $i.python
+    $archive = $i.archive
+    $fixture = $i.fixture
     $keep = @{}
     foreach ($key in @('SystemRoot', 'SystemDrive', 'WINDIR', 'COMSPEC', 'COMPUTERNAME', 'PROCESSOR_ARCHITECTURE', 'NUMBER_OF_PROCESSORS', 'OS')) {
         $keep[$key] = [Environment]::GetEnvironmentVariable($key)
@@ -191,11 +216,45 @@ try {
     exit 1
 }
 '@
-    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($childScript))
+    $phase = 'prepare_ordinary_entry'
+    $entry = Join-Path $fixture 'entry.json'
+    $payload = [ordered]@{
+        source = $childScript
+        inputs = [ordered]@{
+            schemaVersion = 1
+            githubActions = $env:GITHUB_ACTIONS
+            runnerOs = $env:RUNNER_OS
+            runId = $env:GITHUB_RUN_ID
+            expectedSid = $account.SID.Value
+            workspace = $workspace
+            node = $node
+            python = $pythonInfo.executable
+            archive = $archive
+            fixture = $fixture
+        }
+    } | ConvertTo-Json -Depth 4 -Compress
+    $payloadBytes = [Text.UTF8Encoding]::new($false).GetBytes($payload)
+    [IO.File]::WriteAllBytes($entry, $payloadBytes)
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try { $entryHash = [Convert]::ToBase64String($sha256.ComputeHash($payloadBytes)) } finally { $sha256.Dispose() }
+    if ($entryHash -cnotmatch '^[A-Za-z0-9+/]{43}=$') { throw 'windows_native_fixture_payload_hash_invalid' }
+    # CreateProcessWithLogonW has a 1,024-character command-line limit. Verify
+    # the exact entry bytes before executing them through this static reader.
+    $trampoline = @'
+$b=[IO.File]::ReadAllBytes('entry.json');$s=[Security.Cryptography.SHA256]::Create();$h=[Convert]::ToBase64String($s.ComputeHash($b));$s.Dispose();if($h -cne '__PAYLOAD_HASH__'){exit 41};$d=[Text.Encoding]::UTF8.GetString($b)|ConvertFrom-Json;$i=$d.inputs;&([scriptblock]::Create($d.source))
+'@
+    $trampoline = $trampoline.Replace('__PAYLOAD_HASH__', $entryHash)
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($trampoline))
+    $launchArguments = @('-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded)
+    $result.credentialCommandLineCharacters = ('"' + $systemPowerShell + '" ' + ($launchArguments -join ' ')).Length + 1
+    if ($result.credentialCommandLineCharacters -ge 1024) { throw 'windows_native_fixture_commandline_too_long' }
     $phase = 'launch_ordinary_user'
-    # Start-Process inherits process environment; paths never enter source text.
-    # Alternate credentials require Secondary Logon and a loadable user profile.
-    $process = Start-Process -FilePath $systemPowerShell -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded) -Credential $credential -LoadUserProfile -WindowStyle Hidden -WorkingDirectory $workspace -RedirectStandardOutput (Join-Path $fixture 'private-stdout.log') -RedirectStandardError (Join-Path $fixture 'private-stderr.log') -PassThru
+    # PS5 credential launches do not preserve our custom environment. Bind code
+    # and input data together, read relative to the explicit private working dir.
+    $process = Start-Process -FilePath $systemPowerShell -ArgumentList $launchArguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -WorkingDirectory $fixture -RedirectStandardOutput (Join-Path $fixture 'private-stdout.log') -RedirectStandardError (Join-Path $fixture 'private-stderr.log') -PassThru
+    $result.processCreated = $true
+    # Keep the exact process handle before it exits; PS5 otherwise loses ExitCode.
+    $null = $process.Handle
     $phase = 'archive_acceptance'
     if (-not $process.WaitForExit(18 * 60 * 1000)) {
         $result.timedOut = $true
@@ -204,7 +263,9 @@ try {
     $process.Refresh()
     $result.smokeExitCode = $process.ExitCode
     $context = Get-Content -LiteralPath (Join-Path $fixture 'execution-context.json') -Raw | ConvertFrom-Json
-    if ($context.administratorToken -ne $false -or $context.identityVerified -ne $true -or $process.ExitCode -ne 0) {
+    $result.contextParsed = $true
+    $result.ordinaryUserVerified = $context.administratorToken -eq $false -and $context.identityVerified -eq $true
+    if (-not $result.ordinaryUserVerified -or $process.ExitCode -ne 0) {
         throw 'windows_native_fixture_smoke_failed'
     }
     $proof = Get-Content -LiteralPath (Join-Path $fixture 'evidence.json') -Raw | ConvertFrom-Json
@@ -213,6 +274,7 @@ try {
 } catch {
     # Raw launch logs stay in the owned fixture: they may contain setup URLs.
     $result.failurePhase = $phase
+    $result.failureDiagnostics = @(Get-CiExceptionDiagnostics $_.Exception)
 } finally {
     $cleanupOkay = $true
     if ($account) {
@@ -251,8 +313,8 @@ try {
         } catch { $cleanupOkay = $false }
     }
     if ($securePassword) { $securePassword.Dispose() }
+    if ($process) { $process.Dispose() }
     $credential = $null
-    foreach ($key in @('ACOS_NATIVE_CI_WORKSPACE', 'ACOS_NATIVE_CI_NODE', 'ACOS_NATIVE_CI_PYTHON', 'ACOS_NATIVE_CI_ARCHIVE', 'ACOS_NATIVE_CI_FIXTURE', 'ACOS_NATIVE_CI_SID')) { [Environment]::SetEnvironmentVariable($key, $null) }
     $result.cleanupVerified = $cleanupOkay
     if (-not $cleanupOkay) { $result.accepted = $false }
     $summary = $result | ConvertTo-Json -Depth 4
