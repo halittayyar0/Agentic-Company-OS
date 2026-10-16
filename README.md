@@ -127,6 +127,12 @@ If a usage limit pauses work, the project page can check the allowance and resum
 
 Before finishing, the existing reviewer compares the agent's report with a short record of tool results and child-task states. This adds no extra review call; recorded execution still does not guarantee output quality. [Completion review and privacy →](./docs/completion-review.md)
 
+Small calculator runs can attach their actual numeric inputs and result to that
+review. The runtime checks the arithmetic and exact operation binding; this helps
+the reviewer distinguish a reported answer from the calculation that ran. Up to
+eight operands are deliberately retained; [scope and privacy](./docs/completion-review.md#bounded-calculator-evidence)
+explain the limits.
+
 For work that must use a particular tool, choose optional **completion conditions** before starting. The server requires a recorded success for each selected operation in the current cycle, without granting permissions or adding a review call. The project shows missing success and unavailable capabilities in your chosen language. [Choose conditions and understand their limits →](./docs/completion-review.md#choose-completion-conditions)
 
 **You control model costs.** Cloud providers bill your own account; local models use your hardware. Explicit free or local selections do not silently fall back to paid models. Reported usage limits can overshoot by an in-flight request, and missing cost remains unknown. Use provider-side limits for a billing ceiling.

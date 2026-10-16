@@ -23,6 +23,11 @@ All notable changes to Agentic Company OS are documented here. The project uses
   and failure. HTTP readiness, its original 20-second deadline and all cloud and
   local-selector boundary checks are unchanged. The earlier Apple Silicon
   initialization timeout remains a separate unresolved observation.
+- Give completion review bounded actual calculator inputs and results. Numeric
+  evidence is checked against the emitted result, argument hash, exact execution
+  identity and a fresh recomputation. Other read-only output remains excluded.
+  Up to eight numeric operands are deliberately retained; the existing review
+  call, verdict policy, permissions and task deadlines remain unchanged.
 
 ## [0.5.2] - 2026-10-15
 

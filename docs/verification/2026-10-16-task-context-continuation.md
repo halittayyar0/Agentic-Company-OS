@@ -72,7 +72,52 @@ source/test files. The original 20-second readiness limit, 500ms probe timeout,
 100ms polling, single daemon, cloud/selector assertions and cleanup are retained.
 Fresh original candidate/main gates remain required.
 
+## Retained local-model failure and calculator evidence
+
+The first candidate (`05af779ea0ab35c3b3fc64b1de868281169f8725`) also failed its
+separate real Windows CPU quote task. The model executed the three correct
+calculations and proposed 58.50, 14.50 and 73.00 EUR. Its first completion review
+blocked because only operation counts and states were supplied, with no actual
+calculator outputs. A repeated calculation and completion attempt exceeded the
+original 180-second task observation. Six completed calls reported 19,797 tokens;
+the seventh in-flight request had no complete usage observation. The failed
+receipt, raw requests/results and verified owned cleanup remain separate evidence.
+The complete local source suite was not launched after that model failure.
+
+The updated path deliberately retains up to eight numeric operands and the
+actual result for the built-in calculator only. It validates the emitted value,
+recomputes using the existing ordered IEEE-754 semantics, and binds the numbers
+to the operation's argument hash. The completion snapshot requires successful,
+unreconciled, read-only execution, valid timestamps and exact task/cycle/attempt,
+agent and logical identity. Guarded SQL projects only bounded numeric fields;
+JavaScript validates and recomputes them again. Generic read-only output remains
+excluded. Numeric inputs can be sensitive: see [retention and scope](../completion-review.md#bounded-calculator-evidence).
+
+The real durable dispatch regression first demonstrated missing persistence,
+then missing delivery into review. The three affected modules passed **24 tests**
+after the complete path was implemented. Together with the existing context
+module, **36 tests passed on owned native Windows PostgreSQL**, without skips;
+the cluster was stopped and its process identity checked. This includes actual
+durable dispatch, stored receipt, snapshot and escaped judge-input delivery,
+plus malformed data, contradictory failure flags, exact identity and sample
+bounds. The judge in that integration test is a controlled peer. It does not
+substitute for a new real-model task on the final candidate.
+
+No verdict, permission, accounting or task deadline is relaxed. The same quote,
+model, context, 120-second per-call timeout and 180-second task observation remain
+required for fresh actual-model acceptance. Source/module counts and final
+platform acceptance are recorded by the matching release verification file.
+
 ## Boundaries
+
+The intermediate timing-only candidate (`1fc08eda7fbafaff4a91eb4157e5c22da394b760`,
+PR #61) passed its Linux and Windows CI jobs, but its original Intel Mac source
+job `116776121710` in run `38839516101` failed the completed-ownership approval
+fixture with `codex_task_timeout`. Reported fixture usage was 8 tokens and cleanup
+was verified. The exact phase consuming the deadline is not established by that
+log. This was an offline protocol fixture, not actual provider inference. Its
+original run is retained without retry; the calculation candidate requires its
+own original platform qualification and does not claim to fix that timeout.
 
 This remains a bounded view of up to eight relevant summaries. Older useful
 entries can fall outside it. It does not restore arbitrary past tool outputs,

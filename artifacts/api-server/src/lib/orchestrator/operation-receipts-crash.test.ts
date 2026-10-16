@@ -1098,6 +1098,51 @@ test("saved result envelopes reject free-form values even under innocent keys", 
     }),
     /safe|allow|field|result/iu,
   );
+  const calculation = {
+    schemaVersion: 1,
+    operation: "add",
+    values: [2, 3],
+    value: 5,
+    arithmetic: "IEEE-754",
+  };
+  await assert.rejects(
+    completeOperation({
+      receiptId: fixture.receipt.id,
+      invocationId: fixture.invocation.id,
+      leaseOwner: fixture.invocationLeaseOwner,
+      resultData: { calculation },
+    }),
+    /safe|allow|field|result/iu,
+  );
+  const calculator = await createTaskExecutionFixture("read_only", {
+    toolName: "calculate",
+  });
+  const owner = {
+    receiptId: calculator.receipt.id,
+    invocationId: calculator.invocation.id,
+    leaseOwner: calculator.invocationLeaseOwner,
+  };
+  await markOperationRunning(owner);
+  for (const malformed of [
+    { ...calculation, value: 6 },
+    { ...calculation, values: Array(9).fill(1), value: 9 },
+    { ...calculation, raw: "PRIVATE_output" },
+  ]) {
+    await assert.rejects(
+      completeOperation({ ...owner, resultData: { calculation: malformed } }),
+      /Unsafe or non-allowlisted/,
+    );
+  }
+  await assert.rejects(
+    completeOperation({ ...owner, resultData: { calculation } }),
+    /exact task-step arguments/,
+  );
+  const [unchanged] = await db
+    .select()
+    .from(operationReceiptsTable)
+    .where(eq(operationReceiptsTable.id, calculator.receipt.id));
+  assert.equal(unchanged.state, "running");
+  assert.equal(unchanged.resultData, null);
 });
 
 test("multibyte failures still commit a bounded unknown state and block the task atomically", async () => {

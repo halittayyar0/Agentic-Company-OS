@@ -78,6 +78,7 @@ import { isCanonicalRootCeo } from "./agent-authority";
 import { avatarColorFor } from "./avatar-color";
 import { runJudge, type JudgeReviewRecord, type JudgeVerdict } from "./judge";
 import { loadCompletionEvidence } from "./completion-evidence";
+import { prepareCalculationEvidence } from "./calculation-evidence";
 import { loadCompletionRequirementResults } from "./completion-requirements";
 import {
   VmError,
@@ -1884,9 +1885,15 @@ async function runDurableReadOnlyTool(
       });
       return { ...result, receiptId: released.id };
     }
+    const calculation =
+      toolName === "calculate" &&
+      ctx.taskId !== null &&
+      ctx.operationIdentity.executionKind === "task_step"
+        ? prepareCalculationEvidence(args, result.content)
+        : null;
     const receipt = await completeOperation({
       ...owner,
-      resultData: null,
+      resultData: calculation ? { calculation } : null,
       now: new Date(),
     });
     return { ...result, receiptId: receipt.id };

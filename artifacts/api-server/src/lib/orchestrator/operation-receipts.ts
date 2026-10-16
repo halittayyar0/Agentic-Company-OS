@@ -30,6 +30,7 @@ import {
   lockRuntimeControlState,
 } from "./runtime-emergency-stop";
 import { appendOperationsChanged } from "../operations/operations-events";
+import { readCalculationEvidence } from "./calculation-evidence";
 
 const CANONICAL_VERSION = 1 as const;
 
@@ -1896,6 +1897,7 @@ export async function releaseOperationForSafeRetry(
 const SAFE_RESULT_FIELDS_BY_TOOL: Readonly<
   Record<string, ReadonlySet<string>>
 > = Object.freeze({
+  calculate: new Set(["executionLocale", "calculation"]),
   create_sub_agent: new Set(["executionLocale", "agentId"]),
   delegate_task: new Set(["executionLocale", "taskId"]),
   update_task_progress: new Set(["executionLocale", "progress"]),
@@ -2053,7 +2055,11 @@ function assertSafeResultEnvelope(
     );
   }
   for (const [key, value] of Object.entries(data)) {
-    if (!allowedFields.has(key) || !isSafeResultPrimitive(key, value)) {
+    const safeValue =
+      toolName === "calculate" && key === "calculation"
+        ? readCalculationEvidence(value) !== null
+        : isSafeResultPrimitive(key, value);
+    if (!allowedFields.has(key) || !safeValue) {
       throw new TypeError(
         `Unsafe or non-allowlisted operation result field: ${key}.`,
       );
@@ -2071,6 +2077,24 @@ export async function completeOperation(
   const suppliedResultData = input.resultData ?? null;
   const snapshot = await ownedInvocationRows(executor, input);
   assertSafeResultEnvelope(snapshot.receipt.toolName, suppliedResultData);
+  if (suppliedResultData?.calculation !== undefined) {
+    const calculation = readCalculationEvidence(suppliedResultData.calculation);
+    if (
+      snapshot.receipt.toolName !== "calculate" ||
+      snapshot.receipt.executionKind !== "task_step" ||
+      snapshot.receipt.taskId === null ||
+      snapshot.receipt.sideEffectClass !== "read_only" ||
+      !calculation ||
+      canonicalArgumentHash({
+        operation: calculation.operation,
+        values: calculation.values,
+      }) !== snapshot.receipt.argumentHash
+    ) {
+      throw new OperationReceiptIntegrityError(
+        "Calculation evidence must bind to the exact task-step arguments.",
+      );
+    }
+  }
   const originalPresentation = toolPresentationData(snapshot.receipt);
   const resultData = originalPresentation
     ? { ...suppliedResultData, ...originalPresentation }
