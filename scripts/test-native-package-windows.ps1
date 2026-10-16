@@ -14,29 +14,49 @@ if (-not $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Adm
     throw 'windows_native_fixture_requires_disposable_runner_administrator'
 }
 
-$workspace = [IO.Path]::GetFullPath($env:GITHUB_WORKSPACE)
-$runnerTemp = [IO.Path]::GetFullPath($env:RUNNER_TEMP)
-$toolCache = [IO.Path]::GetFullPath($env:RUNNER_TOOL_CACHE)
-$archive = [IO.Path]::GetFullPath($env:NATIVE_PACKAGE_ARCHIVE)
-$evidence = [IO.Path]::GetFullPath($env:NATIVE_PACKAGE_EVIDENCE)
+function Get-CiFullPath([object]$Candidate, [string]$Category) {
+    # Do not stringify an application array into one path, or print its values.
+    if ($Candidate -isnot [string] -or [string]::IsNullOrWhiteSpace($Candidate)) {
+        throw ('windows_native_fixture_path_invalid:' + $Category)
+    }
+    try {
+        if ($Candidate -notmatch '^[a-zA-Z]:[\\/]') { throw 'not_absolute' }
+        return [IO.Path]::GetFullPath($Candidate)
+    } catch { throw ('windows_native_fixture_path_invalid:' + $Category) }
+}
+
+function Get-CiApplicationPath([string]$Name, [string]$Category) {
+    try {
+        # Get-Command can enumerate several PATH entries even without -All.
+        $application = Get-Command $Name -CommandType Application -ErrorAction Stop | Select-Object -First 1
+    } catch { throw ('windows_native_fixture_application_missing:' + $Category) }
+    if (-not $application) { throw ('windows_native_fixture_application_missing:' + $Category) }
+    return Get-CiFullPath $application.Source $Category
+}
+
+$workspace = Get-CiFullPath $env:GITHUB_WORKSPACE 'workspace'
+$runnerTemp = Get-CiFullPath $env:RUNNER_TEMP 'runner_temp'
+$toolCache = Get-CiFullPath $env:RUNNER_TOOL_CACHE 'tool_cache'
+$archive = Get-CiFullPath $env:NATIVE_PACKAGE_ARCHIVE 'archive'
+$evidence = Get-CiFullPath $env:NATIVE_PACKAGE_EVIDENCE 'evidence'
 $systemPowerShell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
-$node = (Get-Command node.exe -CommandType Application).Source
+$node = Get-CiApplicationPath 'node.exe' 'node'
 $accessSection = [System.Security.AccessControl.AccessControlSections]::Access
 $administrators = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
 $system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
 
-function Assert-CiPath([string]$Candidate, [string[]]$Roots) {
-    $full = [IO.Path]::GetFullPath($Candidate)
+function Assert-CiPath([object]$Candidate, [object[]]$Roots, [string]$Category) {
+    $full = Get-CiFullPath $Candidate $Category
     foreach ($root in $Roots) {
-        $prefix = [IO.Path]::GetFullPath($root).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+        $prefix = (Get-CiFullPath $root ($Category + '_root')).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
         if ($full.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { return }
     }
-    throw 'windows_native_fixture_path_outside_ci_directory'
+    throw ('windows_native_fixture_path_outside_ci_directory:' + $Category)
 }
-Assert-CiPath $workspace @($env:RUNNER_WORKSPACE)
-Assert-CiPath $archive @($runnerTemp)
-Assert-CiPath $evidence @($runnerTemp)
-Assert-CiPath $node @($toolCache)
+Assert-CiPath $workspace @($env:RUNNER_WORKSPACE) 'workspace'
+Assert-CiPath $archive @($runnerTemp) 'archive'
+Assert-CiPath $evidence @($runnerTemp) 'evidence'
+Assert-CiPath $node @($toolCache) 'node'
 if (-not (Test-Path -LiteralPath $archive -PathType Leaf) -or (Test-Path -LiteralPath $evidence)) {
     throw 'windows_native_fixture_archive_or_evidence_invalid'
 }
@@ -45,9 +65,9 @@ if (-not (Test-Path -LiteralPath (Join-Path $workspace 'node_modules/tsx/dist/lo
 }
 $pythonInfo = & $env:PYTHON -c 'import json,sys; print(json.dumps(dict(executable=sys._base_executable,prefix=sys.base_prefix)))'
 if ($LASTEXITCODE -ne 0) { throw 'windows_native_fixture_python_lookup_failed' }
-$pythonInfo = $pythonInfo | ConvertFrom-Json
-Assert-CiPath $pythonInfo.executable @($toolCache)
-Assert-CiPath $pythonInfo.prefix @($toolCache)
+try { $pythonInfo = $pythonInfo | ConvertFrom-Json } catch { throw 'windows_native_fixture_python_lookup_invalid' }
+Assert-CiPath $pythonInfo.executable @($toolCache) 'python_executable'
+Assert-CiPath $pythonInfo.prefix @($toolCache) 'python_prefix'
 $secondaryLogon = Get-CimInstance Win32_Service -Filter "Name='seclogon'"
 if (-not $secondaryLogon -or $secondaryLogon.StartMode -eq 'Disabled') {
     throw 'windows_native_fixture_secondary_logon_unavailable'
