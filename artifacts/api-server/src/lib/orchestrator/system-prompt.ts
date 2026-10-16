@@ -1,5 +1,5 @@
 import { efficiencyGuidance } from "./efficiency-guidance";
-import { and, desc, eq, gt, inArray, or } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
 import {
   activityEventsTable,
   agentsTable,
@@ -39,6 +39,51 @@ import {
   TASK_MODE_PROMPT,
   COMPANY_CHANNEL_PROMPT,
 } from "./system-policy";
+
+// Select useful evidence before applying the small model-context window.
+// Operational notifications remain in the operator ledger. Only recognized,
+// minimal informational lifecycle envelopes are noise here. Sampling/control
+// metadata, failures, uncertainty, recovery, reconciliation and unfamiliar data
+// remain visible. Identifier matching deliberately accepts only a conservative
+// ASCII subset of the canonical schema, never malformed values under known keys.
+const operationalKind = sql<string>`${activityEventsTable.detail}->>'kind'`;
+const operationalState = sql<string>`${activityEventsTable.detail}->>'state'`;
+const routineOperationalTransitions = [
+  { kind: "runtime_registered", states: ["starting"] },
+  { kind: "runtime_state_changed", states: ["healthy"] },
+  { kind: "attempt_created", states: ["claimed"] },
+  { kind: "attempt_state_changed", states: ["running", "succeeded"] },
+  { kind: "receipt_reserved", states: ["reserved"] },
+  { kind: "receipt_state_changed", states: ["running", "succeeded"] },
+  { kind: "invocation_created", states: ["claimed"] },
+  { kind: "invocation_state_changed", states: ["running", "succeeded"] },
+];
+const routineTaskActivity = and(
+  eq(activityEventsTable.type, "operations_changed"),
+  eq(activityEventsTable.severity, "info"),
+  sql`${activityEventsTable.detail} @> '{"schemaVersion":1}'::jsonb`,
+  sql`${activityEventsTable.detail} - ARRAY['schemaVersion', 'kind', 'runtimeInstanceId', 'attemptId', 'receiptId', 'invocationId', 'state']::text[] = '{}'::jsonb`,
+  ...["runtimeInstanceId", "attemptId", "receiptId", "invocationId"].map(
+    (key) =>
+      or(
+        sql`NOT (${activityEventsTable.detail} ? ${key})`,
+        and(
+          sql`jsonb_typeof(${activityEventsTable.detail}->${key}) = 'string'`,
+          sql`${activityEventsTable.detail}->>${key} ~ '^[A-Za-z0-9][A-Za-z0-9:._-]{0,255}$'`,
+        ),
+      ),
+  ),
+  or(
+    ...routineOperationalTransitions.map(({ kind, states }) =>
+      and(eq(operationalKind, kind), inArray(operationalState, states)),
+    ),
+  ),
+);
+const taskContextActivity = sql<boolean>`CASE
+  WHEN jsonb_typeof(${activityEventsTable.detail}) = 'object'
+    THEN NOT COALESCE(${routineTaskActivity}, false)
+  ELSE true
+END`;
 
 function boundPromptData(value: unknown, maxChars: number): string {
   const raw = String(value ?? "").replace(/\u0000/g, "");
@@ -378,8 +423,8 @@ async function describeTaskContext(task: Task): Promise<string> {
   const recentActivity = await db
     .select()
     .from(activityEventsTable)
-    .where(eq(activityEventsTable.taskId, task.id))
-    .orderBy(desc(activityEventsTable.createdAt))
+    .where(and(eq(activityEventsTable.taskId, task.id), taskContextActivity))
+    .orderBy(desc(activityEventsTable.createdAt), desc(activityEventsTable.id))
     .limit(MAX_RECENT_ITEMS);
 
   const subtaskBlock =

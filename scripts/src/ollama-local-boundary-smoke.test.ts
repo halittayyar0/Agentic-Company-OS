@@ -17,6 +17,103 @@ import {
   runOwnedOllamaExtraction,
 } from "./ollama-local-boundary-smoke";
 
+function startupTimelineFactory() {
+  const create = Reflect.get(smoke, "createOwnedOllamaStartupTimeline") as
+    | ((
+        supervisor: ProcessSupervisor,
+        now: () => number,
+      ) => {
+        observe: (httpReady?: boolean) => {
+          observedAfterStartMs: number;
+          firstObservedAfterStartMs: Record<string, number | null>;
+        };
+      })
+    | undefined;
+  assert.equal(typeof create, "function", "startup timeline is missing");
+  return create!;
+}
+
+test("startup timing keeps first observations and missing milestones without exposing daemon output", (t) => {
+  const create = startupTimelineFactory();
+  const supervisor = new ProcessSupervisor({ runId: "timing-fixture" });
+  let now = 1000;
+  let output = "private-home=private-marker secret=private-marker";
+  t.mock.method(supervisor, "snapshot", () => ({ running: true }));
+  t.mock.method(supervisor, "logs", () => ({ stdout: "", stderr: output }));
+  const timeline = create(supervisor, () => now);
+  const first = timeline.observe();
+  assert.equal(first.observedAfterStartMs, 0);
+  assert.equal(first.firstObservedAfterStartMs.httpReady, null);
+  now = 1100;
+  output +=
+    '\nlevel=INFO source=runner.go:63 msg="discovering available GPUs..."';
+  output += "\nggml_metal_library_init: using embedded metal library\n";
+  const starting = timeline.observe();
+  assert.equal(
+    starting.firstObservedAfterStartMs["milestones.gpuDiscoveryStarted"],
+    100,
+  );
+  assert.equal(
+    starting.firstObservedAfterStartMs["runnerDetails.metalLibraryLoaded"],
+    null,
+  );
+  now = 1700;
+  output += "ggml_metal_library_init: loaded in 0.5 sec\n";
+  const ready = timeline.observe(true);
+  assert.equal(ready.firstObservedAfterStartMs.httpReady, 700);
+  assert.equal(
+    ready.firstObservedAfterStartMs["runnerDetails.metalLibraryLoaded"],
+    700,
+  );
+  ready.firstObservedAfterStartMs.httpReady = 9999;
+  now = 1900;
+  output = "";
+  const last = timeline.observe();
+  assert.equal(last.observedAfterStartMs, 900);
+  assert.equal(last.firstObservedAfterStartMs.httpReady, 700);
+  assert.equal(
+    last.firstObservedAfterStartMs["milestones.gpuDiscoveryStarted"],
+    100,
+  );
+  assert.equal(Object.keys(last.firstObservedAfterStartMs).length, 13);
+  assert.ok(!JSON.stringify(last).includes("private-marker"));
+  assert.ok(
+    Object.values(last.firstObservedAfterStartMs).every(
+      (value) =>
+        value === null ||
+        (Number.isFinite(value) && value >= 0 && value <= 900),
+    ),
+  );
+});
+
+test("startup timing never manufactures HTTP readiness from listener or Metal logs and tolerates lost diagnostics", (t) => {
+  const create = startupTimelineFactory();
+  const supervisor = new ProcessSupervisor({ runId: "timing-failure-fixture" });
+  let now = 0;
+  t.mock.method(supervisor, "snapshot", () => ({ running: true }));
+  t.mock.method(supervisor, "logs", () => ({
+    stdout: "",
+    stderr:
+      '\nlevel=INFO source=routes.go:1666 msg="Listening on 127.0.0.1:32100 (version 0.18.0)"\nggml_metal_library_init: loaded in 1.5 sec\n',
+  }));
+  const timeline = create(supervisor, () => now);
+  timeline.observe();
+  now = 20000;
+  const deadline = timeline.observe();
+  assert.equal(deadline.firstObservedAfterStartMs.httpReady, null);
+  assert.equal(
+    deadline.firstObservedAfterStartMs["milestones.listenerAnnounced"],
+    0,
+  );
+  t.mock.method(supervisor, "logs", () => {
+    throw new Error("private diagnostic failure");
+  });
+  const afterLoss = timeline.observe();
+  assert.equal(afterLoss.firstObservedAfterStartMs.httpReady, null);
+  assert.equal(afterLoss.observedAfterStartMs, 20000);
+  assert.ok(!JSON.stringify(afterLoss).includes("private diagnostic failure"));
+});
+
 function receiptWriter() {
   const writer = Reflect.get(smoke, "writeNewOllamaBoundaryReceipt") as
     ((output: string, contents: string) => Promise<void>) | undefined;

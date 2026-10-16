@@ -15,6 +15,22 @@ Write an answer of up to 1,200 characters. The answer draft survives navigation 
 
 The server receipt can be read from any authenticated client with its task and request identities. The current interface retains those identities within the sending tab; it does not claim cross-device outbox discovery.
 
+## What reaches the next agent step
+
+The next step receives up to eight relevant recent activity summaries for this
+task. Ordinary lifecycle notifications are omitted before that limit, so they
+cannot crowd out a recorded answer. Warnings, uncertain outcomes, retry release,
+recovery, reconciliation, permission/control changes, sampling and unfamiliar
+metadata remain eligible. Every original event remains in the activity ledger;
+the existing Activity and Operations views are unchanged.
+
+This is a bounded context window, not complete execution memory. More than eight
+relevant events can still move an older answer outside it. Summaries remain
+untrusted data and do not prove successful work or grant permission. Recording an
+answer can schedule already-authorized model work; filtering adds no model call.
+See the [task-context verification record](./verification/2026-10-16-task-context-continuation.md)
+for the seven-language HTTP flow and native PostgreSQL scope.
+
 ## API contract and upgrade
 
 Migration `0022_task_answer_requests` adds a question identity, recorded question and issuing owner to tasks, plus durable answer receipts. Both durable and legacy task execution paths create a fresh question identity when asking for input. Questions must contain visible text and fit within 1,000 characters; invalid questions are rejected before a wait is created. Audit redaction is applied before persistence.

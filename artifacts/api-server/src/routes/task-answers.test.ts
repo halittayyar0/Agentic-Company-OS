@@ -13,6 +13,9 @@ import {
   runtimeControlsTable,
 } from "@workspace/db";
 import app from "../app";
+import { appendOperationsChanged } from "../lib/operations/operations-events";
+import { buildTaskStepPrompts } from "../lib/orchestrator/system-prompt";
+import { WORKSPACE_LOCALES } from "../lib/workspace-locale";
 function request(
   port: number,
   method: string,
@@ -128,6 +131,29 @@ test("exact question, duplicate sends and delayed replay cannot answer a later q
     .where(eq(activityEventsTable.taskId, f.task.id));
   assert.equal(events.length, 1);
   assert.equal(events[0].detail?.questionId, f.input.questionId);
+  const [resumedTask] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, f.task.id));
+  for (let index = 0; index < 12; index++) {
+    await appendOperationsChanged(db, {
+      taskId: f.task.id,
+      agentId: f.owner.id,
+      kind: "attempt_state_changed",
+      state: "running",
+      createdAt: new Date(events[0].createdAt.getTime() + 100 + index),
+    });
+  }
+  for (const locale of WORKSPACE_LOCALES) {
+    const next = await buildTaskStepPrompts(f.owner, resumedTask, locale);
+    assert.ok(
+      next.userPrompt.includes(
+        "User answer recorded: Prepare the GitHub release.",
+      ),
+      `${locale}: an accepted HTTP answer reaches the next inference context after ordinary runtime traffic`,
+    );
+    assert.ok(!next.systemPrompt.includes("User answer recorded:"));
+  }
   const changed = await request(server.port, "POST", `${path}/resume`, {
     ...f.input,
     answer: "Different answer",

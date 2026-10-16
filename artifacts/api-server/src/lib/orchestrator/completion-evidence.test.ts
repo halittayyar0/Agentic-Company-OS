@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
+import { eq } from "drizzle-orm";
 import {
   db,
   dbReady,
@@ -14,6 +15,7 @@ import {
   runtimeInstancesTable,
 } from "@workspace/db";
 import { loadCompletionEvidence } from "./completion-evidence";
+import { canonicalArgumentHash } from "./operation-receipts";
 
 test.after(() => closeDatabase());
 async function fixture() {
@@ -214,6 +216,187 @@ test("completion tool counts stay bounded and disclose omitted or malformed name
     ),
   );
   assert.doesNotMatch(JSON.stringify(evidence.toolCounts), /PRIVATE_/);
+});
+
+async function calculationReceipt(
+  f: Awaited<ReturnType<typeof fixture>>,
+  extra: Partial<typeof operationReceiptsTable.$inferInsert> = {},
+) {
+  const id = randomUUID();
+  const now = new Date();
+  await db.insert(operationReceiptsTable).values({
+    id,
+    operationKey: id,
+    replayKey: null,
+    executionKind: "task_step",
+    logicalExecutionId: f.logicalExecutionId,
+    taskId: f.task.id,
+    agentId: f.agent.id,
+    originAttemptId: f.attemptId,
+    sideEffectClass: "read_only",
+    state: "succeeded",
+    toolName: "calculate",
+    argumentHash: canonicalArgumentHash({
+      operation: "multiply",
+      values: [3, 19.5],
+    }),
+    resultData: {
+      calculation: {
+        schemaVersion: 1,
+        operation: "multiply",
+        values: [3, 19.5],
+        value: 58.5,
+        arithmetic: "IEEE-754",
+      },
+    },
+    reservedAt: new Date(now.getTime() - 1),
+    finishedAt: now,
+    ...extra,
+  });
+}
+
+test("numeric completion evidence requires exact successful task-cycle binding and rejects unsafe saved data", async () => {
+  const f = await fixture();
+  await calculationReceipt(f, {
+    resultData: {
+      executionLocale: "en",
+      privateOutput: "PRIVATE_output",
+      calculation: {
+        schemaVersion: 1,
+        operation: "multiply",
+        values: [3, 19.5],
+        value: 58.5,
+        arithmetic: "IEEE-754",
+      },
+    },
+  });
+  const accepted = await loadCompletionEvidence(f.task);
+  assert.deepEqual(
+    (accepted.receipts[0] as unknown as { calculation: unknown }).calculation,
+    {
+      proofScope: "bounded_calculation",
+      schemaVersion: 1,
+      operation: "multiply",
+      values: [3, 19.5],
+      value: 58.5,
+      arithmetic: "IEEE-754",
+    },
+  );
+  assert.doesNotMatch(JSON.stringify(accepted), /PRIVATE_/u);
+  const other = await fixture();
+  const invalid: Array<Partial<typeof operationReceiptsTable.$inferInsert>> = [
+    {
+      resultData: {
+        ok: false,
+        calculation: {
+          schemaVersion: 1,
+          operation: "multiply",
+          values: [3, 19.5],
+          value: 58.5,
+          arithmetic: "IEEE-754",
+        },
+      },
+    },
+    { state: "failed" },
+    { state: "unknown" },
+    {
+      state: "unknown",
+      reconciliationDecision: "confirmed_applied",
+      reconciliationNote: "PRIVATE_reconciliation",
+      reconciliationActorId: "PRIVATE_actor",
+      reconciledAt: new Date(),
+    },
+    { sideEffectClass: "transactional", replayKey: randomUUID() },
+    { state: "running", startedAt: new Date(), finishedAt: null },
+    { finishedAt: new Date(Date.now() + 60000) },
+    { reservedAt: new Date(Date.now() + 60000) },
+    { logicalExecutionId: randomUUID() },
+    { agentId: other.agent.id },
+    { originAttemptId: other.attemptId },
+    { toolName: "vm_read_file" },
+    { argumentHash: "0".repeat(64) },
+    ...[
+      null,
+      42,
+      [],
+      { values: "PRIVATE_values" },
+      {
+        schemaVersion: 1,
+        operation: "multiply",
+        values: [3, 19.5],
+        value: "PRIVATE_value",
+        arithmetic: "IEEE-754",
+      },
+      {
+        schemaVersion: 1,
+        operation: "multiply",
+        values: [3, "PRIVATE_operand"],
+        value: 58.5,
+        arithmetic: "IEEE-754",
+      },
+      {
+        schemaVersion: 1,
+        operation: "multiply",
+        values: Array(9).fill(1),
+        value: 1,
+        arithmetic: "IEEE-754",
+      },
+      {
+        schemaVersion: 1,
+        operation: "multiply",
+        values: [3, 19.5],
+        value: 59,
+        arithmetic: "IEEE-754",
+      },
+      {
+        schemaVersion: 1,
+        operation: "multiply",
+        values: [3, 19.5],
+        value: 58.5,
+        arithmetic: "IEEE-754",
+        private: "PRIVATE_metadata",
+      },
+    ].map((calculation) => ({ resultData: { calculation } })),
+  ];
+  for (const extra of invalid) {
+    const isolated = await fixture();
+    await calculationReceipt(isolated, extra);
+    const evidence = await loadCompletionEvidence(isolated.task);
+    assert.ok(
+      evidence.receipts.every((row) => !("calculation" in row)),
+      JSON.stringify(extra),
+    );
+    assert.doesNotMatch(JSON.stringify(evidence), /PRIVATE_/u);
+  }
+  const later = await fixture();
+  await db
+    .update(taskAttemptsTable)
+    .set({ cycleNumber: 1 })
+    .where(eq(taskAttemptsTable.id, later.attemptId));
+  await calculationReceipt(later);
+  assert.equal((await loadCompletionEvidence(later.task)).receiptTotal, 0);
+});
+
+test("numeric completion evidence retains the original twelve-receipt sample and truncation disclosure", async () => {
+  const f = await fixture();
+  for (let index = 0; index < 13; index++)
+    await calculationReceipt(f, {
+      reservedAt: new Date(Date.now() - 1000 + index),
+      finishedAt: new Date(),
+    });
+  const evidence = await loadCompletionEvidence(f.task);
+  assert.equal(evidence.receiptTotal, 13);
+  assert.equal(evidence.receipts.length, 12);
+  assert.equal(evidence.receiptsTruncated, true);
+  assert.ok(evidence.receipts.every((row) => "calculation" in row));
+  assert.deepEqual(evidence.toolCounts, [
+    {
+      tool: "calculate",
+      state: "succeeded",
+      reconciliationDecision: null,
+      count: 13,
+    },
+  ]);
 });
 
 test("native turn receipts cannot advertise deliverable proof or copy private native transcripts into completion review", async () => {

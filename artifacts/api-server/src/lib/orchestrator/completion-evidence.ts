@@ -8,6 +8,8 @@ import {
   type Task,
 } from "@workspace/db";
 import { redactAuditText } from "../audit-redaction";
+import { readCalculationEvidence } from "./calculation-evidence";
+import { canonicalArgumentHash } from "./operation-receipts";
 
 const RECEIPT_LIMIT = 12;
 const TOOL_COUNT_LIMIT = 128;
@@ -56,6 +58,8 @@ export async function loadCompletionEvidence(
   // happens inside this read transaction, and no task or receipt is mutated.
   return db.transaction(
     async (tx) => {
+      const observedAt = new Date().toISOString();
+      const savedCalculation = sql`(${operationReceiptsTable.resultData}->'calculation')`;
       const receiptCounts = await tx
         .select({
           state: operationReceiptsTable.state,
@@ -101,6 +105,42 @@ export async function loadCompletionEvidence(
           sideEffectClass: operationReceiptsTable.sideEffectClass,
           reconciliationDecision: operationReceiptsTable.reconciliationDecision,
           finishedAt: operationReceiptsTable.finishedAt,
+          argumentHash: sql<
+            string | null
+          >`case when ${operationReceiptsTable.argumentHash} ~ '^[0-9a-f]{64}$' then ${operationReceiptsTable.argumentHash} else null end`,
+          // A dedicated numeric projection; never select generic saved output.
+          // CASE guards array operations even for malformed legacy JSON.
+          calculation: sql<unknown>`case
+            when ${operationReceiptsTable.toolName} = 'calculate'
+              and ${operationReceiptsTable.executionKind} = 'task_step'
+              and ${operationReceiptsTable.sideEffectClass} = 'read_only'
+              and ${operationReceiptsTable.state} = 'succeeded'
+              and ${operationReceiptsTable.reconciliationDecision} is null
+              and ${operationReceiptsTable.resultData}->'ok' is distinct from 'false'::jsonb
+              and ${operationReceiptsTable.finishedAt} is not null
+              and ${operationReceiptsTable.finishedAt} >= ${operationReceiptsTable.reservedAt}
+              and ${operationReceiptsTable.finishedAt} <= ${observedAt}::timestamptz
+              and ${operationReceiptsTable.reservedAt} <= ${observedAt}::timestamptz
+              and exists (select 1 from ${taskAttemptsTable}
+                where "task_attempts"."id" = "operation_receipts"."origin_attempt_id"
+                  and "task_attempts"."task_id" = ${task.id}
+                  and "task_attempts"."cycle_number" = ${task.cycleCount}
+                  and "task_attempts"."agent_id" = "operation_receipts"."agent_id"
+                  and "task_attempts"."logical_execution_id"::text = "operation_receipts"."logical_execution_id")
+              and jsonb_typeof(${savedCalculation}) = 'object'
+              and jsonb_typeof(${savedCalculation}->'values') = 'array'
+            then case when jsonb_array_length(${savedCalculation}->'values') between 1 and 8
+              and ${savedCalculation} - ARRAY['schemaVersion','operation','values','value','arithmetic']::text[] = '{}'::jsonb
+              and ${savedCalculation} @> '{"schemaVersion":1,"arithmetic":"IEEE-754"}'::jsonb
+              and ${savedCalculation}->>'operation' in ('add','subtract','multiply','divide','mean','min','max','percentage')
+              and jsonb_typeof(${savedCalculation}->'value') = 'number'
+              and length((${savedCalculation}->'value')::text) <= 1024
+              and not exists (select 1 from jsonb_array_elements(${savedCalculation}->'values') as numeric_input(value)
+                where jsonb_typeof(numeric_input.value) <> 'number' or length(numeric_input.value::text) > 1024)
+            then jsonb_build_object('schemaVersion',1,'operation',${savedCalculation}->>'operation',
+              'values',${savedCalculation}->'values','value',${savedCalculation}->'value','arithmetic','IEEE-754')
+            else null end
+            else null end`,
           // Never select arguments, command output, file contents, error text,
           // result summaries, URLs or the arbitrary saved-result object.
           ok: sql<unknown>`${operationReceiptsTable.resultData}->'ok'`,
@@ -201,46 +241,67 @@ export async function loadCompletionEvidence(
             count: row.count,
           })),
         receiptsTruncated: receiptTotal > rows.length,
-        receipts: rows.map((row) => ({
-          id: redactAuditText(row.id, 120),
-          tool: redactAuditText(row.tool, 80),
-          executionKind: row.executionKind,
-          state: row.state,
-          sideEffectClass: row.sideEffectClass,
-          reconciliationDecision: row.reconciliationDecision,
-          finishedAt: row.finishedAt?.toISOString() ?? null,
-          ...(row.tool === "vm_codex_task"
-            ? {
-                // Keep the receipt's state; this scope alone cannot certify
-                // a terminal turn, deliverable, command, or artifact.
-                proofScope: "codex_turn" as const,
-                deliverableVerified: false as const,
-                ...(Number.isSafeInteger(row.nativeItemCount) &&
-                Number(row.nativeItemCount) >= 0 &&
-                Number(row.nativeItemCount) <= 128
-                  ? { nativeItemCount: row.nativeItemCount as number }
-                  : {}),
-              }
-            : {}),
-          ...(row.tool !== "vm_codex_task" && typeof row.ok === "boolean"
-            ? { ok: row.ok }
-            : {}),
-          ...(row.tool !== "vm_codex_task" && Number.isSafeInteger(row.exitCode)
-            ? { exitCode: row.exitCode as number }
-            : {}),
-          ...(row.tool !== "vm_codex_task" &&
-          Number.isSafeInteger(row.byteCount) &&
-          Number(row.byteCount) >= 0
-            ? { byteCount: row.byteCount as number }
-            : {}),
-          ...(row.tool !== "vm_codex_task" &&
-          row.artifactId &&
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
-            row.artifactId,
-          )
-            ? { artifactId: row.artifactId }
-            : {}),
-        })),
+        receipts: rows.map((row) => {
+          const candidate = readCalculationEvidence(row.calculation);
+          const calculation =
+            candidate &&
+            row.argumentHash ===
+              canonicalArgumentHash({
+                operation: candidate.operation,
+                values: candidate.values,
+              })
+              ? candidate
+              : null;
+          return {
+            id: redactAuditText(row.id, 120),
+            tool: redactAuditText(row.tool, 80),
+            executionKind: row.executionKind,
+            state: row.state,
+            sideEffectClass: row.sideEffectClass,
+            reconciliationDecision: row.reconciliationDecision,
+            finishedAt: row.finishedAt?.toISOString() ?? null,
+            ...(calculation
+              ? {
+                  calculation: {
+                    proofScope: "bounded_calculation" as const,
+                    ...calculation,
+                  },
+                }
+              : {}),
+            ...(row.tool === "vm_codex_task"
+              ? {
+                  // Keep the receipt's state; this scope alone cannot certify
+                  // a terminal turn, deliverable, command, or artifact.
+                  proofScope: "codex_turn" as const,
+                  deliverableVerified: false as const,
+                  ...(Number.isSafeInteger(row.nativeItemCount) &&
+                  Number(row.nativeItemCount) >= 0 &&
+                  Number(row.nativeItemCount) <= 128
+                    ? { nativeItemCount: row.nativeItemCount as number }
+                    : {}),
+                }
+              : {}),
+            ...(row.tool !== "vm_codex_task" && typeof row.ok === "boolean"
+              ? { ok: row.ok }
+              : {}),
+            ...(row.tool !== "vm_codex_task" &&
+            Number.isSafeInteger(row.exitCode)
+              ? { exitCode: row.exitCode as number }
+              : {}),
+            ...(row.tool !== "vm_codex_task" &&
+            Number.isSafeInteger(row.byteCount) &&
+            Number(row.byteCount) >= 0
+              ? { byteCount: row.byteCount as number }
+              : {}),
+            ...(row.tool !== "vm_codex_task" &&
+            row.artifactId &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+              row.artifactId,
+            )
+              ? { artifactId: row.artifactId }
+              : {}),
+          };
+        }),
         childTotal,
         childCounts,
         childrenTruncated: childTotal > children.length,

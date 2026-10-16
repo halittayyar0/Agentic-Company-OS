@@ -5,6 +5,30 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-16
+
+### Fixed
+
+- Keep recorded user answers and useful activity in the next task context when
+  routine lifecycle notifications are frequent. Filter only recognized minimal
+  informational envelopes before the existing eight-event limit. Warnings,
+  uncertain outcomes, retry release, recovery, reconciliation, control changes,
+  sampling and unfamiliar metadata remain eligible; the operator ledger is intact.
+- Order task activity by timestamp and ID so simultaneous events retain the
+  newest evidence consistently. Core policy, permissions, approval and completion
+  checks retain their existing authority.
+- Update reusable-brief guidance to describe the released workflow and distinguish
+  bounded task summaries from complete execution memory.
+- Retain sanitized first-observation timings for pinned Ollama startup on success
+  and failure. HTTP readiness, its original 20-second deadline and all cloud and
+  local-selector boundary checks are unchanged. The earlier Apple Silicon
+  initialization timeout remains a separate unresolved observation.
+- Give completion review bounded actual calculator inputs and results. Numeric
+  evidence is checked against the emitted result, argument hash, exact execution
+  identity and a fresh recomputation. Other read-only output remains excluded.
+  Up to eight numeric operands are deliberately retained; the existing review
+  call, verdict policy, permissions and task deadlines remain unchanged.
+
 ## [0.5.2] - 2026-10-15
 
 ### Added

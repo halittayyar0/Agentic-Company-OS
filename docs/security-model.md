@@ -21,6 +21,7 @@ The code-level production checklist is maintained in
 - Playwright state stays process-local, but the API records its exact runtime/session/epoch owner and routes commands through that worker's authenticated, encrypted runtime-control channel. Browser-client sticky routing is not the ownership control.
 - Exact, expiring, single-use approval scopes are enforced for CEO host-shell command strings, browser typing, unsafe clicks, and destructive built-in VM commands.
 - Completion judge failure blocks completion; approval judge failure warns while preserving the independent human gate.
+- Successful bounded calculator task steps deliberately retain up to eight numeric operands and their actual result for completion review. Numeric inputs can be sensitive; [review data and retention](./completion-review.md#bounded-calculator-evidence) describe this scope.
 - Per-completion token telemetry is ledgered, with provider-reported cost stored only when actually supplied.
 - Production/remote mode fails closed without a 32+ character single-operator token; protected routes accept bearer or signed HttpOnly cookie authentication.
 - Approval enforcement covers specific runtime paths, not every possible external side effect; the LLM judge remains model-based oversight.
