@@ -110,6 +110,27 @@ platform acceptance are recorded by the matching release verification file.
 
 ## Boundaries
 
+The calculator candidate (`3be694acfe1b13efcf8d6c201115114eb714a3e1`, PR #62)
+completed the fresh real Windows CPU quote with three actual calculations, a
+passing model review, four model calls and 12,157 reported tokens. Its separate
+local native fault run completed 100/100 responsibilities without duplicate
+irreversible receipts or stale-owner commits. These executions belong to that
+candidate; a later release must qualify its own final source.
+
+That candidate's original Linux job `116913216178` in CI run `38882774372`
+failed the new numeric PostgreSQL step: 21 of its 24 cases passed and three
+agent-creation cases were rejected. The numeric dispatch-to-review regression
+itself passed. A local reproduction ran the earlier account, lease and context
+gates in the same order and database, reproduced the same three failures, and
+observed 84 active fixture agents against the unchanged capacity limit of 64.
+The CI step now creates its own database in the job's disposable PostgreSQL
+service, following the existing budget-resume gate's isolation pattern. Capacity,
+permission, review and timeout assertions are preserved; the ordinary source
+case census is unchanged. All 24 cases then passed in the separate database on
+that same native cluster; the original database still had the same 84 active
+agents, and owned cluster cleanup was verified. The original failed workflow is
+retained without retry.
+
 The intermediate timing-only candidate (`1fc08eda7fbafaff4a91eb4157e5c22da394b760`,
 PR #61) passed its Linux and Windows CI jobs, but its original Intel Mac source
 job `116776121710` in run `38839516101` failed the completed-ownership approval

@@ -282,12 +282,16 @@ jobs:
 
       - name: Prove numeric completion evidence through durable PostgreSQL execution
         env:
-          DATABASE_URL: postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_os_ci
-        run: >-
-          node --import tsx --test --test-concurrency=1 --test-timeout=300000
-          artifacts/api-server/src/lib/orchestrator/calculation-evidence.test.ts
-          artifacts/api-server/src/lib/orchestrator/completion-evidence.test.ts
-          artifacts/api-server/src/lib/orchestrator/execute-tool-normalized-receipts.test.ts
+          DATABASE_URL: postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_calculation_ci
+        # These ordinary source fixtures assume an empty database. Earlier
+        # native gates retain rows, so use a distinct database in this job's
+        # disposable PostgreSQL service, as the budget-resume proof does below.
+        run: |
+          psql postgresql://agentic_ci:agentic_ci_password@127.0.0.1:5432/agentic_os_ci -v ON_ERROR_STOP=1 -c 'CREATE DATABASE agentic_calculation_ci;'
+          node --import tsx --test --test-concurrency=1 --test-timeout=300000 \
+            artifacts/api-server/src/lib/orchestrator/calculation-evidence.test.ts \
+            artifacts/api-server/src/lib/orchestrator/completion-evidence.test.ts \
+            artifacts/api-server/src/lib/orchestrator/execute-tool-normalized-receipts.test.ts
 
       - name: Prove PostgreSQL operation-receipt race convergence
         env:
