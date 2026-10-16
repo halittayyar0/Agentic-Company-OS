@@ -13,6 +13,7 @@ import {
 import { createServer } from "node:http";
 import { createServer as createPortListener } from "node:net";
 import os from "node:os";
+import { performance } from "node:perf_hooks";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -347,6 +348,77 @@ export function captureOwnedOllamaStartupEvidence(
   };
 }
 
+export function createOwnedOllamaStartupTimeline(
+  supervisor: Pick<ProcessSupervisor, "snapshot" | "logs">,
+  now: () => number = () => performance.now(),
+) {
+  const started = now();
+  let observedAfterStartMs = 0;
+  const firstObservedAfterStartMs: Record<string, number | null> = {
+    httpReady: null,
+    ...Object.fromEntries(
+      [
+        ...[
+          "listenerAnnounced",
+          "gpuDiscoveryStarted",
+          "runnerStarted",
+          "gpuDiscoveryCompleted",
+        ].map((key) => "milestones." + key),
+        ...[
+          "listenerAnnounced",
+          "dummyModelInitialized",
+          "deviceInfoGathered",
+          "metalDeviceEnumerated",
+          "embeddedMetalLibrarySelected",
+          "metalLibraryLoaded",
+          "metalSourceCompiled",
+          "discoveryFailed",
+        ].map((key) => "runnerDetails." + key),
+      ].map((key) => [key, null]),
+    ),
+  };
+  return {
+    observe(httpReady = false) {
+      const elapsed = now() - started;
+      if (Number.isFinite(elapsed)) {
+        observedAfterStartMs = Math.min(
+          Number.MAX_SAFE_INTEGER,
+          Math.max(observedAfterStartMs, elapsed),
+        );
+      }
+      if (httpReady && firstObservedAfterStartMs.httpReady === null) {
+        firstObservedAfterStartMs.httpReady = observedAfterStartMs;
+      }
+      try {
+        const evidence = captureOwnedOllamaStartupEvidence(supervisor);
+        if (evidence.captured) {
+          for (const [group, milestones] of Object.entries({
+            milestones: evidence.milestones,
+            runnerDetails: evidence.runnerDetails,
+          })) {
+            for (const [key, observed] of Object.entries(milestones)) {
+              const name = group + "." + key;
+              if (
+                observed &&
+                Object.hasOwn(firstObservedAfterStartMs, name) &&
+                firstObservedAfterStartMs[name] === null
+              ) {
+                firstObservedAfterStartMs[name] = observedAfterStartMs;
+              }
+            }
+          }
+        }
+      } catch {
+        // Missing telemetry must never change readiness or its original error.
+      }
+      return {
+        observedAfterStartMs,
+        firstObservedAfterStartMs: { ...firstObservedAfterStartMs },
+      };
+    },
+  };
+}
+
 export async function runOwnedOllamaExtraction(
   supervisor: Pick<ProcessSupervisor, "start" | "snapshot">,
   spec: Omit<ManagedProcessSpec, "name">,
@@ -436,6 +508,9 @@ export async function runOllamaLocalBoundarySmoke(
   let daemonPid: number | null = null;
   let startupEvidence:
     ReturnType<typeof captureOwnedOllamaStartupEvidence> | undefined;
+  let startupTiming:
+    | ReturnType<ReturnType<typeof createOwnedOllamaStartupTimeline>["observe"]>
+    | undefined;
   const observations: { route: string; status: number; kind: string }[] = [];
   const peer = createServer((request, response) => {
     if (request.url === "/owned-positive-control") positiveControls++;
@@ -553,6 +628,7 @@ export async function runOllamaLocalBoundarySmoke(
       signal: AbortSignal.timeout(5000),
     });
     assert.equal(positiveControls, 1);
+    const startupTimeline = createOwnedOllamaStartupTimeline(supervisor);
     daemonPid = supervisor.start({
       name: "owned-ollama",
       command: binary,
@@ -560,21 +636,27 @@ export async function runOllamaLocalBoundarySmoke(
       cwd: root,
       env: environment,
     }).pid;
-    await supervisor.waitUntilReady(
-      async () => {
-        assert.equal(
-          supervisor.snapshot("owned-ollama")?.running,
-          true,
-          "owned_runtime_exited_before_readiness",
-        );
-        const response = await fetch(origin + "/api/version", {
-          signal: AbortSignal.timeout(500),
-          redirect: "error",
-        });
-        return response.ok;
-      },
-      { timeoutMs: 20000, intervalMs: 100, label: "Owned pinned Ollama" },
-    );
+    try {
+      await supervisor.waitUntilReady(
+        async () => {
+          startupTimeline.observe();
+          assert.equal(
+            supervisor.snapshot("owned-ollama")?.running,
+            true,
+            "owned_runtime_exited_before_readiness",
+          );
+          const response = await fetch(origin + "/api/version", {
+            signal: AbortSignal.timeout(500),
+            redirect: "error",
+          });
+          startupTimeline.observe(response.ok);
+          return response.ok;
+        },
+        { timeoutMs: 20000, intervalMs: 100, label: "Owned pinned Ollama" },
+      );
+    } finally {
+      startupTiming = startupTimeline.observe();
+    }
     native = await probeReleasedOllamaBoundary(
       origin,
       ALIAS,
@@ -635,6 +717,7 @@ export async function runOllamaLocalBoundarySmoke(
           binarySha256,
           daemonPid,
           startupEvidence,
+          startupTiming,
           native,
           observations,
           alias: ALIAS,
