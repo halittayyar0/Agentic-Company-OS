@@ -179,25 +179,19 @@ try {
     Grant-CiRead $pythonInfo.prefix $true $account.SID
     Grant-CiRead $archive $false $account.SID
 
-    $env:ACOS_NATIVE_CI_WORKSPACE = $workspace
-    $env:ACOS_NATIVE_CI_NODE = $node
-    $env:ACOS_NATIVE_CI_PYTHON = $pythonInfo.executable
-    $env:ACOS_NATIVE_CI_ARCHIVE = $archive
-    $env:ACOS_NATIVE_CI_FIXTURE = $fixture
-    $env:ACOS_NATIVE_CI_SID = $account.SID.Value
     $childScript = @'
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 try {
-    if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows') { throw 'not_ci' }
+    if ($i.schemaVersion -ne 1 -or $i.githubActions -ne 'true' -or $i.runnerOs -ne 'Windows' -or $i.runId -notmatch '^\d+$') { throw 'not_ci' }
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = [Security.Principal.WindowsPrincipal]::new($identity)
-    if ($identity.User.Value -ne $env:ACOS_NATIVE_CI_SID -or $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'wrong_token' }
-    $workspace = $env:ACOS_NATIVE_CI_WORKSPACE
-    $node = $env:ACOS_NATIVE_CI_NODE
-    $python = $env:ACOS_NATIVE_CI_PYTHON
-    $archive = $env:ACOS_NATIVE_CI_ARCHIVE
-    $fixture = $env:ACOS_NATIVE_CI_FIXTURE
+    if ($identity.User.Value -ne $i.expectedSid -or $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'wrong_token' }
+    $workspace = $i.workspace
+    $node = $i.node
+    $python = $i.python
+    $archive = $i.archive
+    $fixture = $i.fixture
     $keep = @{}
     foreach ($key in @('SystemRoot', 'SystemDrive', 'WINDIR', 'COMSPEC', 'COMPUTERNAME', 'PROCESSOR_ARCHITECTURE', 'NUMBER_OF_PROCESSORS', 'OS')) {
         $keep[$key] = [Environment]::GetEnvironmentVariable($key)
@@ -223,27 +217,44 @@ try {
 }
 '@
     $phase = 'prepare_ordinary_entry'
-    $entry = Join-Path $fixture 'ordinary-user-entry.ps1'
-    $childBytes = [Text.UTF8Encoding]::new($false).GetBytes($childScript)
-    [IO.File]::WriteAllBytes($entry, $childBytes)
+    $entry = Join-Path $fixture 'entry.json'
+    $payload = [ordered]@{
+        source = $childScript
+        inputs = [ordered]@{
+            schemaVersion = 1
+            githubActions = $env:GITHUB_ACTIONS
+            runnerOs = $env:RUNNER_OS
+            runId = $env:GITHUB_RUN_ID
+            expectedSid = $account.SID.Value
+            workspace = $workspace
+            node = $node
+            python = $pythonInfo.executable
+            archive = $archive
+            fixture = $fixture
+        }
+    } | ConvertTo-Json -Depth 4 -Compress
+    $payloadBytes = [Text.UTF8Encoding]::new($false).GetBytes($payload)
+    [IO.File]::WriteAllBytes($entry, $payloadBytes)
     $sha256 = [Security.Cryptography.SHA256]::Create()
-    try { $entryHash = [Convert]::ToBase64String($sha256.ComputeHash($childBytes)) } finally { $sha256.Dispose() }
-    $env:ACOS_NATIVE_CI_ENTRY = $entry
-    $env:ACOS_NATIVE_CI_HASH = $entryHash
+    try { $entryHash = [Convert]::ToBase64String($sha256.ComputeHash($payloadBytes)) } finally { $sha256.Dispose() }
+    if ($entryHash -cnotmatch '^[A-Za-z0-9+/]{43}=$') { throw 'windows_native_fixture_payload_hash_invalid' }
     # CreateProcessWithLogonW has a 1,024-character command-line limit. Verify
     # the exact entry bytes before executing them through this static reader.
     $trampoline = @'
-[Console]::WriteLine(('ENTRY={0};HASH={1};CI={2};SID={3}'-f[bool]$env:ACOS_NATIVE_CI_ENTRY,[bool]$env:ACOS_NATIVE_CI_HASH,[bool]$env:GITHUB_ACTIONS,[bool]$env:ACOS_NATIVE_CI_SID));exit 17
+$b=[IO.File]::ReadAllBytes('entry.json');$s=[Security.Cryptography.SHA256]::Create();$h=[Convert]::ToBase64String($s.ComputeHash($b));$s.Dispose();if($h -cne '__PAYLOAD_HASH__'){exit 41};$d=[Text.Encoding]::UTF8.GetString($b)|ConvertFrom-Json;$i=$d.inputs;&([scriptblock]::Create($d.source))
 '@
+    $trampoline = $trampoline.Replace('__PAYLOAD_HASH__', $entryHash)
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($trampoline))
     $launchArguments = @('-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded)
     $result.credentialCommandLineCharacters = ('"' + $systemPowerShell + '" ' + ($launchArguments -join ' ')).Length + 1
     if ($result.credentialCommandLineCharacters -ge 1024) { throw 'windows_native_fixture_commandline_too_long' }
     $phase = 'launch_ordinary_user'
-    # Start-Process inherits process environment; paths never enter source text.
-    # Alternate credentials require Secondary Logon and a loadable user profile.
-    $process = Start-Process -FilePath $systemPowerShell -ArgumentList $launchArguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -WorkingDirectory $workspace -RedirectStandardOutput (Join-Path $fixture 'private-stdout.log') -RedirectStandardError (Join-Path $fixture 'private-stderr.log') -PassThru
+    # PS5 credential launches do not preserve our custom environment. Bind code
+    # and input data together, read relative to the explicit private working dir.
+    $process = Start-Process -FilePath $systemPowerShell -ArgumentList $launchArguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -WorkingDirectory $fixture -RedirectStandardOutput (Join-Path $fixture 'private-stdout.log') -RedirectStandardError (Join-Path $fixture 'private-stderr.log') -PassThru
     $result.processCreated = $true
+    # Keep the exact process handle before it exits; PS5 otherwise loses ExitCode.
+    $null = $process.Handle
     $phase = 'archive_acceptance'
     if (-not $process.WaitForExit(18 * 60 * 1000)) {
         $result.timedOut = $true
@@ -302,15 +313,8 @@ try {
         } catch { $cleanupOkay = $false }
     }
     if ($securePassword) { $securePassword.Dispose() }
+    if ($process) { $process.Dispose() }
     $credential = $null
-    foreach ($key in @('ACOS_NATIVE_CI_WORKSPACE', 'ACOS_NATIVE_CI_NODE', 'ACOS_NATIVE_CI_PYTHON', 'ACOS_NATIVE_CI_ARCHIVE', 'ACOS_NATIVE_CI_FIXTURE', 'ACOS_NATIVE_CI_SID', 'ACOS_NATIVE_CI_ENTRY', 'ACOS_NATIVE_CI_HASH')) { [Environment]::SetEnvironmentVariable($key, $null) }
-    $probeOutputPath = Join-Path $fixture 'private-stdout.log'
-    if (Test-Path -LiteralPath $probeOutputPath -PathType Leaf) {
-        $probeOutput = [IO.File]::ReadAllText($probeOutputPath).Trim()
-        if ($probeOutput -cmatch '^ENTRY=(True|False);HASH=(True|False);CI=(True|False);SID=(True|False)$') {
-            $result.environmentPresence = [ordered]@{ entry = $Matches[1] -ceq 'True'; hash = $Matches[2] -ceq 'True'; ci = $Matches[3] -ceq 'True'; sid = $Matches[4] -ceq 'True' }
-        }
-    }
     $result.cleanupVerified = $cleanupOkay
     if (-not $cleanupOkay) { $result.accepted = $false }
     $summary = $result | ConvertTo-Json -Depth 4
