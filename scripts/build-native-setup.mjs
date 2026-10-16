@@ -21,6 +21,7 @@ import { Transform } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { build } from "../artifacts/api-server/node_modules/esbuild/lib/main.js";
+import { nodeArchiveDownloadUrl } from "./native-runtime-download.mjs";
 
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -69,6 +70,7 @@ if (
   !/^17\.\d+$/u.test(pins.postgres?.version)
 )
   throw new Error("Unsupported host or invalid pinned runtime inputs");
+const nodeDownloadUrl = nodeArchiveDownloadUrl(target, node);
 const head = (
   await execute("git", ["rev-parse", "HEAD"], { cwd: root })
 ).stdout.trim();
@@ -221,7 +223,7 @@ await mkdir(directory);
 const temporary = await mkdtemp(path.join(tmpdir(), "acos-native-build-"));
 try {
   const downloaded = path.join(temporary, "node.archive");
-  const response = await fetch(node.url, {
+  const response = await fetch(nodeDownloadUrl, {
     signal: AbortSignal.timeout(120_000),
     redirect: "error",
   });

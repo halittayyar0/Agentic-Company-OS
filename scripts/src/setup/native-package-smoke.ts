@@ -17,6 +17,7 @@ import { reserveLoopbackPorts } from "../endurance/native-postgres-harness";
 import { createControlledArithmeticPeer } from "../testing/controlled-arithmetic-peer";
 import { readNativeDistribution } from "./native-distribution";
 import { proveDatabaseBackup } from "./backup-restore-proof";
+import { publicNativeSetupState } from "./native-package-proof";
 
 // Release-host integration proof. Infrastructure comes only from the extracted
 // archive. The test driver/Python run on the build host, never on an end user's
@@ -282,18 +283,14 @@ try {
     if (state.phase === "complete" || state.phase === "failed") break;
     await delay(500);
   } while (Date.now() < deadline);
-  proof.lastInstallationState = {
-    phase: state.phase,
-    step: state.step,
-    completedSteps: state.completedSteps,
-    error: state.error,
-  };
+  const publicState = publicNativeSetupState(state);
+  proof.lastInstallationState = publicState;
   assert.equal(
-    state.phase,
+    publicState.phase,
     "complete",
     "Fresh package installation must complete",
   );
-  proof.installationSteps = state.completedSteps;
+  proof.installationSteps = publicState.completedSteps;
   appUrl = String(state.url);
   operatorToken = (
     await setup<{ operatorToken: string }>("connection", "POST", {})
@@ -420,13 +417,16 @@ try {
   proof.cleanupVerified = true;
   proof.accepted = true;
 } catch (error) {
-  proof.error =
-    error instanceof Error ? error.message : "package_acceptance_failed";
+  // Assertion errors may echo an untrusted HTTP value even when a custom
+  // message is supplied. The public receipt must never copy raw error text.
+  proof.error = "package_acceptance_failed";
   // The retained diagnostic log is private and may contain the short-lived setup
   // URL. Public receipts deliberately exclude it and the private data paths.
-  await writeFile(path.join(owned, "private-launcher.log"), childLog, {
-    mode: 0o600,
-  });
+  await writeFile(
+    path.join(owned, "private-launcher.log"),
+    childLog + "\n" + (error instanceof Error ? error.stack : String(error)),
+    { mode: 0o600 },
+  );
   process.exitCode = 1;
 } finally {
   try {
