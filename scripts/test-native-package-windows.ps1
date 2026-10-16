@@ -116,6 +116,16 @@ function Get-FixtureProcesses($Sid) {
     }
 }
 
+function Get-CiWrappedNativeErrorCodes([string]$Message) {
+    # Start-Process can discard its Win32Exception. Match only known OS error
+    # messages generated in the same locale; never serialize the original text.
+    $suffix = $Message.TrimEnd([char[]]". `r`n`t")
+    foreach ($code in @(2, 3, 5, 6, 8, 50, 87, 123, 126, 127, 193, 203, 206, 267, 740, 1058, 1060, 1062, 1314, 1326, 1330, 1331, 1385, 1907)) {
+        $known = ([ComponentModel.Win32Exception]::new($code)).Message.TrimEnd([char[]]". `r`n`t")
+        if ($known.Length -gt 0 -and $suffix.EndsWith($known, [StringComparison]::OrdinalIgnoreCase)) { [int]$code }
+    }
+}
+
 function Get-CiExceptionDiagnostics([Exception]$Exception) {
     # Exception messages, ErrorRecords and stack traces can contain credentials
     # or private paths. Retain only bounded, typed numeric launch diagnostics.
@@ -124,6 +134,7 @@ function Get-CiExceptionDiagnostics([Exception]$Exception) {
         $entry = [ordered]@{
             exceptionType = $current.GetType().FullName
             hresult = [int]$current.HResult
+            wrappedNativeErrorCodes = @(Get-CiWrappedNativeErrorCodes $current.Message)
         }
         if ($current -is [ComponentModel.Win32Exception]) {
             $entry.nativeErrorCode = [int]$current.NativeErrorCode
