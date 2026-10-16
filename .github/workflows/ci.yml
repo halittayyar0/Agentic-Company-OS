@@ -41,6 +41,7 @@ jobs:
           if ($helperExit -eq 0) { throw 'Deliberately invalid archive unexpectedly accepted' }
           if ($sidecar.failurePhase -ne 'archive_acceptance' -or $sidecar.ordinaryUserVerified -ne $true -or $sidecar.cleanupVerified -ne $true) { throw 'The ordinary-user launch diagnostic did not reach the expected invalid archive refusal' }
           'DIAGNOSTIC ONLY: ordinary identity reached the expected invalid archive refusal; no native package qualified.'
+          exit 0
       - name: Retain only safe diagnostic receipts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
