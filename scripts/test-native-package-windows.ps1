@@ -88,6 +88,9 @@ $result = [ordered]@{
     cleanupVerified = $false
     timedOut = $false
     smokeExitCode = $null
+    processCreated = $false
+    contextParsed = $false
+    ordinaryUserVerified = $false
     secondaryLogonStartMode = $secondaryLogon.StartMode
 }
 
@@ -110,6 +113,23 @@ function Get-FixtureProcesses($Sid) {
         # A process can exit during enumeration. Never infer ownership from its name.
         $owner = Invoke-CimMethod -InputObject $candidate -MethodName GetOwnerSid -ErrorAction SilentlyContinue
         if ($owner -and $owner.ReturnValue -eq 0 -and $owner.Sid -eq $Sid.Value) { $candidate }
+    }
+}
+
+function Get-CiExceptionDiagnostics([Exception]$Exception) {
+    # Exception messages, ErrorRecords and stack traces can contain credentials
+    # or private paths. Retain only bounded, typed numeric launch diagnostics.
+    $current = $Exception
+    for ($depth = 0; $current -and $depth -lt 5; $depth++) {
+        $entry = [ordered]@{
+            exceptionType = $current.GetType().FullName
+            hresult = [int]$current.HResult
+        }
+        if ($current -is [ComponentModel.Win32Exception]) {
+            $entry.nativeErrorCode = [int]$current.NativeErrorCode
+        }
+        [pscustomobject]$entry
+        $current = $current.InnerException
     }
 }
 
@@ -196,6 +216,7 @@ try {
     # Start-Process inherits process environment; paths never enter source text.
     # Alternate credentials require Secondary Logon and a loadable user profile.
     $process = Start-Process -FilePath $systemPowerShell -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded) -Credential $credential -LoadUserProfile -WindowStyle Hidden -WorkingDirectory $workspace -RedirectStandardOutput (Join-Path $fixture 'private-stdout.log') -RedirectStandardError (Join-Path $fixture 'private-stderr.log') -PassThru
+    $result.processCreated = $true
     $phase = 'archive_acceptance'
     if (-not $process.WaitForExit(18 * 60 * 1000)) {
         $result.timedOut = $true
@@ -204,7 +225,9 @@ try {
     $process.Refresh()
     $result.smokeExitCode = $process.ExitCode
     $context = Get-Content -LiteralPath (Join-Path $fixture 'execution-context.json') -Raw | ConvertFrom-Json
-    if ($context.administratorToken -ne $false -or $context.identityVerified -ne $true -or $process.ExitCode -ne 0) {
+    $result.contextParsed = $true
+    $result.ordinaryUserVerified = $context.administratorToken -eq $false -and $context.identityVerified -eq $true
+    if (-not $result.ordinaryUserVerified -or $process.ExitCode -ne 0) {
         throw 'windows_native_fixture_smoke_failed'
     }
     $proof = Get-Content -LiteralPath (Join-Path $fixture 'evidence.json') -Raw | ConvertFrom-Json
@@ -213,6 +236,7 @@ try {
 } catch {
     # Raw launch logs stay in the owned fixture: they may contain setup URLs.
     $result.failurePhase = $phase
+    $result.failureDiagnostics = @(Get-CiExceptionDiagnostics $_.Exception)
 } finally {
     $cleanupOkay = $true
     if ($account) {
