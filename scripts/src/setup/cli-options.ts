@@ -9,6 +9,7 @@ Portable: node scripts/src/setup/bootstrap.mjs [options]
   --check             Check prerequisites only; no installation or model request.
   --data-dir <path>   Use a private parent directory for a new installation.
   --resume <path>     Resume an existing installation (starts its services).
+  --no-browser        Print the local link without opening a browser.
 
 Use --check on its own. Exit 0 means at least one installation path has
 its detected prerequisites; exit 1 means neither path is ready. Optional
@@ -21,13 +22,19 @@ export function parseSetupArguments(argv: string[]): {
   check?: boolean;
   resume?: string;
   parent?: string;
+  noBrowser?: boolean;
 } {
   const args = argv[0] === "--" ? argv.slice(1) : argv;
   if (args.length === 1 && ["--help", "-h"].includes(args[0]))
     return { help: true };
   if (args.length === 1 && args[0] === "--check") return { check: true };
   let resume: string | undefined, parent: string | undefined;
+  let noBrowser = false;
   for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--no-browser" && !noBrowser) {
+      noBrowser = true;
+      continue;
+    }
     if (
       (args[i] === "--resume" || args[i] === "--data-dir") &&
       args[i + 1] &&
@@ -55,5 +62,5 @@ export function parseSetupArguments(argv: string[]): {
     throw new SetupArgumentError(
       "Resume already identifies its data directory. Use --help for usage.",
     );
-  return { resume, parent };
+  return { resume, parent, ...(noBrowser ? { noBrowser: true } : {}) };
 }

@@ -8,6 +8,7 @@ import { createInstallationExecutor } from "./installer";
 import { planInstallation } from "./plan";
 import { readInstallation } from "./resume";
 import type { InstallCapabilities } from "./preflight";
+import { nativeRequiredFiles } from "./native-distribution";
 
 const capabilities: InstallCapabilities = {
   platform: "linux",
@@ -38,6 +39,106 @@ const makePlan = (mode: string) =>
     },
     capabilities,
   );
+
+test("bundled native installation generates its private database without invoking a package manager", async (t) => {
+  const parent = await mkdtemp(
+    path.join(await realpath(tmpdir()), "acos-bundled-installer-"),
+  );
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const bundledCapabilities = {
+    ...capabilities,
+    native: { ready: true, issues: [], managedDatabase: true },
+  };
+  const plan = planInstallation(
+    makePlan("native").settings,
+    bundledCapabilities,
+  );
+  assert.equal(plan.steps.includes("build_application"), false);
+  const calls: string[] = [];
+  const executor = createInstallationExecutor({
+    workspaceRoot: process.cwd(),
+    installationParent: parent,
+    pnpmPath: process.execPath,
+    nativeDistribution: {
+      schemaVersion: 1,
+      commit: "a".repeat(40),
+      target: `${process.platform}-${process.arch}`,
+      nodeVersion: "24.21.0",
+      postgresVersion: "17.10",
+      files: nativeRequiredFiles({
+        platform: process.platform,
+        architecture: process.arch,
+      }).map((file) => ({ path: file, bytes: 1, sha256: "a".repeat(64) })),
+    },
+    capabilities: async () => bundledCapabilities,
+    run: async () => {
+      throw new Error("must not execute a build or PATH probe");
+    },
+    onPrepared: async (resources) => {
+      const saved = JSON.parse(
+        await readFile(
+          path.join(resources.directory, "installation.json"),
+          "utf8",
+        ),
+      );
+      assert.equal(saved.runtimeOptions.nativeBundleCommit, "a".repeat(40));
+      calls.push("recovery-persisted");
+    },
+    managedPostgres: () => ({
+      prepare: async () => {
+        calls.push("prepare");
+      },
+      start: async () => {
+        calls.push("start");
+        throw new Error("fixture stops before app spawn");
+      },
+      stop: async () => {
+        calls.push("stop");
+      },
+    }),
+    applyPreferences: async () => {
+      throw new Error("must not reach preferences");
+    },
+  });
+  await assert.rejects(
+    executor.execute(plan, {}, () => {}),
+    /fixture stops before app spawn/u,
+  );
+  assert.deepEqual(calls, ["recovery-persisted", "prepare", "start", "stop"]);
+  await readInstallation(
+    executor.installationDirectory()!,
+    process.cwd(),
+    async () => bundledCapabilities,
+    "a".repeat(40),
+  );
+  await assert.rejects(
+    readInstallation(
+      executor.installationDirectory()!,
+      process.cwd(),
+      async () => bundledCapabilities,
+      "b".repeat(40),
+    ),
+    /original native package commit/u,
+  );
+  await assert.rejects(
+    readInstallation(
+      executor.installationDirectory()!,
+      process.cwd(),
+      async () => bundledCapabilities,
+    ),
+    /original native package commit/u,
+  );
+  const directory = executor.installationDirectory()!;
+  const saved = JSON.parse(
+    await readFile(path.join(directory, "installation.json"), "utf8"),
+  );
+  assert.equal(saved.phase, "failed");
+  assert.equal(saved.runtimeOptions.nativeBundleCommit, "a".repeat(40));
+  const url = new URL(await readFile(saved.secretFiles.database_url, "utf8"));
+  assert.equal(url.hostname, "127.0.0.1");
+  assert.ok(url.password.length >= 32);
+  assert.equal(JSON.stringify(saved).includes(url.password), false);
+});
 
 test("coding installer persists the reviewed choice and rechecks host policy before selecting worker images", async (t) => {
   const parent = await mkdtemp(

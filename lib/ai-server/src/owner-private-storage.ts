@@ -37,7 +37,7 @@ export function assertPrivateUnixMetadata(
 }
 
 // Paths travel only through a child environment variable, never interpolated
-// PowerShell source. Build a fresh ACL only for a newly created, empty directory
+// PowerShell source. Replace access rules only for a newly created, empty directory
 // or an exclusively created empty file, before writing any protected contents.
 // Existing files/directories must already satisfy the postcondition; a broad
 // explicit ACE must not survive an inheritance-only change.
@@ -48,9 +48,15 @@ $directory = $env:ACOS_PRIVATE_STORAGE_DIRECTORY -eq '1'
 $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
 $system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
 if ($env:ACOS_PRIVATE_STORAGE_CREATE -eq '1') {
-  $acl = if ($directory) { [System.Security.AccessControl.DirectorySecurity]::new() } else { [System.Security.AccessControl.FileSecurity]::new() }
-  $acl.SetOwner($owner)
+  $sections = [System.Security.AccessControl.AccessControlSections]::Access -bor [System.Security.AccessControl.AccessControlSections]::Owner
+  $acl = if ($directory) { [System.IO.Directory]::GetAccessControl($target, $sections) } else { [System.IO.File]::GetAccessControl($target, $sections) }
+  $previousOwner = $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+  if ($previousOwner -ne $owner.Value) {
+    if ($previousOwner -ne 'S-1-5-32-544') { throw 'owner' }
+    $acl.SetOwner($owner)
+  }
   $acl.SetAccessRuleProtection($true, $false)
+  foreach ($rule in $acl.GetAccessRules($true, $false, [System.Security.Principal.SecurityIdentifier])) { $acl.RemoveAccessRuleSpecific($rule) }
   foreach ($sid in @($owner, $system)) {
     $rule = if ($directory) { [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow') } else { [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'Allow') }
     $acl.AddAccessRule($rule)

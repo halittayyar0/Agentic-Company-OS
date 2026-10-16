@@ -32,29 +32,29 @@ Dies sind Beispielaufträge, keine garantierten Ergebnisse. Das Ergebnis hängt 
 
 ## Schnellstart
 
-### 1. Installationsweg wählen
+### 1. Das native Paket herunterladen
 
-|                     | Fertiges Containerpaket                                                                                                             | Native Installation aus dem Quellcode                                                                    |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **Geeignet für**    | Den Einstieg mit der vorgefertigten Anwendung                                                                                       | Die direkte Arbeit mit Quellcode und Werkzeugen des Hostsystems                                          |
-| **Voraussetzungen** | Node.js 24 sowie Docker mit laufender Linux-Engine und Compose v2                                                                   | Git, Node.js 24, die festgelegte pnpm-Version, PostgreSQL; Chromium für Browserwerkzeuge                 |
-| **Anwendungsbuild** | Wird automatisch als Image mit festgelegter Version heruntergeladen                                                                 | Wird auf deinem Rechner erstellt                                                                         |
-| **Hier beginnen**   | [Setup-ZIP herunterladen](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest/download/Agentic-Company-OS-setup.zip) | [Anleitung zur nativen Installation](./docs/self-hosting.md#guided-installation-windows-linux-and-macos) |
+Wähle unter [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) das passende **v0.5.4**-Archiv und prüfe Version sowie Prüfsumme. Node.js, PostgreSQL und die fertige App sind enthalten. Node.js, Docker, pnpm, Git und PostgreSQL müssen nicht separat installiert werden.
 
-Das Containerpaket enthält PostgreSQL und Chromium. Git, pnpm und ein eigener Build aus dem Quellcode sind dafür nicht erforderlich. Lokale KI-Modelle stellen zusätzliche Hardwareanforderungen, die vom gewählten Modell abhängen.
+| System              | Archiv                                   |
+| ------------------- | ---------------------------------------- |
+| Windows x64         | `Agentic-Company-OS-win32-x64.zip`       |
+| macOS Intel         | `Agentic-Company-OS-darwin-x64.tar.gz`   |
+| macOS Apple Silicon | `Agentic-Company-OS-darwin-arm64.tar.gz` |
+| Linux x64           | `Agentic-Company-OS-linux-x64.tar.gz`    |
+| Linux ARM64         | `Agentic-Company-OS-linux-arm64.tar.gz`  |
 
-### 2. Installationsassistenten öffnen
+Ziele: Windows 10 (1903+)/11 x64, macOS 15 auf Intel/Apple Silicon und Ubuntu 24.04 auf x64/ARM64. Linux-Pakete basieren auf Ubuntu 24.04/glibc; ältere glibc und Alpine/musl sind keine unterstützten Ziele. Windows ARM64 ist kein natives Ziel. Windows/macOS-Pakete sind unsigniert; Notarisierung und SmartScreen-Reputation werden nicht bereitgestellt. Prüfe normale Systemwarnungen und die Prüfsumme, ohne den Systemschutz zu deaktivieren.
 
-Entpacke die Setup-ZIP und starte die Installation aus dem entpackten Ordner:
+### 2. Den Arbeitsbereich öffnen
 
-| Betriebssystem | Ausführen                                |
-| -------------- | ---------------------------------------- |
-| Windows        | `START.cmd` doppelt anklicken            |
-| macOS / Linux  | `sh START.command` im Terminal ausführen |
+Entpacke das **gesamte Archiv** in einen Ordner. Doppelklicke unter Windows auf `START.cmd`. Öffne unter macOS `START.command` oder führe unter macOS/Linux `./START.command` im Terminal aus. Halte die Paketdateien zusammen. Der Launcher öffnet einen privaten lokalen Browserlink und zeigt ihn im Terminal. Wähle eine der sieben Sprachen, prüfe Berechtigungen und verbinde ein Modell.
 
-Öffne den **privaten lokalen Link**, der im Terminal erscheint. Wähle Sprache, Modellanbieter, Berechtigungen und Werkzeugpakete. Der Assistent erstellt die Datenbank und prüft, ob der Arbeitsbereich bereit ist.
+Die App bindet standardmäßig an Loopback (`127.0.0.1`). Lass das Terminal geöffnet; **Strg+C** stoppt App, Worker und private Datenbank. Ohne Browser: `START.cmd --no-browser` oder `./START.command --no-browser`. Daten und Schlüssel bleiben im privaten Installationsordner außerhalb des Pakets. Bewahre ihn und das ursprüngliche Paket auf; ein erneuter Start desselben Pakets am ursprünglichen Ort setzt die gespeicherte Installation fort. Paketwechsel und Upgrades sind nicht automatisiert: Erstelle eine überprüfte Sicherung und folge der [Upgrade-Anleitung](./docs/self-hosting.md#upgrades).
 
-**Bewahre das entpackte Paket und das angezeigte Installationsverzeichnis auf.** Sie werden zum Neustart und zur Fortsetzung einer unterbrochenen Installation benötigt. [Neustart, Sicherungen und Servereinrichtung →](./docs/self-hosting.md)
+Modellgewichte und Anbieterzugang sind nicht enthalten. KI-Aufgaben brauchen ein eingerichtetes Ollama-Modell oder eine verfügbare Anbieterverbindung; Cloud-Anbieter können Gebühren berechnen. Lokale Hilfsprüfungen funktionieren ohne kostenpflichtigen Anbieter.
+
+Erweiterte Optionen: Das separate [Docker-Paket](./docs/self-hosting.md#portable-container-installer) und die [Quellcode-Installation](./docs/self-hosting.md#source-installation-prerequisites) behalten ihre eigenen Voraussetzungen.
 
 ### 3. Einen klaren ersten Auftrag geben
 

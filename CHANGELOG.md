@@ -5,6 +5,35 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-10-16
+
+### Added
+
+- Native archives for Windows x64, macOS Intel/Apple Silicon and Linux x64/ARM64
+  that include Node.js, PostgreSQL and the built application. Users extract the
+  package and start its launcher without separately installing infrastructure.
+- An owned, private database with SCRAM authentication, loopback access,
+  durable storage, backup tools, safe shutdown and same-package resume.
+- Checksum-pinned native build inputs, source-built PostgreSQL with static
+  zlib and private relocatable libpq, retained notices and matching-host archive
+  acceptance gates.
+
+### Changed
+
+- Seven-language setup explains the included runtime and no longer asks native
+  archive users for a database connection. Model access remains a separate choice;
+  model weights and provider credits are not included.
+- Save recovery identity before long installation steps and reject a changed
+  native package commit on explicit resume. Source/Docker installation remains
+  available for advanced deployments.
+
+### Fixed
+
+- Preserve an already-correct Windows storage owner while creating private
+  access rules, so ordinary users can initialize storage on a second NTFS drive.
+- Embed a process-only UTF-8 manifest in private PostgreSQL executables so
+  Windows 10 1903+/11 installations can use Unicode package and data paths.
+
 ## [0.5.3] - 2026-10-16
 
 ### Fixed

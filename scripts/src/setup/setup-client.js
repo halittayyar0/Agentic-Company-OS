@@ -16,6 +16,24 @@
     ar: "الإعداد|مساحتك. قواعدك.|اختر مكان عمل الوكلاء وما يمكنهم فعله.|أين تريد التشغيل؟|على هذا الكمبيوتر|تشغيل مباشر على Windows أو macOS أو Linux. يتطلب PostgreSQL.|داخل حاوية|شغّل التطبيق وقاعدة البيانات معًا باستخدام Docker.|صلاحيات الوكلاء|قراءة فقط|طلب الموافقة|وصول كامل|مخصص|يقتصر الوصول على مساحة العمل وصلاحيات نظام التشغيل.|مزود الذكاء الاصطناعي|الإعداد لاحقًا|عنوان اتصال PostgreSQL|مفتاح API|المنفذ المحلي|حزم الأدوات|البيانات|المستندات|الويب|البرمجة|التخطيط|الوصول من الهاتف|هذا الكمبيوتر فقط|شبكة خاصة|استخدم متصفح هاتفك. تحتاج الشبكة الخاصة إلى اتصال مُعدّ مسبقًا؛ لا حاجة إلى تطبيق هاتف.|مراجعة التثبيت|تبقى بيانات الدخول في مجلد التثبيت الخاص ولا تظهر في الملخص.|فتح مساحة العمل|رجوع|متابعة|تثبيت|جارٍ فحص الكمبيوتر…|جاهز للمتابعة.|المتطلبات غير مكتملة. تحقق من Node 24 أو محرك Docker يعمل بنظام Linux مع Compose v2.|تعذرت المتابعة. تحقق من البيانات والاتصال ثم حاول مجددًا.|جارٍ التثبيت…|تم التحقق من التثبيت.|توقف التثبيت. تم الاحتفاظ بالإعدادات؛ افحص أداة التثبيت قبل البدء مجددًا.|افتح رابط الإعداد الذي يعرضه برنامج التشغيل.",
   };
   const permissionKeys = ["files", "terminal", "browser", "delegation", "sudo"];
+  const bundledNativeWords = {
+    en: "Node.js, PostgreSQL and the app are included. No separate infrastructure installation is needed.",
+    tr: "Node.js, PostgreSQL ve uygulama pakete dahil. Ayrı bir altyapı kurulumu gerekmez.",
+    de: "Node.js, PostgreSQL und die App sind enthalten. Keine separate Infrastrukturinstallation nötig.",
+    ru: "Node.js, PostgreSQL и приложение включены. Отдельная установка инфраструктуры не требуется.",
+    "zh-CN": "已包含 Node.js、PostgreSQL 和应用，无需单独安装基础设施。",
+    "zh-TW": "已包含 Node.js、PostgreSQL 和應用程式，無需另外安裝基礎設施。",
+    ar: "Node.js وPostgreSQL والتطبيق مضمنة. لا تحتاج إلى تثبيت بنية تحتية إضافية.",
+  };
+  const containerDistributionWords = {
+    en: "For Docker, download the separate advanced Docker package from the installation guide.",
+    tr: "Docker için kurulum rehberinden ayrı gelişmiş Docker paketini indir.",
+    de: "Für Docker lade das separate erweiterte Docker-Paket aus der Installationsanleitung herunter.",
+    ru: "Для Docker скачайте отдельный расширенный пакет Docker из руководства по установке.",
+    "zh-CN": "如需 Docker，请通过安装指南下载单独的高级 Docker 软件包。",
+    "zh-TW": "如需 Docker，請透過安裝指南下載獨立的進階 Docker 套件。",
+    ar: "لاستخدام Docker، نزّل حزمة Docker المتقدمة المنفصلة من دليل التثبيت.",
+  };
   const nativeSourceWords = {
     en: "This ready-to-run package uses Docker. For installation directly on your computer, open the native setup guide.",
     tr: "Bu hazır paket Docker kullanır. Doğrudan bilgisayarına kurmak için yerel kurulum rehberini aç.",
@@ -370,7 +388,17 @@
   }
   function draw() {
     const selected = capabilities?.[value("mode")];
-    const issues = issueWords[$("language").value] || issueWords.en;
+    const locale = $("language").value;
+    const issues = {
+      ...(issueWords[locale] || issueWords.en),
+      container_distribution_required:
+        containerDistributionWords[locale] || containerDistributionWords.en,
+    };
+    const managedDatabase = capabilities?.native?.managedDatabase === true;
+    document.querySelector('[data-copy="nativeHelp"]').textContent =
+      managedDatabase
+        ? bundledNativeWords[locale] || bundledNativeWords.en
+        : copy.nativeHelp;
     const coding = form.elements.namedItem("codingRuntime");
     const permission =
       value("accessMode") !== "read_only" &&
@@ -434,7 +462,7 @@
     $("native-source").hidden = !portable;
     $("native-source").textContent =
       nativeSourceWords[$("language").value] || nativeSourceWords.en;
-    $("database-field").hidden = value("mode") !== "native";
+    $("database-field").hidden = value("mode") !== "native" || managedDatabase;
     $("custom-fields").hidden = value("accessMode") !== "custom";
     $("key-field").hidden = !["openai", "openrouter"].includes(
       value("provider"),
@@ -619,7 +647,10 @@
         stage = 2;
       } else {
         const credentials = {};
-        if (plan.settings.mode === "native")
+        if (
+          plan.settings.mode === "native" &&
+          capabilities?.native?.managedDatabase !== true
+        )
           credentials.databaseUrl = value("databaseUrl");
         if (["openai", "openrouter"].includes(plan.settings.provider))
           credentials.providerKey = value("providerKey");

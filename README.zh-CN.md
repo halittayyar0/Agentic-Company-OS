@@ -32,29 +32,29 @@
 
 ## 快速开始
 
-### 1. 选择安装方式
+### 1. 下载原生安装包
 
-|                | 预构建容器安装包                                                                                                         | 从源代码原生安装                                                                   |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| **适合**       | 直接使用预构建应用                                                                                                       | 直接处理源代码和主机工具                                                           |
-| **准备条件**   | Node.js 24，以及运行 Linux 引擎并支持 Compose v2 的 Docker                                                               | Git、Node.js 24、项目固定版本的 pnpm、PostgreSQL；浏览器工具还需要 Chromium        |
-| **应用构建**   | 自动下载固定版本的镜像                                                                                                   | 在你的电脑上构建                                                                   |
-| **从这里开始** | [下载安装 ZIP](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest/download/Agentic-Company-OS-setup.zip) | [原生安装指南](./docs/self-hosting.md#guided-installation-windows-linux-and-macos) |
+在[发布页](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest)选择适合电脑的 **v0.5.4** 压缩包，核对版本与校验和。包内已包含 Node.js、PostgreSQL 和编译好的应用，无需另外安装 Node.js、Docker、pnpm、Git 或 PostgreSQL。
 
-容器安装包包含 PostgreSQL 和 Chromium，无需 Git、pnpm，也无需自行编译源代码。本地 AI 模型需要额外的硬件资源，具体要求取决于所选模型。
+| 系统                | 压缩包                                   |
+| ------------------- | ---------------------------------------- |
+| Windows x64         | `Agentic-Company-OS-win32-x64.zip`       |
+| macOS Intel         | `Agentic-Company-OS-darwin-x64.tar.gz`   |
+| macOS Apple Silicon | `Agentic-Company-OS-darwin-arm64.tar.gz` |
+| Linux x64           | `Agentic-Company-OS-linux-x64.tar.gz`    |
+| Linux ARM64         | `Agentic-Company-OS-linux-arm64.tar.gz`  |
 
-### 2. 打开安装程序
+目标系统：Windows 10 (1903+)/11 x64、Intel/Apple Silicon 上的 macOS 15，以及 x64/ARM64 上的 Ubuntu 24.04。Linux 包以 Ubuntu 24.04/glibc 为构建基线；更旧的 glibc 和 Alpine/musl 不在支持范围内。没有 Windows ARM64 原生包。Windows/macOS 包未签名，也未提供 macOS 公证或 SmartScreen 信誉保证。请核查系统正常的信任提示与校验和，不要关闭系统安全保护。
 
-解压安装 ZIP，然后从解压后的文件夹中启动：
+### 2. 打开工作空间
 
-| 操作系统      | 启动方式                      |
-| ------------- | ----------------------------- |
-| Windows       | 双击 `START.cmd`              |
-| macOS / Linux | 在终端运行 `sh START.command` |
+将**整个压缩包**解压到一个文件夹。Windows 双击 `START.cmd`；macOS 打开 `START.command`，也可在 macOS/Linux 终端运行 `./START.command`。请将文件放在一起。启动器会打开私有本地浏览器链接，并在终端打印备用链接。选择七种语言之一，检查权限并连接模型。
 
-打开终端显示的**私有本地链接**。选择语言、模型提供商、权限和工具包。安装向导会创建数据库，并检查工作空间是否就绪。
+应用默认仅绑定回环地址（`127.0.0.1`）。保持终端打开；**Ctrl+C** 会停止应用、工作进程和私有数据库。无浏览器模式：`START.cmd --no-browser` 或 `./START.command --no-browser`。数据和密钥保存在包外的私有安装目录。请保留该目录和原始包；在原位置再次启动同一个包会恢复已记录的安装。跨包数据迁移和升级并未自动化；请保留已验证的备份并遵循[升级指南](./docs/self-hosting.md#upgrades)。
 
-**请保留解压后的安装包和终端显示的安装目录。** 重新启动或继续未完成的安装时会用到它们。[重启、备份与服务器设置 →](./docs/self-hosting.md)
+包内不含模型权重或服务商访问权限。AI 任务需要配置好的 Ollama 模型或可用的服务商连接；云服务商可能收费。本地实用检查无需付费服务商即可运行。
+
+高级选项：独立的 [Docker 包](./docs/self-hosting.md#portable-container-installer)和[源代码安装](./docs/self-hosting.md#source-installation-prerequisites)保留各自的前置要求。
 
 ### 3. 明确交办第一项工作
 

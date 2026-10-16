@@ -52,6 +52,7 @@ export async function readInstallation(
   directory: string,
   workspaceRoot: string,
   detect = detectInstallCapabilities,
+  nativeBundleCommit?: string,
 ) {
   const exact = await ensureExactOutputDirectory(path.resolve(directory));
   const saved = JSON.parse(
@@ -63,7 +64,7 @@ export async function readInstallation(
     plan?: { id?: unknown; settings?: unknown; createdAt?: unknown };
     phase?: unknown;
     workspaceRoot?: unknown;
-    runtimeOptions?: { ollamaUrl?: unknown };
+    runtimeOptions?: { ollamaUrl?: unknown; nativeBundleCommit?: unknown };
   };
   if (
     saved.schemaVersion !== 1 ||
@@ -88,6 +89,16 @@ export async function readInstallation(
     path.relative(String(saved.workspaceRoot), workspaceRoot) !== ""
   )
     throw new Error("Resume must use the installation's original checkout");
+  const savedCommit = saved.runtimeOptions?.nativeBundleCommit;
+  if (
+    (nativeBundleCommit !== undefined || savedCommit !== undefined) &&
+    (typeof nativeBundleCommit !== "string" ||
+      !/^[a-f0-9]{40}$/u.test(nativeBundleCommit) ||
+      savedCommit !== nativeBundleCommit)
+  )
+    throw new Error(
+      "Resume must use the installation's original native package commit",
+    );
   const normalized = planInstallation(saved.plan.settings, await detect());
   const plan = {
     ...normalized,

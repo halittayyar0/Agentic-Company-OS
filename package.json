@@ -1,6 +1,6 @@
 {
   "name": "agentic-company-os",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "Local-first, human-governed operating system for autonomous AI agent teams.",
   "license": "MIT",
   "packageManager": "pnpm@10.17.1",
@@ -26,6 +26,7 @@
     "security:audit:all": "pnpm audit",
     "test": "tsx ./scripts/src/run-tests.ts",
     "test:installation:native": "tsx ./scripts/src/setup/native-install-smoke.ts",
+    "test:installation:package": "tsx ./scripts/src/setup/native-package-smoke.ts",
     "test:connection:native": "tsx ./scripts/src/testing/guided-local-connection-smoke.ts",
     "test:ollama:native": "tsx ./scripts/src/ollama-local-boundary-smoke.ts",
     "test:guides:native": "tsx ./scripts/src/testing/reusable-project-guides-smoke.ts",

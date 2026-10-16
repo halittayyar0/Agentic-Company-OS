@@ -1,0 +1,179 @@
+name: Native packages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-package:
+    name: Native package ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - target: win32-x64
+            runner: windows-2025
+            python-command: python
+            venv-python: Scripts/python.exe
+            archive-extension: .zip
+          - target: darwin-arm64
+            runner: macos-15
+            python-command: python3
+            venv-python: bin/python
+            archive-extension: .tar.gz
+          - target: darwin-x64
+            runner: macos-15-intel
+            python-command: python3
+            venv-python: bin/python
+            archive-extension: .tar.gz
+          - target: linux-x64
+            runner: ubuntu-24.04
+            python-command: python3
+            venv-python: bin/python
+            archive-extension: .tar.gz
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+            python-command: python3
+            venv-python: bin/python
+            archive-extension: .tar.gz
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CI: "true"
+      NATIVE_TARGET: ${{ matrix.target }}
+      # This is the native runner's system floor, not a claim about older OSes.
+      # Source-built PostgreSQL must be qualified separately for older glibc.
+    steps:
+      - name: Check out exact workflow revision
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Set up pinned build Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Require matching native architecture
+        run: >-
+          node -e 'const actual = `${process.platform}-${process.arch}`;
+          if (actual !== process.env.NATIVE_TARGET) throw new Error(`Wrong runner: ${actual}`);
+          console.log(JSON.stringify({ target: actual, node: process.version, os: require("node:os").release() }));'
+
+      - name: Install Linux release build tools
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends build-essential flex bison cmake perl python3-venv
+
+      - name: Install macOS release build tools
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: |
+          brew install flex bison cmake
+          echo "$(brew --prefix flex)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
+
+      - name: Create isolated build tools with pinned wheel hashes
+        run: |
+          $venv = Join-Path $env:RUNNER_TEMP 'native-build-venv'
+          & '${{ matrix.python-command }}' -c 'import sys; assert sys.version_info >= (3, 12), "Release creation requires Python >=3.12"'
+          if ($LASTEXITCODE -ne 0) { throw 'Unsupported build Python' }
+          & '${{ matrix.python-command }}' -m venv $venv
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot create release build environment' }
+          $buildPython = Join-Path $venv '${{ matrix.venv-python }}'
+          & $buildPython -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes --no-deps -r deploy/native-build-requirements.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned build wheel installation failed' }
+          & $buildPython -c 'from importlib.metadata import version; assert version("meson") == "1.10.2"; assert version("ninja") == "1.13.0"'
+          if ($LASTEXITCODE -ne 0) { throw 'Unexpected native build tool versions' }
+          "PYTHON=$buildPython" >> $env:GITHUB_ENV
+          "NATIVE_BUILD_ROOT=$(Join-Path $env:RUNNER_TEMP 'native-postgres-build')" >> $env:GITHUB_ENV
+          "NATIVE_PACKAGE_ROOT=$(Join-Path $env:RUNNER_TEMP "Agentic-Company-OS-$env:NATIVE_TARGET")" >> $env:GITHUB_ENV
+          "NATIVE_PACKAGE_ARCHIVE=$(Join-Path $env:RUNNER_TEMP "Agentic-Company-OS-$env:NATIVE_TARGET${{ matrix.archive-extension }}")" >> $env:GITHUB_ENV
+          "NATIVE_PACKAGE_EVIDENCE=$(Join-Path $env:RUNNER_TEMP "native-package-$env:NATIVE_TARGET-evidence.json")" >> $env:GITHUB_ENV
+
+      - name: Install frozen application dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Compile API, workers and frontend
+        run: |
+          pnpm --filter @workspace/api-server run build
+          if ($LASTEXITCODE -ne 0) { throw 'API and worker build failed' }
+          pnpm --filter @workspace/agentic-company-os run build
+          if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed' }
+
+      - name: Build complete PostgreSQL from checksum-pinned sources
+        run: |
+          & $env:PYTHON scripts/build-native-postgres.py --out $env:NATIVE_BUILD_ROOT 2>&1 | Tee-Object (Join-Path $env:RUNNER_TEMP 'native-postgres-build.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Native PostgreSQL source build failed' }
+
+      - name: Require clean source after dependency and application builds
+        run: |
+          $head = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $head -ne $env:GITHUB_SHA) { throw 'Build source revision changed' }
+          $status = git status --porcelain=v1 --untracked-files=normal
+          if ($LASTEXITCODE -ne 0 -or $status) { throw "Build modified source: $status" }
+
+      - name: Assemble final native archive with bundled runtimes
+        run: |
+          node scripts/build-native-setup.mjs --commit $env:GITHUB_SHA --postgres (Join-Path $env:NATIVE_BUILD_ROOT 'runtime') --out $env:NATIVE_PACKAGE_ROOT
+          if ($LASTEXITCODE -ne 0) { throw 'Native package creation failed' }
+
+      - name: Prove extracted archive installation, first job, backup and resume
+        timeout-minutes: 20
+        run: |
+          pnpm exec tsx scripts/src/setup/native-package-smoke.ts --archive $env:NATIVE_PACKAGE_ARCHIVE --evidence $env:NATIVE_PACKAGE_EVIDENCE
+          if ($LASTEXITCODE -ne 0) { throw 'Final native archive acceptance failed' }
+
+      - name: Require source to remain clean after archive acceptance
+        run: |
+          $status = git status --porcelain=v1 --untracked-files=normal
+          if ($LASTEXITCODE -ne 0 -or $status) { throw "Archive acceptance modified source: $status" }
+
+      - name: Preserve native package evidence and build diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-package-${{ matrix.target }}-evidence
+          path: |
+            ${{ runner.temp }}/native-package-${{ matrix.target }}-evidence.json
+            ${{ runner.temp }}/native-postgres-build.log
+            ${{ runner.temp }}/native-postgres-build/runtime/native-build-provenance.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Preserve qualified archive and checksum provenance
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Agentic-Company-OS-${{ matrix.target }}
+          path: |
+            ${{ runner.temp }}/Agentic-Company-OS-${{ matrix.target }}${{ matrix.archive-extension }}
+            ${{ runner.temp }}/Agentic-Company-OS-${{ matrix.target }}.provenance.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

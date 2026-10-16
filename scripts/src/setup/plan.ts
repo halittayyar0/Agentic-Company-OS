@@ -178,9 +178,11 @@ export function planInstallation(
     "check_environment",
     "prepare_private_config",
   ];
-  if (settings.mode === "native")
-    steps.push("connect_postgres", "build_application", "start_native");
-  else steps.push("compose_up");
+  if (settings.mode === "native") {
+    steps.push("connect_postgres");
+    if (!capabilities.native.managedDatabase) steps.push("build_application");
+    steps.push("start_native");
+  } else steps.push("compose_up");
   steps.push("apply_preferences");
   if (settings.phoneAccess === "private_network") steps.push("configure_phone");
   steps.push("verify_runtime");

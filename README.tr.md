@@ -38,34 +38,29 @@ Bunlar örnek görevlerdir. Sonuç; seçilen modele, mevcut araçlara, izinlere 
 
 ## Hızlı başlangıç
 
-### 1. Kurulum yolunu seç
+### 1. Hazır yerel paketi indir
 
-|                                | Hazır konteyner paketi                                                                                                            | Kaynak koddan yerel kurulum                                                                 |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **Kime uygun?**                | Hazır uygulamayla başlamak isteyenlere                                                                                            | Kaynak kod ve bilgisayar araçlarıyla doğrudan çalışmak isteyenlere                          |
-| **Önce ne gerekli?**           | Node.js 24 + Linux motoru ve Compose v2 ile çalışan Docker                                                                        | Git, Node.js 24, projede belirtilen pnpm, PostgreSQL; tarayıcı araçları için Chromium       |
-| **Uygulama nasıl hazırlanır?** | Sürümü sabitlenmiş hazır imaj indirilir                                                                                           | Bilgisayarında derlenir                                                                     |
-| **Nereden başlamalı?**         | [Kurulum ZIP’ini indir](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest/download/Agentic-Company-OS-setup.zip) | [Yerel kurulum rehberi](./docs/self-hosting.md#guided-installation-windows-linux-and-macos) |
+[Sürümler](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) sayfasından bilgisayarına uygun **v0.5.4** arşivini seç; sürümü ve dosya özetini kontrol et. Node.js, PostgreSQL ve hazır uygulama dahildir. Node.js, Docker, pnpm, Git veya PostgreSQL ayrıca kurulmaz.
 
-Konteyner, uygulamanın ihtiyaçlarıyla birlikte ayrı bir ortamda çalışmasını sağlar. Hazır paket PostgreSQL veritabanını ve Chromium tarayıcısını içerir; Git, pnpm veya kaynak kod derlemesi gerektirmez. Yerel yapay zekâ modeli kullanacaksan donanım ihtiyacı seçtiğin modele göre artar.
+| Sistem              | Arşiv                                    |
+| ------------------- | ---------------------------------------- |
+| Windows x64         | `Agentic-Company-OS-win32-x64.zip`       |
+| macOS Intel         | `Agentic-Company-OS-darwin-x64.tar.gz`   |
+| macOS Apple Silicon | `Agentic-Company-OS-darwin-arm64.tar.gz` |
+| Linux x64           | `Agentic-Company-OS-linux-x64.tar.gz`    |
+| Linux ARM64         | `Agentic-Company-OS-linux-arm64.tar.gz`  |
 
-### 2. Kurulum ekranını aç
+Hedefler: Windows 10 (1903+)/11 x64, Intel/Apple Silicon macOS 15 ve x64/ARM64 Ubuntu 24.04. Linux paketleri Ubuntu 24.04/glibc tabanlıdır; eski glibc ve Alpine/musl destek hedefi değildir. Windows ARM64 yerel paketi yoktur. Windows/macOS paketleri imzasızdır; macOS noter onayı veya SmartScreen itibarı sağlanmaz. Normal güven uyarılarını ve dosya özetini incele; işletim sistemi güvenliğini kapatma.
 
-ZIP dosyasını çıkar ve çıkan klasörden başlat:
+### 2. Çalışma alanını aç
 
-| İşletim sistemin | Yapacağın işlem                        |
-| ---------------- | -------------------------------------- |
-| Windows          | `START.cmd` dosyasına çift tıkla       |
-| macOS / Linux    | Terminalde `sh START.command` çalıştır |
+**Arşivin tamamını** bir klasöre çıkar. Windows’ta `START.cmd` dosyasına çift tıkla. macOS’ta `START.command` dosyasını aç veya macOS/Linux terminalinde `./START.command` çalıştır. Dosyaları bir arada tut. Başlatıcı özel yerel tarayıcı bağlantısını açar ve terminale de yazar. Yedi dilden birini seç, izinleri gözden geçir ve model bağla.
 
-Terminalde gösterilen **özel yerel bağlantıyı** aç. Dilini, model sağlayıcını, izinlerini ve araç paketlerini seç. Kurulum ekranı veritabanını hazırlar ve çalışma alanının açıldığını kontrol eder.
+Varsayılan erişim yalnızca bu bilgisayardaki `127.0.0.1` adresidir. Terminali açık tut; **Ctrl+C** uygulamayı, çalışanları ve özel veritabanını durdurur. Tarayıcısız kullanım: `START.cmd --no-browser` veya `./START.command --no-browser`. Veri ve anahtarlar paketin dışındaki özel kurulum klasöründedir. Klasörü ve orijinal paketi sakla; aynı paket orijinal konumunda tekrar açılınca kayıtlı kurulum devam eder. Başka pakete veri taşıma/yükseltme otomatik değildir; doğrulanmış yedek al ve [güncelleme rehberini](./docs/self-hosting.md#upgrades) izle.
 
-**Çıkardığın paketi ve terminalde belirtilen kurulum klasörünü sakla.** Yeniden başlatma ve yarım kalan kuruluma devam etme işlemlerinde bunlar kullanılır. [Yeniden başlatma, yedekleme ve sunucu kurulumu →](./docs/self-hosting.md)
+Model dosyaları ve sağlayıcı erişimi dahil değildir. Yapay zekâ işleri için yapılandırılmış Ollama modeli veya çalışan sağlayıcı bağlantısı gerekir; bulut sağlayıcısı ücret alabilir. Yerel yardımcı kontroller ücretli sağlayıcı olmadan çalışır.
 
-v0.5.2 ve sonrasında, kuruluma başlamadan önce çıkan klasörde
-`node scripts/src/setup/bootstrap.mjs --check` çalıştırarak eksik gereksinimleri
-görebilirsin. Seçenekler için `--help` kullan. Kontrol kurulum başlatmaz ve
-modele istek göndermez; terminal yardımı İngilizce, kurulum ekranı yedi dildir.
+Gelişmiş seçenekler: ayrı [Docker paketi](./docs/self-hosting.md#portable-container-installer) ve [kaynak koddan kurulum](./docs/self-hosting.md#source-installation-prerequisites) kendi gereksinimlerini korur.
 
 ### 3. İlk işini tanımla
 
@@ -127,7 +122,7 @@ Kurulumda veya Ayarlar’da **salt okunur, onaylı, tam erişim ya da özel poli
 
 ## Neler doğrulandı?
 
-Her taşınabilir sürüm sabit bir Linux amd64/arm64 imajına bağlanır; kurulum paketi dosya özetiyle yayımlanır. [En son sürüm](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) kendi kaynak kodunu, otomatik kontrollerini ve paketleme çalışmasını belirtir. [0.2.0 kabul kaydı](./docs/verification/2026-09-29-efficient-autonomy.md) önceki kaynak, tarayıcı, platform, konteyner ve sınırlı gerçek model denemelerini belgeler; oradaki test sayıları sonraki değişiklikleri kapsamaz.
+Yerel paketlerin ve ayrı Docker dağıtımının doğrulama kapsamı sürüme özeldir. Hedef sistem listesi, o sürümün kontrollerinin geçtiği anlamına gelmez. [En son sürüm](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) kendi kaynak kodunu, otomatik kontrollerini ve paketleme çalışmasını belirtir. [0.2.0 kabul kaydı](./docs/verification/2026-09-29-efficient-autonomy.md) önceki kaynak, tarayıcı, platform, konteyner ve sınırlı gerçek model denemelerini belgeler; oradaki test sayıları sonraki değişiklikleri kapsamaz.
 
 24 saatlik kesintisiz test, fiziksel telefon/mobil şebeke denemesi ve ana dili konuşan kişilerin çeviri incelemesi henüz tamamlanmadı. Açık uçlu işler senin bilgine veya kararına ihtiyaç duyabilir; her işin mutlaka tamamlanacağı garantisi verilmez.
 

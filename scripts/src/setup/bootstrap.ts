@@ -1,18 +1,25 @@
 import path from "node:path";
 import { homedir } from "node:os";
+import { realpath } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createSetupSession } from "./session";
 import { createInstallationExecutor } from "./installer";
 import { applyInstallationPreferences } from "./preferences";
 import { readInstallation } from "./resume";
 import { readDistribution } from "./distribution";
-import { detectInstallCapabilities } from "./preflight";
+import { detectInstallCapabilities, runSetupProbe } from "./preflight";
 import {
   parseSetupArguments,
   setupHelp,
   SetupArgumentError,
 } from "./cli-options";
 import { setupCheckReport } from "./check-report";
+import { readNativeDistribution } from "./native-distribution";
+import {
+  openNativeBrowser,
+  readNativeLaunchPointer,
+  saveNativeLaunchPointer,
+} from "./native-launch";
 
 export { parseSetupArguments } from "./cli-options";
 export async function launchSetup(argv = process.argv.slice(2)) {
@@ -23,8 +30,49 @@ export async function launchSetup(argv = process.argv.slice(2)) {
     return;
   }
   const distribution = await readDistribution(workspaceRoot);
+  const nativeDistribution = await readNativeDistribution(workspaceRoot);
+  if (nativeDistribution) {
+    const bundledNode = path.join(
+      workspaceRoot,
+      process.platform === "win32"
+        ? "runtime/node/node.exe"
+        : "runtime/node/bin/node",
+    );
+    if (
+      process.version !== `v${nativeDistribution.nodeVersion}` ||
+      (await realpath(process.execPath)) !== (await realpath(bundledNode))
+    )
+      throw new Error("native_package_node_runtime");
+    process.env.PATH = [
+      path.dirname(bundledNode),
+      path.join(workspaceRoot, "runtime/postgres/bin"),
+      process.env.PATH ?? "",
+    ].join(path.delimiter);
+  }
   const capabilities: typeof detectInstallCapabilities = async () => {
-    const detected = await detectInstallCapabilities();
+    const detected = await detectInstallCapabilities(
+      nativeDistribution && !distribution
+        ? {
+            run: (command, args) =>
+              command === "docker"
+                ? Promise.reject(new Error("separate_container_package"))
+                : runSetupProbe(command, args),
+          }
+        : {},
+    );
+    if (nativeDistribution)
+      return {
+        ...detected,
+        native: { ready: true, issues: [], managedDatabase: true },
+        ...(!distribution
+          ? {
+              container: {
+                ready: false,
+                issues: ["container_distribution_required" as const],
+              },
+            }
+          : {}),
+      };
     return distribution
       ? {
           ...detected,
@@ -47,21 +95,53 @@ export async function launchSetup(argv = process.argv.slice(2)) {
     process.exitCode = report.exitCode;
     return;
   }
-  const pnpmPath = distribution ? process.execPath : process.env.npm_execpath;
+  const pnpmPath =
+    distribution || nativeDistribution
+      ? process.execPath
+      : process.env.npm_execpath;
   if (!pnpmPath || !path.isAbsolute(pnpmPath))
     throw new Error("Start the installer with pnpm run setup");
   const controller = new AbortController();
-  const restored = args.resume
-    ? await readInstallation(args.resume, workspaceRoot, capabilities)
+  const installationParent =
+    args.parent ?? path.join(homedir(), ".agentic-company-os", "instances");
+  const resumePath =
+    args.resume ??
+    (nativeDistribution
+      ? await readNativeLaunchPointer(
+          installationParent,
+          workspaceRoot,
+          nativeDistribution.commit,
+        )
+      : null);
+  const restored = resumePath
+    ? await readInstallation(
+        resumePath,
+        workspaceRoot,
+        capabilities,
+        nativeDistribution?.commit,
+      )
     : null;
   const executor = createInstallationExecutor({
     workspaceRoot,
     installationParent: restored
       ? path.dirname(restored.resources.directory)
-      : (args.parent ??
-        path.join(homedir(), ".agentic-company-os", "instances")),
+      : installationParent,
     pnpmPath,
     capabilities,
+    ...(nativeDistribution
+      ? {
+          nativeDistribution,
+          onPrepared: (resources: { directory: string }) =>
+            saveNativeLaunchPointer(
+              restored
+                ? path.dirname(restored.resources.directory)
+                : installationParent,
+              workspaceRoot,
+              nativeDistribution.commit,
+              resources.directory,
+            ),
+        }
+      : {}),
     ...(distribution
       ? {
           prebuiltImage: distribution.image,
@@ -106,17 +186,33 @@ export async function launchSetup(argv = process.argv.slice(2)) {
     process.stdout.write(
       `Workspace: ${result.url}\n${result.phoneUrl ? `Phone: ${result.phoneUrl}\n` : ""}Operator key: ${path.join(restored.resources.directory, "secrets/operator_auth_token")}\n`,
     );
+    if (nativeDistribution && !args.noBrowser)
+      await openNativeBrowser(result.url);
   } else {
     session = await createSetupSession({
       capabilities,
       execute: async (plan, credentials, progress) => {
         try {
           const result = await executor.execute(plan, credentials, progress);
+          if (nativeDistribution)
+            await saveNativeLaunchPointer(
+              installationParent,
+              workspaceRoot,
+              nativeDistribution.commit,
+              executor.installationDirectory()!,
+            );
           process.stdout.write(
-            `Installation: ${executor.installationDirectory()}\nRestart: ${distribution ? `node "${fileURLToPath(import.meta.url)}"` : "pnpm run setup"} --resume "${executor.installationDirectory()}"\n`,
+            `Installation: ${executor.installationDirectory()}\nRestart: ${nativeDistribution ? `Run ${process.platform === "win32" ? "START.cmd" : "START.command"} again` : distribution ? `node "${fileURLToPath(import.meta.url)}"` : "pnpm run setup"}${nativeDistribution ? "" : ` --resume "${executor.installationDirectory()}"`}\n`,
           );
           return result;
         } catch (error) {
+          if (nativeDistribution && executor.installationDirectory())
+            await saveNativeLaunchPointer(
+              installationParent,
+              workspaceRoot,
+              nativeDistribution.commit,
+              executor.installationDirectory()!,
+            );
           process.stderr.write(
             `Installation stopped. Configuration retained at: ${executor.installationDirectory() ?? "not yet created"}\n`,
           );
@@ -127,6 +223,8 @@ export async function launchSetup(argv = process.argv.slice(2)) {
     process.stdout.write(
       `Agentic Company OS setup\nOpen this private setup link in this computer's browser:\n${session.url}\nKeep this terminal open while the native workspace runs. Ctrl+C stops its owned processes.\n`,
     );
+    if (nativeDistribution && !args.noBrowser)
+      await openNativeBrowser(session.url);
   }
   return { executor, session, shutdown };
 }

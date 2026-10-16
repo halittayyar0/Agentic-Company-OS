@@ -36,33 +36,31 @@ These are example requests, not guaranteed outcomes. Results depend on the model
 
 ## Quick start
 
-### 1. Choose how to install
+### 1. Download the native package
 
-|                       | Ready-made container package                                                                                                       | Native installation from source                                                          |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **Best for**          | Starting with the prebuilt application                                                                                             | Working directly with the source and host tools                                          |
-| **Prepare**           | Node.js 24 + Docker running a Linux engine with Compose v2                                                                         | Git, Node.js 24, pinned pnpm, PostgreSQL; Chromium for browser tools                     |
-| **Application build** | Downloaded automatically as a pinned image                                                                                         | Built on your machine                                                                    |
-| **Start here**        | [Download the setup ZIP](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest/download/Agentic-Company-OS-setup.zip) | [Native setup guide](./docs/self-hosting.md#guided-installation-windows-linux-and-macos) |
+Choose the **v0.5.4** archive for your computer from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest). Check the version and checksum before downloading. Node.js, PostgreSQL and the built application are included; you do not need to install Node.js, Docker, pnpm, Git or PostgreSQL separately.
 
-The container package includes PostgreSQL and Chromium. It does not require Git, pnpm or a source build. Local AI models need additional hardware; requirements depend on the model you choose.
+| System              | Archive                                  |
+| ------------------- | ---------------------------------------- |
+| Windows x64         | `Agentic-Company-OS-win32-x64.zip`       |
+| macOS Intel         | `Agentic-Company-OS-darwin-x64.tar.gz`   |
+| macOS Apple Silicon | `Agentic-Company-OS-darwin-arm64.tar.gz` |
+| Linux x64           | `Agentic-Company-OS-linux-x64.tar.gz`    |
+| Linux ARM64         | `Agentic-Company-OS-linux-arm64.tar.gz`  |
 
-### 2. Open the installer
+Targets: Windows 10 (1903+)/11 x64, macOS 15 on Intel or Apple Silicon, and Ubuntu 24.04 on x64 or ARM64. Linux packages use the matching Ubuntu 24.04/glibc build floor; older glibc and Alpine/musl are not supported targets. Windows ARM64 is not a native target. Windows and macOS downloads are unsigned; notarization and SmartScreen reputation are not provided. Review normal OS trust prompts and the release checksum without disabling system security.
 
-Extract the setup ZIP, then start it from the extracted folder:
+### 2. Open the workspace
 
-| Your system   | What to run                          |
-| ------------- | ------------------------------------ |
-| Windows       | Double-click `START.cmd`             |
-| macOS / Linux | Run `sh START.command` in a terminal |
+Extract the **whole archive** into a folder. In that folder, double-click `START.cmd` on Windows; on macOS open `START.command`, or run `./START.command` in a macOS/Linux terminal. Keep all package files together.
 
-In v0.5.2 and later, you can check prerequisites first with
-`node scripts/src/setup/bootstrap.mjs --check` from the extracted folder.
-Use `--help` for options. Checking starts no installation or model request.
+The launcher opens a private local browser link and prints a fallback link. Choose one of seven languages, review permissions and connect a model. The app binds to loopback (`127.0.0.1`) by default. Keep the terminal open; **Ctrl+C** stops the app, workers and private database. For headless use, run `START.cmd --no-browser` or `./START.command --no-browser`.
 
-Open the **private local link** printed in the terminal. Choose your language, model provider, permissions and tool packs. The wizard creates the database and checks that the workspace is ready.
+Data and credentials stay outside the extracted package in a private installation directory. Keep that directory and the original package. Starting the same package again at its original location resumes its recorded installation. Moving data to a different package or upgrading it is not automated; retain a verified backup and follow the [upgrade guidance](./docs/self-hosting.md#upgrades).
 
-**Keep the extracted bundle and the printed installation directory.** They are used to restart or resume your installation. [Restart, backups and server setup →](./docs/self-hosting.md)
+Model weights and provider access are not included. AI jobs need a configured Ollama model or an available provider connection; cloud providers may charge your account. Local utility checks can run without a paid provider.
+
+**Advanced options:** the separate [Docker package](./docs/self-hosting.md#portable-container-installer) and [source installation](./docs/self-hosting.md#source-installation-prerequisites) retain their own requirements.
 
 ### 3. Give it a clear first job
 
@@ -93,7 +91,7 @@ The saved **Delivery summary** appears directly above the project workspace. Ope
 
 A **skill** is a guide for doing a job. A **tool** performs an action, such as inspecting data or using a browser. An **agent** combines instructions, a model and permitted tools to work on a task.
 
-The Run Inspector can also download a narrow, [shareable evidence packet](./docs/shareable-evidence.md) for the selected activity page. It leaves out task text and raw tool data. The setup ZIP includes an offline checksum verifier that needs no Git or pnpm.
+The Run Inspector can also download a narrow, [shareable evidence packet](./docs/shareable-evidence.md) for the selected activity page. It leaves out task text and raw tool data. The release packages include an offline checksum verifier that needs no Git or pnpm.
 
 ## Useful tools, room to grow
 
@@ -152,7 +150,7 @@ Choose **read-only, approval-based, full access or a custom policy** during setu
 
 ## What has been verified
 
-Each portable release pins a Linux amd64/arm64 image and publishes the setup bundle with a checksum. The [latest release](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) identifies its exact source, automated checks and distribution run. The [0.2.0 acceptance record](./docs/verification/2026-09-29-efficient-autonomy.md) documents the earlier source, browser, platform, container and bounded live-model checks; those counts do not describe later commits.
+Use the [latest release](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) for the exact source revision, archive checksums and available verification receipts. A listed target is not a claim that its current release checks have passed. The [0.2.0 acceptance record](./docs/verification/2026-09-29-efficient-autonomy.md) documents earlier source, browser, platform, container and bounded live-model checks; those counts do not describe later commits or the new native packages.
 
 A 24-hour soak, physical-phone/carrier acceptance and native-speaker review are still outstanding. Open-ended tasks may need your input; completion of every possible job is not guaranteed.
 
