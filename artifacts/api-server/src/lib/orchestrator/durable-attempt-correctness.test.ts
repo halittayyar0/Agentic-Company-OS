@@ -277,6 +277,9 @@ let judgeServer: http.Server | null = null;
 let judgeRequestCount = 0;
 let previousJudgeKey: string | undefined;
 let previousJudgeUrl: string | undefined;
+let judgeConnections = 0;
+const activeJudgeSockets = new Set<http.IncomingMessage["socket"]>();
+let disconnectNextJudgeResponse = false;
 
 after(async () => {
   if (judgeServer) {
@@ -303,7 +306,18 @@ async function startJudgeServer(_t: TestContext): Promise<void> {
     const payload = JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
       model?: string;
     };
-    response.writeHead(200, { "content-type": "application/json" });
+    if (disconnectNextJudgeResponse) {
+      disconnectNextJudgeResponse = false;
+      request.socket.destroy();
+      return;
+    }
+    // These cases exercise durable lifecycle transactions, not idle transport
+    // pooling. Close the owned peer response so a CPU-heavy next case cannot
+    // race a stale keep-alive connection with the intentionally nonretrying SDK.
+    response.writeHead(200, {
+      "content-type": "application/json",
+      connection: "close",
+    });
     response.end(
       JSON.stringify({
         id: randomUUID(),
@@ -324,6 +338,11 @@ async function startJudgeServer(_t: TestContext): Promise<void> {
       }),
     );
   });
+  server.on("connection", (socket) => {
+    judgeConnections++;
+    activeJudgeSockets.add(socket);
+    socket.once("close", () => activeJudgeSockets.delete(socket));
+  });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", resolve);
@@ -334,6 +353,67 @@ async function startJudgeServer(_t: TestContext): Promise<void> {
   process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = `http://127.0.0.1:${address.port}/v1`;
   judgeServer = server;
 }
+
+test("controlled judge transport is isolated and an unobserved response fences the task before lifecycle finalization", async (t) => {
+  await startJudgeServer(t);
+  const fixture = await createClaimedFixture(t, "Controlled judge transport");
+  t.after(() => {
+    disconnectNextJudgeResponse = false;
+  });
+  const beforeConnections = judgeConnections;
+  for (let index = 0; index < 2; index++) {
+    const review = await runJudge({
+      agent: fixture.agent,
+      taskId: null,
+      purpose: "completion",
+      originalBrief: "Report the verified fixture result.",
+      actionSummary: "Verified fixture result.",
+    });
+    assert.equal(review.verdict, "pass");
+    const deadline = Date.now() + 1000;
+    while (activeJudgeSockets.size && Date.now() < deadline)
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(
+      activeJudgeSockets.size,
+      0,
+      "Controlled judge responses must not retain idle pooled transports",
+    );
+  }
+  assert.equal(judgeConnections - beforeConnections, 2);
+  let barrierReached = false;
+  const beforeReviews = judgeRequestCount;
+  disconnectNextJudgeResponse = true;
+  await stepTask(fixture.claimed, {
+    runtimeOperationsConfig: workerConfig,
+    createCompletion: async (params) => {
+      const loading = await loadFixtureTaskTools(params, ["complete_task"]);
+      if (loading) return loading;
+      await params.beforeRequest?.();
+      return toolCompletion(params.model, "complete_task", {
+        resultSummary: "Verified fixture result",
+      });
+    },
+    beforeLifecycleFinalizeRelease: async () => {
+      barrierReached = true;
+    },
+  });
+  const [[task], [attempt]] = await Promise.all([
+    db.select().from(tasksTable).where(eq(tasksTable.id, fixture.task.id)),
+    db
+      .select()
+      .from(taskAttemptsTable)
+      .where(eq(taskAttemptsTable.id, fixture.claimed.runtimeAttemptId)),
+  ]);
+  assert.equal(
+    judgeRequestCount - beforeReviews,
+    1,
+    "A missing response must not be retried as unbilled inference",
+  );
+  assert.equal(barrierReached, false);
+  assert.equal(task.status, "blocked");
+  assert.equal(attempt.state, "blocked");
+  assert.equal(attempt.failureKind, "inference_accounting");
+});
 
 test("saved owner operation requirements reject premature completion before reviewer calls or lifecycle reservation in every locale", async (t) => {
   await startJudgeServer(t);
@@ -631,6 +711,7 @@ test("all durable lifecycle finalizers roll back on replaced-owner and emergency
   for (const lifecycle of lifecycleCases) {
     for (const conflict of ["replaced_owner", "emergency"] as const) {
       await t.test(`${lifecycle.name} · ${conflict}`, async (subtest) => {
+        let barrierReached = false;
         const fixture = await createClaimedFixture(
           subtest,
           `Atomic ${lifecycle.name} ${conflict}`,
@@ -665,6 +746,7 @@ test("all durable lifecycle finalizers roll back on replaced-owner and emergency
           },
           runtimeOperationsConfig: workerConfig,
           beforeLifecycleFinalizeRelease: async (tx) => {
+            barrierReached = true;
             if (conflict === "replaced_owner") {
               await tx
                 .update(tasksTable)
@@ -708,6 +790,11 @@ test("all durable lifecycle finalizers roll back on replaced-owner and emergency
               .from(activityEventsTable)
               .where(eq(activityEventsTable.taskId, fixture.task.id)),
           ]);
+        assert.equal(
+          barrierReached,
+          true,
+          "The intended lifecycle conflict must actually reach its finalization barrier",
+        );
         assert.equal(task.status, "in_progress");
         assert.equal(task.ownerAgentId, fixture.agent.id);
         assert.equal(task.leaseOwner, fixture.claimed.leaseOwner);
