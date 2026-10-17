@@ -28,6 +28,11 @@ import {
 } from "./phone-access";
 import { acquireInstallationLock } from "./installation-lock";
 import { readInstallationBudgetOverrides } from "./budget-overrides";
+import type { NativeDistribution } from "./native-distribution";
+import {
+  createManagedDatabaseUrl,
+  createManagedPostgres,
+} from "./managed-postgres";
 
 const DATABASE_PROBE = `
 import { createRequire } from 'node:module';
@@ -46,6 +51,9 @@ export function createInstallationExecutor(options: {
   pnpmPath: string;
   prebuiltImage?: string;
   codingImage?: string;
+  nativeDistribution?: NativeDistribution;
+  managedPostgres?: typeof createManagedPostgres;
+  onPrepared?: (resources: InstallationResources) => Promise<void>;
   // This must persist every selected policy/tool/language setting before setup
   // can finish. Kept mandatory so a UI-only selection cannot claim completion.
   applyPreferences: (
@@ -71,6 +79,7 @@ export function createInstallationExecutor(options: {
   )
     throw new Error("Installation launcher paths must be absolute");
   let supervisor: ProcessSupervisor | null = null;
+  let managed: ReturnType<typeof createManagedPostgres> | null = null;
   let resources: InstallationResources | null = null;
   let active = false;
   let releaseLock: (() => Promise<void>) | undefined;
@@ -96,6 +105,9 @@ export function createInstallationExecutor(options: {
     if (options.resume && options.resume.planId !== plan.id)
       throw new Error("Resume identity does not match the plan");
     active = true;
+    const bundledNative = Boolean(
+      options.nativeDistribution && plan.settings.mode === "native",
+    );
     const completed: InstallationStep[] = [];
     let currentStep: InstallationStep | null = null;
     let phone: PhoneConnection | undefined;
@@ -120,6 +132,9 @@ export function createInstallationExecutor(options: {
                 runtimeOptions: {
                   ollamaUrl: credentials.ollamaUrl,
                   phoneUrl: phone?.url,
+                  ...(bundledNative
+                    ? { nativeBundleCommit: options.nativeDistribution!.commit }
+                    : {}),
                 },
               },
               null,
@@ -146,7 +161,11 @@ export function createInstallationExecutor(options: {
     const baseUrl = `http://127.0.0.1:${plan.settings.port}`;
     try {
       await step("check_environment", async () => {
-        if (options.prebuiltImage && plan.settings.mode !== "container")
+        if (
+          options.prebuiltImage &&
+          plan.settings.mode !== "container" &&
+          !bundledNative
+        )
           throw new Error(
             "The portable distribution supports containers; use source setup for native installation",
           );
@@ -182,12 +201,18 @@ export function createInstallationExecutor(options: {
             plan.settings.port,
           );
           resources = options.resume.resources;
+          await record("installing");
+          await options.onPrepared?.(resources);
           return;
         }
+        if (bundledNative && credentials.databaseUrl)
+          throw new Error("managed_database_external_url_rejected");
         resources = await createInstallationResources(
           options.installationParent,
           plan,
-          credentials,
+          bundledNative
+            ? { ...credentials, databaseUrl: await createManagedDatabaseUrl() }
+            : credentials,
         );
         releaseLock = await acquireInstallationLock(
           resources.directory,
@@ -198,10 +223,28 @@ export function createInstallationExecutor(options: {
           "# Isolated installation; values come from its launcher.\n",
           { flag: "wx", mode: 0o600 },
         );
+        // Persist both recovery records before creating or starting services.
+        await record("installing");
+        await options.onPrepared?.(resources);
       });
       const owned = resources! as InstallationResources;
       if (plan.settings.mode === "native") {
         await step("connect_postgres", async () => {
+          if (bundledNative) {
+            managed = (options.managedPostgres ?? createManagedPostgres)({
+              resources: owned,
+              postgresRoot: path.join(
+                options.workspaceRoot,
+                "runtime/postgres",
+              ),
+              postgresVersion: options.nativeDistribution!.postgresVersion,
+              planId: plan.id,
+              signal: options.signal,
+            });
+            await managed.prepare();
+            await managed.start();
+            return;
+          }
           await run(
             command(
               process.execPath,
@@ -218,24 +261,25 @@ export function createInstallationExecutor(options: {
             ),
           );
         });
-        await step("build_application", async () => {
-          const version = await run(
-            command(
-              process.execPath,
-              [options.pnpmPath, "--version"],
-              {},
-              options.workspaceRoot,
-              10_000,
-            ),
-          );
-          if (version.stdout.trim() !== "10.17.1")
-            throw new Error("Pinned pnpm 10.17.1 is required");
-          await run(
-            command(process.execPath, [options.pnpmPath, "run", "build"], {
-              CI: "true",
-            }),
-          );
-        });
+        if (!bundledNative)
+          await step("build_application", async () => {
+            const version = await run(
+              command(
+                process.execPath,
+                [options.pnpmPath, "--version"],
+                {},
+                options.workspaceRoot,
+                10_000,
+              ),
+            );
+            if (version.stdout.trim() !== "10.17.1")
+              throw new Error("Pinned pnpm 10.17.1 is required");
+            await run(
+              command(process.execPath, [options.pnpmPath, "run", "build"], {
+                CI: "true",
+              }),
+            );
+          });
         await step("start_native", async () => {
           supervisor = new ProcessSupervisor({
             runId: `setup-${plan.id}`,
@@ -324,17 +368,31 @@ export function createInstallationExecutor(options: {
     } catch (error) {
       // Keep the database, secrets, build and manifest for recovery. Only child
       // processes owned by this launcher are stopped; no volumes are deleted.
-      await supervisor?.stopAll();
       await record("failed");
-      await releaseLock?.();
+      try {
+        await supervisor?.stopAll();
+      } finally {
+        try {
+          await managed?.stop();
+        } finally {
+          await releaseLock?.();
+        }
+      }
       throw error;
     }
   };
   return {
     execute,
     stopNative: async () => {
-      await supervisor?.stopAll();
-      await releaseLock?.();
+      try {
+        await supervisor?.stopAll();
+      } finally {
+        try {
+          await managed?.stop();
+        } finally {
+          await releaseLock?.();
+        }
+      }
     },
     installationDirectory: () => resources?.directory ?? null,
   };

@@ -1,0 +1,12 @@
+# Release creation only; nothing in this file is installed on first launch.
+# PyPI JSON checked 2026-10-16. --only-binary prevents source-build fallbacks.
+# https://pypi.org/pypi/meson/1.10.2/json (universal Python wheel)
+meson==1.10.2 \
+    --hash=sha256:5f84ef186e6e788d9154db63620fc61b3ece69f643b94b43c8b9203c43d89b36
+# https://pypi.org/pypi/ninja/1.13.0/json
+# macOS universal2 (both architectures), Linux ARM64, Linux x64, Windows x64.
+ninja==1.13.0 \
+    --hash=sha256:fa2a8bfc62e31b08f83127d1613d10821775a0eb334197154c4d6067b7068ff1 \
+    --hash=sha256:3d00c692fb717fd511abeb44b8c5d00340c36938c12d6538ba989fe764e79630 \
+    --hash=sha256:fb46acf6b93b8dd0322adc3a4945452a4e774b75b91293bafcc7b7f8e6517dfa \
+    --hash=sha256:fb8ee8719f8af47fed145cced4a85f0755dd55d45b2bddaf7431fa89803c5f3e

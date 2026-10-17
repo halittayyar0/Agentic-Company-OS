@@ -74,3 +74,6 @@ test-results/
 
 # Local endurance evidence (CI uploads these separately)
 artifacts/endurance-reports/
+
+# Build-only Python caches
+__pycache__/

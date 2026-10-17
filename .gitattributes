@@ -26,3 +26,4 @@ lib/db/src/generated-sql/0019_workforce_installations.sql whitespace=-blank-at-e
 # Keep the integrity-verified upstream license verbatim, including its blank line.
 deploy/codex-attribution/BUBBLEWRAP-COPYING whitespace=-blank-at-eol
 deploy/codex-attribution/bubblewrap-source.tar.gz binary
+deploy/native-attribution/*.txt -text whitespace=-blank-at-eol,-space-before-tab

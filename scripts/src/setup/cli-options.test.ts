@@ -15,6 +15,20 @@ test("setup accepts read-only help and check without installation paths", () => 
   assert.match(setupHelp, /bootstrap\.mjs/);
 });
 
+test("native launch can suppress browser opening without weakening diagnostic argument rules", () => {
+  assert.equal(parseSetupArguments(["--no-browser"]).noBrowser, true);
+  assert.equal(
+    parseSetupArguments(["--no-browser", "--data-dir", "relative"]).parent,
+    path.resolve("relative"),
+  );
+  for (const argv of [
+    ["--no-browser", "--no-browser"],
+    ["--no-browser", "--check"],
+    ["--help", "--no-browser"],
+  ])
+    assert.throws(() => parseSetupArguments(argv), SetupArgumentError);
+});
+
 test("setup rejects ambiguous diagnostics and retains private arguments", () => {
   for (const args of [
     ["--check", "--resume", "private-secret"],

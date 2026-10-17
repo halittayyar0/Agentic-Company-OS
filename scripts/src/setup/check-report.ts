@@ -11,6 +11,8 @@ const remedies: Record<
 > = {
   native_source_required:
     "Native installation requires a source checkout; this portable bundle uses Docker.",
+  container_distribution_required:
+    "This self-contained package runs directly. The separate advanced Docker package is available on the release page.",
   unsupported_platform: "Use Windows, macOS or Linux.",
   unsupported_architecture: "Use an x64 or ARM64 computer.",
   node_24_required:
@@ -52,8 +54,15 @@ export function setupCheckReport(state: InstallCapabilities): {
     text: [
       "Agentic Company OS prerequisite check",
       ...section("Container", state.container),
-      ...section("Native source", state.native),
-      "  Native setup also requires an existing PostgreSQL database and the source toolchain (pnpm 10.17.1).",
+      ...section(
+        state.native.managedDatabase
+          ? "Included native runtime"
+          : "Native source",
+        state.native,
+      ),
+      state.native.managedDatabase
+        ? "  Node and PostgreSQL are included. No Docker, Git, pnpm, external database or source compilation is needed."
+        : "  Native setup also requires an existing PostgreSQL database and the source toolchain (pnpm 10.17.1).",
       ...section(
         "Optional coding engine",
         state.coding ?? { ready: false, issues: [] },

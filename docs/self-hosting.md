@@ -16,7 +16,37 @@ Read [security-model.md](./security-model.md) before choosing a topology.
 | Shared team or multi-tenant service     | Not supported                   | The built-in token is one operator identity; there is no object-level authorization or tenant isolation.                             |
 | Direct public-internet service          | Not supported                   | Do not expose the API or Vite server directly.                                                                                       |
 
+## Native package: first installation
+
+For **v0.5.4**, choose the matching archive from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest). Check the version and checksum on the release page. The native package includes a pinned Node.js executable, a project-built PostgreSQL runtime and the compiled application. Users do not separately install Node.js, Docker, pnpm, Git or PostgreSQL for this path.
+
+| Host target               | Release asset                            |
+| ------------------------- | ---------------------------------------- |
+| Windows 10 (1903+)/11 x64 | `Agentic-Company-OS-win32-x64.zip`       |
+| macOS 15 Intel            | `Agentic-Company-OS-darwin-x64.tar.gz`   |
+| macOS 15 Apple Silicon    | `Agentic-Company-OS-darwin-arm64.tar.gz` |
+| Ubuntu 24.04 x64          | `Agentic-Company-OS-linux-x64.tar.gz`    |
+| Ubuntu 24.04 ARM64        | `Agentic-Company-OS-linux-arm64.tar.gz`  |
+
+Linux uses the Ubuntu 24.04/glibc build floor matching its build and CI environment. Older glibc compatibility, Alpine/musl and Windows ARM64 native packages are not claimed. macOS 15 matches the target CI environment; older macOS compatibility is not claimed. A listed target does not establish a passed release check: use the exact archive's published verification receipts.
+
+1. Download the correct archive and extract **the whole folder**. Keep its files together; run as an ordinary user, without administrator/root privileges.
+2. Windows: double-click `START.cmd`. macOS: open `START.command`. From a macOS/Linux terminal in the extracted folder, run `./START.command`.
+3. The launcher opens a private local setup link in the default browser and prints a fallback link. Choose Turkish, English, German, Russian, Simplified Chinese, Traditional Chinese or Arabic (RTL), review agent permissions, and configure a model connection or choose to do that later. The package provides its own private database; the native wizard does not ask for a PostgreSQL URL.
+4. Keep the terminal open. The app binds to loopback (`127.0.0.1`) by default. **Ctrl+C** stops its API, workers and owned database while retaining the installation's data. For a server without a browser, use `START.cmd --no-browser` or `./START.command --no-browser`, and open the printed private link on that host or through your separately configured private access.
+5. Connect a configured Ollama model or an available provider, then submit a small first job on Home and review its result and recorded evidence. Model weights, model downloads and provider/account access are not included. Cloud providers may charge your account; local utility checks can run without a paid provider. Successful setup alone is not a successful AI task. Optional browser/source tools can have their own capability requirements.
+
+Windows and macOS packages are unsigned. No macOS notarization or SmartScreen reputation is provided; normal OS trust prompts can appear. Verify the source and release checksum and use the operating system's normal reviewed trust process. Do not disable OS security or remove host protections to force execution.
+
+### Data and restarting the native package
+
+Data and secrets live outside the extracted package, by default under `~/.agentic-company-os/instances/instance-UUID` (the equivalent user-home path on Windows). The terminal prints the actual installation directory. Keep it private and retain both it and the original extracted package. Restarting **the same package at the same location and revision** uses its private last-installation pointer to resume the recorded installation. The pointer contains no model/operator secret and deliberately refuses a different package location or revision. Do not edit it to adopt unfamiliar data.
+
+There is no automated native-package upgrade or cross-package data migration. A moved or newer package must not silently adopt the old installation. Keep the original package available, take and restore-test backups of the database, secrets and workspaces, and follow [Upgrades](#upgrades) before a reviewed migration. A separately selected new `--data-dir` creates an independent installation; it does not migrate existing work. Native setup does not publish a website, allocate a public domain or provide free public hosting/tunneling. Private remote access needs its own reviewed configuration.
+
 ## Portable container installer
+
+**Advanced alternative: separate Docker distribution.** The requirements below apply to the container setup ZIP, not the native archives above.
 
 Install Node.js 24 and start a Docker Linux engine with Compose v2. Extract the setup ZIP from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest), then run `START.cmd` (Windows) or `sh START.command` (macOS/Linux). Open the printed private link. The wizard pulls a pinned image and provisions PostgreSQL; Git, pnpm and a local source build are unnecessary. Keep both the extracted bundle and the private installation directory to resume. Advanced container budget overrides belong in the installation directory’s `compose.env`; see [efficient work](efficient-work.md).
 
@@ -25,7 +55,7 @@ The wizard checks the selected installation mode and names missing local require
 ### Check prerequisites from a terminal
 
 Before opening the wizard, run `node scripts/src/setup/bootstrap.mjs --check`
-inside an extracted portable bundle, or `pnpm run setup -- --check` from source.
+inside an extracted container bundle, or `pnpm run setup -- --check` from source. In a native archive, use `START.cmd --check` or `./START.command --check` so the included Node executable is used.
 Use `--help` for all options. These commands start no installation or model
 request and print no credentials, machine paths or raw service responses.
 `--check` probes installed tools and the current Docker/Tailscale connection;
@@ -33,7 +63,7 @@ it does not install, start or configure those services.
 
 Exit **0** means at least one supported installation mode has its detected
 prerequisites; **1** means neither does. Optional coding workers and phone
-access do not block ordinary setup. Native setup still needs the source
+access do not block ordinary setup. Source-native setup still needs the source
 toolchain and an existing PostgreSQL database. The coding engine probe does
 not verify that the dedicated host AppArmor profile is loaded. A detected
 Tailscale connection still needs private HTTPS configuration. Provider
@@ -82,6 +112,8 @@ the complete published container installer and generated coding deliverables
 require their own accepted evidence; a green offline gate is not that proof.
 
 ## Source installation prerequisites
+
+**Advanced alternative: build from source.** The following toolchain requirements and manual deployment sections apply to source installations, not to first installation with a native archive.
 
 For an existing Ollama server, review [local model addresses and cloud permission](./local-models.md).
 The app requires a running server version of 0.18.0 or later; setup does not install
@@ -623,6 +655,14 @@ all tables, secret files or workspace volumes were preserved.
 Encrypt backup files, keep them outside the host/container failure domain, apply retention, and record restore-test dates. A database dump does not include `agent-data` or `agent-sandboxes`; back those volumes separately if policy requires them.
 
 ## Upgrades
+
+### Native archives
+
+The native restart pointer is bound to the original package location and source revision. Replacing the extracted files, moving the folder or pointing a new archive at the old data is not an automated upgrade. Keep the original package and private data directory. Stop work and services, then back up and restore-test PostgreSQL, the private secrets/configuration and all required workspaces before changing versions. Do not copy a running database directory as a verified backup or modify the pointer/ownership records to bypass an identity failure.
+
+Use a separate staging installation for the target release and review its release-specific migration guidance. Restore trusted data only through a reviewed PostgreSQL restore/migration process with the matching secret keys and workspace files. The source/server checklist below describes the advanced checks needed; it is not an in-place native-package updater. Retain the original package and a compatible database backup for rollback.
+
+### Advanced source/server updates
 
 1. Read release notes and security changes.
 2. Stop task creation and wait for/record active work.

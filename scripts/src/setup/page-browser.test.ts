@@ -5,6 +5,111 @@ import { createSetupSession } from "./session";
 import type { InstallationPlan } from "./plan";
 import type { InstallationCredentials } from "./session";
 
+test("bundled native setup needs no database credential and explains the separate Docker distribution in every locale", async (t) => {
+  const browser = await chromium.launch({
+    headless: true,
+    chromiumSandbox: true,
+  });
+  t.after(() => browser.close());
+  const submissions: InstallationCredentials[] = [];
+  const fragments = {
+    en: ["included", "separate"],
+    tr: ["dahil", "ayrı"],
+    de: ["enthalten", "separate"],
+    ru: ["включены", "отдельный"],
+    "zh-CN": ["已包含", "单独"],
+    "zh-TW": ["已包含", "獨立"],
+    ar: ["مضمنة", "المنفصلة"],
+  };
+  for (const [locale, [included, separate]] of Object.entries(fragments)) {
+    const session = await createSetupSession({
+      capabilities: async () => ({
+        platform: "win32",
+        architecture: "x64",
+        nodeVersion: "v24.21.0",
+        postgresClientVersion: null,
+        composeVersion: null,
+        native: { ready: true, issues: [], managedDatabase: true },
+        container: { ready: false, issues: [] },
+      }),
+      execute: async (_plan, credentials) => {
+        submissions.push({ ...credentials });
+        return { url: "http://127.0.0.1:5000" };
+      },
+    });
+    t.after(() => session.close());
+
+    const page = await browser.newPage({
+      viewport: { width: 320, height: 844 },
+    });
+    await page.route("**/api/capabilities", async (route) => {
+      const response = await route.fetch();
+      const capabilities = await response.json();
+      capabilities.container.issues = ["container_distribution_required"];
+      await route.fulfill({ json: capabilities });
+    });
+    await page.goto(session.url);
+    await page.locator("#next:not([disabled])").waitFor();
+    await page.locator("#language").selectOption(locale);
+    assert.equal(
+      await page.locator('[name="mode"][value="native"]').isChecked(),
+      true,
+    );
+    assert.ok(
+      (await page.locator('[data-copy="nativeHelp"]').innerText()).includes(
+        included,
+      ),
+    );
+    await page.locator('[name="mode"][value="container"]').check();
+    assert.equal(await page.locator("#next").isDisabled(), true);
+    assert.ok(
+      (await page.locator("#requirements-list").innerText()).includes(separate),
+    );
+    assert.match(
+      await page.locator("#requirements-list").innerText(),
+      /Docker/,
+    );
+    assert.ok(
+      (
+        await page.locator("#requirements-guide").getAttribute("href")
+      )?.endsWith("#portable-container-installer"),
+    );
+    await page.locator('[name="mode"][value="native"]').check();
+    await page.locator("#next").click();
+    assert.equal(await page.locator("#database-field").isVisible(), false);
+    assert.equal(
+      await page.locator('[name="databaseUrl"]').getAttribute("required"),
+      null,
+    );
+    // A restored/autofilled secret must not escape through the hidden field.
+    await page
+      .locator('[name="databaseUrl"]')
+      .evaluate((input: { value: string }) => {
+        input.value = "postgresql://stale:secret@localhost/unused";
+      });
+    assert.equal(
+      await page.locator("html").getAttribute("dir"),
+      locale === "ar" ? "rtl" : "ltr",
+    );
+    assert.equal(
+      await page.evaluate("document.documentElement.scrollWidth > innerWidth"),
+      false,
+    );
+    await page.locator("#next").focus();
+    await page.keyboard.press("Enter");
+    await page.locator("#review:not([hidden])").waitFor();
+    assert.doesNotMatch(
+      await page.locator("#summary").innerText(),
+      /stale|secret/,
+    );
+    await page.locator("#next").click();
+    await page.locator("#open").waitFor({ state: "visible" });
+    assert.deepEqual(submissions.at(-1), {});
+    await page.close();
+  }
+  assert.equal(submissions.length, 7);
+});
+
 test("optional coding selection is localized, reviewed and cleared when terminal permission is removed", async (t) => {
   const browser = await chromium.launch({
     headless: true,
@@ -333,6 +438,11 @@ test("wizard preserves selections, seven locales and RTL, submits one reviewed p
   }
   await page.locator("#language").selectOption("en");
   await page.locator("#next").click();
+  assert.equal(await page.locator("#database-field").isVisible(), true);
+  assert.equal(
+    await page.locator('[name="databaseUrl"]').getAttribute("required"),
+    "",
+  );
   await page
     .locator('[name="databaseUrl"]')
     .fill("postgresql://test:setup-fixture@localhost/test");
@@ -360,6 +470,10 @@ test("wizard preserves selections, seven locales and RTL, submits one reviewed p
   assert.equal(submissions.length, 1);
   assert.equal(submissions[0].plan.settings.locale, "tr");
   assert.equal(submissions[0].plan.settings.mode, "native");
+  assert.equal(
+    submissions[0].credentials.databaseUrl,
+    "postgresql://test:setup-fixture@localhost/test",
+  );
   assert.deepEqual(submissions[0].plan.settings.toolPacks, ["documents"]);
   assert.equal(await page.locator('[name="databaseUrl"]').inputValue(), "");
   assert.deepEqual(errors, []);

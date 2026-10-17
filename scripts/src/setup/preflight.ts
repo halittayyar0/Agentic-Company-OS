@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 
 export type PreflightIssue =
   | "native_source_required"
+  | "container_distribution_required"
   | "unsupported_platform"
   | "unsupported_architecture"
   | "node_24_required"
@@ -17,7 +18,11 @@ export interface InstallCapabilities {
   nodeVersion: string;
   postgresClientVersion: string | null;
   composeVersion: string | null;
-  native: { ready: boolean; issues: PreflightIssue[] };
+  native: {
+    ready: boolean;
+    issues: PreflightIssue[];
+    managedDatabase?: boolean;
+  };
   container: { ready: boolean; issues: PreflightIssue[] };
   phone?: { ready: boolean };
   coding?: { ready: boolean; issues: string[]; apparmor: boolean };

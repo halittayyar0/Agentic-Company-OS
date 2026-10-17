@@ -257,27 +257,31 @@
           <p class="eyebrow" data-i18n="setupLabel">GET STARTED</p>
           <h2 data-i18n="setupTitle">A workspace of your own.</h2>
           <p data-i18n="setupIntro">
-            Use the ready-made container package, or install the source directly
-            on your computer.
+            Download the native archive for Windows x64, macOS Intel or Apple
+            Silicon, or Linux x64 or ARM64.
           </p>
           <a
             class="primary"
-            href="https://github.com/halittayyar0/Agentic-Company-OS/releases"
+            href="https://github.com/halittayyar0/Agentic-Company-OS/releases/latest"
             data-i18n="download"
             >Open downloads & release notes ↗</a
           >
         </div>
         <ol>
           <li>
-            <strong data-i18n="step1Title">Prepare your computer</strong>
+            <strong data-i18n="step1Title">Choose your native package</strong>
             <p data-i18n="step1">
-              Ready-made package: Node.js 24 and a running Docker Linux engine
-              with Compose v2. No Git, pnpm or source build. Local AI models
-              need additional memory.
+              Node.js, PostgreSQL and the app are included. No separate Node.js,
+              Docker, pnpm, Git or PostgreSQL installation is needed. Check the
+              release version and checksum.
             </p>
             <div class="links">
-              <a href="https://nodejs.org/en/download">Node.js ↗</a
-              ><a href="https://docs.docker.com/get-started/get-docker/"
+              <a
+                href="https://github.com/halittayyar0/Agentic-Company-OS/blob/main/docs/self-hosting.md#native-package-first-installation"
+                data-i18n="native"
+                >Installation guide</a
+              ><a
+                href="https://github.com/halittayyar0/Agentic-Company-OS/blob/main/docs/self-hosting.md#portable-container-installer"
                 >Docker ↗</a
               >
             </div>
@@ -285,9 +289,9 @@
           <li>
             <strong data-i18n="step2Title">Open the installer</strong>
             <p data-i18n="step2">
-              Extract the setup package. On Windows open START.cmd; on
-              macOS/Linux run sh START.command. Open the private link printed by
-              the launcher.
+              Extract the whole archive. As an ordinary user, open START.cmd on
+              Windows or run ./START.command on macOS/Linux. The launcher opens
+              a private local browser link and prints a fallback.
             </p>
           </li>
           <li>
@@ -295,9 +299,10 @@
               >Choose your language and model</strong
             >
             <p data-i18n="step3">
-              Select permissions, tools and your provider. The installer creates
-              the database and verifies the workspace. Save its private
-              installation directory for restart.
+              Choose a language and permissions. AI jobs need configured Ollama
+              or provider access; model weights and provider access are not
+              included. Data and credentials stay outside the package. Keep the
+              private data directory and original package in place to resume.
             </p>
           </li>
         </ol>
@@ -326,7 +331,7 @@
           <a
             href="https://github.com/halittayyar0/Agentic-Company-OS/blob/main/docs/self-hosting.md"
             data-i18n="native"
-            >Native installation</a
+            >Installation guide</a
           ><a
             href="https://github.com/halittayyar0/Agentic-Company-OS/blob/main/docs/mobile-access.md"
             data-i18n="phone"

@@ -35,6 +35,87 @@ test("private storage protects secrets before atomic writes and survives reopeni
   }
 });
 
+test(
+  "Windows private storage secures current-owned children without requiring owner-write permission",
+  { skip: process.platform !== "win32" },
+  async () => {
+    const parent = await mkdtemp(path.join(tmpdir(), "acos-private-modify-"));
+    try {
+      const { execFile } = await import("node:child_process");
+      const { promisify } = await import("node:util");
+      const executePowerShell = (source: string) =>
+        promisify(execFile)(
+          path.join(
+            process.env.SystemRoot!,
+            "System32/WindowsPowerShell/v1.0/powershell.exe",
+          ),
+          [
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-EncodedCommand",
+            Buffer.from(source, "utf16le").toString("base64"),
+          ],
+          {
+            windowsHide: true,
+            env: { ...process.env, ACOS_TEST_PRIVATE_PARENT: parent },
+          },
+        );
+      const script = String.raw`
+$ErrorActionPreference = 'Stop'
+$target = $env:ACOS_TEST_PRIVATE_PARENT
+$owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+$system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
+$administrators = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
+$sections = [System.Security.AccessControl.AccessControlSections]::Access -bor [System.Security.AccessControl.AccessControlSections]::Owner
+$acl = [System.IO.Directory]::GetAccessControl($target, $sections)
+$previousOwner = $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+$elevatedFixture = $previousOwner -eq $administrators.Value
+if ($previousOwner -ne $owner.Value) {
+  if (-not $elevatedFixture) { throw 'unexpected fixture owner' }
+  $acl.SetOwner($owner)
+}
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($rule in $acl.GetAccessRules($true, $false, [System.Security.Principal.SecurityIdentifier])) { $acl.RemoveAccessRuleSpecific($rule) }
+$acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($owner, 'Modify', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
+$acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($system, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
+if ($elevatedFixture) { $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($administrators, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')) }
+[System.IO.Directory]::SetAccessControl($target, $acl)
+$existing = Join-Path $target 'preexisting'
+$null = [System.IO.Directory]::CreateDirectory($existing)
+[Console]::Write(([System.IO.Directory]::GetAccessControl($existing, $sections)).GetSecurityDescriptorSddlForm($sections))
+`;
+      const { stdout: previousSecurity } = await executePowerShell(script);
+      await assert.rejects(
+        new OwnerPrivateStorage(path.join(parent, "preexisting")).initialize(),
+        /private_storage_protection_invalid/,
+      );
+      const { stdout: untouchedSecurity } = await executePowerShell(String.raw`
+$ErrorActionPreference = 'Stop'
+$sections = [System.Security.AccessControl.AccessControlSections]::Access -bor [System.Security.AccessControl.AccessControlSections]::Owner
+$existing = Join-Path $env:ACOS_TEST_PRIVATE_PARENT 'preexisting'
+[Console]::Write(([System.IO.Directory]::GetAccessControl($existing, $sections)).GetSecurityDescriptorSddlForm($sections))
+`);
+      assert.equal(
+        untouchedSecurity,
+        previousSecurity,
+        "preexisting owner and access rules must remain unchanged",
+      );
+      const storage = new OwnerPrivateStorage(path.join(parent, "vault"));
+      await storage.initialize();
+      await storage.write("record.json", "secret");
+      await storage.withLock(async () => {
+        assert.equal(await storage.read("registration.lock"), "");
+      });
+      const reopened = new OwnerPrivateStorage(storage.directory);
+      await reopened.initialize();
+      assert.equal(await reopened.read("record.json"), "secret");
+    } finally {
+      await rm(parent, { recursive: true, force: true });
+    }
+  },
+);
+
 test("private storage refuses redirected directories and nonregular secret files", async () => {
   const parent = await mkdtemp(path.join(tmpdir(), "acos-private-links-"));
   try {
