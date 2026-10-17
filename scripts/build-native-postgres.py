@@ -32,13 +32,30 @@ endif
 
 def checked_download(spec, cache):
     destination = cache / spec["url"].rsplit("/", 1)[1]
+    downloaded = False
+    declared_size = None
+    candidate = destination
     if not destination.exists():
         temporary = destination.with_suffix(destination.suffix + ".partial")
         with urllib.request.urlopen(spec["url"], timeout=120) as response, temporary.open("xb") as output:
+            length = response.headers.get("Content-Length")
+            if length is not None:
+                declared_size = int(length)
             shutil.copyfileobj(response, output)
-        temporary.rename(destination)
-    if hashlib.sha256(destination.read_bytes()).hexdigest() != spec["sha256"]:
-        raise RuntimeError("Native source checksum mismatch: " + destination.name)
+        candidate = temporary
+        downloaded = True
+    size = candidate.stat().st_size
+    observed_hash = hashlib.sha256(candidate.read_bytes()).hexdigest()
+    # A bad response stays in the owned build directory as .partial evidence.
+    # Never promote it to a verified cache entry, retry it, or alter the pin.
+    diagnostic = (f"{destination.name} expectedSha256={spec['sha256']} "
+                  f"observedSha256={observed_hash} expectedBytes={declared_size} observedBytes={size}")
+    if declared_size is not None and size != declared_size:
+        raise RuntimeError("Native source size mismatch: " + diagnostic)
+    if observed_hash != spec["sha256"]:
+        raise RuntimeError("Native source checksum mismatch: " + diagnostic)
+    if downloaded:
+        candidate.rename(destination)
     return destination
 
 

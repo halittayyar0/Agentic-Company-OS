@@ -119,6 +119,11 @@ jobs:
       - name: Install frozen application dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Verify native source download integrity without network
+        run: |
+          & $env:PYTHON scripts/test-native-source-download.py
+          if ($LASTEXITCODE -ne 0) { throw 'Native source download integrity regression failed' }
+
       - name: Compile API, workers and frontend
         run: |
           pnpm --filter @workspace/api-server run build

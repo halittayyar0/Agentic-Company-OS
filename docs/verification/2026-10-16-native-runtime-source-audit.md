@@ -22,7 +22,7 @@ source build avoids redistributing those payloads.
 | Component        | Exact archive                                                                             | SHA-256                                                            |
 | ---------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | PostgreSQL 17.10 | [official tar.bz2](https://ftp.postgresql.org/pub/source/v17.10/postgresql-17.10.tar.bz2) | `078a03516dcdbdb705fecaf415ea3d13a956c589e46f09fed68a06fb00598c90` |
-| zlib 1.3.2       | [official tar.gz](https://zlib.net/zlib-1.3.2.tar.gz)                                     | `bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16` |
+| zlib 1.3.2       | [official release archive](https://zlib.net/fossils/zlib-1.3.2.tar.gz)                    | `bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16` |
 
 Both archives were downloaded and checked against the publisher's checksum
 ([PostgreSQL](https://ftp.postgresql.org/pub/source/v17.10/postgresql-17.10.tar.bz2.sha256),
