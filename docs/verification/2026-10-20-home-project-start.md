@@ -58,7 +58,33 @@ solution keeps the existing page structure and validates the exact split source
 scope. The source/UI test census adds four source checks and 21 browser cases;
 all existing named platform skips remain unchanged.
 
-## Limits and next work
+## Retained first candidate failures
+
+Candidate `acd2e8e` was not eligible to merge. Original native workflow
+`39394001672` accepted all four macOS/Linux archives, but its Windows build
+rejected a zlib response before compilation: 11,895 bytes, SHA-256
+`7569c7221a7c33bc861a0444be112d06ff7df2ca24873907c7d345f760ee384c`.
+The response body was not uploaded, so its upstream/transport cause is unknown.
+The build now uses the same publisher's GitHub release asset, with the same
+version and original SHA-256 pin. A fresh 1,502,830-byte download and its license
+matched; the six download-integrity checks passed. Future failed builds retain
+only rejected public source `.partial` files as a separate diagnostic artifact.
+
+Original Windows source job `118532099422` ran 2,683 cases: 2,647 passed, two
+failed (one leaf plus its parent), and the same 34 skipped. The English outer
+completion fixture remained blocked on unobserved inference accounting. The
+underlying transport error was not recovered. A new regression demonstrated
+that this controlled judge retained an idle SDK socket between reviews. Its
+responses now close that owned transport, matching the existing durable-finalizer
+fixture. No production retry, usage accounting, task status or assertion was
+weakened. The additional source case raises the reviewed census to 2,684.
+The full affected fixture file passed 52/52 locally with no skips; full workspace
+typechecks and independent review passed after the corrections.
+
+Both original failures are retained and require fresh original CI/native
+acceptance for the corrected candidate; no workflow rerun substitutes for it.
+
+## Remaining scope
 
 Recovery is per browser tab, retains the submitted brief in session storage and
 is not a cross-device inbox or backup. Separate new request identities remain

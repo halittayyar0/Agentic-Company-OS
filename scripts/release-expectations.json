@@ -1,8 +1,8 @@
 {
   "linux": {
     "source": {
-      "tests": 2683,
-      "passed": 2644,
+      "tests": 2684,
+      "passed": 2645,
       "skippedCases": [
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
         "Linux launcher closes emergency epoch gap before spawn # SKIP",
@@ -52,8 +52,8 @@
   },
   "windows": {
     "source": {
-      "tests": 2683,
-      "passed": 2649,
+      "tests": 2684,
+      "passed": 2650,
       "skippedCases": [
         "Linux installation lock is released when its owning process crashes # SKIP",
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
@@ -94,8 +94,8 @@
   },
   "macos-arm-source": {
     "source": {
-      "tests": 2683,
-      "passed": 2642,
+      "tests": 2684,
+      "passed": 2643,
       "skippedCases": [
         "Linux installation lock is released when its owning process crashes # SKIP",
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",
@@ -143,8 +143,8 @@
   },
   "macos-intel-source": {
     "source": {
-      "tests": 2683,
-      "passed": 2642,
+      "tests": 2684,
+      "passed": 2643,
       "skippedCases": [
         "Linux installation lock is released when its owning process crashes # SKIP",
         "Linux launcher can give an offline verifier a separate network namespace # SKIP",

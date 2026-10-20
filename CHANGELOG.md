@@ -7,6 +7,10 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [0.5.5] - 2026-10-20
 
+- Build native packages from the publisher's checksum-identical zlib GitHub
+  release asset and retain rejected source responses for diagnosis. Controlled
+  team-language judge fixtures now close their SDK transports between reviews.
+
 ### Fixed
 
 - Home uses the existing durable project-start recovery, preventing a lost

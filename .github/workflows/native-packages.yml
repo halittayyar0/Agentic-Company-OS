@@ -191,3 +191,13 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+      - name: Preserve rejected native source responses
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-source-rejection-${{ matrix.target }}
+          path: .tmp/self-contained-inputs/*.partial
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
