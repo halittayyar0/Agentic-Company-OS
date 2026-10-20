@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { lstat, realpath, rename, writeFile } from "node:fs/promises";
+import { lstat, readdir, realpath, rename, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -125,6 +125,48 @@ export function createManagedPostgres(options: {
     );
   };
   return {
+    /** A cold filesystem snapshot requires more than an absent PID file.
+     * Caller retains the installation lease for this check and the entire copy.
+     * This method never signals a process, starts a server or removes a PID file.
+     */
+    async inspectStopped(): Promise<{
+      dataDirectory: string;
+      postgresMajor: 17;
+    }> {
+      if (!prepared || started)
+        throw new Error("managed_postgres_not_prepared");
+      options.signal?.throwIfAborted();
+      await checkIdentity();
+      try {
+        await lstat(path.join(data, "postmaster.pid"));
+        throw new Error("managed_postgres_shutdown_required");
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
+      for (const name of ["pg_wal", "pg_tblspc"]) {
+        const directory = path.join(data, name),
+          info = await lstat(directory);
+        if (
+          !info.isDirectory() ||
+          info.isSymbolicLink() ||
+          (await realpath(directory)) !== directory ||
+          (name === "pg_tblspc" && (await readdir(directory)).length !== 0)
+        )
+          throw new Error("managed_postgres_external_storage");
+      }
+      const control = await command("pg_controldata", ["-D", data], 10_000);
+      const states = control.stdout
+        .split(/\r?\n/u)
+        .filter((line) => line.startsWith("Database cluster state:"))
+        .map((line) => line.slice("Database cluster state:".length).trim());
+      if (
+        control.exitCode !== 0 ||
+        states.length !== 1 ||
+        states[0] !== "shut down"
+      )
+        throw new Error("managed_postgres_shutdown_required");
+      return { dataDirectory: data, postgresMajor: 17 };
+    },
     async prepare() {
       if (process.platform !== "win32" && process.getuid?.() === 0)
         throw new Error("managed_postgres_requires_ordinary_user");

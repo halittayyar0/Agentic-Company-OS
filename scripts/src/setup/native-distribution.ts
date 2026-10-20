@@ -44,6 +44,7 @@ export function nativeRequiredFiles(host: {
       "pg_restore",
       "psql",
       "pg_isready",
+      "pg_controldata",
     ].map((name) => `runtime/postgres/bin/${name}${suffix}`),
     "scripts/src/setup/bootstrap.mjs",
     "scripts/src/setup/setup-client.js",
