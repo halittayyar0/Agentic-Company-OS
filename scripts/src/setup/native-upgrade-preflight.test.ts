@@ -183,15 +183,16 @@ async function fixture(t: TestContext) {
 
 async function tree(root: string): Promise<unknown[]> {
   const result: unknown[] = [];
-  for (const name of (await readdir(root)).sort()) {
-    const file = path.join(root, name),
-      info = await lstat(file);
-    result.push([
-      name,
-      info.mode,
-      info.nlink,
-      info.isDirectory() ? await tree(file) : hash(await readFile(file)),
-    ]);
+  for (const entry of (await readdir(root, { withFileTypes: true })).sort(
+    (a, b) => a.name.localeCompare(b.name),
+  )) {
+    const name = entry.name,
+      file = path.join(root, name);
+    const content = entry.isDirectory()
+      ? await tree(file)
+      : hash(await readFile(file));
+    const info = await lstat(file);
+    result.push([name, info.mode, info.nlink, content]);
   }
   return result;
 }

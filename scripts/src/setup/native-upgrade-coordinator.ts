@@ -218,6 +218,7 @@ export function createNativeUpgradeCoordinator(
           timeoutMs: 15 * 60_000,
           maxBufferBytes: 64 * 1024,
           ignoreInheritedStdio: false,
+          notifyParentDisconnect: true,
           signal: options.signal,
         });
         passed = execution.exitCode === 0;

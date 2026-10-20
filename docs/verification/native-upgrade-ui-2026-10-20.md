@@ -53,6 +53,32 @@ main-app audit results are not evidence that its inline HTML has been executed.
 
 ## Remaining release qualification
 
+### Independent review follow-up
+
+Review identified an important migration isolation gap: the initial staging
+identity check used a different connection from the application's migration pool.
+Migration now uses the exact checked PostgreSQL Client under the normal migration
+advisory lock. The migration-only entry no longer imports the application database
+pool or changes its environment. A reused source port cannot reconnect that Client.
+
+The coordinator also creates an IPC lifetime channel for the migration process.
+Disconnect, termination, malformed frames or a missing ten-second heartbeat abort
+the operation and close its checked socket. Ordinary bounded commands do not opt
+into this channel. Ignored-stream cleanup waits for exit when there are no pipes
+to drain; captured output still drains before settlement.
+
+Transport tests prove that heartbeats keep an owned child alive beyond its
+deadline, then verify either its graceful stop or exact process termination after
+forced parent loss. On the tested Windows host the child was terminated directly;
+missing graceful markers were not evidence of a surviving orphan. These transport
+tests do not certify the repaired entrypoint against a real staged database.
+
+GitHub's initial CodeQL scan reported four check-before-use alerts. Cluster reads
+and Unix directory syncing now open first and validate that actual descriptor
+against the path before use, retaining post-read identity checks. Test inventory
+readers also avoid check-before-read ordering. A fresh GitHub scan is required to
+confirm its result; the earlier failing scan is retained.
+
 Before publication, qualify a freshly extracted final archive, a fresh public
 v0.5.5 predecessor, the actual GUI upgrade and a new real local-model task after
 manual resume. Require matching-host native package checks for all five supported

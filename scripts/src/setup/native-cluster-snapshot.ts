@@ -35,16 +35,6 @@ async function readClusterFile(
   destination?: string,
 ) {
   signal?.throwIfAborted();
-  const before = await lstat(file);
-  if (
-    !before.isFile() ||
-    before.isSymbolicLink() ||
-    before.nlink !== 1 ||
-    !Number.isSafeInteger(before.size) ||
-    before.size < 0 ||
-    (await realpath(file)) !== file
-  )
-    throw new Error("native_snapshot_path");
   const source = await open(
     file,
     constants.O_RDONLY |
@@ -53,15 +43,29 @@ async function readClusterFile(
         : constants.O_NOFOLLOW | constants.O_NONBLOCK),
   );
   let output: Awaited<ReturnType<typeof open>> | undefined;
-  const unchanged = (after: typeof before) =>
-    after.isFile() &&
-    after.nlink === 1 &&
-    after.ino === before.ino &&
-    after.dev === before.dev &&
-    after.size === before.size &&
-    after.mtimeMs === before.mtimeMs &&
-    after.ctimeMs === before.ctimeMs;
   try {
+    // Validate the descriptor we actually opened before reading any bytes.
+    const before = await source.stat(),
+      leaf = await lstat(file);
+    if (
+      !before.isFile() ||
+      leaf.isSymbolicLink() ||
+      before.nlink !== 1 ||
+      !Number.isSafeInteger(before.size) ||
+      before.size < 0 ||
+      before.ino !== leaf.ino ||
+      before.dev !== leaf.dev ||
+      (await realpath(file)) !== file
+    )
+      throw new Error("native_snapshot_path");
+    const unchanged = (after: typeof before) =>
+      after.isFile() &&
+      after.nlink === 1 &&
+      after.ino === before.ino &&
+      after.dev === before.dev &&
+      after.size === before.size &&
+      after.mtimeMs === before.mtimeMs &&
+      after.ctimeMs === before.ctimeMs;
     if (!unchanged(await source.stat()))
       throw new Error("native_snapshot_changed");
     if (destination) {

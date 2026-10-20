@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { constants } from "node:fs";
 import { lstat, open, realpath, rename, unlink } from "node:fs/promises";
 import path from "node:path";
 import { readBoundedRegularFile } from "./installation-files";
@@ -9,14 +10,32 @@ export const nativeUpgradeHash = (bytes: string) =>
 export async function syncNativeUpgradeDirectory(
   directory: string,
 ): Promise<void> {
-  if (
-    (await realpath(directory)) !== directory ||
-    !(await lstat(directory)).isDirectory()
-  )
-    throw new Error("native_upgrade_file_path");
-  if (process.platform === "win32") return;
-  const handle = await open(directory, "r");
+  if (process.platform === "win32") {
+    if (
+      (await realpath(directory)) !== directory ||
+      !(await lstat(directory)).isDirectory()
+    )
+      throw new Error("native_upgrade_file_path");
+    return;
+  }
+  const handle = await open(
+    directory,
+    constants.O_RDONLY |
+      constants.O_DIRECTORY |
+      constants.O_NOFOLLOW |
+      constants.O_NONBLOCK,
+  );
   try {
+    const descriptor = await handle.stat(),
+      leaf = await lstat(directory);
+    if (
+      !descriptor.isDirectory() ||
+      leaf.isSymbolicLink() ||
+      descriptor.ino !== leaf.ino ||
+      descriptor.dev !== leaf.dev ||
+      (await realpath(directory)) !== directory
+    )
+      throw new Error("native_upgrade_file_path");
     await handle.sync();
   } finally {
     await handle.close();

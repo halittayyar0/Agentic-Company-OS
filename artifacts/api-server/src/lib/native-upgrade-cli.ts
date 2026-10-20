@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { lstat, realpath } from "node:fs/promises";
 import path from "node:path";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { OwnerPrivateStorage } from "@workspace/ai-server/owner-private-storage";
 import { readBoundedRegularFile } from "./read-bounded-file";
 import {
@@ -153,18 +155,19 @@ export async function runNativeUpgradeMigrationCLI(
   options: {
     migrationsDirectory: string;
     output?: (value: string) => void;
+    signal?: AbortSignal;
   },
 ): Promise<number> {
   const output =
     options.output ?? ((value: string) => process.stdout.write(value + "\n"));
   let client: import("pg").Client | undefined;
-  let database: typeof import("@workspace/db") | undefined;
-  const prior = {
-    DATABASE_URL: process.env.DATABASE_URL,
-    NODE_ENV: process.env.NODE_ENV,
-    DATABASE_MIGRATIONS_DIR: process.env.DATABASE_MIGRATIONS_DIR,
+  const stop = () => {
+    // End the identity-checked socket, never reconnect to a reused source port.
+    void client?.end().catch(() => undefined);
   };
+  options.signal?.addEventListener("abort", stop, { once: true });
   try {
+    options.signal?.throwIfAborted();
     const input = parseNativeUpgradeArguments(args);
     const attempt = path.dirname(input.stagingDirectory),
       upgrades = path.dirname(attempt),
@@ -271,6 +274,8 @@ export async function runNativeUpgradeMigrationCLI(
       statement_timeout: 60_000,
       application_name: "acos-native-upgrade",
     });
+    client.on("error", stop);
+    options.signal?.throwIfAborted();
     await client.connect();
     const actual = (await client.query("SHOW data_directory")).rows[0]
       ?.data_directory;
@@ -280,20 +285,33 @@ export async function runNativeUpgradeMigrationCLI(
     )
       throw new Error("native_upgrade_connection_identity");
     await assertJournal(client, oldChain);
-    process.env.DATABASE_URL = connectionString;
-    process.env.NODE_ENV = "production";
-    process.env.DATABASE_MIGRATIONS_DIR = path.resolve(
-      options.migrationsDirectory,
-    );
     const activeClient = client;
+    options.signal?.throwIfAborted();
     const proof = await verifyNativeUpgradeMigration({
       client,
       migrate: async () => {
-        database = await import("@workspace/db");
-        await database.dbReady;
-        await assertJournal(activeClient, newChain);
+        // Same advisory identity as normal startup. All DDL uses THIS already
+        // checked Client; importing @workspace/db would open an unbound Pool.
+        await activeClient.query(
+          "SELECT pg_advisory_lock($1, $2)",
+          [1_095_714_119, 1],
+        );
+        try {
+          options.signal?.throwIfAborted();
+          await migrate(drizzle(activeClient), {
+            migrationsFolder: path.resolve(options.migrationsDirectory),
+          });
+          options.signal?.throwIfAborted();
+          await assertJournal(activeClient, newChain);
+        } finally {
+          await activeClient.query(
+            "SELECT pg_advisory_unlock($1, $2)",
+            [1_095_714_119, 1],
+          );
+        }
       },
     });
+    options.signal?.throwIfAborted();
     await reservation.write(
       "receipt.json",
       JSON.stringify({ ...identity, dataDirectory, ...proof }),
@@ -313,11 +331,7 @@ export async function runNativeUpgradeMigrationCLI(
     );
     return 1;
   } finally {
-    await database?.closeDatabase().catch(() => undefined);
+    options.signal?.removeEventListener("abort", stop);
     await client?.end().catch(() => undefined);
-    for (const [key, value] of Object.entries(prior)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
   }
 }

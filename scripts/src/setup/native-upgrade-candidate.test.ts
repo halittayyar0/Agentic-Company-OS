@@ -177,14 +177,16 @@ async function fixture(t: TestContext) {
 }
 async function digest(root: string): Promise<string> {
   const rows = [];
-  for (const name of (await readdir(root)).sort()) {
-    const file = path.join(root, name),
-      info = await lstat(file);
-    rows.push([
-      name,
-      info.mode,
-      info.isDirectory() ? await digest(file) : hash(await readFile(file)),
-    ]);
+  for (const entry of (await readdir(root, { withFileTypes: true })).sort(
+    (a, b) => a.name.localeCompare(b.name),
+  )) {
+    const name = entry.name,
+      file = path.join(root, name);
+    const content = entry.isDirectory()
+      ? await digest(file)
+      : hash(await readFile(file));
+    const info = await lstat(file);
+    rows.push([name, info.mode, content]);
   }
   return hash(JSON.stringify(rows));
 }

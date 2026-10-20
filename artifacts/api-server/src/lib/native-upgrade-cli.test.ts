@@ -8,6 +8,31 @@ import {
 } from "./native-upgrade-cli";
 
 const id = "12345678-1234-1234-1234-123456789012";
+test("parent cancellation refuses migration before any installation work", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const output: string[] = [];
+  assert.equal(
+    await runNativeUpgradeMigrationCLI(
+      [
+        "--staging-directory",
+        process.cwd(),
+        "--upgrade-id",
+        id,
+        "--target-commit",
+        "b".repeat(40),
+      ],
+      {
+        migrationsDirectory: process.cwd(),
+        signal: controller.signal,
+        output: (value) => output.push(value),
+      },
+    ),
+    1,
+  );
+  assert.equal(output.length, 1);
+  assert.doesNotMatch(output[0], /postgresql:|DATABASE_URL/u);
+});
 test("migration-only CLI uses a closed argument protocol and never accepts credentials in arguments", () => {
   const valid = [
     "--staging-directory",
@@ -64,7 +89,14 @@ test("packaged upgrade entrypoint cannot import API, scheduler, provider or agen
   const ownInputs = Object.keys(result.metafile!.inputs).filter(
     (file) => !file.replaceAll("\\", "/").includes("node_modules/"),
   );
-  assert.ok(ownInputs.length > 5);
+  assert.ok(
+    ownInputs.some((file) => file.endsWith("native-upgrade-database.ts")),
+  );
+  assert.doesNotMatch(
+    ownInputs.join("\n").replaceAll("\\", "/"),
+    /lib\/db\/src\/index\.ts/u,
+    "the migration connection must never be replaced by the application's unbound pool",
+  );
   for (const file of ownInputs)
     assert.match(
       file.replaceAll("\\", "/"),
