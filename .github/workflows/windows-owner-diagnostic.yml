@@ -1,0 +1,82 @@
+name: Windows private-record diagnostic
+on:
+  push:
+    branches: [codex/windows-owner-diagnostic-20261020]
+permissions:
+  contents: read
+jobs:
+  observe:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Observe only closed ownership flags on disposable records
+        run: |
+          New-Item -ItemType Directory -Force .tmp | Out-Null
+          @'
+          import {mkdtemp,readFile,realpath,rm,writeFile} from 'node:fs/promises';
+          import {tmpdir} from 'node:os';
+          import path from 'node:path';
+          import {promisify} from 'node:util';
+          import {execFile} from 'node:child_process';
+          import {OwnerPrivateStorage} from '@workspace/ai-server/owner-private-storage';
+          import {createInstallationResources} from '../scripts/src/setup/resources';
+          import {planInstallation} from '../scripts/src/setup/plan';
+          const temp=await realpath(tmpdir()),root=await mkdtemp(path.join(temp,'acos-owner-observation-'));
+          const report:any={schemaVersion:1,source:process.env.GITHUB_SHA,observationOnly:true,noInference:true,platform:process.platform,node:process.version};
+          try{
+            const plan=planInstallation({mode:'native',locale:'ar',port:5031,accessMode:'approval',provider:'later',phoneAccess:'local',toolPacks:[]},{platform:process.platform,architecture:process.arch,nodeVersion:process.version,postgresClientVersion:null,composeVersion:null,native:{ready:true,issues:[],managedDatabase:true},container:{ready:false,issues:[]}});
+            const resources=await createInstallationResources(path.join(root,'private'),plan,{databaseUrl:'postgresql://fixture:fixture@127.0.0.1:58242/postgres'});
+            const file=path.join(resources.directory,'installation.json');
+            const probe=String.raw`
+          $ErrorActionPreference='Stop'
+          $identity=[System.Security.Principal.WindowsIdentity]::GetCurrent()
+          $principal=[System.Security.Principal.WindowsPrincipal]::new($identity)
+          $owner=$identity.User.Value
+          $rootAcl=[System.IO.Directory]::GetAccessControl($env:ACOS_OBSERVATION_ROOT)
+          $fileAcl=[System.IO.File]::GetAccessControl($env:ACOS_OBSERVATION_FILE)
+          $rootOwner=$rootAcl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+          $fileOwner=$fileAcl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+          [pscustomobject]@{ elevated=$principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator); rootOwnerIsCurrent=($rootOwner -eq $owner); rootProtected=$rootAcl.AreAccessRulesProtected; metadataOwnerIsCurrent=($fileOwner -eq $owner); metadataOwnerIsAdministrators=($fileOwner -eq 'S-1-5-32-544') } | ConvertTo-Json -Compress
+          `;
+            const {stdout}=await promisify(execFile)(path.join(process.env.SystemRoot!,'System32/WindowsPowerShell/v1.0/powershell.exe'),['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(probe,'utf16le').toString('base64')],{windowsHide:true,timeout:15000,maxBuffer:16384,env:{...process.env,ACOS_OBSERVATION_ROOT:resources.directory,ACOS_OBSERVATION_FILE:file}});
+            Object.assign(report,JSON.parse(stdout));
+            const storage=new OwnerPrivateStorage(resources.directory);
+            try{report.metadataPrivateRead=(await storage.read('installation.json'))!==null;}catch(error:any){report.metadataPrivateRead=false;report.readFailure=['private_storage_protection_invalid','private_storage_path_invalid'].includes(error.message)?error.message:'unclassified';}
+            await storage.write('owner-positive-control.json','known-private-record');
+            report.ownerPrivateWriteRead=(await storage.read('owner-positive-control.json'))==='known-private-record';
+          }finally{
+            const relative=path.relative(temp,root);
+            if(!relative||relative.startsWith('..')||path.isAbsolute(relative)||!path.basename(root).startsWith('acos-owner-observation-'))throw Error('owned_cleanup_boundary');
+            await rm(root,{recursive:true,force:true});
+          }
+          await writeFile('.tmp/windows-owner-observation.json',JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+          console.log(JSON.stringify(report));
+          '@ | Set-Content -Encoding utf8 .tmp/windows-owner-probe.mts
+          node --import tsx .tmp/windows-owner-probe.mts
+          if ($LASTEXITCODE -ne 0) { throw 'Ownership observation failed' }
+      - name: Run the unchanged remembered-installation contract
+        run: |
+          node --import tsx --test scripts/src/setup/native-upgrade-candidate.test.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Remembered-installation contract failed' }
+      - name: Retain closed diagnostic observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-private-record-observation
+          path: .tmp/windows-owner-observation.json
+          if-no-files-found: error
+          retention-days: 14
