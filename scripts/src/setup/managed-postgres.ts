@@ -12,6 +12,10 @@ import {
   assertInstallPortAvailable,
   type InstallationResources,
 } from "./resources";
+import {
+  prepareNativeUpgradePostgresConfiguration,
+  restoreNativeUpgradePostgresConfiguration,
+} from "./native-upgrade-postgres";
 
 export function validateManagedPostgresPid(
   contents: string,
@@ -52,6 +56,7 @@ export function createManagedPostgres(options: {
   postgresRoot: string;
   planId: string;
   postgresVersion: string;
+  purpose?: "upgrade_staging";
   run?: typeof executeBoundedCommand;
   signal?: AbortSignal;
 }) {
@@ -124,7 +129,7 @@ export function createManagedPostgres(options: {
       Number(url.port),
     );
   };
-  return {
+  const managed = {
     /** A cold filesystem snapshot requires more than an absent PID file.
      * Caller retains the installation lease for this check and the entire copy.
      * This method never signals a process, starts a server or removes a PID file.
@@ -244,11 +249,17 @@ export function createManagedPostgres(options: {
       await checkIdentity();
       prepared = true;
     },
-    async start() {
+    async start(): Promise<void> {
       if (!prepared || started)
         throw new Error("managed_postgres_not_prepared");
       await checkIdentity();
       await assertInstallPortAvailable(Number(url.port));
+      let stagingArguments: string[] = [];
+      if (options.purpose === "upgrade_staging") {
+        await managed.inspectStopped();
+        stagingArguments =
+          await prepareNativeUpgradePostgresConfiguration(directory);
+      }
       supervisor.start({
         name: "postgres",
         command: executable("postgres"),
@@ -265,6 +276,7 @@ export function createManagedPostgres(options: {
           "max_connections=50",
           "-c",
           "shared_buffers=64MB",
+          ...stagingArguments,
         ],
         cwd: directory,
         env: { ...process.env, LC_ALL: "C" },
@@ -318,7 +330,10 @@ export function createManagedPostgres(options: {
       } finally {
         await supervisor.stopAll();
         started = false;
+        if (options.purpose === "upgrade_staging")
+          await restoreNativeUpgradePostgresConfiguration(directory);
       }
     },
   };
+  return managed;
 }

@@ -133,6 +133,11 @@ export function validateNativeDistribution(
   });
   if (nativeRequiredFiles(host).some((file) => !seen.has(file.toLowerCase())))
     return fail();
+  if (
+    seen.has("native-release.json") &&
+    !seen.has("artifacts/api-server/dist/native-upgrade.mjs")
+  )
+    return fail();
   return {
     schemaVersion: 1,
     commit: data.commit,

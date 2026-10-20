@@ -60,6 +60,8 @@ async function packageFixture(
   for (const row of journal(count).entries)
     content.set(`${prefix}${row.tag}.sql`, `-- ${row.tag}\nSELECT 1;\n`);
   if (version)
+    content.set("artifacts/api-server/dist/native-upgrade.mjs", "fixture");
+  if (version)
     content.set(
       "native-release.json",
       JSON.stringify({

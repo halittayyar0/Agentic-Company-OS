@@ -69,7 +69,9 @@ verified cold-copy inventory and stopped, migrated staged cluster. Migration CLI
 accepts owned database secret path and writes no credentials to stdout.
 
 Files: new upgrade snapshot/migration helpers and tests, API migration-only
-entrypoint/build, native required files, package verifier/smoke harness.
+entrypoint/build, native required files, package verifier/smoke harness and root
+package version for the upcoming 0.5.6 upgrade target. Stable public downloads
+remain v0.5.5 until the complete flow passes Task 5.
 
 1. RED: live/unclean server, redirection, external WAL/tablespaces, changed files,
    copy interruption, insufficient/failed copy and migration failures preserve source.

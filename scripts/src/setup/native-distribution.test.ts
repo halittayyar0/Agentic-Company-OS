@@ -59,6 +59,31 @@ test("native package manifests bind the supported host, source and required exec
     );
 });
 
+test("versioned native packages require the migration-only runtime while legacy archives remain valid", () => {
+  const valid = manifest();
+  const release = {
+    path: "native-release.json",
+    bytes: 7,
+    sha256: valid.files[0].sha256,
+  };
+  assert.throws(() =>
+    validateNativeDistribution(
+      { ...valid, files: [...valid.files, release] },
+      host,
+    ),
+  );
+  const entry = {
+    ...release,
+    path: "artifacts/api-server/dist/native-upgrade.mjs",
+  };
+  assert.doesNotThrow(() =>
+    validateNativeDistribution(
+      { ...valid, files: [...valid.files, release, entry] },
+      host,
+    ),
+  );
+});
+
 test("native package inventory rejects traversal, Windows aliases and duplicate normalized names", () => {
   const valid = manifest();
   for (const file of [
