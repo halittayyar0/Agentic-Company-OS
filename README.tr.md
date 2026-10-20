@@ -40,7 +40,7 @@ Bunlar örnek görevlerdir. Sonuç; seçilen modele, mevcut araçlara, izinlere 
 
 ### 1. Hazır yerel paketi indir
 
-[Sürümler](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) sayfasından bilgisayarına uygun **v0.5.4** arşivini seç; sürümü ve dosya özetini kontrol et. Node.js, PostgreSQL ve hazır uygulama dahildir. Node.js, Docker, pnpm, Git veya PostgreSQL ayrıca kurulmaz.
+[Sürümler](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) sayfasından bilgisayarına uygun güncel kurulum arşivini seç; sürümü ve dosya özetini kontrol et. Node.js, PostgreSQL ve hazır uygulama dahildir. Node.js, Docker, pnpm, Git veya PostgreSQL ayrıca kurulmaz.
 
 | Sistem              | Arşiv                                    |
 | ------------------- | ---------------------------------------- |

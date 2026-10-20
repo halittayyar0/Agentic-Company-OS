@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { measureProjectStartRecoveryBundle } from "./project-start-recovery-bundle-budget";
 const locales = ["tr", "en", "de", "ru", "zh-CN", "zh-TW", "ar"];
@@ -40,6 +41,48 @@ const fixture = () => [
     ),
   ),
 ];
+
+test("Home adapter bytes require exclusive verified source ownership and stay inside the original recovery cap", () => {
+  const base = fixture();
+  const home = asset(
+    "home-project-start-recovery-fixture.js",
+    "Home bridge".repeat(100),
+  );
+  const assets = [...base, home];
+  const manifest = (owned = true) => ({
+    schemaVersion: 1,
+    chunks: assets.map((a) => ({
+      fileName: "assets/" + a.fileName,
+      modules:
+        a === home
+          ? [
+              owned
+                ? "artifacts/agentic-company-os/src/components/studio/home-project-start-recovery.tsx"
+                : "artifacts/agentic-company-os/src/pages/settings.tsx",
+            ]
+          : [],
+      sha256: createHash("sha256").update(a.contents).digest("hex"),
+    })),
+  });
+  const measured = measureProjectStartRecoveryBundle(assets, manifest());
+  assert.equal(
+    measured.raw,
+    measureProjectStartRecoveryBundle(base).raw + home.contents.length,
+  );
+  assert.equal(
+    measured.globalRaw,
+    measureProjectStartRecoveryBundle(base).globalRaw + home.contents.length,
+  );
+  assert.throws(() => measureProjectStartRecoveryBundle(assets));
+  assert.throws(() =>
+    measureProjectStartRecoveryBundle(assets, manifest(false)),
+  );
+  assert.throws(() =>
+    measureProjectStartRecoveryBundle([...assets, home], manifest()),
+  );
+  const altered = [...base, asset(home.fileName, "changed")];
+  assert.throws(() => measureProjectStartRecoveryBundle(altered, manifest()));
+});
 test("recovery credit includes one exclusive chunk and only authored recovery fields, never existing copy or vendor growth", () => {
   const f = fixture(),
     a = measureProjectStartRecoveryBundle(f);

@@ -12,7 +12,7 @@ export type ProjectStartState = {
 const ProjectStartRecovery = forwardRef<
   ProjectStartHandle,
   {
-    copy: NewProjectCopy;
+    copy: Pick<NewProjectCopy, "recovery" | "starting">;
     onOpen: (id: number, submitted: ProjectDraft | null) => void;
     onStateChange: (state: ProjectStartState) => void;
     onPrepared: () => void;

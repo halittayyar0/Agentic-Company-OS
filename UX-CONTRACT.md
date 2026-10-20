@@ -79,6 +79,21 @@ Mutations are pessimistic when they change runtime control, approvals, reconcili
 
 ## Async and resilience states
 
+### Home project starts (2026-10-20)
+
+- Home and New project share the durable start identity and recovery controls.
+  Verified tab storage precedes POST; navigation and draft clearing require the
+  matching server receipt. Reload and checking never submit a job.
+- An unresolved identity blocks a new start on either screen. Only a missing
+  receipt offers explicit replay with identical input. Existing server policy,
+  capacity, approval and usage boundaries remain authoritative.
+- Opening a recovered or other-composer start cannot acknowledge the current
+  Home draft. A matching mounted submission clears only its exact original
+  draft; later edits remain. Leaving the route fences late acknowledgements.
+- The shared selected-language copy and lazy adapter must load before Start is
+  enabled. Loading failures preserve editable Home text. Phone recovery actions
+  wrap, support keyboard focus and retain at least 44px targets in both themes.
+
 ### Project meeting forms (2026-09-27)
 
 - Creation, transcript turns, decisions, actions and closing summaries use the shared validated form boundary, localized field errors and first-error focus. Radix owner selects keep numeric IDs through blur; an unavailable saved owner must be explicitly replaced or removed.

@@ -34,7 +34,7 @@
 
 ### 1. 下载原生安装包
 
-在[发布页](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest)选择适合电脑的 **v0.5.4** 压缩包，核对版本与校验和。包内已包含 Node.js、PostgreSQL 和编译好的应用，无需另外安装 Node.js、Docker、pnpm、Git 或 PostgreSQL。
+在[发布页](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest)选择适合电脑的最新原生安装包，核对版本与校验和。包内已包含 Node.js、PostgreSQL 和编译好的应用，无需另外安装 Node.js、Docker、pnpm、Git 或 PostgreSQL。
 
 | 系统                | 压缩包                                   |
 | ------------------- | ---------------------------------------- |

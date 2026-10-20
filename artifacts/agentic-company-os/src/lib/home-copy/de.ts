@@ -1,6 +1,8 @@
 import type { HomeCopy } from "../home-copy";
 
 const copy = {
+  startUnavailable:
+    "Der Projektstart konnte nicht geladen werden. Dein Entwurf bleibt hier; versuche es erneut.",
   draftStorageError:
     "Dieser Tab kann den Entwurf beim Neuladen nicht wiederherstellen. Sie können den Text hier weiter bearbeiten; kopieren Sie ihn vor dem Neuladen oder Schließen des Tabs.",
   deskKicker: "Dein Arbeitsbereich",

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
+import type { Socket } from "node:net";
 import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -21,6 +22,8 @@ const sandboxRoot = await fsp.mkdtemp(
 );
 process.env.AGENT_SANDBOX_ROOT = sandboxRoot;
 const judgeRequests: { messages: { role: string; content: string }[] }[] = [];
+const judgeSockets = new Set<Socket>();
+let judgeConnections = 0;
 let judgeVerdict = "pass";
 const judge = http.createServer(async (request, response) => {
   if (request.method === "GET") {
@@ -33,7 +36,12 @@ const judge = http.createServer(async (request, response) => {
   let body = "";
   for await (const chunk of request) body += chunk;
   judgeRequests.push(JSON.parse(body));
-  response.writeHead(200, { "content-type": "application/json" });
+  // Each locale owns a fresh controlled SDK review. Do not leave an idle
+  // pooled socket that can expire while the next PGlite/browser case runs.
+  response.writeHead(200, {
+    "content-type": "application/json",
+    connection: "close",
+  });
   response.end(
     JSON.stringify({
       id: randomUUID(),
@@ -56,6 +64,11 @@ const judge = http.createServer(async (request, response) => {
       usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
     }),
   );
+});
+judge.on("connection", (socket) => {
+  judgeConnections++;
+  judgeSockets.add(socket);
+  socket.once("close", () => judgeSockets.delete(socket));
 });
 await new Promise<void>((resolve) => judge.listen(0, "127.0.0.1", resolve));
 const address = judge.address();
@@ -319,6 +332,33 @@ async function finalizeClaimedTool(
     },
   );
 }
+
+test("team locale judge responses release their owned transport between SDK reviews", async (t) => {
+  const ctx = await context();
+  t.after(() => retireFixtureAgent(ctx.agent.id));
+  const beforeConnections = judgeConnections;
+  const beforeRequests = judgeRequests.length;
+  for (let index = 0; index < 2; index++) {
+    const result = await runJudge({
+      agent: ctx.agent,
+      taskId: null,
+      purpose: "completion",
+      originalBrief: "Review the controlled fixture result.",
+      actionSummary: "Controlled fixture result.",
+    });
+    assert.equal(result.verdict, "pass");
+    const deadline = Date.now() + 1000;
+    while (judgeSockets.size && Date.now() < deadline)
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(
+      judgeSockets.size,
+      0,
+      "Fixture must not retain idle SDK sockets",
+    );
+  }
+  assert.equal(judgeConnections - beforeConnections, 2);
+  assert.equal(judgeRequests.length - beforeRequests, 2);
+});
 
 test("outer browser approval finalization omits the activity target while retaining the exact capability and preview", async (t) => {
   for (const locale of WORKSPACE_LOCALES) {

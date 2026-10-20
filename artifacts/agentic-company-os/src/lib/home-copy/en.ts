@@ -1,6 +1,8 @@
 import type { HomeCopy } from "../home-copy";
 
 const copy = {
+  startUnavailable:
+    "Project start controls could not load. Your draft stays here; try again.",
   draftStorageError:
     "This tab cannot save your draft for reload. Your text remains editable here; keep a copy before reloading or closing the tab.",
   deskKicker: "Your workspace",

@@ -34,7 +34,7 @@
 
 ### 1. 下載原生安裝包
 
-在[版本頁面](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest)選擇適合電腦的 **v0.5.4** 壓縮包，核對版本與校驗碼。套件已包含 Node.js、PostgreSQL 和編譯好的應用程式，無需另外安裝 Node.js、Docker、pnpm、Git 或 PostgreSQL。
+在[版本頁面](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest)選擇適合電腦的最新原生安裝包，核對版本與校驗碼。套件已包含 Node.js、PostgreSQL 和編譯好的應用程式，無需另外安裝 Node.js、Docker、pnpm、Git 或 PostgreSQL。
 
 | 系統                | 壓縮包                                   |
 | ------------------- | ---------------------------------------- |

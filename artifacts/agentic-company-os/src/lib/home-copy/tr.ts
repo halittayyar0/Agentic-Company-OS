@@ -1,6 +1,8 @@
 import type { HomeCopy } from "../home-copy";
 
 const copy = {
+  startUnavailable:
+    "Proje başlatma kontrolleri yüklenemedi. Taslağın burada kalır; yeniden dene.",
   draftStorageError:
     "Bu sekme taslağı sayfa yenileme için kaydedemiyor. Metninizi burada düzenleyebilirsiniz; sayfayı yenilemeden veya sekmeyi kapatmadan önce bir kopyasını alın.",
   deskKicker: "Senin çalışma masan",

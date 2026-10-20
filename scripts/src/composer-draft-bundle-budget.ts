@@ -1,4 +1,8 @@
 import { gzipSync } from "node:zlib";
+import {
+  resolveBundleModuleAsset,
+  resolveExclusiveBundleAssets,
+} from "./bundle-source-map";
 interface Asset {
   fileName: string;
   contents: Buffer;
@@ -7,6 +11,20 @@ const locales = ["tr", "en", "de", "ru", "zh-CN", "zh-TW", "ar"];
 const gzip = (contents: Buffer) => gzipSync(contents, { level: 9 }).length;
 const literal = String.raw`(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')`;
 const field = new RegExp(`draftStorageError:${literal},`, "gu");
+export function resolveComposerDraftScope(
+  assets: readonly Asset[],
+  manifest: unknown,
+): { route: string; loader: string } {
+  const sources = [
+    "artifacts/agentic-company-os/src/pages/tasks/new.tsx",
+    "artifacts/agentic-company-os/src/lib/new-project-copy.ts",
+  ];
+  resolveExclusiveBundleAssets(assets, manifest, sources, sources);
+  return {
+    route: resolveBundleModuleAsset(assets, manifest, sources[0]).fileName,
+    loader: resolveBundleModuleAsset(assets, manifest, sources[1]).fileName,
+  };
+}
 /** Only measured composer entry/project growth and two selected warning fields
  * receive credit. Control build uses HEAD
  * aabb02e's two composer consumers with current dependencies: project route
@@ -16,22 +34,48 @@ const field = new RegExp(`draftStorageError:${literal},`, "gu");
  * Independent limits: 5 KB raw / 2 KB gzip; project wiring 1200 / 500 bytes;
  * entry integration 3000 / 1200 bytes;
  * all fourteen warning additions 4 KB / 2 KB. Prior base totals stay fixed. */
-export function measureComposerDraftBundle(assets: readonly Asset[]) {
+export function measureComposerDraftBundle(
+  assets: readonly Asset[],
+  projectRouteFileName?: string,
+  projectCopyLoaderFileName?: string,
+) {
   const entries = assets.filter((asset) =>
     /^index-[^/]+\.js$/u.test(asset.fileName),
   );
   const routes = assets.filter(
     (asset) =>
       /^new-[^/]+\.js$/u.test(asset.fileName) &&
-      asset.contents.includes("new-project-en") &&
+      (projectRouteFileName
+        ? asset.fileName === projectRouteFileName
+        : asset.contents.includes("new-project-en")) &&
       asset.contents.includes("cadenceSeconds"),
   );
   if (entries.length !== 1 || routes.length !== 1)
     throw new Error(
       "Draft bundle requires one entry and one project route asset",
     );
-  const integrationRaw = Math.max(0, routes[0].contents.length - 12026),
-    integrationGzip = Math.max(0, gzip(routes[0].contents) - 3986);
+  const routeScope = [routes[0]];
+  // Both names come from hash-validated compiler source ownership. The same
+  // pre-existing loader was previously embedded in this route; count it once
+  // when sharing splits it into a separate chunk. No new numeric allowance.
+  if (
+    projectCopyLoaderFileName &&
+    projectCopyLoaderFileName !== routes[0].fileName
+  ) {
+    const loaders = assets.filter(
+      (a) => a.fileName === projectCopyLoaderFileName,
+    );
+    if (loaders.length !== 1) throw new Error("Ambiguous project copy loader");
+    routeScope.push(loaders[0]);
+  }
+  const integrationRaw = Math.max(
+      0,
+      routeScope.reduce((n, a) => n + a.contents.length, 0) - 12026,
+    ),
+    integrationGzip = Math.max(
+      0,
+      routeScope.reduce((n, a) => n + gzip(a.contents), 0) - 3986,
+    );
   const entryRaw = Math.max(0, entries[0].contents.length - 119318),
     entryGzip = Math.max(0, gzip(entries[0].contents) - 35571);
   if (entryRaw > 3000 || entryGzip > 1200)

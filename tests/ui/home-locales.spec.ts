@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
 import { getCapabilityCatalog } from "../../artifacts/api-server/src/lib/capabilities/catalog";
 import { loadHomeCopy } from "../../artifacts/agentic-company-os/src/lib/home-copy";
+import { loadNewProjectCopy } from "../../artifacts/agentic-company-os/src/lib/new-project-copy";
 
 for (const [locale, label] of [
   ["tr", "İşi tamamla"],
@@ -92,9 +93,16 @@ test("English home can start a project with English instructions and errors", as
   await expect(brief).toHaveValue(/mobile-friendly website/);
   await brief.fill("Create an accessible booking experience for my customers.");
   await page.getByRole("button", { name: "Start project" }).click();
+  const recovery = (await loadNewProjectCopy("en")).recovery;
   await expect(
-    page.getByRole("alert").filter({ hasText: "Your draft is saved here" }),
+    page.getByRole("status").filter({ hasText: recovery.uncertain }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: recovery.check, exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Start project", exact: true }),
+  ).toBeDisabled();
   await expect(brief).toHaveValue(/accessible booking experience/);
   expect(harness.requests).toHaveLength(1);
   expect(harness.requests[0].body).toMatchObject({
