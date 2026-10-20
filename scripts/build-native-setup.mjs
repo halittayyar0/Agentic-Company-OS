@@ -439,6 +439,32 @@ try {
     path.join(directory, "START-HERE.txt"),
     `Agentic Company OS\n\nRun ${process.platform === "win32" ? "START.cmd" : "START.command"} to open local setup. Node.js, PostgreSQL and the application are included; no separate infrastructure installation is needed. Run as an ordinary user. Keep the whole extracted folder together.\n\nChoose your language, agent permissions and model connection. AI model weights and provider credentials are not included. Provider charges belong to your account; Ollama needs a configured model and suitable memory.\n\nData and credentials stay in a private installation directory outside this package. Close the launcher with Ctrl+C to stop the application and its database. Start again to resume. For headless use: ${process.platform === "win32" ? "START.cmd" : "./START.command"} --no-browser\nIf your operating system shows an unsigned-app trust prompt, review the source and checksum; do not disable system security.\n\nAdvanced Docker/source installation: https://github.com/halittayyar0/Agentic-Company-OS/blob/main/docs/self-hosting.md\nSource revision: ${commit}\nTarget: ${target}\n`,
   );
+  // Keep release identity inside the hashed inventory while retaining the
+  // original manifest schema for packages that predate guided upgrades.
+  const releaseValidator = path.join(temporary, "native-release.mjs");
+  await build({
+    entryPoints: [path.join(root, "scripts/src/setup/native-release.ts")],
+    outfile: releaseValidator,
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node24",
+    logLevel: "warning",
+  });
+  const { createNativeRelease } = await import(
+    pathToFileURL(releaseValidator).href
+  );
+  const packageMetadata = JSON.parse(
+    await readFile(path.join(root, "package.json"), "utf8"),
+  );
+  await writeFile(
+    path.join(directory, "native-release.json"),
+    JSON.stringify(
+      createNativeRelease(packageMetadata.version, commit),
+      null,
+      2,
+    ) + "\n",
+  );
   const files = await inventory(directory);
   if (
     files.length > 20_000 ||
