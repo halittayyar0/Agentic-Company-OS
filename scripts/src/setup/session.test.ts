@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { get } from "node:http";
+import { once } from "node:events";
+import { connect } from "node:net";
 import test from "node:test";
 import { createSetupSession } from "./session";
 import type { InstallCapabilities } from "./preflight";
@@ -22,6 +24,36 @@ const settings = {
   phoneAccess: "local",
   toolPacks: [],
 };
+
+test("setup shutdown closes a browser's idle TCP preconnection", async () => {
+  const session = await createSetupSession({
+    capabilities: async () => capabilities,
+    execute: async () => ({ url: "http://127.0.0.1:5000" }),
+  });
+  const endpoint = new URL(session.url);
+  const socket = connect(Number(endpoint.port), "127.0.0.1");
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  let closing: Promise<void> | undefined;
+  try {
+    await once(socket, "connect");
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    closing = session.close();
+    assert.equal(
+      await Promise.race([
+        closing.then(() => true),
+        new Promise<boolean>((resolve) => {
+          deadline = setTimeout(() => resolve(false), 2000);
+        }),
+      ]),
+      true,
+      "An idle browser preconnection must not keep the installer running",
+    );
+  } finally {
+    clearTimeout(deadline);
+    socket.destroy();
+    await (closing ?? session.close());
+  }
+});
 
 test("setup keeps a protected UI language preference without changing workspace choices", async (t) => {
   const session = await createSetupSession({
