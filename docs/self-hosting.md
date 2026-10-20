@@ -18,7 +18,7 @@ Read [security-model.md](./security-model.md) before choosing a topology.
 
 ## Native package: first installation
 
-For **v0.5.4**, choose the matching archive from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest). Check the version and checksum on the release page. The native package includes a pinned Node.js executable, a project-built PostgreSQL runtime and the compiled application. Users do not separately install Node.js, Docker, pnpm, Git or PostgreSQL for this path.
+For **v0.5.4 or later**, choose the matching archive from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest). Check the version and checksum on the release page. The native package includes a pinned Node.js executable, a project-built PostgreSQL runtime and the compiled application. Users do not separately install Node.js, Docker, pnpm, Git or PostgreSQL for this path.
 
 | Host target               | Release asset                            |
 | ------------------------- | ---------------------------------------- |

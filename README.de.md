@@ -34,7 +34,7 @@ Dies sind Beispielaufträge, keine garantierten Ergebnisse. Das Ergebnis hängt 
 
 ### 1. Das native Paket herunterladen
 
-Wähle unter [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) das passende **v0.5.4**-Archiv und prüfe Version sowie Prüfsumme. Node.js, PostgreSQL und die fertige App sind enthalten. Node.js, Docker, pnpm, Git und PostgreSQL müssen nicht separat installiert werden.
+Wähle unter [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) das passende aktuelle Installationsarchiv und prüfe Version sowie Prüfsumme. Node.js, PostgreSQL und die fertige App sind enthalten. Node.js, Docker, pnpm, Git und PostgreSQL müssen nicht separat installiert werden.
 
 | System              | Archiv                                   |
 | ------------------- | ---------------------------------------- |

@@ -40,7 +40,7 @@
 
 ### 1. نزّل الحزمة الأصلية
 
-اختر أرشيف **v0.5.4** المناسب لجهازك من [الإصدارات](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest)، وتحقق من الإصدار ومجموع التحقق. تتضمن الحزمة Node.js وPostgreSQL والتطبيق المبني؛ لا تحتاج إلى تثبيت Node.js أو Docker أو pnpm أو Git أو PostgreSQL بشكل منفصل.
+اختر أحدث أرشيف تثبيت مناسب لجهازك من [الإصدارات](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest)، وتحقق من الإصدار ومجموع التحقق. تتضمن الحزمة Node.js وPostgreSQL والتطبيق المبني؛ لا تحتاج إلى تثبيت Node.js أو Docker أو pnpm أو Git أو PostgreSQL بشكل منفصل.
 
 | النظام              | الأرشيف                                  |
 | ------------------- | ---------------------------------------- |

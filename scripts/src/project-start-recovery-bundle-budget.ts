@@ -1,5 +1,7 @@
 import ts from "typescript";
 import { gzipSync } from "node:zlib";
+import assert from "node:assert/strict";
+import { resolveExclusiveBundleAssets } from "./bundle-source-map";
 interface Asset {
   fileName: string;
   contents: Buffer;
@@ -57,12 +59,15 @@ function requireFields(
       throw Error("Recovery copy must contain authored strings");
   }
 }
-/** Only this exclusive, New-project-only chunk and exact recovery fields earn
+/** Only the shared recovery, source-exclusive Home adapter and exact recovery fields earn
  * credit. Bound selected transfer to12KB/5KB and all seven copy additions to
  *14KB/7KB. Aggregate totals count one locale peak, so their credit uses
  * max(current packs) minus max(control packs), independently for raw/gzip.
  * No route, API, vendor, CSS or old draft credit. */
-export function measureProjectStartRecoveryBundle(assets: readonly Asset[]) {
+export function measureProjectStartRecoveryBundle(
+  assets: readonly Asset[],
+  manifest?: unknown,
+) {
   const one = (prefix: string) => {
     const hits = assets.filter(
       (a) => a.fileName.startsWith(prefix + "-") && a.fileName.endsWith(".js"),
@@ -72,6 +77,28 @@ export function measureProjectStartRecoveryBundle(assets: readonly Asset[]) {
     return hits[0];
   };
   const logic = one("project-start-recovery");
+  const adapters = assets.filter(
+    (a) =>
+      a.fileName.startsWith("home-project-start-recovery-") &&
+      a.fileName.endsWith(".js"),
+  );
+  assert.ok(adapters.length <= 1, "Ambiguous Home recovery adapter");
+  if (adapters.length) {
+    const source =
+      "artifacts/agentic-company-os/src/components/studio/home-project-start-recovery.tsx";
+    const owned = resolveExclusiveBundleAssets(
+      assets,
+      manifest,
+      [source],
+      [source],
+    );
+    assert.equal(owned.length, 1);
+    assert.equal(owned[0].fileName, adapters[0].fileName);
+  }
+  const logicBytes =
+    logic.contents.length + adapters.reduce((n, a) => n + a.contents.length, 0);
+  const logicGzip =
+    gzip(logic.contents) + adapters.reduce((n, a) => n + gzip(a.contents), 0);
   if (
     !logic.contents.includes("acos.project-start.v1") ||
     !logic.contents.includes("invalid_receipt")
@@ -120,16 +147,16 @@ export function measureProjectStartRecoveryBundle(assets: readonly Asset[]) {
   });
   const allLocaleRaw = packs.reduce((n, p) => n + p.raw, 0),
     allLocaleGzip = packs.reduce((n, p) => n + p.gzip, 0);
-  const raw = logic.contents.length + Math.max(...packs.map((p) => p.raw)),
-    compressed = gzip(logic.contents) + Math.max(...packs.map((p) => p.gzip));
+  const raw = logicBytes + Math.max(...packs.map((p) => p.raw)),
+    compressed = logicGzip + Math.max(...packs.map((p) => p.gzip));
   const globalRaw =
-    logic.contents.length +
+    logicBytes +
     Math.max(
       ...locales.map((locale) => one("new-project-" + locale).contents.length),
     ) -
     Math.max(...packs.map((p) => p.contents.length));
   const globalGzip =
-    gzip(logic.contents) +
+    logicGzip +
     Math.max(
       ...locales.map((locale) => gzip(one("new-project-" + locale).contents)),
     ) -

@@ -1,6 +1,7 @@
 import type { HomeCopy } from "../home-copy";
 
 const copy = {
+  startUnavailable: "无法加载项目启动控件。草稿会保留在这里，请重试。",
   draftStorageError:
     "此标签页无法保存供重新加载后恢复的草稿。你仍可在此编辑文字；重新加载或关闭标签页前，请先复制保存。",
   deskKicker: "你的工作区",

@@ -8,7 +8,10 @@ import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { measureUsageReportingBundleGrowth } from "./usage-reporting-bundle-budget";
 import { measureCodingRecoveryBundle } from "./coding-recovery-bundle-budget";
-import { measureComposerDraftBundle } from "./composer-draft-bundle-budget";
+import {
+  measureComposerDraftBundle,
+  resolveComposerDraftScope,
+} from "./composer-draft-bundle-budget";
 import { measureCompletionRequirementsBundle } from "./completion-requirements-bundle-budget";
 import { measureConnectionBundle } from "./connection-bundle-budget";
 import { measureInferenceAccountingBundle } from "./inference-accounting-bundle-budget";
@@ -258,6 +261,12 @@ const projectStartRecovery = measureProjectStartRecoveryBundle(
     fileName: asset.fileName,
     contents: readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
 );
 const completionConditions = measureCompletionRequirementsBundle(
   codeAssets.map((asset) => ({
@@ -275,6 +284,18 @@ const completionConditions = measureCompletionRequirementsBundle(
 const conditionControls = new Map(
   completionConditions.controls.map((control) => [control.fileName, control]),
 );
+const composerScope = resolveComposerDraftScope(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
+);
 const composerDraft = measureComposerDraftBundle(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
@@ -285,6 +306,8 @@ const composerDraft = measureComposerDraftBundle(
       conditionControls.get(asset.fileName)?.contents ??
       readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
+  composerScope.route,
+  composerScope.loader,
 );
 const languageLocales = [
   "tr",

@@ -381,7 +381,7 @@ test("a delayed successful response never erases a later edited draft", async ({
     page.getByRole("textbox", { name: copy.brief, exact: true }),
   ).toHaveValue("Later edit while the first response was delayed");
 });
-test("recovery loads only with New project and validates saved state before enabling Start", async ({
+test("shared recovery loads for Home and New project without entering unrelated settings", async ({
   page,
 }) => {
   const chunks: string[] = [];
@@ -392,13 +392,12 @@ test("recovery loads only with New project and validates saved state before enab
   await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
   const fixture = await installStudioFixtures(page),
     copy = await loadNewProjectCopy("en");
-  await page.goto("/");
-  await expect(page.locator('a[href="/settings"]').last()).toBeVisible();
-  expect(chunks).toHaveLength(0);
-  await page.locator('a[href="/settings"]').last().click();
+  await page.goto("/settings");
   await expect(page.locator("select#settings-language")).toBeVisible();
   expect(chunks).toHaveLength(0);
-  await page.goto("/projects/new");
+  await page.goto("/");
+  await expect.poll(() => chunks.length).toBe(1);
+  await page.locator('a[href="/projects/new"]').last().click();
   await expect(
     page.getByRole("button", { name: copy.start, exact: true }),
   ).toBeEnabled();

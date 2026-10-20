@@ -38,7 +38,7 @@ These are example requests, not guaranteed outcomes. Results depend on the model
 
 ### 1. Download the native package
 
-Choose the **v0.5.4** archive for your computer from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest). Check the version and checksum before downloading. Node.js, PostgreSQL and the built application are included; you do not need to install Node.js, Docker, pnpm, Git or PostgreSQL separately.
+Choose the latest native archive for your computer from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest). Check the version and checksum before downloading. Node.js, PostgreSQL and the built application are included; you do not need to install Node.js, Docker, pnpm, Git or PostgreSQL separately.
 
 | System              | Archive                                  |
 | ------------------- | ---------------------------------------- |
@@ -73,6 +73,10 @@ For recurring work, include both the interval and what should count as a finishe
 > Every 24 hours, check [public page] for meaningful changes. Save a dated summary when something changes. Complete each cycle and wait for the next scheduled time. Do not contact anyone or publish externally.
 
 **A useful brief includes:** the input, the expected output, how to verify it, and any limits on actions or spending.
+
+If a project start loses its response, **Check request** finds the saved outcome
+without starting another job. Home and New project share this recovery; a retry
+keeps the original request and instructions. [Recover a project start →](./docs/project-starts.md)
 
 The saved **Delivery summary** appears directly above the project workspace. Open **Review evidence** to inspect recorded activity and checks. The summary is the agent's report; it is not independent proof that every claim is correct. For recurring work, it shows the latest saved delivery, while the current responsibility status stays visible above it. Converting a finished one-off job to recurring work retains its previous delivery until a new one is saved.
 

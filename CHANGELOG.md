@@ -5,6 +5,15 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-10-20
+
+### Fixed
+
+- Home uses the existing durable project-start recovery, preventing a lost
+  response from turning a retry into another job. Shared seven-language controls
+  inspect the saved outcome, retain later drafts and replay only the original
+  request. Checking makes no model call or new task request.
+
 ## [0.5.4] - 2026-10-16
 
 ### Added

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { AGENT_TEMPLATES } from "../../artifacts/api-server/src/lib/agent-templates";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
+import { loadNewProjectCopy } from "../../artifacts/agentic-company-os/src/lib/new-project-copy";
 
 test("a delayed role catalog preserves custom instructions entered before it arrived", async ({
   page,
@@ -110,11 +111,14 @@ test("repeated submit events create only one pending request", async ({
   const harness = await installStudioFixtures(page);
   for (const route of ["/", "/agents/new?template=ux_designer"]) {
     await page.goto(route);
-    if (route === "/")
+    if (route === "/") {
       await page
         .getByRole("textbox", { name: "Üretmek istediğin sonuç" })
         .fill("Bir rezervasyon sitesi hazırla ve test et.");
-    else
+      await expect(
+        page.getByRole("button", { name: "Projeyi başlat", exact: true }),
+      ).toBeEnabled();
+    } else
       await expect(
         page.getByRole("textbox", { name: "Uzmanın adı" }),
       ).toHaveValue("Tasarım Uzmanı");
@@ -123,9 +127,19 @@ test("repeated submit events create only one pending request", async ({
       node.requestSubmit();
       node.requestSubmit();
     });
-    await expect(
-      page.getByRole("alert").filter({ hasText: /korunuyor/ }),
-    ).toBeVisible();
+    if (route === "/") {
+      const copy = await loadNewProjectCopy("tr");
+      await expect(
+        page.getByRole("button", { name: copy.recovery.check, exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Projeyi başlat", exact: true }),
+      ).toBeDisabled();
+    } else {
+      await expect(
+        page.getByRole("alert").filter({ hasText: /korunuyor/ }),
+      ).toBeVisible();
+    }
     expect(harness.requests.length - before).toBe(1);
   }
 });
@@ -181,8 +195,12 @@ test("guided project start fills an editable example and preserves the brief on 
   await page
     .getByRole("button", { name: "Projeyi başlat", exact: true })
     .click();
+  const recovery = (await loadNewProjectCopy("tr")).recovery;
   await expect(
-    page.getByRole("alert").filter({ hasText: "Taslağın korunuyor" }),
+    page.getByRole("status").filter({ hasText: recovery.uncertain }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: recovery.check, exact: true }),
   ).toBeVisible();
   await expect(brief).toHaveValue(/rezervasyon deneyimi/);
   expect(harness.requests).toHaveLength(1);

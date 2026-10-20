@@ -1,6 +1,7 @@
 import type { HomeCopy } from "../home-copy";
 
 const copy = {
+  startUnavailable: "無法載入專案啟動控制項。草稿會保留在這裡，請重試。",
   draftStorageError:
     "此分頁無法儲存供重新載入後復原的草稿。你仍可在此編輯文字；重新載入或關閉分頁前，請先複製保存。",
   deskKicker: "你的工作區",

@@ -1,16 +1,14 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod/v4-mini";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import {
   getGetOrgSummaryQueryKey,
   getListAgentsQueryKey,
   getListTasksQueryKey,
-  useCreateTask,
   type Agent,
-  type TaskInput,
 } from "@workspace/api-client-react";
 import {
   ArrowUpRight,
@@ -25,12 +23,17 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ValidatedForm } from "@/components/ui/validated-form";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 import type { HomeCopy, HomeMode } from "@/lib/home-copy";
 import type { Locale } from "@/lib/i18n";
-import { composeProjectBrief } from "@/lib/project-brief";
 import { useComposerDraft } from "@/hooks/use-composer-draft";
 import type { ComposerDraft } from "@/lib/composer-draft";
+import type { ProjectStartState } from "./project-start-recovery";
+import type {
+  HomeProjectStartHandle,
+  HomeDraft,
+} from "./home-project-start-recovery";
 
 const ProviderSetupNotice = lazy(() => import("./provider-setup-notice"));
 
@@ -56,7 +59,20 @@ export function HomeProjectComposer({
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const createTask = useCreateTask();
+  const { t } = useLocale();
+  const recoveryModule = useQuery({
+    queryKey: ["home-project-start-recovery"],
+    queryFn: () => import("./home-project-start-recovery"),
+    staleTime: Infinity,
+    retry: false,
+  });
+  const Recovery = recoveryModule.data?.default;
+  const startRequest = useRef<HomeProjectStartHandle>(null);
+  const [startState, setStartState] = useState<ProjectStartState>({
+    ready: false,
+    pending: false,
+    busy: null,
+  });
   const draft = useComposerDraft<Extract<ComposerDraft, { kind: "home" }>>({
     version: 1,
     kind: "home",
@@ -64,7 +80,6 @@ export function HomeProjectComposer({
     mode: "team",
   });
   const [mode, setMode] = useState<HomeMode>(draft.value.mode);
-  const [failure, setFailure] = useState(false);
   const schema = useMemo(
     () =>
       z.object({
@@ -83,7 +98,7 @@ export function HomeProjectComposer({
     defaultValues: { prompt: draft.value.prompt },
   });
   const prompt = form.watch("prompt");
-  const busy = createTask.isPending || form.formState.isSubmitting;
+  const busy = Boolean(startState.busy) || form.formState.isSubmitting;
   useEffect(() => {
     draft.change({
       version: 1,
@@ -101,9 +116,17 @@ export function HomeProjectComposer({
     );
     return () => subscription.unsubscribe();
   }, [form, mode]);
-  const submit = async ({ prompt: outcome }: Values) => {
-    if (!agents.length || blocked || createTask.isPending) return;
-    setFailure(false);
+  const submit = () => {
+    if (
+      !agents.length ||
+      blocked ||
+      !Recovery ||
+      !startState.ready ||
+      startState.pending ||
+      startState.busy ||
+      !startRequest.current
+    )
+      return;
     const submittedDraft = {
       version: 1 as const,
       kind: "home" as const,
@@ -111,38 +134,20 @@ export function HomeProjectComposer({
       prompt: form.getValues("prompt"),
     };
     draft.change(submittedDraft);
-    const definition = copy.modes[mode];
-    const oneLine = outcome.replace(/\s+/g, " ");
-    const projectInput: TaskInput = {
-      title: oneLine.length <= 92 ? oneLine : `${oneLine.slice(0, 89).trim()}…`,
-      brief: composeProjectBrief(
-        outcome,
-        locale,
-        definition.label,
-        definition.instruction,
-      ),
-      priority: "normal",
-      autonomyMode: "finite",
-    };
-    try {
-      const task = await createTask.mutateAsync({ data: projectInput });
-      if (!Number.isInteger(task?.id) || task.id <= 0 || task.id > 2147483647)
-        throw new Error("Unconfirmed task receipt");
-      draft.finish(submittedDraft);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getListAgentsQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getGetOrgSummaryQueryKey() }),
-      ]);
-      form.reset();
-      toast({
-        title: copy.projectReadyTitle,
-        description: copy.projectReadyDescription,
-      });
-      navigate(`/projects/${task.id}`);
-    } catch {
-      setFailure(true);
-    }
+    startRequest.current.start(submittedDraft);
+  };
+  const openProject = (id: number, submitted: HomeDraft | null) => {
+    if (submitted) draft.finish(submitted);
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListAgentsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetOrgSummaryQueryKey() }),
+    ]);
+    toast({
+      title: copy.projectReadyTitle,
+      description: copy.projectReadyDescription,
+    });
+    navigate(`/projects/${id}`);
   };
 
   return (
@@ -237,7 +242,15 @@ export function HomeProjectComposer({
           </p>
           <Button
             type="submit"
-            disabled={!prompt.trim() || !agents.length || blocked || busy}
+            disabled={
+              !prompt.trim() ||
+              !agents.length ||
+              blocked ||
+              busy ||
+              !Recovery ||
+              !startState.ready ||
+              startState.pending
+            }
             aria-busy={busy}
             className="min-h-11 min-w-[min(10rem,100%)]"
           >
@@ -253,6 +266,31 @@ export function HomeProjectComposer({
           </Button>
         </div>
       </ValidatedForm>
+      {Recovery && recoveryModule.data ? (
+        <Recovery
+          ref={startRequest}
+          copy={copy}
+          locale={locale}
+          onStateChange={setStartState}
+          onOpen={openProject}
+          onPrepared={() => form.setFocus("prompt")}
+        />
+      ) : recoveryModule.isError ? (
+        <div
+          role="alert"
+          className="mt-4 space-y-2 text-sm [overflow-wrap:anywhere]"
+        >
+          <p>{copy.startUnavailable}</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => window.location.reload()}
+          >
+            {t("checkAgain")}
+          </Button>
+        </div>
+      ) : null}
       <Suspense fallback={null}>
         <ProviderSetupNotice onReady={() => form.setFocus("prompt")} />
       </Suspense>
@@ -261,14 +299,6 @@ export function HomeProjectComposer({
           {copy.draftStorageError}
         </p>
       )}
-      {failure ? (
-        <p
-          role="alert"
-          className="mt-3 rounded-control border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
-        >
-          {copy.projectLaunchError}
-        </p>
-      ) : null}
       {blocked ? (
         <p
           role="status"
@@ -305,7 +335,6 @@ export function HomeProjectComposer({
                   shouldValidate: false,
                 });
                 form.clearErrors();
-                setFailure(false);
                 form.setFocus("prompt");
               }}
               className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-control border border-border px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-card hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
