@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { OwnerPrivateStorage } from "@workspace/ai-server/owner-private-storage";
 import {
   assertInstallPortAvailable,
   createInstallationResources,
@@ -76,6 +77,12 @@ test("installation handles spaces, writes private credentials and refuses to ove
   const manifest = await readFile(
     path.join(resources.directory, "installation.json"),
     "utf8",
+  );
+  assert.equal(
+    await new OwnerPrivateStorage(resources.directory).read(
+      "installation.json",
+    ),
+    manifest,
   );
   assert.ok(!manifest.includes("private-password"));
   assert.equal(
