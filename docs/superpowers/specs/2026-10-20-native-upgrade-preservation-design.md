@@ -65,6 +65,17 @@ advisory lock and persists a runtime stop. It verifies identity, migration rows,
 representative data and write/sequence behavior on the copy, then shuts it down
 cleanly. No model request, recurring job, browser session or agent process starts.
 
+The parent retains the installation lease throughout staging and promotion. A
+temporary bundled Node child owns only staged PostgreSQL. It listens for IPC
+disconnect before validation, aborts startup on parent loss, and joins cleanup
+before exit. No lease token or credential value crosses IPC. An ordinary-user
+WSL/Linux experiment found that a direct PostgreSQL child survived a killed
+parent; the staging child closed it cleanly in the same experiment. On Windows,
+forced parent termination can also end descendants before cleanup and leave an
+unclean copy. Preparing attempts are therefore always retained and replaced with
+a new cold copy; a clean shutdown alone never makes a partial migration reusable.
+No cleanup command selects an original or external database using a stale PID.
+
 The promotion protocol must survive failure before and after each atomic rename
 and metadata/pointer write. A journal and saved original metadata bind source and
 target commits, roots, UUID, cluster inventory and transition identity. The old

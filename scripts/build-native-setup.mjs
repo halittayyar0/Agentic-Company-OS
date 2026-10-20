@@ -403,6 +403,7 @@ try {
   await mkdir(setup, { recursive: true });
   for (const [entry, output] of [
     ["scripts/src/setup/bootstrap.ts", "bootstrap.mjs"],
+    ["scripts/src/setup/stage-postgres.ts", "stage-postgres.mjs"],
     ["scripts/src/verify-evidence.ts", "verify-evidence.mjs"],
   ])
     await build({

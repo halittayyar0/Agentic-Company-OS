@@ -100,6 +100,15 @@ their tests, OS lease handoff tests.
    automatic rollback after accepted work. Keep backup; commit and ledger.
    Expected: no state permits workers to start against an ambiguous cluster.
 
+Staging lifecycle ruling from actual parent-death experiments: retain the lease
+in the coordinator and use a staging-only bundled Node IPC child to own
+PostgreSQL. Join startup and shutdown on EOF, abort or stop. A killed Linux parent
+otherwise leaves the staged server alive. Windows forced termination may leave
+an unclean copy even with the child, so retire every interrupted preparing
+attempt and make a new cold copy. Never reuse its migration baseline or transport
+the opaque instance lease across processes. Qualify real cutover separately from
+these synthetic-cluster lifecycle experiments.
+
 ### Task 4: Provide a guided upgrade in the existing seven-language installer
 
 Interfaces: authenticated local session consumes coordinator; browser sees safe

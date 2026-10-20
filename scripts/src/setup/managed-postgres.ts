@@ -79,6 +79,7 @@ export function createManagedPostgres(options: {
   const supervisor = new ProcessSupervisor({
     runId: `setup-postgres-${options.planId}`,
     logLimitBytes: 64 * 1024,
+    ...(options.purpose === "upgrade_staging" ? { gracefulStopMs: 2_000 } : {}),
   });
   let prepared = false,
     started = false;

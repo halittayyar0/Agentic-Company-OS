@@ -59,7 +59,7 @@ test("native package manifests bind the supported host, source and required exec
     );
 });
 
-test("versioned native packages require the migration-only runtime while legacy archives remain valid", () => {
+test("versioned native packages require migration and staging lifecycle runtimes while legacy archives remain valid", () => {
   const valid = manifest();
   const release = {
     path: "native-release.json",
@@ -76,9 +76,23 @@ test("versioned native packages require the migration-only runtime while legacy 
     ...release,
     path: "artifacts/api-server/dist/native-upgrade.mjs",
   };
-  assert.doesNotThrow(() =>
+  assert.throws(() =>
     validateNativeDistribution(
       { ...valid, files: [...valid.files, release, entry] },
+      host,
+    ),
+  );
+  assert.doesNotThrow(() =>
+    validateNativeDistribution(
+      {
+        ...valid,
+        files: [
+          ...valid.files,
+          release,
+          entry,
+          { ...entry, path: "scripts/src/setup/stage-postgres.mjs" },
+        ],
+      },
       host,
     ),
   );
