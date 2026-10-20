@@ -225,6 +225,31 @@ test("upgrade inspection accepts versioned predecessors and equal migration hist
   assert.equal(report.migrations.added, 0);
 });
 
+test("upgrade inspection accepts bootstrap's trailing directory separator without relaxing the stored pointer identity", async (t) => {
+  const f = await fixture(t),
+    storedRoot = f.sourceRoot + path.sep;
+  await writeFile(
+    f.metadataFile,
+    JSON.stringify({ ...f.record, workspaceRoot: storedRoot }),
+  );
+  const pointer = JSON.parse(await readFile(f.pointerFile, "utf8"));
+  await writeFile(
+    f.pointerFile,
+    JSON.stringify({ ...pointer, workspaceRoot: storedRoot }),
+  );
+  const report = await inspectNativeUpgrade({
+    ...f.options,
+    targetRoot: f.targetRoot + path.sep,
+  });
+  assert.equal(report.source.root, f.sourceRoot);
+  assert.equal(report.target.root, f.targetRoot);
+  await writeFile(f.pointerFile, JSON.stringify(pointer));
+  await assert.rejects(
+    inspectNativeUpgrade(f.options),
+    /native_launch_identity/u,
+  );
+});
+
 test("upgrade compatibility rejects missing identities, unknown predecessors, downgrades and protocols", async (t) => {
   for (const [sourceVersion, targetVersion] of [
     [undefined, undefined],

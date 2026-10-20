@@ -28,18 +28,18 @@ function identity(value: string): string {
 }
 
 async function existingDirectory(value: string): Promise<string> {
-  if (!path.isAbsolute(value) || path.resolve(value) !== value)
-    throw new Error("native_upgrade_path");
-  const info = await lstat(value),
-    actual = await realpath(value);
+  if (!path.isAbsolute(value)) throw new Error("native_upgrade_path");
+  const resolved = path.resolve(value);
+  const info = await lstat(resolved),
+    actual = await realpath(resolved);
   if (
     !info.isDirectory() ||
     info.isSymbolicLink() ||
-    identity(actual) !== identity(value)
+    identity(actual) !== identity(resolved)
   )
     throw new Error("native_upgrade_path");
   // An ancestor junction targeting the same physical directory is still an alias.
-  let cursor = value;
+  let cursor = resolved;
   while (path.dirname(cursor) !== cursor) {
     if ((await lstat(cursor)).isSymbolicLink())
       throw new Error("native_upgrade_path");
