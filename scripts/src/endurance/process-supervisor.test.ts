@@ -14,11 +14,15 @@ test("parent-bound Node child terminates after forced parent death without relyi
   );
   const ready = path.join(directory, "ready.json"),
     stopped = path.join(directory, "disconnected");
-  const childProgram = `const fs=require('node:fs'); if(!process.connected)process.exit(9); const stop=()=>{fs.writeFileSync(${JSON.stringify(stopped)},'observed');process.exit(0)}; let heartbeat=setTimeout(stop,3000); process.on('message',message=>{if(message.type!=='parent_alive')process.exit(7);clearTimeout(heartbeat);heartbeat=setTimeout(stop,3000);fs.writeFileSync(${JSON.stringify(ready)},JSON.stringify({pid:process.pid}))}); process.once('disconnect',stop); setTimeout(()=>process.exit(8),15000);`;
+  const childEntry = path.join(directory, "child.cjs");
+  await writeFile(
+    childEntry,
+    `const fs=require('node:fs'); const [stopped,ready]=process.argv.slice(2); if(!process.connected)process.exit(9); const stop=()=>{fs.writeFileSync(stopped,'observed');process.exit(0)}; let heartbeat=setTimeout(stop,3000); process.on('message',message=>{if(message.type!=='parent_alive')process.exit(7);clearTimeout(heartbeat);heartbeat=setTimeout(stop,3000);fs.writeFileSync(ready,JSON.stringify({pid:process.pid}))}); process.once('disconnect',stop); setTimeout(()=>process.exit(8),15000);`,
+  );
   const entry = path.join(directory, "parent.mjs");
   await writeFile(
     entry,
-    `import {executeBoundedCommand} from ${JSON.stringify(new URL("./process-supervisor.ts", import.meta.url).href)}; await executeBoundedCommand({command:process.execPath,args:['-e',${JSON.stringify(childProgram)}],cwd:process.cwd(),environment:process.env,timeoutMs:20000,maxBufferBytes:16384,ignoreInheritedStdio:true,notifyParentDisconnect:true});`,
+    `const {executeBoundedCommand}=await import(process.argv[2]); await executeBoundedCommand({command:process.execPath,args:process.argv.slice(3),cwd:process.cwd(),environment:process.env,timeoutMs:20000,maxBufferBytes:16384,ignoreInheritedStdio:true,notifyParentDisconnect:true});`,
   );
   const parent = spawn(
     process.execPath,
@@ -26,6 +30,10 @@ test("parent-bound Node child terminates after forced parent death without relyi
       "--import",
       pathToFileURL(path.resolve("node_modules/tsx/dist/loader.mjs")).href,
       entry,
+      new URL("./process-supervisor.ts", import.meta.url).href,
+      childEntry,
+      stopped,
+      ready,
     ],
     { stdio: "ignore", windowsHide: true, env: { ...process.env } },
   );
