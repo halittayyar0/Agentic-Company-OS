@@ -15,6 +15,37 @@ test("setup accepts read-only help and check without installation paths", () => 
   assert.match(setupHelp, /bootstrap\.mjs/);
 });
 
+test("native upgrade commands identify one exact existing instance and reject ambiguous or credential-bearing arguments", () => {
+  for (const [flag, mode] of [
+    ["--upgrade", "upgrade"],
+    ["--recover-upgrade", "recover"],
+    ["--retry-upgrade", "retry"],
+  ]) {
+    assert.deepEqual(
+      parseSetupArguments([flag, "relative", "--no-browser"]).upgrade,
+      { mode, directory: path.resolve("relative") },
+    );
+    assert.match(setupHelp, new RegExp(flag, "u"));
+    for (const extra of [
+      ["--resume", "other"],
+      ["--data-dir", "other"],
+      [flag, "other"],
+      ["--check"],
+      ["--recover-upgrade", "other"],
+    ]) {
+      assert.throws(
+        () => parseSetupArguments([flag, "private-secret", ...extra]),
+        (error: unknown) => {
+          assert.ok(error instanceof SetupArgumentError);
+          assert.doesNotMatch(error.message, /private-secret/u);
+          return true;
+        },
+      );
+    }
+    assert.throws(() => parseSetupArguments([flag]), SetupArgumentError);
+  }
+});
+
 test("native launch can suppress browser opening without weakening diagnostic argument rules", () => {
   assert.equal(parseSetupArguments(["--no-browser"]).noBrowser, true);
   assert.equal(

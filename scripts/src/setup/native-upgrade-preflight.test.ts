@@ -17,6 +17,7 @@ import path from "node:path";
 import test, { type TestContext } from "node:test";
 import {
   inspectNativeUpgrade,
+  inspectNativeUpgradePackages,
   readNativeMigrationHistory,
 } from "./native-upgrade-preflight";
 import {
@@ -42,6 +43,25 @@ const journal = (count: number) => ({
     tag: `${String(idx).padStart(4, "0")}_migration`,
     breakpoints: true,
   })),
+});
+
+test("recovery can revalidate exact source/target package compatibility without trusting guarded live metadata", async (t) => {
+  const f = await fixture(t);
+  await writeFile(f.metadataFile, "guarded or interrupted live record");
+  const result = await inspectNativeUpgradePackages({
+    sourceRoot: f.sourceRoot,
+    targetRoot: f.targetRoot,
+  });
+  assert.equal(result.source.summary.commit, legacy);
+  assert.equal(result.target.summary.commit, next);
+  assert.deepEqual(result.migrations, { retained: 2, added: 1 });
+  await assert.rejects(
+    inspectNativeUpgradePackages({
+      sourceRoot: f.targetRoot,
+      targetRoot: f.sourceRoot,
+    }),
+    /native_upgrade_unknown_release/u,
+  );
 });
 
 async function packageFixture(

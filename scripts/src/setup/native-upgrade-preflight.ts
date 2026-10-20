@@ -92,6 +92,66 @@ interface MigrationEntry {
   breakpoints: boolean;
 }
 
+/** Shared by fresh inspection and journal recovery; live metadata may already
+ * be guarded during recovery. This grants no authority to move any data.
+ */
+export async function inspectNativeUpgradePackages(input: {
+  sourceRoot: string;
+  targetRoot: string;
+}) {
+  const sourceRoot = await existingDirectory(input.sourceRoot),
+    targetRoot = await existingDirectory(input.targetRoot);
+  if (overlaps(sourceRoot, targetRoot)) throw new Error("native_upgrade_path");
+  const source = await packageIdentity(sourceRoot, true),
+    target = await packageIdentity(targetRoot, false);
+  const from = stableVersionParts(source.summary.applicationVersion),
+    to = stableVersionParts(target.summary.applicationVersion);
+  if (
+    from[0] !== 0 ||
+    from[1] !== 5 ||
+    from[2] < 5 ||
+    to[0] !== 0 ||
+    to[1] !== 5 ||
+    to[2] <= from[2] ||
+    source.summary.commit === target.summary.commit ||
+    source.summary.target !== target.summary.target
+  )
+    throw new Error("native_upgrade_unsupported_version");
+  const oldEntries = await readNativeMigrationHistory(
+      sourceRoot,
+      source.distribution,
+    ),
+    newEntries = await readNativeMigrationHistory(
+      targetRoot,
+      target.distribution,
+    );
+  if (newEntries.length < oldEntries.length)
+    throw new Error("native_upgrade_migration_history");
+  const oldFiles = new Map(
+      source.distribution.files.map((file) => [file.path, file]),
+    ),
+    newFiles = new Map(
+      target.distribution.files.map((file) => [file.path, file]),
+    );
+  for (const row of oldEntries) {
+    const file = `${migrationRoot}${row.tag}.sql`;
+    if (
+      JSON.stringify(row) !== JSON.stringify(newEntries[row.idx]) ||
+      oldFiles.get(file)?.sha256 !== newFiles.get(file)?.sha256 ||
+      oldFiles.get(file)?.bytes !== newFiles.get(file)?.bytes
+    )
+      throw new Error("native_upgrade_migration_history");
+  }
+  return {
+    source,
+    target,
+    migrations: {
+      retained: oldEntries.length,
+      added: newEntries.length - oldEntries.length,
+    },
+  };
+}
+
 export async function readNativeMigrationHistory(
   root: string,
   distribution: NativeDistribution,
@@ -200,23 +260,12 @@ export async function inspectNativeUpgrade(input: {
     overlaps(targetRoot, directory)
   )
     throw new Error("native_upgrade_path");
-  const source = await packageIdentity(sourceRoot, true);
-  const target = await packageIdentity(targetRoot, false);
+  const { source, target, migrations } = await inspectNativeUpgradePackages({
+    sourceRoot,
+    targetRoot,
+  });
   if (options.nativeBundleCommit !== source.summary.commit)
     throw new Error("native_upgrade_identity");
-  const from = stableVersionParts(source.summary.applicationVersion);
-  const to = stableVersionParts(target.summary.applicationVersion);
-  if (
-    from[0] !== 0 ||
-    from[1] !== 5 ||
-    from[2] < 5 ||
-    to[0] !== 0 ||
-    to[1] !== 5 ||
-    to[2] <= from[2] ||
-    source.summary.commit === target.summary.commit ||
-    source.summary.target !== target.summary.target
-  )
-    throw new Error("native_upgrade_unsupported_version");
 
   const parent = path.dirname(directory);
   const pointerFile = path.join(parent, "native-launch.json");
@@ -285,31 +334,6 @@ export async function inspectNativeUpgrade(input: {
     )
       throw new Error("native_upgrade_model_endpoint");
   }
-  const oldEntries = await readNativeMigrationHistory(
-    sourceRoot,
-    source.distribution,
-  );
-  const newEntries = await readNativeMigrationHistory(
-    targetRoot,
-    target.distribution,
-  );
-  if (newEntries.length < oldEntries.length)
-    throw new Error("native_upgrade_migration_history");
-  const newFiles = new Map(
-    target.distribution.files.map((file) => [file.path, file]),
-  );
-  const oldFiles = new Map(
-    source.distribution.files.map((file) => [file.path, file]),
-  );
-  for (const row of oldEntries) {
-    const file = `${migrationRoot}${row.tag}.sql`;
-    if (
-      JSON.stringify(row) !== JSON.stringify(newEntries[row.idx]) ||
-      oldFiles.get(file)?.sha256 !== newFiles.get(file)?.sha256 ||
-      oldFiles.get(file)?.bytes !== newFiles.get(file)?.bytes
-    )
-      throw new Error("native_upgrade_migration_history");
-  }
   if (
     metadataBytes !==
       (await readBoundedRegularFile(metadataFile, 64000, {
@@ -332,9 +356,6 @@ export async function inspectNativeUpgrade(input: {
       metadataSha256: fingerprint(metadataBytes),
       pointerSha256: fingerprint(pointerBytes),
     },
-    migrations: {
-      retained: oldEntries.length,
-      added: newEntries.length - oldEntries.length,
-    },
+    migrations,
   };
 }
