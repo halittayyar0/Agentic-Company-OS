@@ -32,7 +32,7 @@ jobs:
           import path from 'node:path';
           import {promisify} from 'node:util';
           import {execFile} from 'node:child_process';
-          import {OwnerPrivateStorage} from '@workspace/ai-server/owner-private-storage';
+          import {OwnerPrivateStorage} from '../lib/ai-server/src/owner-private-storage';
           import {createInstallationResources} from '../scripts/src/setup/resources';
           import {planInstallation} from '../scripts/src/setup/plan';
           const temp=await realpath(tmpdir()),root=await mkdtemp(path.join(temp,'acos-owner-observation-'));
