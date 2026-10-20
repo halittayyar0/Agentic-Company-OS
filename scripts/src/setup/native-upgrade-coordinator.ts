@@ -26,6 +26,8 @@ import {
 } from "./native-upgrade-promotion";
 import { startNativeUpgradePostgres } from "./native-upgrade-postgres-client";
 import type { InstallationResources } from "./resources";
+import { readBoundedRegularFile } from "./installation-files";
+import { nativeUpgradeHash } from "./native-upgrade-files";
 
 type Inspection = Awaited<ReturnType<typeof inspectNativeUpgrade>>;
 type Cluster = Pick<
@@ -53,6 +55,15 @@ export interface NativeUpgradeOptions {
   targetRoot: string;
   signal?: AbortSignal;
   onProgress?: (event: NativeUpgradeProgress) => void | Promise<void>;
+  /** Local setup stores the reviewed identity server-side, never trusts a
+   * client-supplied path/commit to authorize changed installation state. */
+  expectedReview?: {
+    sourceCommit: string;
+    targetCommit: string;
+    metadataSha256: string;
+    pointerSha256: string;
+  };
+  expectedUpgradeId?: string;
   /** Internal failure-evidence hook; not accepted from installer/browser input. */
   checkpoint?: UpgradeCheckpoint;
 }
@@ -248,6 +259,16 @@ export function createNativeUpgradeCoordinator(
       options.signal?.throwIfAborted();
       await progress(options, { phase: "checking" });
       const initial = await inspectNativeUpgrade(options);
+      if (
+        options.expectedReview &&
+        (options.expectedReview.sourceCommit !== initial.source.commit ||
+          options.expectedReview.targetCommit !== initial.target.commit ||
+          options.expectedReview.metadataSha256 !==
+            initial.installation.metadataSha256 ||
+          options.expectedReview.pointerSha256 !==
+            initial.installation.pointerSha256)
+      )
+        throw new Error("native_upgrade_review_changed");
       const lease = await acquireInstallationLease(
         initial.installation.directory,
         initial.installation.port,
@@ -286,6 +307,11 @@ export function createNativeUpgradeCoordinator(
       const initial = await readNativeUpgradeJournal(options.directory);
       if (!initial || initial.targetRoot !== options.targetRoot)
         throw new Error("native_upgrade_recovery_identity");
+      if (
+        options.expectedUpgradeId &&
+        initial.upgradeId !== options.expectedUpgradeId
+      )
+        throw new Error("native_upgrade_review_changed");
       const lease = await acquireInstallationLease(
         options.directory,
         initial.appPort,
@@ -296,6 +322,21 @@ export function createNativeUpgradeCoordinator(
         const journal = await readNativeUpgradeJournal(options.directory);
         if (JSON.stringify(journal) !== JSON.stringify(initial))
           throw new Error("native_upgrade_identity_changed");
+        if (options.expectedReview) {
+          const pointer = await readBoundedRegularFile(
+            path.join(path.dirname(options.directory), "native-launch.json"),
+            8192,
+            { rejectSymlinks: true },
+          );
+          if (
+            options.expectedReview.sourceCommit !== initial.sourceCommit ||
+            options.expectedReview.targetCommit !== initial.targetCommit ||
+            options.expectedReview.metadataSha256 !==
+              initial.originalMetadataSha256 ||
+            options.expectedReview.pointerSha256 !== nativeUpgradeHash(pointer)
+          )
+            throw new Error("native_upgrade_review_changed");
+        }
         await progress(options, { phase: "recovering" });
         if (["preparing", "abandoned"].includes(initial.phase)) {
           if (!options.retryPreparation)

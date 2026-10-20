@@ -389,6 +389,52 @@ test("coordinator rechecks inspection under lease and refuses changed metadata b
   assert.equal(await readNativeUpgradeJournal(f.directory), null);
 });
 
+test("a stale setup review cannot authorize an upgrade or a different recovery attempt", async (t) => {
+  const f = await fixture(t);
+  const releaseUnexpected = async (
+    result: Awaited<ReturnType<typeof f.coordinator.upgrade>>,
+  ) => {
+    await result.lease.release();
+    return result;
+  };
+  await assert.rejects(
+    f.coordinator
+      .upgrade({
+        ...f.options,
+        expectedReview: {
+          sourceCommit: legacy,
+          targetCommit,
+          metadataSha256: "a".repeat(64),
+          pointerSha256: hash(f.originalPointer),
+        },
+      })
+      .then(releaseUnexpected),
+    /review_changed/u,
+  );
+  assert.deepEqual(f.calls, []);
+  await assert.rejects(
+    f.coordinator.upgrade({
+      ...f.options,
+      checkpoint: (event) => {
+        if (event === "retain:before")
+          throw new Error("synthetic interruption");
+      },
+    }),
+    /synthetic interruption/u,
+  );
+  const before = await readNativeUpgradeJournal(f.directory);
+  await assert.rejects(
+    f.coordinator
+      .recover({
+        ...f.options,
+        expectedUpgradeId: "00000000-0000-0000-0000-000000000000",
+      })
+      .then(releaseUnexpected),
+    /review_changed/u,
+  );
+  assert.deepEqual(await readNativeUpgradeJournal(f.directory), before);
+});
+
 test("interrupted guarded promotion recovers without rerunning migration or rolling back later work", async (t) => {
   const f = await fixture(t);
   await assert.rejects(
