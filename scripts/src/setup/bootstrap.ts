@@ -25,7 +25,9 @@ import {
 export { parseSetupArguments } from "./cli-options";
 export async function launchSetup(argv = process.argv.slice(2)) {
   const args = parseSetupArguments(argv),
-    workspaceRoot = fileURLToPath(new URL("../../..", import.meta.url));
+    workspaceRoot = path.resolve(
+      fileURLToPath(new URL("../../..", import.meta.url)),
+    );
   if (args.help) {
     process.stdout.write(setupHelp);
     return;
