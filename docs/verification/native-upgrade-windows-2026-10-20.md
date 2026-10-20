@@ -58,3 +58,45 @@ PostgreSQL child could survive a terminated parent; the staging IPC child closed
 it cleanly. Forced Windows termination can leave an unclean staging copy even
 when its processes are gone. Interrupted preparation therefore always requires
 a new cold copy; retained partial migrations are never reused as a new baseline.
+
+# Reviewed archive and actual GUI qualification
+
+The later reviewed candidate `46a168460e084f0fcdcc11bcd0adfda37e85a14c`
+was built from a clean checkout and extracted from its new Windows ZIP. Its
+SHA-256 was `6616ab5b9b3ff00ff7b2e45655fb16c59576549527723fa7de73a2eb5cfa7b00`.
+This is candidate evidence; it is not a published exact-main release claim.
+
+A separately extracted public v0.5.5 archive completed a new genuine Qwen
+`qwen3.5:2b-q4_K_M` task: calculate 58.5 + 14.5 and report 73 EUR. The actual
+calculator arguments and returned runtime result were observed in the unmodified
+model exchange. It used three model calls, no fallback, no new agents and no
+remote provider requests. Restart and database backup/restore checks passed.
+
+The reviewed candidate's shipped START check passed with developer tools removed
+from PATH. Its real browser upgrade screen found this predecessor, displayed
+0.5.5 → 0.5.6 and the correct data folder, then completed migration and startup.
+The original database backup matched its full pre-upgrade inventory. The earlier
+real task, preferences, provider connection, private keys, workspace files and
+custom token limits were retained. The API and two scheduler workers were healthy,
+with work durably paused. A normal restart passed.
+
+After signing into that actual workspace and explicitly confirming **Resume
+work** in its dialog, a new task, ID 2, completed through the same preserved local
+connection. Qwen again called calculate and complete_task; three genuine model
+calls used 7,858 reported tokens, with no fallback, new agents or remote provider
+requests. The new result survived another normal restart. The package, database,
+owned local-model runtime and loopback relay stopped cleanly. Model weights and
+runtime files were checked against their retained SHA-256 provenance.
+
+Visual inspection of the real success screen also found an obsolete instruction
+to use the old START file. That instruction is now limited to an unstarted,
+non-critical review; recovery, running and completed updates hide it. Nineteen
+installer/browser tests passed after this copy-state correction. These later UI
+bytes must be included in the final package and CI qualification.
+
+The repaired migration entrypoint's checked-connection and parent-lifetime
+transport tests are described in the companion
+[UI and review verification](native-upgrade-ui-2026-10-20.md). Forced parent loss
+with a pending database connection, final exact-main artifacts and public readback
+remain separate gates. Native packages are unsigned; these checks do not certify
+physical devices or a 24-hour run.

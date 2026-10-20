@@ -59,7 +59,10 @@ globalThis.initializeSetupUpgrade = function ({ api, language, freshForm }) {
     $("lookup").hidden = Boolean(review);
     $("review").hidden = !review;
     $("fresh").hidden = !freshAvailable;
-    $("keep").hidden = freshAvailable;
+    $("keep").hidden =
+      freshAvailable ||
+      review?.mode === "recover" ||
+      ["installing", "complete", "failed"].includes(state?.phase);
     const running = state?.phase === "installing",
       complete = state?.phase === "complete",
       failed = state?.phase === "failed";

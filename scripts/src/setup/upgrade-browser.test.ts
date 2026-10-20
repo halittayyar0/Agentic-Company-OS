@@ -155,6 +155,7 @@ test("upgrade review, pause guidance and connection work in seven locales at pho
       assert.equal(await page.locator("#language").inputValue(), locale);
       finish();
       await page.locator("#upgrade-open").waitFor({ state: "visible" });
+      assert.equal(await page.locator("#upgrade-keep").isVisible(), false);
       assert.match(
         await page.locator("#upgrade-paused").innerText(),
         new RegExp(paused, "iu"),
@@ -257,6 +258,7 @@ test("lost acknowledgement, cancellation, recovery and stale review stay bounded
   await page.locator("#upgrade-check").click();
   await page.locator("#upgrade-confirm").waitFor();
   assert.match(await page.locator("#upgrade-confirm").innerText(), /recovery/u);
+  assert.equal(await page.locator("#upgrade-keep").isVisible(), false);
   await page.locator("#upgrade-confirm").click();
   await page.locator("#upgrade-cancel[disabled]").waitFor();
   assert.equal(calls, 2);
