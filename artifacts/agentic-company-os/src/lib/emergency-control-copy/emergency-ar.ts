@@ -1,6 +1,8 @@
 import type { EmergencyControlCopy } from "../emergency-control-copy";
 
 export default {
+  nativeUpgradePaused:
+    "تم التحقق من التحديث. راجع مساحة العمل قبل استئناف العمل.",
   checking: "جارٍ التحقق من حالة الإيقاف الطارئ",
   retryLabel: "التحقق مجددًا من حالة الإيقاف الطارئ",
   unavailable: "تعذر تحميل حالة الإيقاف الطارئ",

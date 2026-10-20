@@ -6,6 +6,7 @@ import {
 } from "node:http";
 import {
   planInstallation,
+  SETUP_LOCALES,
   type InstallationPlan,
   type InstallationStep,
 } from "./plan";
@@ -23,6 +24,8 @@ export interface SetupUpgradeReview {
   targetVersion: string;
 }
 export interface SetupUpgradeAdapter {
+  /** A remembered workspace must not be overwritten by a fresh default setup. */
+  freshAvailable?: boolean;
   inspect(input: {
     directory?: string;
   }): Promise<NativeUpgradeCandidate | null>;
@@ -39,6 +42,8 @@ export interface InstallationCredentials {
   ollamaUrl?: string;
 }
 export interface SetupProgress {
+  /** Display preference only. Never changes a saved installation plan. */
+  uiLocale?: (typeof SETUP_LOCALES)[number];
   phase: "idle" | "planned" | "installing" | "complete" | "failed";
   step: InstallationStep | null;
   completedSteps: InstallationStep[];
@@ -203,6 +208,17 @@ export async function createSetupSession(options: {
         json(response, 200, state);
         return;
       }
+      if (request.method === "POST" && path === "/api/locale") {
+        const body = record(await readJson(request));
+        if (
+          Object.keys(body).join(",") !== "locale" ||
+          !SETUP_LOCALES.includes(body.locale as (typeof SETUP_LOCALES)[number])
+        )
+          throw new RequestFailure(400, "invalid_locale");
+        state.uiLocale = body.locale as (typeof SETUP_LOCALES)[number];
+        json(response, 200, { locale: state.uiLocale });
+        return;
+      }
       if (request.method === "GET" && path === "/api/capabilities") {
         json(response, 200, await detect());
         return;
@@ -220,7 +236,10 @@ export async function createSetupSession(options: {
         return;
       }
       if (request.method === "GET" && path === "/api/upgrade") {
-        json(response, 200, { available: Boolean(options.upgrade) });
+        json(response, 200, {
+          available: Boolean(options.upgrade),
+          freshAvailable: options.upgrade?.freshAvailable !== false,
+        });
         return;
       }
       if (
@@ -432,6 +451,11 @@ export async function createSetupSession(options: {
         return;
       }
       if (request.method === "POST" && path === "/api/plan") {
+        if (options.upgrade?.freshAvailable === false)
+          throw new RequestFailure(
+            409,
+            "existing_installation_requires_upgrade",
+          );
         if (reviewing || upgradeReview)
           throw new RequestFailure(409, "upgrade_review_active");
         if (execution)
@@ -454,6 +478,11 @@ export async function createSetupSession(options: {
         return;
       }
       if (request.method === "POST" && path === "/api/install") {
+        if (options.upgrade?.freshAvailable === false)
+          throw new RequestFailure(
+            409,
+            "existing_installation_requires_upgrade",
+          );
         if (reviewing || upgradeReview)
           throw new RequestFailure(409, "upgrade_review_active");
         const body = record(await readJson(request));

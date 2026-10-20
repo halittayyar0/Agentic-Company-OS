@@ -136,7 +136,8 @@ export function validateNativeDistribution(
   if (
     seen.has("native-release.json") &&
     (!seen.has("artifacts/api-server/dist/native-upgrade.mjs") ||
-      !seen.has("scripts/src/setup/stage-postgres.mjs"))
+      !seen.has("scripts/src/setup/stage-postgres.mjs") ||
+      !seen.has("scripts/src/setup/setup-upgrade-client.js"))
   )
     return fail();
   return {

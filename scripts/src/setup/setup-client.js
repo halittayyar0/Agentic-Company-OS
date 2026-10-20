@@ -427,6 +427,7 @@
     $("back").hidden = stage === 0 || stage === 3;
     $("back").disabled = busy;
     $("language").disabled = busy || stage === 3;
+    $("upgrade-existing").disabled = busy || stage === 3;
     $("next").hidden = stage === 3;
     $("next").textContent = stage === 2 ? copy.install : copy.next;
     $("next").disabled = busy || checking || !selected?.ready;
@@ -513,17 +514,32 @@
     }
   }
   async function api(path, data) {
-    const response = await fetch(`/api/${path}`, {
-      method: data ? "POST" : "GET",
-      headers: {
-        authorization: `Bearer ${token}`,
-        ...(data ? { "content-type": "application/json" } : {}),
-      },
-      ...(data ? { body: JSON.stringify(data) } : {}),
-    });
-    if (!response.ok)
-      throw new Error(response.status === 401 ? "session" : "error");
-    return response.json();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(`/api/${path}`, {
+        method: data ? "POST" : "GET",
+        headers: {
+          authorization: `Bearer ${token}`,
+          ...(data ? { "content-type": "application/json" } : {}),
+        },
+        ...(data ? { body: JSON.stringify(data) } : {}),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(
+          response.status === 401
+            ? "session"
+            : typeof body.error === "string"
+              ? body.error
+              : "error",
+        );
+      }
+      return response.json();
+    } finally {
+      clearTimeout(timeout);
+    }
   }
   function settings() {
     return {
@@ -681,4 +697,7 @@
     return;
   }
   void refreshCapabilities();
+  void globalThis
+    .initializeSetupUpgrade({ api, language: $("language"), freshForm: form })
+    .start();
 })();

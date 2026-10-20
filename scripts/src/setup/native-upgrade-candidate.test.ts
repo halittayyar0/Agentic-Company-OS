@@ -21,7 +21,10 @@ import {
   readNativeLaunchPointer,
   saveNativeLaunchPointer,
 } from "./native-launch";
-import { discoverNativeUpgradeCandidate } from "./native-upgrade-candidate";
+import {
+  discoverNativeUpgradeCandidate,
+  chooseNativeSetupEntry,
+} from "./native-upgrade-candidate";
 
 const sourceCommit = "8946dea16eeb314e66b078995b98d0e43a631fdc",
   targetCommit = "b".repeat(40);
@@ -66,6 +69,7 @@ async function packageFixture(root: string, commit: string, version?: string) {
     );
     files.set("artifacts/api-server/dist/native-upgrade.mjs", "fixture");
     files.set("scripts/src/setup/stage-postgres.mjs", "fixture");
+    files.set("scripts/src/setup/setup-upgrade-client.js", "fixture");
   }
   for (const [file, bytes] of files) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true });
@@ -206,6 +210,38 @@ test("native installer discovers a verified remembered predecessor without write
     /native_launch_identity/u,
   );
   assert.equal(await digest(f.root), before);
+});
+
+test("native entry routes foreign or incomplete remembered state to review without weakening ordinary resume", async (t) => {
+  const f = await fixture(t),
+    input = {
+      installationParent: f.parent,
+      targetRoot: f.targetRoot,
+      commit: targetCommit,
+    };
+  assert.deepEqual(await chooseNativeSetupEntry(input), { kind: "upgrade" });
+  await writeFile(f.pointerFile, "corrupt");
+  assert.deepEqual(await chooseNativeSetupEntry(input), { kind: "upgrade" });
+  await rm(f.pointerFile);
+  assert.deepEqual(await chooseNativeSetupEntry(input), { kind: "fresh" });
+  await writeFile(
+    f.pointerFile,
+    JSON.stringify({
+      schemaVersion: 1,
+      workspaceRoot: f.targetRoot,
+      commit: targetCommit,
+      directory: f.directory,
+    }),
+  );
+  assert.deepEqual(await chooseNativeSetupEntry(input), {
+    kind: "resume",
+    directory: f.directory,
+  });
+  await new OwnerPrivateStorage(f.directory).write(
+    "native-upgrade.json",
+    JSON.stringify(f.journal),
+  );
+  assert.deepEqual(await chooseNativeSetupEntry(input), { kind: "upgrade" });
 });
 
 test("absent remembered state stays fresh without creating directories; same package stays a normal resume", async (t) => {

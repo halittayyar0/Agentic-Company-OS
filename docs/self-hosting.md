@@ -42,7 +42,7 @@ Windows and macOS packages are unsigned. No macOS notarization or SmartScreen re
 
 Data and secrets live outside the extracted package, by default under `~/.agentic-company-os/instances/instance-UUID` (the equivalent user-home path on Windows). The terminal prints the actual installation directory. Keep it private and retain both it and the original extracted package. Restarting **the same package at the same location and revision** uses its private last-installation pointer to resume the recorded installation. The pointer contains no model/operator secret and deliberately refuses a different package location or revision. Do not edit it to adopt unfamiliar data.
 
-There is no automated native-package upgrade or cross-package data migration. A moved or newer package must not silently adopt the old installation. Keep the original package available, take and restore-test backups of the database, secrets and workspaces, and follow [Upgrades](#upgrades) before a reviewed migration. A separately selected new `--data-dir` creates an independent installation; it does not migrate existing work. Native setup does not publish a website, allocate a public domain or provide free public hosting/tunneling. Private remote access needs its own reviewed configuration.
+Native packages from v0.5.6 offer a guided same-platform update from the public v0.5.5 release and compatible newer 0.5.x patch releases. See [Upgrades](#upgrades) for its boundaries. Keep the original package and backups. A separately selected new `--data-dir` creates an independent installation; it does not migrate existing work. Native setup does not publish a website, allocate a public domain or provide free public hosting/tunneling. Private remote access needs its own reviewed configuration.
 
 ## Portable container installer
 
@@ -658,9 +658,21 @@ Encrypt backup files, keep them outside the host/container failure domain, apply
 
 ### Native archives
 
-The native restart pointer is bound to the original package location and source revision. Replacing the extracted files, moving the folder or pointing a new archive at the old data is not an automated upgrade. Keep the original package and private data directory. Stop work and services, then back up and restore-test PostgreSQL, the private secrets/configuration and all required workspaces before changing versions. Do not copy a running database directory as a verified backup or modify the pointer/ownership records to bypass an identity failure.
+For v0.5.6 and later compatible native packages:
 
-Use a separate staging installation for the target release and review its release-specific migration guidance. Restore trusted data only through a reviewed PostgreSQL restore/migration process with the matching secret keys and workspace files. The source/server checklist below describes the advanced checks needed; it is not an in-place native-package updater. Retain the original package and a compatible database backup for rollback.
+1. Download the archive for the same operating system and architecture. Extract it into a new folder; keep the old package intact.
+2. Close the old START window with Ctrl+C and wait for it to stop. Back up and restore-test your private data, secrets and workspace files before upgrading.
+3. Open START in the new folder. It finds the remembered workspace and shows the current version, new version and data folder. For a custom data parent, start the new package with the same `--data-dir` argument. The existing-installation field can also inspect the exact instance folder belonging to its saved parent pointer.
+4. Choose the display language and review the update. This language choice does not change the existing workspace language or other settings. Keep the launcher open while it copies and verifies data.
+5. Open the verified workspace, review connections and results, then use **Resume work** when ready. Agent work is deliberately paused after migration; work that was already paused retains its original reason.
+
+The updater accepts the exact public v0.5.5 source or a compatible versioned 0.5.x package with the same host architecture, PostgreSQL 17 and an unchanged historical migration chain. It verifies package bytes, private ownership, saved metadata and the remembered pointer again when executing. Same-version, downgrade, cross-platform, moved/corrupt or incompatible packages fail closed. An old launcher cannot silently attach to upgraded data. Never edit pointer or ownership records to bypass these checks.
+
+Preparation uses a private cold database copy, migration and write checks before switching the saved pointer. The original database is retained in the instance's `native-upgrades/<update-id>/previous-database` directory after a successful transition. This retained copy supplements your independent backups. Do not manually swap database folders under a newer schema or running application.
+
+If preparation stops, **Check again** reviews the saved state and prepares a new copy when needed. During the final switch, cancellation is disabled; allow recovery to finish. After a launcher interruption, open the new START again and continue recovery. If migration completed but opening the workspace failed, close the launcher and run that same new START again to resume the current installation. Review the launcher output if it still cannot start. Keep the original package and all recovery data until the updated installation is accepted.
+
+The setup link is private and expires. To reopen a tab, use the original link printed in the launcher. If it expired, restart START for a new session. The access token is not saved in browser storage. Source/server and Docker deployments use the advanced update process below.
 
 ### Advanced source/server updates
 

@@ -1,6 +1,8 @@
 import type { EmergencyControlCopy } from "../emergency-control-copy";
 
 export default {
+  nativeUpgradePaused:
+    "Güncelleme doğrulandı. İşleri sürdürmeden önce çalışma alanını incele.",
   checking: "Acil durdurma durumu okunuyor",
   retryLabel: "Acil durdurma durumunu yeniden denetle",
   unavailable: "Acil durdurma durumu okunamadı",

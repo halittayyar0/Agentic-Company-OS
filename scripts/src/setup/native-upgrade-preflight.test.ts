@@ -83,6 +83,8 @@ async function packageFixture(
     content.set("artifacts/api-server/dist/native-upgrade.mjs", "fixture");
   if (version) content.set("scripts/src/setup/stage-postgres.mjs", "fixture");
   if (version)
+    content.set("scripts/src/setup/setup-upgrade-client.js", "fixture");
+  if (version)
     content.set(
       "native-release.json",
       JSON.stringify({

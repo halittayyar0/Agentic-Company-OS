@@ -44,6 +44,32 @@ Paths in this map are relative to `artifacts/agentic-company-os`. A future owner
 
 ## Scroll ownership
 
+### Standalone setup and native upgrade
+
+`scripts/src/setup/page.ts`, `setup-client.js`, `setup-upgrade-client.js` and
+`session.ts` are the canonical pre-API setup owners. Native HTML controls and the
+OS language select are the named standalone-installer variant documented in
+DESIGN.md. There is one document scroller, including at 200% text and phone width.
+
+- New native archives include Node and PostgreSQL. A default remembered workspace
+  opens a protected upgrade review; it cannot be overwritten by a fresh setup.
+- Review binds an immutable server-side candidate. Repeated clicks or a lost
+  acknowledgement reconcile through GET state and execute only once.
+- Cancellation applies to preparation only. Saved critical recovery cannot be
+  cancelled from the browser. Failure preserves data and offers a fresh inspection.
+- Only successful API startup exposes Open workspace. Upgraded work stays paused
+  until the operator reviews it and explicitly resumes in the application.
+- All seven languages cover the upgrade view, field help, errors and progress.
+  The selected UI locale survives reopening the launcher's original private link;
+  it never changes the saved workspace settings.
+- The private link token is removed from the address bar and never stored in
+  cookies or browser storage. Refresh without that token requires reopening the
+  original private link. An expired session requires restarting START for a new
+  link. A connection key is revealed once, only on explicit request.
+- `upgrade-browser.test.ts` covers actual session HTTP/browser behavior using a
+  simulated executor. Native archive and real model qualification are separate
+  release gates; UI tests alone do not prove database migration.
+
 - AppShell owns route scrolling by default.
 - A project workbench tab may opt into a single contained vertical scroller only when AppShell relinquishes it for that route. Two nested vertical owners are not allowed.
 - Workstream and timeline lanes may scroll horizontally. The scrollbar stays visible, supports wheel/trackpad/keyboard, and has a stable gutter.

@@ -1,6 +1,8 @@
 import type { EmergencyControlCopy } from "../emergency-control-copy";
 
 export default {
+  nativeUpgradePaused:
+    "Aktualisierung geprüft. Prüfe deinen Arbeitsbereich, bevor du die Arbeit fortsetzt.",
   checking: "Not-Aus-Status wird geprüft",
   retryLabel: "Not-Aus-Status erneut prüfen",
   unavailable: "Not-Aus-Status konnte nicht geladen werden",

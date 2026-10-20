@@ -17,14 +17,15 @@ import { setupCheckReport } from "./check-report";
 import { readNativeDistribution } from "./native-distribution";
 import { assertNativeUser } from "./native-user";
 import {
+  discoverNativeUpgradeCandidate,
+  chooseNativeSetupEntry,
+} from "./native-upgrade-candidate";
+import type { InstallationLease } from "./installation-lease";
+import {
   createNativeUpgradeCoordinator,
   type NativeUpgradeResult,
 } from "./native-upgrade-coordinator";
-import {
-  openNativeBrowser,
-  readNativeLaunchPointer,
-  saveNativeLaunchPointer,
-} from "./native-launch";
+import { openNativeBrowser, saveNativeLaunchPointer } from "./native-launch";
 
 export { parseSetupArguments } from "./cli-options";
 // Programmatic package qualification uses the same bundled lease context.
@@ -146,16 +147,21 @@ export async function launchSetup(argv = process.argv.slice(2)) {
     }
     const installationParent =
       args.parent ?? path.join(homedir(), ".agentic-company-os", "instances");
+    let inferredResume: string | null = null,
+      offerUpgrade = false;
+    if (nativeDistribution && !upgraded && !args.resume) {
+      const entry = await chooseNativeSetupEntry({
+        installationParent,
+        targetRoot: workspaceRoot,
+        commit: nativeDistribution.commit,
+      });
+      inferredResume = entry.kind === "resume" ? entry.directory : null;
+      offerUpgrade = entry.kind === "upgrade";
+    }
     const resumePath =
       upgraded?.directory ??
       args.resume ??
-      (nativeDistribution
-        ? await readNativeLaunchPointer(
-            installationParent,
-            workspaceRoot,
-            nativeDistribution.commit,
-          )
-        : null);
+      (!offerUpgrade ? inferredResume : null);
     const restored = resumePath
       ? await readInstallation(
           resumePath,
@@ -164,46 +170,53 @@ export async function launchSetup(argv = process.argv.slice(2)) {
           nativeDistribution?.commit,
         )
       : null;
-    const executor = createInstallationExecutor({
-      workspaceRoot,
-      installationParent: restored
-        ? path.dirname(restored.resources.directory)
-        : installationParent,
-      pnpmPath,
-      capabilities,
-      ...(nativeDistribution
-        ? {
-            nativeDistribution,
-            onPrepared: (resources: { directory: string }) =>
-              saveNativeLaunchPointer(
-                restored
-                  ? path.dirname(restored.resources.directory)
-                  : installationParent,
-                workspaceRoot,
-                nativeDistribution.commit,
-                resources.directory,
-              ),
-          }
-        : {}),
-      ...(distribution
-        ? {
-            prebuiltImage: distribution.image,
-            codingImage: distribution.codingImage,
-          }
-        : {}),
-      applyPreferences: applyInstallationPreferences,
-      signal: controller.signal,
-      ...(restored
-        ? {
-            resume: {
-              resources: restored.resources,
-              planId: restored.plan.id,
-              complete: restored.complete,
-              ...(upgraded ? { lease: upgraded.lease } : {}),
-            },
-          }
-        : {}),
-    });
+    type Restored = Awaited<ReturnType<typeof readInstallation>>;
+    const makeExecutor = (
+      restored: Restored | null,
+      lease?: InstallationLease,
+      signal = controller.signal,
+    ) =>
+      createInstallationExecutor({
+        workspaceRoot,
+        installationParent: restored
+          ? path.dirname(restored.resources.directory)
+          : installationParent,
+        pnpmPath,
+        capabilities,
+        ...(nativeDistribution
+          ? {
+              nativeDistribution,
+              onPrepared: (resources: { directory: string }) =>
+                saveNativeLaunchPointer(
+                  restored
+                    ? path.dirname(restored.resources.directory)
+                    : installationParent,
+                  workspaceRoot,
+                  nativeDistribution.commit,
+                  resources.directory,
+                ),
+            }
+          : {}),
+        ...(distribution
+          ? {
+              prebuiltImage: distribution.image,
+              codingImage: distribution.codingImage,
+            }
+          : {}),
+        applyPreferences: applyInstallationPreferences,
+        signal,
+        ...(restored
+          ? {
+              resume: {
+                resources: restored.resources,
+                planId: restored.plan.id,
+                complete: restored.complete,
+                ...(lease ? { lease } : {}),
+              },
+            }
+          : {}),
+      });
+    let executor = makeExecutor(restored, upgraded?.lease);
     cleanupExecutor = executor;
     let session: Awaited<ReturnType<typeof createSetupSession>> | undefined;
     let shuttingDown = false;
@@ -236,6 +249,75 @@ export async function launchSetup(argv = process.argv.slice(2)) {
     } else {
       session = await createSetupSession({
         capabilities,
+        ...(nativeDistribution
+          ? {
+              upgrade: {
+                freshAvailable: !offerUpgrade,
+                inspect: (input: { directory?: string }) =>
+                  discoverNativeUpgradeCandidate({
+                    installationParent,
+                    targetRoot: workspaceRoot,
+                    ...input,
+                  }),
+                execute: async (
+                  candidate: import("./native-upgrade-candidate").NativeUpgradeCandidate,
+                  signal: AbortSignal,
+                  onProgress: (
+                    event: import("./native-upgrade-coordinator").NativeUpgradeProgress,
+                  ) => void,
+                ) => {
+                  const combined = AbortSignal.any([controller.signal, signal]);
+                  let result: NativeUpgradeResult | undefined,
+                    adopted:
+                      ReturnType<typeof createInstallationExecutor> | undefined;
+                  try {
+                    const coordinator = createNativeUpgradeCoordinator();
+                    const options = {
+                      directory: candidate.directory,
+                      targetRoot: workspaceRoot,
+                      signal: combined,
+                      onProgress,
+                      expectedReview: {
+                        sourceCommit: candidate.sourceCommit,
+                        targetCommit: candidate.targetCommit,
+                        metadataSha256: candidate.metadataSha256,
+                        pointerSha256: candidate.pointerSha256,
+                      },
+                      expectedUpgradeId: candidate.upgradeId,
+                    };
+                    result =
+                      candidate.mode === "upgrade"
+                        ? await coordinator.upgrade(options)
+                        : await coordinator.recover({
+                            ...options,
+                            retryPreparation: candidate.mode === "retry",
+                          });
+                    const saved = await readInstallation(
+                      result.directory,
+                      workspaceRoot,
+                      capabilities,
+                      nativeDistribution.commit,
+                    );
+                    adopted = makeExecutor(saved, result.lease, combined);
+                    executor = adopted;
+                    cleanupExecutor = adopted;
+                    return await adopted.execute(
+                      saved.plan,
+                      saved.credentials,
+                      () => {},
+                    );
+                  } catch (error) {
+                    try {
+                      await adopted?.stopNative();
+                    } finally {
+                      await result?.lease.release();
+                    }
+                    throw error;
+                  }
+                },
+              },
+            }
+          : {}),
         execute: async (plan, credentials, progress) => {
           try {
             const result = await executor.execute(plan, credentials, progress);
@@ -271,7 +353,13 @@ export async function launchSetup(argv = process.argv.slice(2)) {
       if (nativeDistribution && !args.noBrowser)
         await openNativeBrowser(session.url);
     }
-    return { executor, session, shutdown };
+    return {
+      get executor() {
+        return executor;
+      },
+      session,
+      shutdown,
+    };
   } catch (error) {
     try {
       await cleanupExecutor?.stopNative();

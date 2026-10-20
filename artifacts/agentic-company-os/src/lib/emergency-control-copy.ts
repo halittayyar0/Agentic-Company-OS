@@ -25,6 +25,8 @@ export const fallbackEmergencyControlCopy = {
     "Safety stop status cannot be verified; new risky actions are disabled.",
   retry: "Check again",
   stopActive: "Emergency stop is active.",
+  nativeUpgradePaused:
+    "Update verified. Review your workspace before resuming work.",
 };
 
 export type EmergencyControlCopy = typeof fallbackEmergencyControlCopy;

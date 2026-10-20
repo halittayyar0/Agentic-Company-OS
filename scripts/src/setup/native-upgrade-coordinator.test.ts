@@ -64,6 +64,7 @@ async function packageFixture(root: string, commit: string, version?: string) {
     );
     files.set("artifacts/api-server/dist/native-upgrade.mjs", "fixture");
     files.set("scripts/src/setup/stage-postgres.mjs", "fixture");
+    files.set("scripts/src/setup/setup-upgrade-client.js", "fixture");
   }
   for (const [file, bytes] of files) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true });

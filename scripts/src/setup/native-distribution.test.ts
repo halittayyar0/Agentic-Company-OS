@@ -82,20 +82,28 @@ test("versioned native packages require migration and staging lifecycle runtimes
       host,
     ),
   );
-  assert.doesNotThrow(() =>
+  const complete = {
+    ...valid,
+    files: [
+      ...valid.files,
+      release,
+      entry,
+      { ...entry, path: "scripts/src/setup/stage-postgres.mjs" },
+      { ...entry, path: "scripts/src/setup/setup-upgrade-client.js" },
+    ],
+  };
+  assert.throws(() =>
     validateNativeDistribution(
       {
-        ...valid,
-        files: [
-          ...valid.files,
-          release,
-          entry,
-          { ...entry, path: "scripts/src/setup/stage-postgres.mjs" },
-        ],
+        ...complete,
+        files: complete.files.filter(
+          (row) => !row.path.endsWith("setup-upgrade-client.js"),
+        ),
       },
       host,
     ),
   );
+  assert.doesNotThrow(() => validateNativeDistribution(complete, host));
 });
 
 test("native package inventory rejects traversal, Windows aliases and duplicate normalized names", () => {

@@ -1,6 +1,7 @@
 import type { EmergencyControlCopy } from "../emergency-control-copy";
 
 export default {
+  nativeUpgradePaused: "更新已驗證。請檢查工作區後再恢復工作。",
   checking: "正在檢查緊急停止狀態",
   retryLabel: "重新檢查緊急停止狀態",
   unavailable: "無法讀取緊急停止狀態",

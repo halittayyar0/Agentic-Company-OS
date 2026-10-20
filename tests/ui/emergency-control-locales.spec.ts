@@ -1,5 +1,56 @@
 import { expect, test } from "@playwright/test";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
+import { loadEmergencyControlCopy } from "../../artifacts/agentic-company-os/src/lib/emergency-control-copy";
+
+for (const locale of [
+  "en",
+  "tr",
+  "de",
+  "ru",
+  "zh-CN",
+  "zh-TW",
+  "ar",
+] as const) {
+  test(`native update pause guidance is localized in ${locale} without resuming work`, async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (value) => localStorage.setItem("acos.locale.v1", value),
+      locale,
+    );
+    const harness = await installStudioFixtures(page);
+    let writes = 0;
+    await page.route("**/api/ops/control", async (route) => {
+      if (route.request().method() !== "GET") writes++;
+      await route.fulfill({
+        json: {
+          emergencyStopEnabled: true,
+          reason:
+            "Native upgrade completed. Review your installation before resuming work.",
+          version: 2,
+          updatedBy: "native-upgrade",
+          updatedAt: "2026-10-20T12:00:00.000Z",
+          blockedScopes: [
+            "agent_chat",
+            "task_scheduler",
+            "agent_tools",
+            "approved_actions",
+          ],
+        },
+      });
+    });
+    const copy = await loadEmergencyControlCopy[locale]();
+    await page.goto("/projects/new");
+    await expect(
+      page.getByText(copy.nativeUpgradePaused, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: copy.resumeLabel, exact: true }),
+    ).toBeEnabled();
+    expect(writes).toBe(0);
+    expect([...harness.unexpected]).toEqual([]);
+  });
+}
 
 test("English emergency stop keeps the reason after failure and resumes only after confirmation", async ({
   page,

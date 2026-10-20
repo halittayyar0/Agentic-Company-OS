@@ -11,6 +11,32 @@ import {
   inspectNativeUpgradePackages,
 } from "./native-upgrade-preflight";
 import { validateInstallationInput, type InstallationInput } from "./plan";
+import { readNativeLaunchPointer } from "./native-launch";
+
+/** Fast entry selection only. Full package/private-record review is deferred to
+ * the authenticated UI so an older installation never looks like fresh data. */
+export async function chooseNativeSetupEntry(input: {
+  installationParent: string;
+  targetRoot: string;
+  commit: string;
+}): Promise<
+  { kind: "fresh" | "upgrade" } | { kind: "resume"; directory: string }
+> {
+  try {
+    const current = await readNativeLaunchPointer(
+      input.installationParent,
+      input.targetRoot,
+      input.commit,
+    );
+    if (!current) return { kind: "fresh" };
+    const journal = await readNativeUpgradeJournal(current);
+    if (journal && !["complete", "abandoned"].includes(journal.phase))
+      return { kind: "upgrade" };
+    return { kind: "resume", directory: current };
+  } catch {
+    return { kind: "upgrade" };
+  }
+}
 
 export interface NativeUpgradeCandidate {
   mode: "upgrade" | "retry" | "recover";
