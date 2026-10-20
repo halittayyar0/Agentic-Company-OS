@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, open, writeFile } from "node:fs/promises";
+import { mkdir, open } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
 import { OwnerPrivateStorage } from "@workspace/ai-server/owner-private-storage";
@@ -80,10 +80,11 @@ export async function createInstallationResources(
   }
   const exactParent = await ensureExactOutputDirectory(parent);
   const directory = path.join(exactParent, `instance-${plan.id}`);
+  const storage = new OwnerPrivateStorage(directory);
   // Exclusive creation prevents a second setup from overwriting credentials or
   // attaching to an unrelated installation. Recovery reads this same identity.
   try {
-    await new OwnerPrivateStorage(directory).initialize(true);
+    await storage.initialize(true);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST")
       throw new Error("Installation already exists; resume it explicitly");
@@ -113,14 +114,15 @@ export async function createInstallationResources(
     }
     secretFiles[name] = file;
   }
-  await writeFile(
-    path.join(directory, "installation.json"),
+  // The storage writer protects a new empty record before writing it, including
+  // the owner SID when Windows setup runs with an elevated token.
+  await storage.write(
+    "installation.json",
     JSON.stringify(
       { schemaVersion: 1, plan, phase: "prepared", secretFiles },
       null,
       2,
     ),
-    { flag: "wx", mode: 0o600 },
   );
   return {
     directory,
