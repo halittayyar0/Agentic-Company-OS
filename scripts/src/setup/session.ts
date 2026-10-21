@@ -1,4 +1,4 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   createServer,
   type IncomingMessage,
@@ -6,11 +6,35 @@ import {
 } from "node:http";
 import {
   planInstallation,
+  SETUP_LOCALES,
   type InstallationPlan,
   type InstallationStep,
 } from "./plan";
 import { detectInstallCapabilities } from "./preflight";
 import { renderSetupPage } from "./page";
+import type { NativeUpgradeCandidate } from "./native-upgrade-candidate";
+import type { NativeUpgradeProgress } from "./native-upgrade-coordinator";
+
+export interface SetupUpgradeReview {
+  id: string;
+  mode: NativeUpgradeCandidate["mode"];
+  directory: string;
+  locale: NativeUpgradeCandidate["locale"];
+  sourceVersion: string;
+  targetVersion: string;
+}
+export interface SetupUpgradeAdapter {
+  /** A remembered workspace must not be overwritten by a fresh default setup. */
+  freshAvailable?: boolean;
+  inspect(input: {
+    directory?: string;
+  }): Promise<NativeUpgradeCandidate | null>;
+  execute(
+    candidate: NativeUpgradeCandidate,
+    signal: AbortSignal,
+    progress: (event: NativeUpgradeProgress) => void,
+  ): ReturnType<InstallationExecutor>;
+}
 
 export interface InstallationCredentials {
   databaseUrl?: string;
@@ -18,6 +42,8 @@ export interface InstallationCredentials {
   ollamaUrl?: string;
 }
 export interface SetupProgress {
+  /** Display preference only. Never changes a saved installation plan. */
+  uiLocale?: (typeof SETUP_LOCALES)[number];
   phase: "idle" | "planned" | "installing" | "complete" | "failed";
   step: InstallationStep | null;
   completedSteps: InstallationStep[];
@@ -25,6 +51,13 @@ export interface SetupProgress {
   url: string | null;
   phoneUrl?: string;
   connectionAvailable?: boolean;
+  operation?: "upgrade";
+  upgrade?: SetupUpgradeReview & {
+    phase: NativeUpgradeProgress["phase"] | "review";
+    canCancel: boolean;
+    copiedFiles?: number;
+    cancelRequested?: boolean;
+  };
 }
 export type InstallationExecutor = (
   plan: InstallationPlan,
@@ -90,6 +123,7 @@ export async function createSetupSession(options: {
   renderPage?: (nonce: string) => string;
   now?: () => number;
   lifetimeMs?: number;
+  upgrade?: SetupUpgradeAdapter;
 }) {
   const token = randomBytes(32).toString("base64url");
   const expectedToken = Buffer.from(`Bearer ${token}`);
@@ -114,6 +148,21 @@ export async function createSetupSession(options: {
   let execution: Promise<void> | null = null;
   let connectionToken: string | null = null;
   let origin = "";
+  let upgradeReview: {
+    candidate: NativeUpgradeCandidate;
+    public: SetupUpgradeReview;
+  } | null = null;
+  let reviewGeneration = 0,
+    reviewing = false;
+  let upgradeAbort: AbortController | null = null;
+
+  function clearReview() {
+    upgradeReview = null;
+    delete state.upgrade;
+    delete state.operation;
+    state.phase = "idle";
+    state.error = null;
+  }
 
   function json(response: ServerResponse, status: number, body: unknown) {
     response.writeHead(status, {
@@ -159,6 +208,17 @@ export async function createSetupSession(options: {
         json(response, 200, state);
         return;
       }
+      if (request.method === "POST" && path === "/api/locale") {
+        const body = record(await readJson(request));
+        if (
+          Object.keys(body).join(",") !== "locale" ||
+          !SETUP_LOCALES.includes(body.locale as (typeof SETUP_LOCALES)[number])
+        )
+          throw new RequestFailure(400, "invalid_locale");
+        state.uiLocale = body.locale as (typeof SETUP_LOCALES)[number];
+        json(response, 200, { locale: state.uiLocale });
+        return;
+      }
       if (request.method === "GET" && path === "/api/capabilities") {
         json(response, 200, await detect());
         return;
@@ -175,13 +235,237 @@ export async function createSetupSession(options: {
         json(response, 200, { operatorToken: key });
         return;
       }
+      if (request.method === "GET" && path === "/api/upgrade") {
+        json(response, 200, {
+          available: Boolean(options.upgrade),
+          freshAvailable: options.upgrade?.freshAvailable !== false,
+        });
+        return;
+      }
+      if (
+        request.method === "POST" &&
+        path === "/api/upgrade/review" &&
+        options.upgrade
+      ) {
+        const body = record(await readJson(request));
+        if (
+          Object.keys(body).some((key) => key !== "directory") ||
+          (body.directory !== undefined &&
+            (typeof body.directory !== "string" ||
+              !body.directory ||
+              body.directory.length > 4096 ||
+              /[\r\n\0]/u.test(body.directory)))
+        )
+          throw new RequestFailure(400, "invalid_request");
+        if (
+          execution &&
+          !(state.operation === "upgrade" && state.phase === "failed")
+        )
+          throw new RequestFailure(409, "installation_already_started");
+        const generation = ++reviewGeneration;
+        reviewing = true;
+        // A new selection invalidates the old approval even if inspection fails.
+        upgradeReview = null;
+        delete state.upgrade;
+        plan = null;
+        try {
+          const candidate = await options.upgrade.inspect(
+            body.directory === undefined
+              ? {}
+              : { directory: body.directory as string },
+          );
+          if (
+            generation !== reviewGeneration ||
+            (execution &&
+              !(state.operation === "upgrade" && state.phase === "failed"))
+          )
+            throw new RequestFailure(409, "review_changed");
+          if (state.operation === "upgrade" && state.phase === "failed")
+            execution = null;
+          plan = null;
+          clearReview();
+          if (!candidate) {
+            json(response, 200, { available: false });
+            return;
+          }
+          const bound: NativeUpgradeCandidate = Object.freeze({
+            mode: candidate.mode,
+            directory: candidate.directory,
+            installationId: candidate.installationId,
+            locale: candidate.locale,
+            sourceVersion: candidate.sourceVersion,
+            targetVersion: candidate.targetVersion,
+            sourceCommit: candidate.sourceCommit,
+            targetCommit: candidate.targetCommit,
+            metadataSha256: candidate.metadataSha256,
+            pointerSha256: candidate.pointerSha256,
+            ...(candidate.upgradeId ? { upgradeId: candidate.upgradeId } : {}),
+          });
+          const reviewed: SetupUpgradeReview = {
+            id: randomUUID(),
+            mode: candidate.mode,
+            directory: candidate.directory,
+            locale: candidate.locale,
+            sourceVersion: candidate.sourceVersion,
+            targetVersion: candidate.targetVersion,
+          };
+          upgradeReview = { candidate: bound, public: reviewed };
+          state.operation = "upgrade";
+          state.upgrade = { ...reviewed, phase: "review", canCancel: false };
+          state.phase = "planned";
+          json(response, 200, reviewed);
+        } finally {
+          if (generation === reviewGeneration) reviewing = false;
+        }
+        return;
+      }
+      if (
+        request.method === "POST" &&
+        path === "/api/upgrade/dismiss" &&
+        options.upgrade
+      ) {
+        const body = record(await readJson(request));
+        if (Object.keys(body).join(",") !== "reviewId")
+          throw new RequestFailure(400, "invalid_request");
+        if (
+          execution ||
+          !upgradeReview ||
+          upgradeReview.public.id !== body.reviewId
+        )
+          throw new RequestFailure(409, "review_changed");
+        reviewGeneration++;
+        reviewing = false;
+        clearReview();
+        json(response, 200, state);
+        return;
+      }
+      if (
+        request.method === "POST" &&
+        path === "/api/upgrade/install" &&
+        options.upgrade
+      ) {
+        const body = record(await readJson(request));
+        if (Object.keys(body).join(",") !== "reviewId")
+          throw new RequestFailure(400, "invalid_request");
+        if (
+          reviewing ||
+          !upgradeReview ||
+          upgradeReview.public.id !== body.reviewId
+        )
+          throw new RequestFailure(409, "review_changed");
+        if (execution) {
+          if (state.operation !== "upgrade")
+            throw new RequestFailure(409, "installation_already_started");
+          json(response, 202, state);
+          return;
+        }
+        state.phase = "installing";
+        state.error = null;
+        state.step = null;
+        state.completedSteps = [];
+        state.upgrade = {
+          ...upgradeReview.public,
+          phase: "checking",
+          canCancel: upgradeReview.candidate.mode !== "recover",
+        };
+        const reviewed = upgradeReview.candidate,
+          abort = new AbortController();
+        upgradeAbort = abort;
+        let critical = reviewed.mode === "recover";
+        execution = Promise.resolve()
+          .then(() =>
+            options.upgrade!.execute(reviewed, abort.signal, (event) => {
+              if (
+                ![
+                  "checking",
+                  "copying",
+                  "migrating",
+                  "qualifying",
+                  "promoting",
+                  "recovering",
+                  "complete",
+                ].includes(event.phase) ||
+                (event.copiedFiles !== undefined &&
+                  (!Number.isSafeInteger(event.copiedFiles) ||
+                    event.copiedFiles < 0 ||
+                    event.copiedFiles > 100000))
+              )
+                throw new Error("Invalid upgrade progress");
+              critical ||=
+                event.phase === "promoting" || event.phase === "complete";
+              state.upgrade!.phase = event.phase;
+              state.upgrade!.canCancel =
+                !critical &&
+                !abort.signal.aborted &&
+                ["checking", "copying", "migrating", "qualifying"].includes(
+                  event.phase,
+                );
+              if (event.copiedFiles === undefined)
+                delete state.upgrade!.copiedFiles;
+              else state.upgrade!.copiedFiles = event.copiedFiles;
+            }),
+          )
+          .then((result) => {
+            state.url = result.url;
+            state.phoneUrl = result.phoneUrl;
+            connectionToken = result.operatorToken ?? null;
+            state.connectionAvailable = Boolean(connectionToken);
+            state.phase = "complete";
+            state.upgrade!.phase = "complete";
+          })
+          .catch((error: unknown) => {
+            state.error = abort.signal.aborted
+              ? "upgrade_cancelled"
+              : error instanceof Error &&
+                  error.message === "native_upgrade_review_changed"
+                ? "upgrade_review_changed"
+                : "upgrade_failed";
+            state.phase = "failed";
+          })
+          .finally(() => {
+            state.upgrade!.canCancel = false;
+            upgradeAbort = null;
+          });
+        json(response, 202, state);
+        return;
+      }
+      if (
+        request.method === "POST" &&
+        path === "/api/upgrade/cancel" &&
+        options.upgrade
+      ) {
+        const body = record(await readJson(request));
+        if (Object.keys(body).length)
+          throw new RequestFailure(400, "invalid_request");
+        if (
+          state.operation !== "upgrade" ||
+          state.phase !== "installing" ||
+          !state.upgrade?.canCancel ||
+          !upgradeAbort
+        )
+          throw new RequestFailure(409, "upgrade_cannot_cancel");
+        state.upgrade.cancelRequested = true;
+        state.upgrade.canCancel = false;
+        upgradeAbort.abort();
+        json(response, 202, state);
+        return;
+      }
       if (request.method === "POST" && path === "/api/plan") {
+        if (options.upgrade?.freshAvailable === false)
+          throw new RequestFailure(
+            409,
+            "existing_installation_requires_upgrade",
+          );
+        if (reviewing || upgradeReview)
+          throw new RequestFailure(409, "upgrade_review_active");
         if (execution)
           throw new RequestFailure(409, "installation_already_started");
         const input = await readJson(request);
         // The capability probe is asynchronous. Recheck admission after it so a
         // concurrent install request cannot replace the reviewed plan.
         const capabilities = await detect();
+        if (reviewing || upgradeReview)
+          throw new RequestFailure(409, "upgrade_review_active");
         if (execution)
           throw new RequestFailure(409, "installation_already_started");
         try {
@@ -194,6 +478,13 @@ export async function createSetupSession(options: {
         return;
       }
       if (request.method === "POST" && path === "/api/install") {
+        if (options.upgrade?.freshAvailable === false)
+          throw new RequestFailure(
+            409,
+            "existing_installation_requires_upgrade",
+          );
+        if (reviewing || upgradeReview)
+          throw new RequestFailure(409, "upgrade_review_active");
         const body = record(await readJson(request));
         if (
           Object.keys(body).some(
@@ -268,10 +559,12 @@ export async function createSetupSession(options: {
     url: `${origin}/#${token}`,
     settled: () => execution ?? Promise.resolve(),
     close: async () => {
+      upgradeAbort?.abort();
       await execution;
-      await new Promise<void>((resolve, reject) =>
-        server.close((error) => (error ? reject(error) : resolve())),
-      );
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+        server.closeAllConnections();
+      });
     },
   };
 }

@@ -403,6 +403,7 @@ try {
   await mkdir(setup, { recursive: true });
   for (const [entry, output] of [
     ["scripts/src/setup/bootstrap.ts", "bootstrap.mjs"],
+    ["scripts/src/setup/stage-postgres.ts", "stage-postgres.mjs"],
     ["scripts/src/verify-evidence.ts", "verify-evidence.mjs"],
   ])
     await build({
@@ -414,10 +415,11 @@ try {
       target: "node24",
       logLevel: "warning",
     });
-  await copyFile(
-    path.join(root, "scripts/src/setup/setup-client.js"),
-    path.join(setup, "setup-client.js"),
-  );
+  for (const file of ["setup-client.js", "setup-upgrade-client.js"])
+    await copyFile(
+      path.join(root, "scripts/src/setup", file),
+      path.join(setup, file),
+    );
   const launchers = [
     ["START", "bootstrap.mjs"],
     ["VERIFY-EVIDENCE", "verify-evidence.mjs"],
@@ -437,7 +439,33 @@ try {
   }
   await writeFile(
     path.join(directory, "START-HERE.txt"),
-    `Agentic Company OS\n\nRun ${process.platform === "win32" ? "START.cmd" : "START.command"} to open local setup. Node.js, PostgreSQL and the application are included; no separate infrastructure installation is needed. Run as an ordinary user. Keep the whole extracted folder together.\n\nChoose your language, agent permissions and model connection. AI model weights and provider credentials are not included. Provider charges belong to your account; Ollama needs a configured model and suitable memory.\n\nData and credentials stay in a private installation directory outside this package. Close the launcher with Ctrl+C to stop the application and its database. Start again to resume. For headless use: ${process.platform === "win32" ? "START.cmd" : "./START.command"} --no-browser\nIf your operating system shows an unsigned-app trust prompt, review the source and checksum; do not disable system security.\n\nAdvanced Docker/source installation: https://github.com/halittayyar0/Agentic-Company-OS/blob/main/docs/self-hosting.md\nSource revision: ${commit}\nTarget: ${target}\n`,
+    `Agentic Company OS\n\nRun ${process.platform === "win32" ? "START.cmd" : "START.command"} to open local setup. Node.js, PostgreSQL and the application are included; no separate infrastructure installation is needed. Run as an ordinary user. Keep the whole extracted folder together.\n\nChoose your language, agent permissions and model connection. AI model weights and provider credentials are not included. Provider charges belong to your account; Ollama needs a configured model and suitable memory.\n\nData and credentials stay in a private installation directory outside this package. Close the launcher with Ctrl+C to stop the application and its database. Start again to resume. For headless use: ${process.platform === "win32" ? "START.cmd" : "./START.command"} --no-browser\nIf your operating system shows an unsigned-app trust prompt, review the source and checksum; do not disable system security.\n\nUpdating an existing workspace: extract a compatible new package into a separate folder. Stop the old START with Ctrl+C. Open the new START, review the versions and data folder, and choose Update workspace. Keep the launcher open. Your data and settings are retained; agent work stays paused until you review and resume it. For a custom data parent use the same --data-dir argument. If interrupted, run the new START again to review recovery. Keep independent backups and the original package. Never replace running package files or edit ownership records.\n\nTo reopen setup, use the original private link printed in this launcher. If the link expired, restart START for a new link.\n\nAdvanced Docker/source installation: https://github.com/halittayyar0/Agentic-Company-OS/blob/main/docs/self-hosting.md\nSource revision: ${commit}\nTarget: ${target}\n`,
+  );
+  // Keep release identity inside the hashed inventory while retaining the
+  // original manifest schema for packages that predate guided upgrades.
+  const releaseValidator = path.join(temporary, "native-release.mjs");
+  await build({
+    entryPoints: [path.join(root, "scripts/src/setup/native-release.ts")],
+    outfile: releaseValidator,
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node24",
+    logLevel: "warning",
+  });
+  const { createNativeRelease } = await import(
+    pathToFileURL(releaseValidator).href
+  );
+  const packageMetadata = JSON.parse(
+    await readFile(path.join(root, "package.json"), "utf8"),
+  );
+  await writeFile(
+    path.join(directory, "native-release.json"),
+    JSON.stringify(
+      createNativeRelease(packageMetadata.version, commit),
+      null,
+      2,
+    ) + "\n",
   );
   const files = await inventory(directory);
   if (

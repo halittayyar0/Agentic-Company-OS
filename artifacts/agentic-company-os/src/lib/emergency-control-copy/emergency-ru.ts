@@ -1,6 +1,8 @@
 import type { EmergencyControlCopy } from "../emergency-control-copy";
 
 export default {
+  nativeUpgradePaused:
+    "Обновление проверено. Проверьте пространство, прежде чем продолжить работу.",
   checking: "Проверяем состояние экстренной остановки",
   retryLabel: "Повторно проверить экстренную остановку",
   unavailable: "Не удалось загрузить состояние экстренной остановки",

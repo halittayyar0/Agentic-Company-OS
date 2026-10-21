@@ -52,7 +52,10 @@ function processClosed(child: ChildProcess): Promise<void> {
   if (child.exitCode !== null || child.signalCode !== null) {
     return Promise.resolve();
   }
-  return new Promise((resolve) => child.once("close", () => resolve()));
+  const drained = !child.stdin && !child.stdout && !child.stderr;
+  return new Promise((resolve) =>
+    child.once(drained ? "exit" : "close", () => resolve()),
+  );
 }
 
 async function runExactWindowsTreeKill(
@@ -132,6 +135,10 @@ export interface BoundedCommandExecution {
   timeoutMs: number;
   maxBufferBytes: number;
   ignoreInheritedStdio?: boolean;
+  /** Node IPC lifetime channel, with {type:"parent_alive"} once per second.
+   * Child must handle disconnect AND missed heartbeats: EOF alone is not a
+   * bounded liveness guarantee. This does not terminate descendants itself. */
+  notifyParentDisconnect?: boolean;
   signal?: AbortSignal;
 }
 
@@ -161,14 +168,26 @@ export function executeBoundedCommand(
       env: execution.environment,
       windowsHide: true,
       detached: process.platform !== "win32",
-      stdio: execution.ignoreInheritedStdio
-        ? "ignore"
-        : ["ignore", "pipe", "pipe"],
+      stdio: execution.notifyParentDisconnect
+        ? [
+            "ignore",
+            execution.ignoreInheritedStdio ? "ignore" : "pipe",
+            execution.ignoreInheritedStdio ? "ignore" : "pipe",
+            "ipc",
+          ]
+        : execution.ignoreInheritedStdio
+          ? "ignore"
+          : ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
     let stderr = "";
     let settled = false;
     let timedOut = false;
+    const heartbeat = execution.notifyParentDisconnect
+      ? setInterval(() => {
+          if (child.connected) child.send({ type: "parent_alive" }, () => {});
+        }, 1000)
+      : undefined;
     const finish = (
       error: Error | null,
       result?: BoundedCommandResult,
@@ -176,6 +195,7 @@ export function executeBoundedCommand(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      if (heartbeat) clearInterval(heartbeat);
       execution.signal?.removeEventListener("abort", onAbort);
       if (error) reject(error);
       else resolve(result!);
@@ -195,18 +215,23 @@ export function executeBoundedCommand(
         ),
       );
     });
-    child.once("close", (code, signal) => {
-      if (timedOut) return;
-      if (code === 0) {
-        finish(null, { stdout, stderr, exitCode: 0 });
-        return;
-      }
-      finish(
-        new Error(
-          `${pathBasename(execution.command)} failed: ${stderr.trim() || (signal ? `signal ${signal}` : `exit code ${code ?? "unknown"}`)}`,
-        ),
-      );
-    });
+    // Ignored streams have nothing to drain. On Windows an IPC disconnect can
+    // suppress close after exit; never wait for it with no captured pipes.
+    child.once(
+      execution.ignoreInheritedStdio ? "exit" : "close",
+      (code, signal) => {
+        if (timedOut) return;
+        if (code === 0) {
+          finish(null, { stdout, stderr, exitCode: 0 });
+          return;
+        }
+        finish(
+          new Error(
+            `${pathBasename(execution.command)} failed: ${stderr.trim() || (signal ? `signal ${signal}` : `exit code ${code ?? "unknown"}`)}`,
+          ),
+        );
+      },
+    );
     const timer = setTimeout(() => {
       if (settled || timedOut) return;
       timedOut = true;

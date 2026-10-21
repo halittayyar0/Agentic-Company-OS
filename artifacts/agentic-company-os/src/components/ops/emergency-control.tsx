@@ -243,7 +243,11 @@ export function EmergencyStopBanner() {
           className="min-w-0 font-normal [overflow-wrap:anywhere]"
           dir="auto"
         >
-          {state.reason}
+          {state.updatedBy === "native-upgrade" &&
+          state.reason ===
+            "Native upgrade completed. Review your installation before resuming work."
+            ? copy.nativeUpgradePaused
+            : state.reason}
         </span>
       ) : null}
       <span

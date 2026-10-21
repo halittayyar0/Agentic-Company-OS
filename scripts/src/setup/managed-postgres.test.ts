@@ -5,6 +5,7 @@ import {
   readFile,
   realpath,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -179,5 +180,118 @@ test("managed database refuses foreign data and never publishes interrupted init
   await assert.rejects(
     readFile(path.join(resources.directory, "managed-postgres.json")),
     { code: "ENOENT" },
+  );
+});
+
+test("cold upgrade inspection requires an owned cleanly shut down cluster and never starts or initializes it", async (t) => {
+  const resources = await fixture(t);
+  const data = path.join(resources.directory, "database");
+  const planId = "12345678-1234-1234-1234-123456789012";
+  await mkdir(data);
+  await mkdir(path.join(data, "pg_wal"));
+  await mkdir(path.join(data, "pg_tblspc"));
+  await writeFile(path.join(data, "PG_VERSION"), "17\n");
+  await writeFile(
+    path.join(data, "agentic-cluster.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      installationId: planId,
+      postgresMajor: 17,
+      port: 58242,
+      database: "postgres",
+      username: "agentic",
+    }),
+  );
+  const calls: BoundedCommandExecution[] = [];
+  let control = "Database cluster state:               shut down\n";
+  const managed = createManagedPostgres({
+    resources,
+    postgresRoot: path.join(resources.directory, "runtime"),
+    planId,
+    postgresVersion: "17.10",
+    run: async (execution) => {
+      calls.push(execution);
+      if (execution.args.includes("--version"))
+        return {
+          stdout: "postgres (PostgreSQL) 17.10",
+          stderr: "",
+          exitCode: 0,
+        };
+      assert.equal(
+        path.basename(execution.command),
+        `pg_controldata${process.platform === "win32" ? ".exe" : ""}`,
+      );
+      assert.deepEqual(execution.args, ["-D", data]);
+      assert.equal(execution.environment.LC_ALL, "C");
+      return { stdout: control, stderr: "", exitCode: 0 };
+    },
+  });
+  await assert.rejects(
+    managed.inspectStopped(),
+    /managed_postgres_not_prepared/u,
+  );
+  await managed.prepare();
+  assert.deepEqual(await managed.inspectStopped(), {
+    dataDirectory: data,
+    postgresMajor: 17,
+  });
+  for (const state of [
+    "in production",
+    "in archive recovery",
+    "shutting down",
+    "shut down in recovery",
+    "",
+    "unknown",
+  ]) {
+    control = `Database cluster state: ${state}\n`;
+    await assert.rejects(
+      managed.inspectStopped(),
+      /managed_postgres_shutdown_required/u,
+    );
+  }
+  control =
+    "Database cluster state: shut down\nDatabase cluster state: in production\n";
+  await assert.rejects(
+    managed.inspectStopped(),
+    /managed_postgres_shutdown_required/u,
+  );
+  control = "Database cluster state: shut down\n";
+  await writeFile(path.join(data, "postmaster.pid"), "stale or live pid");
+  const beforePidCheck = calls.length;
+  await assert.rejects(
+    managed.inspectStopped(),
+    /managed_postgres_shutdown_required/u,
+  );
+  assert.equal(
+    calls.length,
+    beforePidCheck,
+    "never signals or removes an unfamiliar process identity",
+  );
+  await rm(path.join(data, "postmaster.pid"));
+  await writeFile(path.join(data, "pg_tblspc", "external"), "tablespace");
+  await assert.rejects(
+    managed.inspectStopped(),
+    /managed_postgres_external_storage/u,
+  );
+  await rm(path.join(data, "pg_tblspc", "external"));
+  await rm(path.join(data, "pg_wal"), { recursive: true });
+  const outside = path.join(resources.directory, "outside-wal");
+  await mkdir(outside);
+  await symlink(
+    outside,
+    path.join(data, "pg_wal"),
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  await assert.rejects(
+    managed.inspectStopped(),
+    /managed_postgres_external_storage/u,
+  );
+  assert.ok(
+    calls.every((execution) => !execution.args.includes("--pgdata")),
+    "no initdb operation",
+  );
+  assert.ok(
+    calls.every((execution) => !execution.args.includes("stop")),
+    "no pg_ctl operation",
   );
 });

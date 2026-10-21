@@ -1,52 +1,11 @@
 import path from "node:path";
-import { constants } from "node:fs";
-import { open, lstat } from "node:fs/promises";
 import { ensureExactOutputDirectory } from "../endurance/safe-output";
 import { detectInstallCapabilities } from "./preflight";
 import { planInstallation } from "./plan";
 import type { InstallationResources } from "./resources";
-export async function readBoundedRegularFile(
-  file: string,
-  limit: number,
-  _options: { rejectSymlinks: true },
-) {
-  const handle = await open(
-    file,
-    constants.O_RDONLY |
-      (process.platform === "win32"
-        ? 0
-        : constants.O_NOFOLLOW | constants.O_NONBLOCK),
-  );
-  try {
-    const stat = await handle.stat(),
-      leaf = await lstat(file);
-    if (
-      !stat.isFile() ||
-      stat.nlink !== 1 ||
-      stat.size > limit ||
-      leaf.isSymbolicLink() ||
-      stat.ino !== leaf.ino ||
-      stat.dev !== leaf.dev
-    )
-      throw new Error("Invalid private installation file");
-    const buffer = Buffer.alloc(limit + 1);
-    let size = 0;
-    while (size < buffer.length) {
-      const { bytesRead } = await handle.read(
-        buffer,
-        size,
-        buffer.length - size,
-        size,
-      );
-      if (!bytesRead) break;
-      size += bytesRead;
-    }
-    if (size > limit) throw new Error("Installation file too large");
-    return buffer.subarray(0, size).toString("utf8");
-  } finally {
-    await handle.close();
-  }
-}
+import { readBoundedRegularFile } from "./installation-files";
+import { assertNativeUpgradeStartupReady } from "./native-upgrade-journal";
+export { readBoundedRegularFile } from "./installation-files";
 
 export async function readInstallation(
   directory: string,
@@ -55,6 +14,14 @@ export async function readInstallation(
   nativeBundleCommit?: string,
 ) {
   const exact = await ensureExactOutputDirectory(path.resolve(directory));
+  const upgrade =
+    nativeBundleCommit !== undefined
+      ? await assertNativeUpgradeStartupReady(
+          exact,
+          workspaceRoot,
+          nativeBundleCommit,
+        )
+      : null;
   const saved = JSON.parse(
     await readBoundedRegularFile(path.join(exact, "installation.json"), 64000, {
       rejectSymlinks: true,
@@ -147,6 +114,6 @@ export async function readInstallation(
     plan,
     credentials,
     resources: { directory: exact, secretFiles } as InstallationResources,
-    complete: saved.phase === "complete",
+    complete: saved.phase === "complete" || upgrade?.phase === "complete",
   };
 }

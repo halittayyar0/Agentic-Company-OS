@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { lstat, realpath, rename, writeFile } from "node:fs/promises";
+import { lstat, readdir, realpath, rename, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -12,6 +12,10 @@ import {
   assertInstallPortAvailable,
   type InstallationResources,
 } from "./resources";
+import {
+  prepareNativeUpgradePostgresConfiguration,
+  restoreNativeUpgradePostgresConfiguration,
+} from "./native-upgrade-postgres";
 
 export function validateManagedPostgresPid(
   contents: string,
@@ -52,6 +56,7 @@ export function createManagedPostgres(options: {
   postgresRoot: string;
   planId: string;
   postgresVersion: string;
+  purpose?: "upgrade_staging";
   run?: typeof executeBoundedCommand;
   signal?: AbortSignal;
 }) {
@@ -74,6 +79,7 @@ export function createManagedPostgres(options: {
   const supervisor = new ProcessSupervisor({
     runId: `setup-postgres-${options.planId}`,
     logLimitBytes: 64 * 1024,
+    ...(options.purpose === "upgrade_staging" ? { gracefulStopMs: 2_000 } : {}),
   });
   let prepared = false,
     started = false;
@@ -124,7 +130,49 @@ export function createManagedPostgres(options: {
       Number(url.port),
     );
   };
-  return {
+  const managed = {
+    /** A cold filesystem snapshot requires more than an absent PID file.
+     * Caller retains the installation lease for this check and the entire copy.
+     * This method never signals a process, starts a server or removes a PID file.
+     */
+    async inspectStopped(): Promise<{
+      dataDirectory: string;
+      postgresMajor: 17;
+    }> {
+      if (!prepared || started)
+        throw new Error("managed_postgres_not_prepared");
+      options.signal?.throwIfAborted();
+      await checkIdentity();
+      try {
+        await lstat(path.join(data, "postmaster.pid"));
+        throw new Error("managed_postgres_shutdown_required");
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
+      for (const name of ["pg_wal", "pg_tblspc"]) {
+        const directory = path.join(data, name),
+          info = await lstat(directory);
+        if (
+          !info.isDirectory() ||
+          info.isSymbolicLink() ||
+          (await realpath(directory)) !== directory ||
+          (name === "pg_tblspc" && (await readdir(directory)).length !== 0)
+        )
+          throw new Error("managed_postgres_external_storage");
+      }
+      const control = await command("pg_controldata", ["-D", data], 10_000);
+      const states = control.stdout
+        .split(/\r?\n/u)
+        .filter((line) => line.startsWith("Database cluster state:"))
+        .map((line) => line.slice("Database cluster state:".length).trim());
+      if (
+        control.exitCode !== 0 ||
+        states.length !== 1 ||
+        states[0] !== "shut down"
+      )
+        throw new Error("managed_postgres_shutdown_required");
+      return { dataDirectory: data, postgresMajor: 17 };
+    },
     async prepare() {
       if (process.platform !== "win32" && process.getuid?.() === 0)
         throw new Error("managed_postgres_requires_ordinary_user");
@@ -202,11 +250,17 @@ export function createManagedPostgres(options: {
       await checkIdentity();
       prepared = true;
     },
-    async start() {
+    async start(): Promise<void> {
       if (!prepared || started)
         throw new Error("managed_postgres_not_prepared");
       await checkIdentity();
       await assertInstallPortAvailable(Number(url.port));
+      let stagingArguments: string[] = [];
+      if (options.purpose === "upgrade_staging") {
+        await managed.inspectStopped();
+        stagingArguments =
+          await prepareNativeUpgradePostgresConfiguration(directory);
+      }
       supervisor.start({
         name: "postgres",
         command: executable("postgres"),
@@ -223,6 +277,7 @@ export function createManagedPostgres(options: {
           "max_connections=50",
           "-c",
           "shared_buffers=64MB",
+          ...stagingArguments,
         ],
         cwd: directory,
         env: { ...process.env, LC_ALL: "C" },
@@ -276,7 +331,10 @@ export function createManagedPostgres(options: {
       } finally {
         await supervisor.stopAll();
         started = false;
+        if (options.purpose === "upgrade_staging")
+          await restoreNativeUpgradePostgresConfiguration(directory);
       }
     },
   };
+  return managed;
 }

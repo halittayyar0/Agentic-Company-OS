@@ -1,7 +1,100 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { spawn } from "node:child_process";
+import { mkdtemp, readFile, writeFile, realpath } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { executeBoundedCommand, ProcessSupervisor } from "./process-supervisor";
+
+test("parent-bound Node child terminates after forced parent death without relying on inherited stdout", async (t) => {
+  const directory = await mkdtemp(
+    path.join(await realpath(tmpdir()), "acos-parent-disconnect-"),
+  );
+  const ready = path.join(directory, "ready.json"),
+    stopped = path.join(directory, "disconnected");
+  const childEntry = path.join(directory, "child.cjs");
+  await writeFile(
+    childEntry,
+    `const fs=require('node:fs'); const [stopped,ready]=process.argv.slice(2); if(!process.connected)process.exit(9); const stop=()=>{fs.writeFileSync(stopped,'observed');process.exit(0)}; let heartbeat=setTimeout(stop,3000); process.on('message',message=>{if(message.type!=='parent_alive')process.exit(7);clearTimeout(heartbeat);heartbeat=setTimeout(stop,3000);fs.writeFileSync(ready,JSON.stringify({pid:process.pid}))}); process.once('disconnect',stop); setTimeout(()=>process.exit(8),15000);`,
+  );
+  const entry = path.join(directory, "parent.mjs");
+  await writeFile(
+    entry,
+    `const {executeBoundedCommand}=await import(process.argv[2]); await executeBoundedCommand({command:process.execPath,args:process.argv.slice(3),cwd:process.cwd(),environment:process.env,timeoutMs:20000,maxBufferBytes:16384,ignoreInheritedStdio:true,notifyParentDisconnect:true});`,
+  );
+  const parent = spawn(
+    process.execPath,
+    [
+      "--import",
+      pathToFileURL(path.resolve("node_modules/tsx/dist/loader.mjs")).href,
+      entry,
+      new URL("./process-supervisor.ts", import.meta.url).href,
+      childEntry,
+      stopped,
+      ready,
+    ],
+    { stdio: "ignore", windowsHide: true, env: { ...process.env } },
+  );
+  let exited = false;
+  parent.once("exit", () => {
+    exited = true;
+  });
+  t.after(() => {
+    if (!exited) parent.kill("SIGKILL");
+  });
+  async function waitFor(file: string, terminatingPid?: number) {
+    const deadline = Date.now() + 10000;
+    while (Date.now() < deadline) {
+      try {
+        return await readFile(file, "utf8");
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
+      if (terminatingPid) {
+        try {
+          process.kill(terminatingPid, 0);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "ESRCH")
+            return "child_exited";
+          throw error;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error("owned parent-loss marker timeout");
+  }
+  const childPid = JSON.parse(await waitFor(ready)).pid as number;
+  assert.ok(childPid > 0);
+  // Stay alive beyond the child's missed-heartbeat deadline while parent lives.
+  await new Promise((resolve) => setTimeout(resolve, 3500));
+  await assert.rejects(readFile(stopped), { code: "ENOENT" });
+  assert.doesNotThrow(() => process.kill(childPid, 0));
+  parent.kill("SIGKILL");
+  const outcome = await waitFor(stopped, childPid);
+  t.diagnostic(`parent loss cleanup: ${outcome}`);
+  assert.ok(["observed", "child_exited"].includes(outcome));
+});
+
+test("bounded Node commands can receive parent disconnect without inheriting terminal pipes", async () => {
+  for (const ignoreInheritedStdio of [false, true]) {
+    const result = await executeBoundedCommand({
+      command: process.execPath,
+      args: [
+        "-e",
+        "if(!process.connected || typeof process.send !== 'function') process.exit(9); process.stdout.write('bound'); process.disconnect();",
+      ],
+      cwd: process.cwd(),
+      environment: { ...process.env },
+      timeoutMs: 5000,
+      maxBufferBytes: 16384,
+      notifyParentDisconnect: true,
+      ignoreInheritedStdio,
+    });
+    assert.equal(result.stdout, ignoreInheritedStdio ? "" : "bound");
+  }
+});
 
 const childProgram = `
 const name = process.env.ENDURANCE_PROCESS_NAME;
@@ -17,6 +110,29 @@ if (process.env.ENDURANCE_FIXTURE_DELAY_AFTER_READY === "1") {
 }
 setInterval(() => {}, 1000);
 `;
+
+test("ignored IPC commands cancel without waiting for a missing close event", async () => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 300);
+  try {
+    await assert.rejects(
+      executeBoundedCommand({
+        command: process.execPath,
+        args: ["-e", "process.on('message',()=>{}); setInterval(()=>{},1000)"],
+        cwd: process.cwd(),
+        environment: { ...process.env },
+        timeoutMs: 5000,
+        maxBufferBytes: 16384,
+        ignoreInheritedStdio: true,
+        notifyParentDisconnect: true,
+        signal: controller.signal,
+      }),
+      /cancelled/u,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+});
 test("bounded command cancellation ends the owned process before the ordinary timeout", async () => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 50);

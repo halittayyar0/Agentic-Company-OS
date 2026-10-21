@@ -85,6 +85,11 @@ test("bundled native installation generates its private database without invokin
       calls.push("recovery-persisted");
     },
     managedPostgres: () => ({
+      inspectStopped: async () => {
+        throw new Error(
+          "ordinary installation must not inspect a cold upgrade",
+        );
+      },
       prepare: async () => {
         calls.push("prepare");
       },

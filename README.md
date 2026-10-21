@@ -56,7 +56,7 @@ Extract the **whole archive** into a folder. In that folder, double-click `START
 
 The launcher opens a private local browser link and prints a fallback link. Choose one of seven languages, review permissions and connect a model. The app binds to loopback (`127.0.0.1`) by default. Keep the terminal open; **Ctrl+C** stops the app, workers and private database. For headless use, run `START.cmd --no-browser` or `./START.command --no-browser`.
 
-Data and credentials stay outside the extracted package in a private installation directory. Keep that directory and the original package. Starting the same package again at its original location resumes its recorded installation. Moving data to a different package or upgrading it is not automated; retain a verified backup and follow the [upgrade guidance](./docs/self-hosting.md#upgrades).
+Data and credentials stay outside the extracted package in a private installation directory. Starting the same package again resumes its recorded installation. From v0.5.6, a compatible new native package can guide you through updating an existing v0.5.5 or newer 0.5.x workspace while retaining its data and settings. Keep the original package and verified backups; follow the [upgrade guidance](./docs/self-hosting.md#upgrades).
 
 Model weights and provider access are not included. AI jobs need a configured Ollama model or an available provider connection; cloud providers may charge your account. Local utility checks can run without a paid provider.
 

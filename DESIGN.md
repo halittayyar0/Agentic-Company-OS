@@ -238,6 +238,28 @@ The ring never invents missing samples, interpolates “healthy,” or equates a
 
 ## Component conventions
 
+### Standalone installer variant
+
+The local setup page in `scripts/src/setup/page.ts` owns the pre-API installer.
+It cannot depend on the running React application, network fonts or a component
+server. Its native form controls and language popup are a deliberate platform-owned
+variant; their operating-system popup geometry is accepted. The main application
+continues to use its existing authored React/Radix primitives.
+
+The installer CSS maps canvas, surface, text and accent to the canonical
+`canvas-*`, `paper-*`, `ink-*` and `primary*` colors above. Panels use the 1rem
+radius. System sans replaces bundled IBM Plex before installation; body text is
+1.0625rem, supporting text at least .875rem, with rem-scaled layout and 44px controls.
+The document owns scrolling; its visible scrollbar supports both color schemes.
+Focus, hover, pressed, disabled, forced-color and reduced-motion states are explicit.
+
+Upgrade identity is expressed through the real current/new version pair and
+retained data folder. Progress comes from server phases and copied-file counts;
+it never invents a percentage or ETA. The safe data transition disables cancellation.
+Only verified application startup reveals Open workspace. Work remains paused for
+operator review. Paths stay LTR and wrap inside Arabic RTL content. UI language
+changes do not mutate the saved workspace language, permissions or model settings.
+
 ### Guided start and expert directory
 
 The home page is a working desk: a left-aligned outcome composer, editable

@@ -59,6 +59,53 @@ test("native package manifests bind the supported host, source and required exec
     );
 });
 
+test("versioned native packages require migration and staging lifecycle runtimes while legacy archives remain valid", () => {
+  const valid = manifest();
+  const release = {
+    path: "native-release.json",
+    bytes: 7,
+    sha256: valid.files[0].sha256,
+  };
+  assert.throws(() =>
+    validateNativeDistribution(
+      { ...valid, files: [...valid.files, release] },
+      host,
+    ),
+  );
+  const entry = {
+    ...release,
+    path: "artifacts/api-server/dist/native-upgrade.mjs",
+  };
+  assert.throws(() =>
+    validateNativeDistribution(
+      { ...valid, files: [...valid.files, release, entry] },
+      host,
+    ),
+  );
+  const complete = {
+    ...valid,
+    files: [
+      ...valid.files,
+      release,
+      entry,
+      { ...entry, path: "scripts/src/setup/stage-postgres.mjs" },
+      { ...entry, path: "scripts/src/setup/setup-upgrade-client.js" },
+    ],
+  };
+  assert.throws(() =>
+    validateNativeDistribution(
+      {
+        ...complete,
+        files: complete.files.filter(
+          (row) => !row.path.endsWith("setup-upgrade-client.js"),
+        ),
+      },
+      host,
+    ),
+  );
+  assert.doesNotThrow(() => validateNativeDistribution(complete, host));
+});
+
 test("native package inventory rejects traversal, Windows aliases and duplicate normalized names", () => {
   const valid = manifest();
   for (const file of [

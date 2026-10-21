@@ -10,12 +10,12 @@ export const fallbackEmergencyControlCopy = {
   stopTitle: "Stop all agent work",
   resumeTitle: "Resume agent work",
   stopDescription:
-    "This safety stop pauses agent chat, task execution, agent tools, and approved actions. It does not undo external effects already made.",
+    "Pauses agent chat, tasks, tools, and approved actions. It does not undo external effects.",
   resumeDescription:
-    "The task scheduler, agent chat, tools, and approved actions may run again. Confirm that the workspace is safe before resuming.",
+    "Resumes the scheduler, agent chat, tools, and approved actions. Review workspace safety first.",
   reason: "Reason for stopping",
-  reasonPlaceholder: "For example, reviewing an unexpected browser action",
-  reasonHelp: "At least 3 characters; saved in the audit log.",
+  reasonPlaceholder: "Reviewing an unexpected browser action",
+  reasonHelp: "3+ characters; saved in the audit log.",
   actionError: "The action could not be completed. Try again.",
   cancel: "Cancel",
   applying: "Applying…",
@@ -25,6 +25,7 @@ export const fallbackEmergencyControlCopy = {
     "Safety stop status cannot be verified; new risky actions are disabled.",
   retry: "Check again",
   stopActive: "Emergency stop is active.",
+  nativeUpgradePaused: "Update verified. Review before resuming.",
 };
 
 export type EmergencyControlCopy = typeof fallbackEmergencyControlCopy;

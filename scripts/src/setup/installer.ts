@@ -27,6 +27,11 @@ import {
   type PhoneConnection,
 } from "./phone-access";
 import { acquireInstallationLock } from "./installation-lock";
+import {
+  transferInstallationLease,
+  type InstallationLease,
+} from "./installation-lease";
+import { assertNativeUpgradeStartupReady } from "./native-upgrade-journal";
 import { readInstallationBudgetOverrides } from "./budget-overrides";
 import type { NativeDistribution } from "./native-distribution";
 import {
@@ -68,6 +73,7 @@ export function createInstallationExecutor(options: {
     resources: InstallationResources;
     planId: string;
     complete: boolean;
+    lease?: InstallationLease;
   };
 }) {
   const run = options.run ?? executeBoundedCommand;
@@ -160,6 +166,12 @@ export function createInstallationExecutor(options: {
     };
     const baseUrl = `http://127.0.0.1:${plan.settings.port}`;
     try {
+      if (options.resume?.lease)
+        releaseLock = transferInstallationLease(
+          options.resume.lease,
+          options.resume.resources.directory,
+          plan.id,
+        );
       await step("check_environment", async () => {
         if (
           options.prebuiltImage &&
@@ -196,10 +208,16 @@ export function createInstallationExecutor(options: {
       });
       await step("prepare_private_config", async () => {
         if (options.resume) {
-          releaseLock = await acquireInstallationLock(
+          releaseLock ??= await acquireInstallationLock(
             options.resume.resources.directory,
             plan.settings.port,
           );
+          if (options.nativeDistribution)
+            await assertNativeUpgradeStartupReady(
+              options.resume.resources.directory,
+              options.workspaceRoot,
+              options.nativeDistribution.commit,
+            );
           resources = options.resume.resources;
           await record("installing");
           await options.onPrepared?.(resources);
@@ -368,14 +386,17 @@ export function createInstallationExecutor(options: {
     } catch (error) {
       // Keep the database, secrets, build and manifest for recovery. Only child
       // processes owned by this launcher are stopped; no volumes are deleted.
-      await record("failed");
       try {
-        await supervisor?.stopAll();
+        await record("failed");
       } finally {
         try {
-          await managed?.stop();
+          await supervisor?.stopAll();
         } finally {
-          await releaseLock?.();
+          try {
+            await managed?.stop();
+          } finally {
+            await releaseLock?.();
+          }
         }
       }
       throw error;

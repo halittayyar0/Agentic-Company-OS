@@ -44,6 +44,7 @@ export function nativeRequiredFiles(host: {
       "pg_restore",
       "psql",
       "pg_isready",
+      "pg_controldata",
     ].map((name) => `runtime/postgres/bin/${name}${suffix}`),
     "scripts/src/setup/bootstrap.mjs",
     "scripts/src/setup/setup-client.js",
@@ -131,6 +132,13 @@ export function validateNativeDistribution(
     return { path: row.path, bytes: row.bytes as number, sha256: row.sha256 };
   });
   if (nativeRequiredFiles(host).some((file) => !seen.has(file.toLowerCase())))
+    return fail();
+  if (
+    seen.has("native-release.json") &&
+    (!seen.has("artifacts/api-server/dist/native-upgrade.mjs") ||
+      !seen.has("scripts/src/setup/stage-postgres.mjs") ||
+      !seen.has("scripts/src/setup/setup-upgrade-client.js"))
+  )
     return fail();
   return {
     schemaVersion: 1,

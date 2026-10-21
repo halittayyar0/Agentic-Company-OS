@@ -73,10 +73,11 @@ for (const name of [
   "LICENSE",
 ])
   await copyFile(path.join(root, name), path.join(directory, name));
-await copyFile(
-  path.join(root, "scripts/src/setup/setup-client.js"),
-  path.join(setup, "setup-client.js"),
-);
+for (const file of ["setup-client.js", "setup-upgrade-client.js"])
+  await copyFile(
+    path.join(root, "scripts/src/setup", file),
+    path.join(setup, file),
+  );
 await writeFile(
   path.join(directory, "distribution.json"),
   JSON.stringify(
