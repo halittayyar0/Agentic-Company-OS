@@ -49,8 +49,13 @@ export async function runNativeInstallSmoke(
   additionalDataProof?: AdditionalNativeDataProof,
 ) {
   const source = fileURLToPath(new URL("../../..", import.meta.url));
+  // GitHub's artifact collector scans runner.temp, which can differ from the
+  // Windows service account's OS temporary directory.
   const directory = await mkdtemp(
-    path.join(await realpath(tmpdir()), "acos-native-install-proof-"),
+    path.join(
+      await realpath(process.env.RUNNER_TEMP || tmpdir()),
+      "acos-native-install-proof-",
+    ),
   );
   const [dbPort, appPort] = await reserveLoopbackPorts(2);
   const password = randomBytes(32).toString("hex"),
