@@ -59,6 +59,24 @@ const pins = {
   },
 } as const;
 
+export function ownedOllamaReadinessOptions(
+  platform: NodeJS.Platform,
+  architecture: string,
+) {
+  // Pinned v0.18.0 synchronously bootstraps devices before serving HTTP.
+  // Its first discovery pass allows 30s; Metal does not take CUDA/ROCm's
+  // second validation pass (discover/runner.go; ml/device.go:500-507).
+  // Cold owned Mac ARM stacks confirmed embedded source waiting on the Metal
+  // compiler over XPC. Allow that 30s bootstrap plus 5s HTTP margin here only.
+  // This is a privacy-fixture deadline, not a GPU or performance guarantee.
+  return {
+    timeoutMs:
+      platform === "darwin" && architecture === "arm64" ? 35000 : 20000,
+    intervalMs: 100,
+    label: "Owned pinned Ollama",
+  };
+}
+
 function loopbackOrigin(value: string): string {
   const url = new URL(value);
   assert.ok(
@@ -652,7 +670,7 @@ export async function runOllamaLocalBoundarySmoke(
           startupTimeline.observe(response.ok);
           return response.ok;
         },
-        { timeoutMs: 20000, intervalMs: 100, label: "Owned pinned Ollama" },
+        ownedOllamaReadinessOptions(process.platform, process.arch),
       );
     } finally {
       startupTiming = startupTimeline.observe();
