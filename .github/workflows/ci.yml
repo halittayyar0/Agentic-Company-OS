@@ -402,13 +402,112 @@ jobs:
             playwright-report/**
           if-no-files-found: warn
 
+  windows-installation:
+    name: Native installation Windows
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      AGENT_BROWSER_CHANNEL: chromium
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download and verify portable PostgreSQL 17
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP "postgresql-17.10-1-windows-x64-binaries.zip"
+          $postgresRoot = Join-Path $env:RUNNER_TEMP "postgresql-17.10-1-windows-x64-binaries"
+          Invoke-WebRequest `
+            -Uri "https://get.enterprisedb.com/postgresql/postgresql-17.10-1-windows-x64-binaries.zip" `
+            -OutFile $archive
+          $actualSize = (Get-Item -LiteralPath $archive).Length
+          if ($actualSize -ne 333925750) {
+            throw "Portable PostgreSQL archive size mismatch"
+          }
+          $expected = "f9aafca58e7026a1ef2caeee711acf761671e57904d430adc85f468374f5a821"
+          $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) {
+            throw "Portable PostgreSQL SHA256 mismatch"
+          }
+          Expand-Archive -LiteralPath $archive -DestinationPath $postgresRoot
+          $postgresExecutable = Join-Path $postgresRoot "pgsql\bin\postgres.exe"
+          $version = & $postgresExecutable --version
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch "PostgreSQL\) 17\.[0-9]+") {
+            throw "Portable PostgreSQL is not a supported 17.x toolchain"
+          }
+          "ENDURANCE_POSTGRES_ROOT=$postgresRoot" >> $env:GITHUB_ENV
+
+      - name: Install browser for source and native runtime tests
+        run: pnpm exec playwright install chromium
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build native runtime artifacts from the frozen lockfile
+        run: pnpm run build
+
+      - name: Prove native installation resume and binary backup restoration
+        run: pnpm test:installation:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
+
+      - name: Prove seven-language first-job connection through real API and workers
+        env:
+          ACOS_GUIDED_LOCAL_SMOKE: "1"
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+        run: pnpm test:connection:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
+
+      - name: Prove seven-language reusable work through real API and workers
+        env:
+          ACOS_REUSABLE_GUIDES_SMOKE: "1"
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+        run: pnpm test:guides:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
+
+      - name: Preserve native Windows installation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-native-installation-evidence
+          path: |
+            ${{ runner.temp }}/acos-owned-job-proof-*/fixture-scope.json
+            ${{ runner.temp }}/acos-native-install-proof-*/evidence.json
+            ${{ runner.temp }}/acos-native-install-proof-*/guided-local-runtime-failure.json
+            ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-evidence.json
+            ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-cleanup.json
+          if-no-files-found: error
+
   windows-runtime:
     name: Windows runtime and process-tree regression
+    needs: windows-installation
+    if: ${{ always() }}
     runs-on: windows-latest
     timeout-minutes: 90
     env:
       AGENT_BROWSER_CHANNEL: chromium
     steps:
+      - name: Require complete Windows installation acceptance
+        env:
+          INSTALLATION_RESULT: ${{ needs.windows-installation.result }}
+        run: |
+          node --input-type=module -e 'if (process.env.INSTALLATION_RESULT !== "success") { console.error("Native Windows installation did not succeed"); process.exit(1); }'
+
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -491,23 +590,6 @@ jobs:
       - name: Build native runtime artifacts from the frozen lockfile
         run: pnpm run build
 
-      - name: Prove native installation resume and binary backup restoration
-        run: pnpm test:installation:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
-
-      - name: Prove seven-language first-job connection through real API and workers
-        env:
-          ACOS_GUIDED_LOCAL_SMOKE: "1"
-          TEMP: ${{ runner.temp }}
-          TMP: ${{ runner.temp }}
-        run: pnpm test:connection:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
-
-      - name: Prove seven-language reusable work through real API and workers
-        env:
-          ACOS_REUSABLE_GUIDES_SMOKE: "1"
-          TEMP: ${{ runner.temp }}
-          TMP: ${{ runner.temp }}
-        run: pnpm test:guides:native "$env:ENDURANCE_POSTGRES_ROOT/pgsql/bin"
-
       - name: Exercise native PostgreSQL process topology
         run: >-
           pnpm endurance:native-postgres-smoke --
@@ -545,10 +627,6 @@ jobs:
         with:
           name: windows-native-runtime-evidence
           path: |
-            ${{ runner.temp }}/acos-owned-job-proof-*/fixture-scope.json
-            ${{ runner.temp }}/acos-native-install-proof-*/guided-local-runtime-failure.json
-            ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-evidence.json
-            ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-cleanup.json
             artifacts/endurance-reports/windows-native-smoke.json
             artifacts/endurance-reports/windows-native-wall-clock.json
             artifacts/endurance-reports/windows-native-wall-clock.jsonl

@@ -1,17 +1,139 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { readFileSync } from "node:fs";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { fixture } from "./test-fixtures";
 import { verifyRequiredProducers } from "./producers";
 
-test("producer proof binds all ten original Actions gates and four Mac dependencies", async () => {
+test("required Windows gate fails instead of skipping after unsuccessful installation", () => {
+  const workflow = readFileSync(
+    new URL("../../../.github/workflows/ci.yml", import.meta.url),
+    "utf8",
+  );
+  const jobs = workflow.match(
+    /^  windows-runtime:\n[\s\S]*?(?=^  [a-z][\w-]*:|$(?![\s\S]))/gmu,
+  );
+  assert.equal(jobs?.length, 1);
+  const job = jobs![0]!;
+  assert.match(job, /^    needs: windows-installation$/mu);
+  assert.match(job, /^    if: \$\{\{ always\(\) \}\}$/mu);
+  const first = job.split(/^      - name: /mu)[1]!;
+  assert.match(first, /^Require complete Windows installation acceptance\n/u);
+  assert.doesNotMatch(first, /^        if:/mu);
+  assert.match(
+    first,
+    /^          INSTALLATION_RESULT: \$\{\{ needs\.windows-installation\.result \}\}$/mu,
+  );
+  const script = first.match(
+    /^          node --input-type=module -e '(.*)'$/mu,
+  )?.[1];
+  assert.ok(
+    script,
+    "The first gate must execute the checked guard before any workload",
+  );
+  for (const result of [
+    "success",
+    "failure",
+    "cancelled",
+    "skipped",
+    "",
+    "unknown",
+  ]) {
+    const child: SpawnSyncReturns<string> = spawnSync(
+      process.execPath,
+      ["--input-type=module", "-e", script],
+      {
+        env: { ...process.env, INSTALLATION_RESULT: result },
+        windowsHide: true,
+        encoding: "utf8",
+        timeout: 10000,
+      },
+    );
+    assert.equal(child.error, undefined);
+    assert.equal(child.signal, null);
+    assert.equal(
+      child.status,
+      result === "success" ? 0 : 1,
+      `installation result ${result}`,
+    );
+  }
+});
+
+test("producer proof binds all ten original Actions gates and five native dependencies", async () => {
   const f = fixture();
   const proof = await verifyRequiredProducers(f.api, f.readLog, f.report);
-  assert.equal(proof.length, 14);
+  assert.equal(proof.length, 15);
 });
 test("main producer proof retains original PR provenance and binds the squash jobs", async () => {
   const f = fixture("main");
   const proof = await verifyRequiredProducers(f.api, f.readLog, f.report);
-  assert.equal(proof.length, 28);
+  assert.equal(proof.length, 30);
+});
+
+test("producer proof rejects missing, unbound, or incomplete Windows installation evidence", async () => {
+  const dependency = (f: ReturnType<typeof fixture>) =>
+    f.jobs.find(
+      (j) =>
+        j.name === "Native installation Windows" &&
+        j.head_sha ===
+          (f.report.phase === "main" ? f.report.main : f.report.head),
+    )!;
+  const mutations: ((f: ReturnType<typeof fixture>) => void)[] = [
+    (f) => {
+      f.jobs.splice(f.jobs.indexOf(dependency(f)), 1);
+    },
+    (f) => {
+      f.jobs.push({ ...dependency(f), id: 91 });
+    },
+    ...["failure", "cancelled", "skipped"].map(
+      (conclusion) => (f: ReturnType<typeof fixture>) => {
+        dependency(f).conclusion = conclusion;
+      },
+    ),
+    (f) => {
+      dependency(f).head_sha = "f".repeat(40);
+    },
+    (f) => {
+      dependency(f).run_id = 90;
+    },
+    (f) => {
+      dependency(f).run_attempt = 2;
+    },
+    (f) => {
+      const j = dependency(f);
+      f.logs.set(
+        j.id,
+        f.logs
+          .get(j.id)!
+          .replaceAll(
+            f.report.phase === "main" ? f.report.main : f.report.testedMerge,
+            "f".repeat(40),
+          ),
+      );
+    },
+    ...[
+      "Prove native installation resume and binary backup restoration",
+      "Prove seven-language first-job connection through real API and workers",
+      "Prove seven-language reusable work through real API and workers",
+    ].flatMap((name) =>
+      ["failure", "skipped"].map(
+        (conclusion) => (f: ReturnType<typeof fixture>) => {
+          dependency(f).steps.find((s) => s.name === name)!.conclusion =
+            conclusion;
+        },
+      ),
+    ),
+  ];
+  for (const phase of ["pr", "main"] as const) {
+    for (const [index, mutate] of mutations.entries()) {
+      const f = fixture(phase);
+      mutate(f);
+      await assert.rejects(
+        verifyRequiredProducers(f.api, f.readLog, f.report),
+        `${phase} Windows dependency mutation ${index}`,
+      );
+    }
+  }
 });
 for (const [name, mutate] of [
   [
