@@ -17,6 +17,100 @@ import {
   runOwnedOllamaExtraction,
 } from "./ollama-local-boundary-smoke";
 
+function readinessOptions(platform: NodeJS.Platform, architecture: string) {
+  const create = Reflect.get(smoke, "ownedOllamaReadinessOptions") as
+    | ((
+        platform: NodeJS.Platform,
+        architecture: string,
+      ) => { timeoutMs: number; intervalMs: number; label: string })
+    | undefined;
+  assert.equal(typeof create, "function", "owned readiness policy is missing");
+  return create!(platform, architecture);
+}
+
+async function advanceReadinessClock(
+  t: test.TestContext,
+  milliseconds: number,
+) {
+  for (let elapsed = 0; elapsed < milliseconds; elapsed += 100) {
+    t.mock.timers.tick(100);
+    // Drain the real supervisor's async probe/delay continuations each tick.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+}
+
+test("pinned Metal cold startup can finish its bootstrap window without changing other host deadlines", async (t) => {
+  const options = readinessOptions("darwin", "arm64");
+  assert.deepEqual(options, {
+    timeoutMs: 35000,
+    intervalMs: 100,
+    label: "Owned pinned Ollama",
+  });
+  for (const [platform, architecture] of [
+    ["darwin", "x64"],
+    ["linux", "x64"],
+    ["linux", "arm64"],
+    ["win32", "x64"],
+    ["win32", "arm64"],
+  ] as const) {
+    assert.deepEqual(readinessOptions(platform, architecture), {
+      ...options,
+      timeoutMs: 20000,
+    });
+  }
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 0 });
+  const supervisor = new ProcessSupervisor({ runId: "cold-metal-budget" });
+  const outcome: { ready: boolean; error: unknown } = {
+    ready: false,
+    error: null,
+  };
+  const completion = supervisor
+    .waitUntilReady(() => Date.now() >= 30500, options)
+    .then(
+      () => {
+        outcome.ready = true;
+      },
+      (error: unknown) => {
+        outcome.error = error;
+      },
+    );
+  await advanceReadinessClock(t, 20500);
+  assert.deepEqual({ ...outcome }, { ready: false, error: null });
+  await advanceReadinessClock(t, 10000);
+  await completion;
+  assert.deepEqual(outcome, { ready: true, error: null });
+});
+
+test("pinned Metal startup still rejects a never-ready service at its finite HTTP deadline", async (t) => {
+  const options = readinessOptions("darwin", "arm64");
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 0 });
+  const supervisor = new ProcessSupervisor({ runId: "hung-metal-budget" });
+  const outcome: { ready: boolean; error: unknown } = {
+    ready: false,
+    error: null,
+  };
+  const completion = supervisor
+    .waitUntilReady(() => false, options)
+    .then(
+      () => {
+        outcome.ready = true;
+      },
+      (error: unknown) => {
+        outcome.error = error;
+      },
+    );
+  await advanceReadinessClock(t, 34900);
+  assert.deepEqual({ ...outcome }, { ready: false, error: null });
+  await advanceReadinessClock(t, 100);
+  await completion;
+  assert.equal(outcome.ready, false);
+  assert.ok(outcome.error instanceof Error);
+  assert.equal(
+    outcome.error.message,
+    "Owned pinned Ollama did not become ready within 35000ms",
+  );
+});
+
 function startupTimelineFactory() {
   const create = Reflect.get(smoke, "createOwnedOllamaStartupTimeline") as
     | ((
