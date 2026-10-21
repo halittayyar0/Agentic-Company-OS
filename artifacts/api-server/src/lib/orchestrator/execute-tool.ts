@@ -788,6 +788,9 @@ export interface DurableExternalEffectInput {
 }
 
 interface DurableExternalEffectDependencies {
+  /** Caller-owned transaction for bounded database-only effects. Errors must
+   * escape so the caller rolls back; external I/O uses the default executor. */
+  executor?: OperationExecutor;
   completeOperation?: typeof completeOperation;
   markOperationUnknown?: typeof markOperationUnknown;
   releaseOperationForSafeRetry?: typeof releaseOperationForSafeRetry;
@@ -917,6 +920,12 @@ export async function runDurableExternalEffect(
     dependencies.markOperationUnknown ?? markOperationUnknown;
   const releaseDurableOperationForSafeRetry =
     dependencies.releaseOperationForSafeRetry ?? releaseOperationForSafeRetry;
+  const executor = dependencies.executor ?? db;
+  if (dependencies.executor && ctx.beforeOperationEffectBoundary) {
+    throw new TypeError(
+      "Database-only effects cannot use an external boundary hook.",
+    );
+  }
   const identity = ctx.operationIdentity;
   // Compatibility path for direct internal/test callers. Production task and
   // chat composition always supplies a server-owned operation identity; the
@@ -950,40 +959,47 @@ export async function runDurableExternalEffect(
     );
   }
   const now = new Date();
-  const reservation = await reserveOperation({
-    executionLocale,
-    canonicalVersion: 1,
-    executionKind: identity.executionKind,
-    logicalExecutionId: identity.logicalExecutionId,
-    toolName: input.toolName,
-    args: receiptArgs,
-    physical: {
-      attemptId:
+  const reservation = await reserveOperation(
+    {
+      executionLocale,
+      canonicalVersion: 1,
+      executionKind: identity.executionKind,
+      logicalExecutionId: identity.logicalExecutionId,
+      toolName: input.toolName,
+      args: receiptArgs,
+      physical: {
+        attemptId:
+          identity.executionKind === "task_step"
+            ? identity.originAttemptId
+            : null,
+        workerInstanceId: identity.runtimeInstanceId,
+        modelToolCallId: identity.modelToolCallId,
+        callSlot: identity.callSlot,
+      },
+      taskId: ctx.taskId,
+      agentId: ctx.agent.id,
+      approvalId:
+        identity.executionKind === "approved_action"
+          ? (ctx.preapprovedAction?.approvalId ?? null)
+          : null,
+      sourceMessageId:
+        identity.executionKind === "chat_turn"
+          ? identity.sourceMessageId
+          : null,
+      originAttemptId:
         identity.executionKind === "task_step"
           ? identity.originAttemptId
           : null,
-      workerInstanceId: identity.runtimeInstanceId,
-      modelToolCallId: identity.modelToolCallId,
-      callSlot: identity.callSlot,
+      sideEffectClass,
+      externalIdempotencyKey: durableEffectExternalKey(
+        ctx,
+        input.toolName,
+        receiptArgs,
+      ),
+      now,
     },
-    taskId: ctx.taskId,
-    agentId: ctx.agent.id,
-    approvalId:
-      identity.executionKind === "approved_action"
-        ? (ctx.preapprovedAction?.approvalId ?? null)
-        : null,
-    sourceMessageId:
-      identity.executionKind === "chat_turn" ? identity.sourceMessageId : null,
-    originAttemptId:
-      identity.executionKind === "task_step" ? identity.originAttemptId : null,
-    sideEffectClass,
-    externalIdempotencyKey: durableEffectExternalKey(
-      ctx,
-      input.toolName,
-      receiptArgs,
-    ),
-    now,
-  });
+    executor,
+  );
   if (
     reservation.receipt.state === "succeeded" ||
     isConfirmedAppliedReplay(reservation)
@@ -1031,32 +1047,37 @@ export async function runDurableExternalEffect(
     ctx = { ...ctx, locale: savedLocale };
   }
   const invocationLeaseOwner = `operation:${reservation.receipt.id}:${randomUUID()}`;
-  const claimed = await claimOperationInvocation({
-    receiptId: reservation.receipt.id,
-    executionKind: identity.executionKind,
-    attemptId:
-      identity.executionKind === "task_step" ? identity.originAttemptId : null,
-    workerInstanceId: identity.runtimeInstanceId,
-    modelToolCallId: identity.modelToolCallId,
-    leaseOwner: invocationLeaseOwner,
-    leaseExpiresAt: new Date(
-      now.getTime() +
-        Math.max(
-          1,
-          Math.floor(
-            ctx.operationInvocationLeaseMs ??
-              DEFAULT_OPERATION_INVOCATION_LEASE_MS,
+  const claimed = await claimOperationInvocation(
+    {
+      receiptId: reservation.receipt.id,
+      executionKind: identity.executionKind,
+      attemptId:
+        identity.executionKind === "task_step"
+          ? identity.originAttemptId
+          : null,
+      workerInstanceId: identity.runtimeInstanceId,
+      modelToolCallId: identity.modelToolCallId,
+      leaseOwner: invocationLeaseOwner,
+      leaseExpiresAt: new Date(
+        now.getTime() +
+          Math.max(
+            1,
+            Math.floor(
+              ctx.operationInvocationLeaseMs ??
+                DEFAULT_OPERATION_INVOCATION_LEASE_MS,
+            ),
           ),
-        ),
-    ),
-    taskLeaseOwner:
-      identity.executionKind === "task_step"
-        ? (ctx.taskLeaseOwner ?? null)
-        : null,
-    agentLeaseOwner: identity.agentLeaseOwner,
-    browserBinding: input.browserBinding,
-    now,
-  });
+      ),
+      taskLeaseOwner:
+        identity.executionKind === "task_step"
+          ? (ctx.taskLeaseOwner ?? null)
+          : null,
+      agentLeaseOwner: identity.agentLeaseOwner,
+      browserBinding: input.browserBinding,
+      now,
+    },
+    executor,
+  );
   if (!claimed.claimed || !claimed.invocation) {
     if (
       claimed.receipt.state === "succeeded" ||
@@ -1116,13 +1137,16 @@ export async function runDurableExternalEffect(
     }
     startRequested = true;
     await ctx.beforeOperationEffectBoundary?.();
-    await markOperationRunning({
-      receiptId: claimed.receipt.id,
-      invocationId: invocation.id,
-      leaseOwner: invocationLeaseOwner,
-      browserBinding: input.browserBinding,
-      now: new Date(),
-    });
+    await markOperationRunning(
+      {
+        receiptId: claimed.receipt.id,
+        invocationId: invocation.id,
+        leaseOwner: invocationLeaseOwner,
+        browserBinding: input.browserBinding,
+        now: new Date(),
+      },
+      executor,
+    );
     crossedEffectBoundary = true;
   };
   startEffect.revalidate = async (tx) => {
@@ -1134,7 +1158,7 @@ export async function runDurableExternalEffect(
         browserBinding: input.browserBinding,
         now: new Date(),
       },
-      tx,
+      dependencies.executor ?? tx,
     );
   };
   try {
@@ -1143,31 +1167,37 @@ export async function runDurableExternalEffect(
       executionLocale: ctx.locale,
     });
     if (!crossedEffectBoundary) {
-      const released = await releaseDurableOperationForSafeRetry({
-        receiptId: claimed.receipt.id,
-        invocationId: invocation.id,
-        leaseOwner: invocationLeaseOwner,
-        failureKind: "effect_not_started",
-        sanitizedError:
-          "The normalized handler returned before crossing the external effect boundary.",
-        now: new Date(),
-      });
+      const released = await releaseDurableOperationForSafeRetry(
+        {
+          receiptId: claimed.receipt.id,
+          invocationId: invocation.id,
+          leaseOwner: invocationLeaseOwner,
+          failureKind: "effect_not_started",
+          sanitizedError:
+            "The normalized handler returned before crossing the external effect boundary.",
+          now: new Date(),
+        },
+        executor,
+      );
       return { ...executed.result, receiptId: released.id };
     }
     if (
       executed.result.toolOutcome === "unknown" ||
       executed.result.toolOutcome === "outcome_unknown"
     ) {
-      const unknown = await markDurableOperationUnknown({
-        receiptId: claimed.receipt.id,
-        invocationId: invocation.id,
-        leaseOwner: invocationLeaseOwner,
-        browserBinding: input.browserBinding,
-        failureKind: "effect_outcome_unknown",
-        sanitizedError:
-          "The external effect crossed its boundary but its outcome could not be confirmed.",
-        now: new Date(),
-      });
+      const unknown = await markDurableOperationUnknown(
+        {
+          receiptId: claimed.receipt.id,
+          invocationId: invocation.id,
+          leaseOwner: invocationLeaseOwner,
+          browserBinding: input.browserBinding,
+          failureKind: "effect_outcome_unknown",
+          sanitizedError:
+            "The external effect crossed its boundary but its outcome could not be confirmed.",
+          now: new Date(),
+        },
+        executor,
+      );
       return {
         ...executed.result,
         toolOutcome: "unknown",
@@ -1184,30 +1214,39 @@ export async function runDurableExternalEffect(
                 : "resume",
           }
         : (executed.resultData ?? null);
-    const receipt = await completeDurableOperation({
-      receiptId: claimed.receipt.id,
-      invocationId: invocation.id,
-      leaseOwner: invocationLeaseOwner,
-      browserBinding: input.browserBinding,
-      resultData: savedResultData,
-      now: new Date(),
-    });
+    const receipt = await completeDurableOperation(
+      {
+        receiptId: claimed.receipt.id,
+        invocationId: invocation.id,
+        leaseOwner: invocationLeaseOwner,
+        browserBinding: input.browserBinding,
+        resultData: savedResultData,
+        now: new Date(),
+      },
+      executor,
+    );
     return { ...executed.result, receiptId: receipt.id };
   } catch (error) {
+    // A database-only effect has no outcome outside this transaction. Never
+    // turn an aborted/rolled-back transaction into a receipt-shaped success.
+    if (dependencies.executor) throw error;
     if (!crossedEffectBoundary) {
       try {
-        const released = await releaseDurableOperationForSafeRetry({
-          receiptId: claimed.receipt.id,
-          invocationId: invocation.id,
-          leaseOwner: invocationLeaseOwner,
-          failureKind: startRequested
-            ? "effect_boundary_commit_unconfirmed"
-            : "pre_effect_check_failed",
-          sanitizedError: startRequested
-            ? "The running transition could not be confirmed before the effect was invoked."
-            : "A normalized pre-effect check failed before invocation.",
-          now: new Date(),
-        });
+        const released = await releaseDurableOperationForSafeRetry(
+          {
+            receiptId: claimed.receipt.id,
+            invocationId: invocation.id,
+            leaseOwner: invocationLeaseOwner,
+            failureKind: startRequested
+              ? "effect_boundary_commit_unconfirmed"
+              : "pre_effect_check_failed",
+            sanitizedError: startRequested
+              ? "The running transition could not be confirmed before the effect was invoked."
+              : "A normalized pre-effect check failed before invocation.",
+            now: new Date(),
+          },
+          executor,
+        );
         if (error instanceof ConfirmedAppliedReplayError) {
           return replayedEffectResult(
             ctx,
@@ -1239,15 +1278,18 @@ export async function runDurableExternalEffect(
     }
     if (sideEffectClass === "idempotent") {
       try {
-        const released = await releaseDurableOperationForSafeRetry({
-          receiptId: claimed.receipt.id,
-          invocationId: invocation.id,
-          leaseOwner: invocationLeaseOwner,
-          failureKind: "idempotent_effect_failed",
-          sanitizedError:
-            "The idempotent effect failed and may be retried with the same key.",
-          now: new Date(),
-        });
+        const released = await releaseDurableOperationForSafeRetry(
+          {
+            receiptId: claimed.receipt.id,
+            invocationId: invocation.id,
+            leaseOwner: invocationLeaseOwner,
+            failureKind: "idempotent_effect_failed",
+            sanitizedError:
+              "The idempotent effect failed and may be retried with the same key.",
+            now: new Date(),
+          },
+          executor,
+        );
         return durableEffectErrorResult(
           ctx,
           input,
@@ -1263,16 +1305,19 @@ export async function runDurableExternalEffect(
       }
     } else {
       try {
-        const unknown = await markDurableOperationUnknown({
-          receiptId: claimed.receipt.id,
-          invocationId: invocation.id,
-          leaseOwner: invocationLeaseOwner,
-          browserBinding: input.browserBinding,
-          failureKind: "effect_outcome_unknown",
-          sanitizedError:
-            "The external effect crossed its boundary but finalization failed.",
-          now: new Date(),
-        });
+        const unknown = await markDurableOperationUnknown(
+          {
+            receiptId: claimed.receipt.id,
+            invocationId: invocation.id,
+            leaseOwner: invocationLeaseOwner,
+            browserBinding: input.browserBinding,
+            failureKind: "effect_outcome_unknown",
+            sanitizedError:
+              "The external effect crossed its boundary but finalization failed.",
+            now: new Date(),
+          },
+          executor,
+        );
         return durableEffectErrorResult(
           ctx,
           input,

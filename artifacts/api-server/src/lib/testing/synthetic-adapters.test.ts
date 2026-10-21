@@ -20,6 +20,7 @@ import { classifyRecoverableModelError } from "../orchestrator/model-fallback";
 import { readRuntimeOperationsConfig } from "../runtime-operations-config";
 import {
   executeTool,
+  runDurableExternalEffect,
   type ToolRuntimeContext,
 } from "../orchestrator/execute-tool";
 import { getToolsForAgent } from "../orchestrator/tools";
@@ -39,6 +40,7 @@ import {
 } from "./synthetic-fault-plan";
 import { createSyntheticToolExecutor } from "./synthetic-tool";
 import { createSyntheticClaimedTaskRunner } from "./synthetic-runtime";
+import { setEmergencyStop } from "../orchestrator/runtime-emergency-stop";
 
 const RUN_ID = "adapter-test-run";
 const SEED = 240_901;
@@ -598,6 +600,202 @@ test("one synthetic operation key replays one durable at-most-once success recei
     JSON.stringify(receipts),
     JSON.stringify(receipts).replace(/deterministic work/gu, ""),
   );
+});
+
+test("database-only synthetic work commits its receipt before a concurrent emergency stop revokes ownership", async (t) => {
+  const fixture = await createDurableTaskFixture();
+  const stepIdentity = identity(fixture.task.id, 0);
+  const options = {
+    runId: RUN_ID,
+    seed: SEED,
+    identity: stepIdentity,
+    faultPlan: planFor(stepIdentity, "success"),
+  };
+  const completion = await createSyntheticCompletion(options)(completionArgs());
+  const call = completion.completion.choices[0]!.message.tool_calls![0]!;
+  const transaction = db.transaction.bind(db);
+  let stopped = false;
+  // Run the real safety stop at the first committed fixture effect boundary.
+  // Splitting running and completion exposes a running receipt to this stop.
+  t.mock.method(
+    db,
+    "transaction",
+    async (callback: Parameters<typeof db.transaction>[0]) => {
+      const value = await transaction(callback);
+      if (!stopped) {
+        const [receipt] = await db
+          .select()
+          .from(operationReceiptsTable)
+          .where(eq(operationReceiptsTable.taskId, fixture.task.id));
+        if (receipt && ["running", "succeeded"].includes(receipt.state)) {
+          stopped = true;
+          await setEmergencyStop({
+            enabled: true,
+            reason: "Fixture boundary regression",
+            updatedBy: "test",
+          });
+        }
+      }
+      return value;
+    },
+  );
+  try {
+    const executed = await createSyntheticToolExecutor(options)(
+      fixture.context,
+      call.function.name,
+      call.function.arguments,
+    );
+    assert.equal(
+      stopped,
+      true,
+      "the actual stop must interleave with the effect boundary",
+    );
+    assert.equal(executed.toolOutcome, "succeeded");
+    const receipts = await db
+      .select()
+      .from(operationReceiptsTable)
+      .where(eq(operationReceiptsTable.taskId, fixture.task.id));
+    assert.equal(receipts.length, 1);
+    assert.equal(receipts[0].state, "succeeded");
+    assert.equal(receipts[0].sideEffectClass, "at_most_once");
+    const [task] = await db
+      .select()
+      .from(tasksTable)
+      .where(eq(tasksTable.id, fixture.task.id));
+    assert.equal(
+      task.leaseOwner,
+      null,
+      "the safety stop still revokes the outer owner",
+    );
+  } finally {
+    t.mock.restoreAll();
+    await setEmergencyStop({ enabled: false, reason: null, updatedBy: "test" });
+  }
+});
+
+test("database-only synthetic work cannot start while emergency stop is active", async () => {
+  const fixture = await createDurableTaskFixture();
+  const stepIdentity = identity(fixture.task.id, 0);
+  const options = {
+    runId: RUN_ID,
+    seed: SEED,
+    identity: stepIdentity,
+    faultPlan: planFor(stepIdentity, "success"),
+  };
+  const completion = await createSyntheticCompletion(options)(completionArgs());
+  const call = completion.completion.choices[0]!.message.tool_calls![0]!;
+  await setEmergencyStop({
+    enabled: true,
+    reason: "Stop before fixture",
+    updatedBy: "test",
+  });
+  try {
+    await assert.rejects(
+      createSyntheticToolExecutor(options)(
+        fixture.context,
+        call.function.name,
+        call.function.arguments,
+      ),
+    );
+    const receipts = await db
+      .select()
+      .from(operationReceiptsTable)
+      .where(eq(operationReceiptsTable.taskId, fixture.task.id));
+    assert.equal(receipts.length, 0);
+  } finally {
+    await setEmergencyStop({ enabled: false, reason: null, updatedBy: "test" });
+  }
+});
+
+test("database-only effect statement failure rolls back its receipt instead of returning a phantom unknown outcome", async () => {
+  const fixture = await createDurableTaskFixture();
+  await assert.rejects(
+    db.transaction((tx) =>
+      runDurableExternalEffect(
+        fixture.context,
+        {
+          toolName: SYNTHETIC_FIXTURE_TOOL_NAME,
+          normalizedArgs: {
+            schemaVersion: 1,
+            runId: RUN_ID,
+            operationKey: `synthetic:v1:${"a".repeat(64)}`,
+            valueHash: `sha256:${"b".repeat(64)}`,
+          },
+          execute: async ({ startEffect }) => {
+            await startEffect();
+            await tx.execute(sql`SELECT 1 / 0`);
+            throw new Error("The failing SQL statement must not return");
+          },
+          onError: async () => ({
+            content: "Database effect failed",
+            createdTasks: [],
+            createdAgents: [],
+            toolOutcome: "rejected",
+          }),
+        },
+        { executor: tx },
+      ),
+    ),
+    (error: unknown) =>
+      (error as { cause?: { code?: string } }).cause?.code === "22012",
+  );
+  const receipts = await db
+    .select()
+    .from(operationReceiptsTable)
+    .where(eq(operationReceiptsTable.taskId, fixture.task.id));
+  assert.equal(receipts.length, 0);
+  const [task] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, fixture.task.id));
+  assert.equal(task.status, "in_progress");
+  assert.equal(task.blockedReason, null);
+});
+
+test("database-only effects reject cross-connection boundary hooks before taking receipt locks", async () => {
+  const fixture = await createDurableTaskFixture();
+  let boundaryCalls = 0;
+  await assert.rejects(
+    db.transaction((tx) =>
+      runDurableExternalEffect(
+        {
+          ...fixture.context,
+          beforeOperationEffectBoundary: async () => {
+            boundaryCalls++;
+          },
+        },
+        {
+          toolName: SYNTHETIC_FIXTURE_TOOL_NAME,
+          normalizedArgs: {},
+          execute: async ({ startEffect }) => {
+            await startEffect();
+            return {
+              result: {
+                content: "Unexpected",
+                createdTasks: [],
+                createdAgents: [],
+                toolOutcome: "succeeded",
+              },
+            };
+          },
+          onError: async () => ({
+            content: "Unexpected",
+            createdTasks: [],
+            createdAgents: [],
+            toolOutcome: "rejected",
+          }),
+        },
+        { executor: tx },
+      ),
+    ),
+    /boundary hook/,
+  );
+  assert.equal(boundaryCalls, 0);
+  const receipts = await db
+    .select()
+    .from(operationReceiptsTable)
+    .where(eq(operationReceiptsTable.taskId, fixture.task.id));
+  assert.equal(receipts.length, 0);
 });
 
 test("unknown synthetic outcome blocks once and is never retried", async () => {
