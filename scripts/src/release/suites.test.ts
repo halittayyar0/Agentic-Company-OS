@@ -19,7 +19,7 @@ test("suite proof covers all four source and three UI stages from original bound
   assert.ok(
     result.stages.every((stage) => /^[a-f0-9]{64}$/u.test(stage.logSha256)),
   );
-  assert.equal(result.producers.length, 14);
+  assert.equal(result.producers.length, 15);
 });
 for (const [name, mutate] of [
   [

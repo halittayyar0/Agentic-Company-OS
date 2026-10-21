@@ -27,6 +27,7 @@ export function fixture(phase: "pr" | "main" = "pr") {
     "Packaged Codex container permission and lifetime proof",
     "Linux owned PID namespace lifetime",
     "Coding helper known-live privacy and namespace regression",
+    "Native installation Windows",
   ];
   const stepNames = [
     "Test",

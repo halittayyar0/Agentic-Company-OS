@@ -268,30 +268,52 @@ export async function verifyRequiredProducers(
       }
       await capture(job, workflow, definition.checkout);
     }
-    const mac = workflows.get(".github/workflows/platforms.yml")!;
-    for (const name of [
-      "Native source tests macOS Apple Silicon",
-      "Native source tests macOS Intel",
-      "Native installation and UI macOS Apple Silicon",
-      "Native installation and UI macOS Intel",
-    ]) {
-      const matches = mac.jobs.filter((job) => job.name === name);
-      assert.equal(
-        matches.length,
-        1,
-        `Missing or ambiguous original job: ${name}`,
-      );
-      assert.ok(
-        Number.isSafeInteger(matches[0]!.id) && Number(matches[0]!.id) > 0,
-      );
-      const job = record(await api(`actions/jobs/${matches[0]!.id}`));
-      assert.equal(job.id, matches[0]!.id);
-      verifyOriginalJob(job, name, mac.id, sha);
-      await capture(
-        job,
+    for (const [workflow, names] of [
+      [".github/workflows/ci.yml", ["Native installation Windows"]],
+      [
         ".github/workflows/platforms.yml",
-        "Check out repository",
-      );
+        [
+          "Native source tests macOS Apple Silicon",
+          "Native source tests macOS Intel",
+          "Native installation and UI macOS Apple Silicon",
+          "Native installation and UI macOS Intel",
+        ],
+      ],
+    ] as const) {
+      const original = workflows.get(workflow)!;
+      for (const name of names) {
+        const matches = original.jobs.filter((job) => job.name === name);
+        assert.equal(
+          matches.length,
+          1,
+          `Missing or ambiguous original job: ${name}`,
+        );
+        assert.ok(
+          Number.isSafeInteger(matches[0]!.id) && Number(matches[0]!.id) > 0,
+        );
+        const job = record(await api(`actions/jobs/${matches[0]!.id}`));
+        assert.equal(job.id, matches[0]!.id);
+        verifyOriginalJob(job, name, original.id, sha);
+        if (name === "Native installation Windows") {
+          for (const required of [
+            "Prove native installation resume and binary backup restoration",
+            "Prove seven-language first-job connection through real API and workers",
+            "Prove seven-language reusable work through real API and workers",
+          ]) {
+            const steps = (job.steps as unknown[])
+              .map(record)
+              .filter((step) => step.name === required);
+            assert.equal(
+              steps.length,
+              1,
+              `Missing or duplicate Windows installation step: ${required}`,
+            );
+            assert.equal(steps[0]!.status, "completed");
+            assert.equal(steps[0]!.conclusion, "success");
+          }
+        }
+        await capture(job, workflow, "Check out repository");
+      }
     }
   }
   return proof;
