@@ -242,6 +242,10 @@ jobs:
           pnpm exec playwright test --config playwright.config.ts tests/ui/text-resize.spec.ts --grep 'default text 200% ru light phone' --workers 1
 
       - name: Test
+        env:
+          # Use the same test-child-only workaround as Windows and macOS.
+          # Node 24 can abort reclaiming WASM wrappers: nodejs/node#66366.
+          TEST_DISABLE_WASM_CODE_GC: "1"
         run: pnpm test
 
       - name: Verify generated API artifacts
