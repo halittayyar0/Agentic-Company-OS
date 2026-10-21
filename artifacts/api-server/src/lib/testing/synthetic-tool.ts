@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type OpenAI from "openai";
+import { db } from "@workspace/db";
 import {
   runDurableExternalEffect,
   type ToolExecutionResult,
@@ -159,44 +160,53 @@ export function createSyntheticToolExecutor(
     const valueHash = `sha256:${createHash("sha256")
       .update(parsed.value, "utf8")
       .digest("hex")}`;
-    const effectResult = await runDurableExternalEffect(context, {
-      toolName: SYNTHETIC_FIXTURE_TOOL_NAME,
-      normalizedArgs: {
-        schemaVersion: 1,
-        runId: options.runId,
-        operationKey: parsed.operationKey,
-        valueHash,
-      },
-      execute: async ({ startEffect }) => {
-        await startEffect();
-        if (fault.outcome === "unknown_outcome") {
-          return {
-            result: result(
-              "Sentetik fixture etkisi başladı ancak sonucu doğrulanamadı.",
-              "unknown",
-            ),
-          };
-        }
-        return {
-          result: result(
-            "Sentetik fixture kalıcı olarak kaydedildi.",
-            "succeeded",
-          ),
-          resultData: {
+    // This fixture has no external I/O: its effect is the durable receipt.
+    // Publish running and completion atomically under the existing canonical
+    // locks, so a safety stop cannot interrupt an otherwise nonexistent effect.
+    const effectResult = await db.transaction((tx) =>
+      runDurableExternalEffect(
+        context,
+        {
+          toolName: SYNTHETIC_FIXTURE_TOOL_NAME,
+          normalizedArgs: {
             schemaVersion: 1,
             runId: options.runId,
             operationKey: parsed.operationKey,
             valueHash,
-            ok: true,
           },
-        };
-      },
-      onError: async () =>
-        result(
-          "Sentetik fixture kalıcı biçimde tamamlanamadı; ham hata saklanmadı.",
-          "rejected",
-        ),
-    });
+          execute: async ({ startEffect }) => {
+            await startEffect();
+            if (fault.outcome === "unknown_outcome") {
+              return {
+                result: result(
+                  "Sentetik fixture etkisi başladı ancak sonucu doğrulanamadı.",
+                  "unknown",
+                ),
+              };
+            }
+            return {
+              result: result(
+                "Sentetik fixture kalıcı olarak kaydedildi.",
+                "succeeded",
+              ),
+              resultData: {
+                schemaVersion: 1,
+                runId: options.runId,
+                operationKey: parsed.operationKey,
+                valueHash,
+                ok: true,
+              },
+            };
+          },
+          onError: async () =>
+            result(
+              "Sentetik fixture kalıcı biçimde tamamlanamadı; ham hata saklanmadı.",
+              "rejected",
+            ),
+        },
+        { executor: tx },
+      ),
+    );
     if (effectResult.toolOutcome !== "succeeded" || !options.taskLifecycle) {
       return effectResult;
     }
