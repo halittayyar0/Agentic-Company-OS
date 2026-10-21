@@ -1,0 +1,49 @@
+name: Owned Ollama cold startup diagnosis
+
+on:
+  push:
+    branches: [codex/ollama-cold-start-diagnosis-20261021]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Observe unchanged Mac ARM startup once
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - name: Check out diagnostic branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Sample original isolated cold startup
+        env:
+          ACOS_DIAGNOSTIC_SOURCE_SHA256: f1b4a4dc4537592959300d98c4352038b4e36a26664faa00bfe1d86b00191c6f
+        run: |
+          curl --fail --location --retry 2 --max-time 600 \
+            --output "$RUNNER_TEMP/ollama-v0.18.0-darwin.tgz" \
+            https://github.com/ollama/ollama/releases/download/v0.18.0/ollama-darwin.tgz
+          node scripts/diagnose-ollama-cold-start.mjs \
+            "$RUNNER_TEMP/ollama-v0.18.0-darwin.tgz" \
+            "$RUNNER_TEMP/owned-ollama-diagnosis"
+      - name: Preserve bounded diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: owned-ollama-cold-start-diagnosis
+          path: ${{ runner.temp }}/owned-ollama-diagnosis
+          if-no-files-found: error
+          retention-days: 7
