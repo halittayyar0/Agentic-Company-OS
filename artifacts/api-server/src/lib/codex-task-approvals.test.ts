@@ -6,6 +6,7 @@ import path from "node:path";
 import test, { type TestContext } from "node:test";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import { setTimeout as delay } from "node:timers/promises";
 import express from "express";
 import { and, eq } from "drizzle-orm";
 import {
@@ -44,6 +45,10 @@ import type { ToolRuntimeContext } from "./orchestrator/execute-tool";
 
 import { fixture, nativeFixturePorts } from "./testing/codex-task-fixture";
 
+// These positive integration cases include real database, HTTP and peer I/O.
+// Expiration behavior is checked separately with explicit short deadlines.
+const nativeApprovalTurnBudgetMs = 30_000;
+
 for (const mode of ["completed", "lost_after_consumption"])
   test(`actual driver and API decision preserve ${mode} ownership, item metadata and checkpoint ordering`, async (t) => {
     const f = await fixture(t);
@@ -53,13 +58,13 @@ for (const mode of ["completed", "lost_after_consumption"])
         binding: f.authority.binding,
         prompt: "Complete the owned fixture",
         requestTimeoutMs: 2000,
-        turnTimeoutMs: 10000,
+        turnTimeoutMs: nativeApprovalTurnBudgetMs,
         fenceIntervalMs: 100,
       },
       nativeFixturePorts(t, f, mode),
     );
     void running.catch(() => {});
-    const approval = await f.pending();
+    const approval = await f.pending(running);
     assert.equal(
       (
         await f.decide(approval.id, {
@@ -100,6 +105,63 @@ for (const mode of ["completed", "lost_after_consumption"])
     }
   });
 
+test("a delayed durable approval retains exact ownership and checkpoints only its completed item", async (t) => {
+  const f = await fixture(t);
+  const ports = nativeFixturePorts(t, f, "completed");
+  let acknowledgeConsumption!: () => void;
+  const consumed = new Promise<void>((resolve) => {
+    acknowledgeConsumption = resolve;
+  });
+  const running = runCodexTaskInSession(
+    f.session,
+    {
+      binding: f.authority.binding,
+      prompt: "Complete the owned fixture",
+      requestTimeoutMs: 2000,
+      turnTimeoutMs: nativeApprovalTurnBudgetMs,
+      fenceIntervalMs: 100,
+    },
+    {
+      ...ports,
+      approve: async (request, binding, signal) => {
+        const decision = await ports.approve!(request, binding, signal);
+        acknowledgeConsumption();
+        await delay(11_000, undefined, { signal });
+        return decision;
+      },
+    },
+  );
+  void running.catch(() => {});
+  const approval = await f.pending(running);
+  assert.equal(
+    (
+      await f.decide(approval.id, {
+        decision: "approved",
+        expectedArgsHash: approval.scope?.argsHash,
+        locale: "en",
+      })
+    ).status,
+    200,
+  );
+  await Promise.race([consumed, running]);
+  assert.equal((await f.row()).state, "consumed");
+  const result = await running;
+  assert.equal(result.actionReceipts.length, 1);
+  assert.deepEqual(result.usage, {
+    promptTokens: 5,
+    completionTokens: 3,
+    totalTokens: 8,
+  });
+  assert.equal((await f.row()).state, "receipted");
+  assert.deepEqual(await f.authority.readBinding(), f.authority.binding);
+  const [session] = await db
+    .select()
+    .from(codexTaskSessionsTable)
+    .where(eq(codexTaskSessionsTable.taskId, f.task.id));
+  assert.equal(session.state, "ready");
+  assert.equal(session.threadId, "fixture_thread");
+});
+
 test("a native withdrawal closes an unconsumed review and preserves a separately completed turn", async (t) => {
   const f = await fixture(t);
   let control: CodexTurnControl | undefined;
@@ -109,7 +171,7 @@ test("a native withdrawal closes an unconsumed review and preserves a separately
       binding: f.authority.binding,
       prompt: "Complete the fixture",
       requestTimeoutMs: 2000,
-      turnTimeoutMs: 10000,
+      turnTimeoutMs: nativeApprovalTurnBudgetMs,
       fenceIntervalMs: 100,
       onControl: (value) => {
         control = value;
@@ -118,7 +180,7 @@ test("a native withdrawal closes an unconsumed review and preserves a separately
     nativeFixturePorts(t, f, "withdraw"),
   );
   void running.catch(() => {});
-  await f.pending();
+  await f.pending(running);
   assert.ok(control);
   await control.steer("Finish without this command");
   const result = await running;
