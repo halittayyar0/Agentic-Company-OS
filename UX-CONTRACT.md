@@ -290,6 +290,11 @@ recovery, route, vendor and total caps remain fixed.
 
 ## Terminal and Browser request recovery
 
+On a new project's initial model check, keep Start disabled until the check
+settles and its notice finishes changing layout. A background refresh with an
+already usable model must not block Start. Keep the draft and existing explicit
+connection recovery when checking fails; never submit or retry automatically.
+
 Before a user action, save a versioned UUID with verified local readback and send that UUID to server admission. An accepted identity never dispatches again. Exact authenticated receipt reads, reloads and local review never resend the original action. Automatic exact-lease cleanup on leaving the browser remains a separate bounded lifecycle operation.
 
 Treat completion and output availability separately. Missing records are inconclusive; lost keys do not turn a completed command into an invitation to repeat it. Browser historical receipts cannot restore private control authority or pixels. Legacy IDs remain explicitly local-only. Preserve original source text and newer drafts, and correlate late responses with the complete original intent, not just the UUID. A changed local record blocks review/clearing.

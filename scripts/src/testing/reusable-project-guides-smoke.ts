@@ -186,9 +186,24 @@ try {
             await page
               .getByRole("button", { name: fresh.start, exact: true })
               .click();
-            await expect(page).toHaveURL(/\/projects\/\d+$/u, {
-              timeout: 15_000,
-            });
+            try {
+              await expect(page).toHaveURL(/\/projects\/\d+$/u, {
+                timeout: 15_000,
+              });
+            } catch (error) {
+              console.error(
+                JSON.stringify({
+                  failure: "reusable-project-start-navigation",
+                  locale,
+                  taskCreationWrites: taskWrites.length - beforeWrites,
+                  controlledCalls: calls().length - callIndex,
+                  pageErrors: pageErrors.length,
+                  stillOnComposer:
+                    new URL(page.url()).pathname === "/projects/new",
+                }),
+              );
+              throw error;
+            }
             assert.equal(taskWrites.length, beforeWrites + 1);
             const submitted = taskWrites.at(-1)!;
             assert.deepEqual(Object.keys(submitted).sort(), [

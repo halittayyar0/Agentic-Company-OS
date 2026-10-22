@@ -11,8 +11,10 @@ import { modelConnectionReady } from "@/lib/connection-copy";
 
 export default function ProviderSetupNotice({
   onReady,
+  onCheckingChange,
 }: {
   onReady: () => void;
+  onCheckingChange?: (checking: boolean) => void;
 }) {
   const { t } = useLocale();
   const [retrying, setRetrying] = useState(false);
@@ -37,6 +39,9 @@ export default function ProviderSetupNotice({
         (provider) => provider.id === model.provider && provider.available,
       ),
   );
+  useLayoutEffect(() => {
+    onCheckingChange?.(checking && !hasUsableModel);
+  }, [checking, hasUsableModel, onCheckingChange]);
   useLayoutEffect(() => {
     if (retrying || !restoreFocus.current) return;
     restoreFocus.current = false;

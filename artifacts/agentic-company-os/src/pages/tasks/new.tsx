@@ -167,6 +167,7 @@ function NewTaskForm({
 
   const [preparationBlocked, setPreparationBlocked] = useState(true);
   const [requirementsBlocked, setRequirementsBlocked] = useState(true);
+  const [providerChecking, setProviderChecking] = useState(true);
   const draft = useComposerDraft<Extract<ComposerDraft, { kind: "project" }>>({
     version: 1,
     kind: "project",
@@ -203,6 +204,7 @@ function NewTaskForm({
       taskStartBlocked ||
       preparationBlocked ||
       requirementsBlocked ||
+      providerChecking ||
       !startState.ready ||
       startState.busy ||
       startState.pending
@@ -284,6 +286,7 @@ function NewTaskForm({
       <div className="mx-auto max-w-3xl">
         <Suspense fallback={null}>
           <ProviderSetupNotice
+            onCheckingChange={setProviderChecking}
             onReady={() =>
               (title.trim() ? briefRef : titleRef).current?.focus()
             }
@@ -462,6 +465,7 @@ function NewTaskForm({
                 disabled={
                   preparationBlocked ||
                   requirementsBlocked ||
+                  providerChecking ||
                   !startState.ready ||
                   !!startState.busy ||
                   startState.pending ||
