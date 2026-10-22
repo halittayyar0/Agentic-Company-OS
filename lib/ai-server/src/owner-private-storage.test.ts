@@ -3,6 +3,7 @@ import {
   chmod,
   mkdtemp,
   readFile,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -30,6 +31,46 @@ test("private storage protects secrets before atomic writes and survives reopeni
     assert.equal(await reopened.read("missing.json"), null);
     await assert.rejects(storage.write("../escape", "secret"));
     await assert.rejects(storage.write("record.json:stream", "secret"));
+  } finally {
+    await rm(parent, { recursive: true, force: true });
+  }
+});
+
+test("a failed first protection attempt leaves no empty vault blocking explicit retry", async () => {
+  const parent = await mkdtemp(path.join(tmpdir(), "acos-private-retry-"));
+  const directory = path.join(parent, "vault");
+  const previousRoot = process.env.SystemRoot;
+  const previousMask = process.umask();
+  try {
+    try {
+      if (process.platform === "win32")
+        process.env.SystemRoot = path.join(parent, "missing-system");
+      else process.umask(0o777);
+      await assert.rejects(
+        new OwnerPrivateStorage(directory).initialize(true),
+        (error: unknown) => {
+          assert.ok(error instanceof Error);
+          assert.equal(error.message, "private_storage_protection_invalid");
+          if (process.platform === "win32") {
+            assert.ok(error.cause instanceof Error);
+            assert.equal(
+              error.cause.message,
+              "windows_private_storage_spawn_failed",
+            );
+          }
+          return true;
+        },
+      );
+      await assert.rejects(realpath(directory), { code: "ENOENT" });
+    } finally {
+      process.umask(previousMask);
+      if (previousRoot === undefined) delete process.env.SystemRoot;
+      else process.env.SystemRoot = previousRoot;
+    }
+    const retried = new OwnerPrivateStorage(directory);
+    await retried.initialize(true);
+    await retried.write("record.json", "explicit retry");
+    assert.equal(await retried.read("record.json"), "explicit retry");
   } finally {
     await rm(parent, { recursive: true, force: true });
   }
@@ -245,6 +286,7 @@ test("private storage fails closed after protection is weakened", async () => {
     } else {
       await chmod(storage.directory, 0o755);
     }
+    await assert.rejects(storage.initialize(), /private_storage/);
     await assert.rejects(
       storage.write("record.json", "replacement-secret"),
       /private_storage/,

@@ -146,6 +146,7 @@ jobs:
           name: native-macos-${{ matrix.platform }}-installation-evidence
           path: |
             ${{ runner.temp }}/acos-native-install-proof-*/evidence.json
+            ${{ runner.temp }}/acos-native-install-proof-*/native-installation-failure.json
             ${{ runner.temp }}/acos-native-install-proof-*/guided-local-runtime-evidence.json
             ${{ runner.temp }}/acos-native-install-proof-*/guided-local-runtime-failure.json
             ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-evidence.json

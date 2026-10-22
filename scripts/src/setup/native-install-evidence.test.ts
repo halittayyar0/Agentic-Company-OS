@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readdir, realpath, rm } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  realpath,
+  rm,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -72,8 +79,35 @@ test("native installation proof uses the runner artifact root and retains the lo
       );
       assert.match(directories[0], /^acos-native-install-proof-/u);
       assert.deepEqual(
-        await readdir(path.join(collectedRoot, directories[0])),
-        ["password"],
+        (await readdir(path.join(collectedRoot, directories[0]))).sort(),
+        ["native-installation-failure.json", "password"],
+      );
+      const failureText = await readFile(
+        path.join(
+          collectedRoot,
+          directories[0],
+          "native-installation-failure.json",
+        ),
+        "utf8",
+      );
+      assert.deepEqual(JSON.parse(failureText), {
+        schemaVersion: 1,
+        passed: false,
+        platform: process.platform,
+        architecture: process.arch,
+        stage: "initialize_database",
+        errorCode: "native_installation_proof_failed",
+        protectionReason: null,
+      });
+      assert.equal(failureText.includes(collectedRoot), false);
+      assert.equal(
+        failureText.includes(
+          await readFile(
+            path.join(collectedRoot, directories[0], "password"),
+            "utf8",
+          ),
+        ),
+        false,
       );
       assert.deepEqual(
         (await readdir(onRunner ? hostTemp : runnerTemp)).filter((name) =>
