@@ -21,6 +21,7 @@ import {
   type EnduranceReport,
 } from "./report-schema";
 import { SoakEvidenceObserver } from "./soak-observer";
+import { waitUntilWallClockDeadline } from "./wall-clock-deadline";
 import { normalizeResponsibilityGapSnapshot } from "./responsibility-diagnostics";
 import {
   validateEnduranceSpendProvenance,
@@ -215,7 +216,10 @@ export async function runWallClockSoak(
   const waitUntilOffset =
     dependencies.waitUntilOffset ??
     ((offsetMs: number, signal: AbortSignal) =>
-      delay(Math.max(0, offsetMs - (Date.now() - realOrigin)), signal));
+      waitUntilWallClockDeadline(realOrigin + offsetMs, signal, {
+        now: Date.now,
+        wait: delay,
+      }));
   const browserSleep =
     dependencies.browserSleep ??
     ((milliseconds: number, signal?: AbortSignal) =>
