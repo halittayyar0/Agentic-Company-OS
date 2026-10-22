@@ -515,7 +515,10 @@
   }
   async function api(path, data) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(
+      () => controller.abort(),
+      path === "upgrade/review" ? 90000 : 15000,
+    );
     try {
       const response = await fetch(`/api/${path}`, {
         method: data ? "POST" : "GET",

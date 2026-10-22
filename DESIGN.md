@@ -246,6 +246,12 @@ server. Its native form controls and language popup are a deliberate platform-ow
 variant; their operating-system popup geometry is accepted. The main application
 continues to use its existing authored React/Radix primitives.
 
+Upgrade review may verify both packages before offering an update, so only that
+read-only request has a bounded 90-second deadline. Other installer requests keep
+their 15-second deadline. A review timeout uses the existing localized connection
+recovery message and retry action; it never reports a missing workspace or starts
+an update. Package integrity checks and explicit update confirmation still apply.
+
 The installer CSS maps canvas, surface, text and accent to the canonical
 `canvas-*`, `paper-*`, `ink-*` and `primary*` colors above. Panels use the 1rem
 radius. System sans replaces bundled IBM Plex before installation; body text is
