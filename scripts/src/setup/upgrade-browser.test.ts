@@ -83,7 +83,15 @@ test("native upgrade review waits for verified packages within its own bound whi
       }
       await page.goto(session.url);
       await started;
+      const localeResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/locale" &&
+          response.request().method() === "POST",
+      );
       await page.locator("#language").selectOption("en");
+      const savedLocale = await localeResponse;
+      assert.equal(savedLocale.status(), 200);
+      assert.equal(await savedLocale.finished(), null);
       // Advance the actual browser's request timer; the real authenticated
       // session is still waiting for its read-only verification to finish.
       await page.clock.fastForward(
