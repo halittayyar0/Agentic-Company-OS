@@ -149,6 +149,12 @@ const copy: ProjectStudioCopy = {
   unknownModel: "未记录模型",
   deliveryHelp: "这是代理保存的交付摘要。可在“{tab}”标签页查看验证记录。",
   reviewDelivery: "查看证据",
+  downloadDelivery: "下载摘要 (.txt)",
+  deliveryDownloadError: "无法生成文件。摘要仍保留在此页面，请重试下载。",
+  deliveryExportProject: "项目 {id}：{title}",
+  deliveryExportStatus: "当前状态：{status}",
+  deliveryExportNotice:
+    "这是智能体保存的摘要。下载此文件并不代表工作已通过验证。",
   cycleDeliveryNote: "这是最近保存的交付结果。定期任务的当前状态显示在上方。",
   deliverySummary: "交付摘要",
   noDelivery: "尚未记录交付摘要。保存后会显示在此处。",

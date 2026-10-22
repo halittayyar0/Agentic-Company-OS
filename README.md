@@ -80,6 +80,8 @@ keeps the original request and instructions. [Recover a project start →](./doc
 
 The saved **Delivery summary** appears directly above the project workspace. Open **Review evidence** to inspect recorded activity and checks. The summary is the agent's report; it is not independent proof that every claim is correct. For recurring work, it shows the latest saved delivery, while the current responsibility status stays visible above it. Converting a finished one-off job to recurring work retains its previous delivery until a new one is saved.
 
+Use **Download summary (.txt)** to keep a saved delivery as a local text file, with the project's current status and the agent's report. The download uses no model tokens. [Saving a delivery summary →](./docs/delivery-summary.md)
+
 ## Find your way around
 
 | Place                          | What you use it for                                                            |

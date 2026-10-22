@@ -9,6 +9,7 @@ import {
   meetingText,
 } from "../../artifacts/agentic-company-os/src/lib/meeting-copy";
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import { LOCALES } from "../../artifacts/agentic-company-os/src/lib/i18n";
 import { loadExpertChatCopy } from "../../artifacts/agentic-company-os/src/lib/expert-chat-copy";
 import { loadComputerCopy } from "../../artifacts/agentic-company-os/src/lib/computer-copy";
@@ -779,7 +780,9 @@ for (const locale of LOCALES) {
     await expect(
       page.getByRole("tab", { name: c.workspace, exact: true }),
     ).toHaveAttribute("aria-selected", "true");
-    await delivery.getByRole("button").click();
+    await delivery
+      .getByRole("button", { name: c.reviewDelivery, exact: true })
+      .click();
     await expect(page).toHaveURL(/keep=original&view=evidence#handoff$/u);
     await expect(
       page.getByRole("tab", { name: c.evidence, exact: true }),
@@ -802,6 +805,159 @@ for (const locale of LOCALES) {
   });
 }
 
+for (const locale of LOCALES) {
+  test(`${locale} saved delivery downloads the visible report locally without starting work`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.addInitScript(
+      ({ value, mode }) => {
+        localStorage.setItem("acos.locale.v1", value);
+        localStorage.setItem("acos.color-mode.v2", mode);
+      },
+      { value: locale, mode: locale === "ar" ? "light" : "dark" },
+    );
+    const harness = await installProjectStudioMocks(page);
+    const c = await loadProjectStudioCopy(locale);
+    const summary =
+      "## Report Ω العربية 繁體\n\nThree supplied notes reviewed.\n\n[Source](https://example.com/report)";
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, {
+        ...project,
+        title: "Report / café Ω العربية 繁體",
+        brief: "PRIVATE-BRIEF-NOT-PART-OF-THE-DELIVERY",
+        status: "completed",
+        resultSummary: summary,
+      }),
+    );
+    await page.goto("/projects/101");
+    const delivery = page.locator("#project-delivery-summary");
+    const save = delivery.getByRole("button", {
+      name: c.downloadDelivery,
+      exact: true,
+    });
+    if (locale === "en")
+      await page.addStyleTag({
+        content: "html { font-size: 200% !important; }",
+      });
+    await expect(save).toBeVisible();
+    const writes: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() === "POST") writes.push(request.url());
+    });
+    const waiting = page.waitForEvent("download");
+    await save.focus();
+    await page.keyboard.press("Enter");
+    const download = await waiting;
+    expect(download.suggestedFilename()).toBe("project-101-summary.txt");
+    const file = await download.path();
+    expect(file).not.toBeNull();
+    const contents = await readFile(file!, "utf8");
+    expect(contents).toContain(summary);
+    expect(contents).toContain("Report / café Ω العربية 繁體");
+    expect(contents).toContain(c.deliveryExportNotice);
+    expect(contents).not.toMatch(/\{(?:id|title|status)\}/u);
+    expect(contents).not.toContain("PRIVATE-BRIEF-NOT-PART-OF-THE-DELIVERY");
+    expect(writes).toEqual([]);
+    expect(harness.messagePosts).toEqual([]);
+    expect(harness.meetingCreatePosts).toEqual([]);
+    expect([...harness.unexpected]).toEqual([]);
+    await expect(save).toBeFocused();
+    expect(
+      await save.evaluate((element) => element.getBoundingClientRect().height),
+    ).toBeGreaterThanOrEqual(44);
+    expect(
+      await delivery.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+    ).toBe(true);
+    if (locale === "en" || locale === "ar")
+      await delivery.screenshot({
+        path: info.outputPath(`delivery-download-${locale}-phone.png`),
+      });
+  });
+}
+
+for (const failure of ["object-url", "click"] as const) {
+  test(`delivery download ${failure} failure preserves the report and supports an explicit retry`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem("acos.locale.v1", "en"),
+    );
+    await installProjectStudioMocks(page);
+    const c = await loadProjectStudioCopy("en");
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, {
+        ...project,
+        status: "completed",
+        resultSummary: "Saved report remains available.",
+      }),
+    );
+    await page.goto("/projects/101");
+    const delivery = page.locator("#project-delivery-summary");
+    const save = delivery.getByRole("button", {
+      name: c.downloadDelivery,
+      exact: true,
+    });
+    await expect(save).toBeVisible();
+    await page.evaluate((failure) => {
+      const create = URL.createObjectURL.bind(URL),
+        revoke = URL.revokeObjectURL.bind(URL),
+        click = HTMLAnchorElement.prototype.click;
+      const revoked: string[] = [];
+      Reflect.set(window, "deliveryExportRevoked", revoked);
+      Reflect.set(window, "restoreDeliveryExport", () => {
+        URL.createObjectURL = create;
+        URL.revokeObjectURL = revoke;
+        HTMLAnchorElement.prototype.click = click;
+      });
+      URL.revokeObjectURL = (url) => {
+        revoked.push(url);
+        revoke(url);
+      };
+      if (failure === "object-url")
+        URL.createObjectURL = () => {
+          throw new Error("file_unavailable");
+        };
+      else
+        HTMLAnchorElement.prototype.click = function () {
+          if (this.download === "project-101-summary.txt")
+            throw new Error("download_unavailable");
+          click.call(this);
+        };
+    }, failure);
+    await save.click();
+    await expect(delivery.getByRole("alert")).toHaveText(
+      c.deliveryDownloadError,
+    );
+    await expect(delivery).toContainText("Saved report remains available.");
+    await expect(save).toBeFocused();
+    await expect(
+      page.locator("a[download='project-101-summary.txt']"),
+    ).toHaveCount(0);
+    if (failure === "click")
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => Reflect.get(window, "deliveryExportRevoked").length,
+          ),
+        )
+        .toBe(1);
+    await page.evaluate(() => Reflect.get(window, "restoreDeliveryExport")());
+    const waiting = page.waitForEvent("download");
+    await save.click();
+    expect((await waiting).suggestedFilename()).toBe("project-101-summary.txt");
+    await expect(delivery.getByRole("alert")).toHaveCount(0);
+    await delivery
+      .getByRole("button", { name: c.reviewDelivery, exact: true })
+      .click();
+    await expect(
+      page.getByRole("tab", { name: c.evidence, exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
+  });
+}
+
 test("completed work without a summary does not invent a delivery", async ({
   page,
 }) => {
@@ -815,6 +971,11 @@ test("completed work without a summary does not invent a delivery", async ({
   await expect(page.locator("#project-delivery-summary")).toContainText(
     c.noDelivery,
   );
+  await expect(
+    page
+      .locator("#project-delivery-summary")
+      .getByRole("button", { name: c.downloadDelivery, exact: true }),
+  ).toHaveCount(0);
 });
 
 test("recurring work identifies the saved delivery without claiming the responsibility is finished", async ({
@@ -840,6 +1001,15 @@ test("recurring work identifies the saved delivery without claiming the responsi
   await expect(delivery).toContainText(
     "Last cycle report: two source changes found.",
   );
+  const c = await loadProjectStudioCopy("en");
+  const waiting = page.waitForEvent("download");
+  await delivery
+    .getByRole("button", { name: c.downloadDelivery, exact: true })
+    .click();
+  const contents = await readFile((await (await waiting).path())!, "utf8");
+  expect(contents).toContain(c.cycleDeliveryNote);
+  expect(contents).toContain("Last cycle report: two source changes found.");
+  expect(contents).not.toContain("Current status: Completed");
 });
 
 for (const scenario of [

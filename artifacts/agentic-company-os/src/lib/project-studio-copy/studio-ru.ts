@@ -175,6 +175,13 @@ const copy: ProjectStudioCopy = {
   deliveryHelp:
     "Это итог работы, сохранённый агентом. Записи проверок доступны на вкладке «{tab}».",
   reviewDelivery: "Посмотреть доказательства",
+  downloadDelivery: "Скачать сводку (.txt)",
+  deliveryDownloadError:
+    "Не удалось подготовить файл. Сводка сохранена на странице. Попробуйте скачать её ещё раз.",
+  deliveryExportProject: "Проект {id}: {title}",
+  deliveryExportStatus: "Текущий статус: {status}",
+  deliveryExportNotice:
+    "Сводка сохранена агентом. Скачивание файла не подтверждает правильность работы.",
   cycleDeliveryNote:
     "Это последний сохранённый результат. Текущий статус регулярной задачи показан выше.",
   deliverySummary: "Итог работы",

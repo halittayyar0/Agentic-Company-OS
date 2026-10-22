@@ -180,6 +180,13 @@ const copy: ProjectStudioCopy = {
   deliveryHelp:
     "Dies ist die vom Agenten gespeicherte Ergebnisübersicht. Prüfnachweise findest du im Tab {tab}.",
   reviewDelivery: "Nachweise prüfen",
+  downloadDelivery: "Zusammenfassung herunterladen (.txt)",
+  deliveryDownloadError:
+    "Die Datei konnte nicht erstellt werden. Die Zusammenfassung bleibt hier erhalten. Versuche den Download erneut.",
+  deliveryExportProject: "Projekt {id}: {title}",
+  deliveryExportStatus: "Aktueller Status: {status}",
+  deliveryExportNotice:
+    "Vom Agenten gespeicherte Zusammenfassung. Dieser Download bestätigt nicht, dass die Arbeit korrekt ist.",
   cycleDeliveryNote:
     "Dies ist das zuletzt gespeicherte Ergebnis. Der aktuelle Status der wiederkehrenden Aufgabe steht oben.",
   deliverySummary: "Ergebnisübersicht",

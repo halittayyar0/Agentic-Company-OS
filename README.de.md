@@ -68,6 +68,8 @@ Bei wiederkehrender Arbeit gib sowohl das Zeitintervall als auch die Abschlussbe
 
 **Ein hilfreicher Auftrag enthält:** Eingabedaten, erwartetes Ergebnis, Prüfkriterien sowie Grenzen für Aktionen und Ausgaben.
 
+Mit **Zusammenfassung herunterladen (.txt)** speicherst du ein vorhandenes Ergebnis als lokale Textdatei. Sie enthält den aktuellen Projektstatus und den Bericht des Agenten. Der Download verbraucht keine Modell-Tokens. [Ergebnisübersicht speichern →](./docs/delivery-summary.md)
+
 ## Orientierung im Arbeitsbereich
 
 | Bereich                              | Wofür er da ist                                                                                 |
