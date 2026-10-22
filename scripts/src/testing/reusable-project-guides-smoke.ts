@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import { chromium, expect } from "@playwright/test";
 import { runNativeInstallSmoke } from "../setup/native-install-smoke";
 import { createControlledArithmeticPeer } from "./controlled-arithmetic-peer";
+import { expectNativePageValue } from "./native-page-readiness";
 
 // Real owned installation; the only simulated component is the model HTTP peer.
 if (process.env.ACOS_REUSABLE_GUIDES_SMOKE !== "1")
@@ -259,9 +260,10 @@ try {
             const panel = page.getByRole("region", {
               name: customization.extensions[0],
             });
-            await expect(
+            await expectNativePageValue(
               panel.getByLabel(customization.extensions[3], { exact: true }),
-            ).toHaveValue(title);
+              title,
+            );
             await expect(
               panel.getByLabel(customization.extensions[8], { exact: true }),
             ).toHaveValue(brief);
@@ -321,12 +323,13 @@ try {
               .getByRole("button", { name: reuse.prepareProject, exact: true });
             await prepare.click();
             await expect(page).toHaveURL(/\/projects\/new$/u);
-            await expect(
+            await expectNativePageValue(
               page.getByRole("textbox", {
                 name: fresh.projectName,
                 exact: true,
               }),
-            ).toHaveValue(title);
+              title,
+            );
             await expect(
               page.getByRole("textbox", { name: fresh.brief, exact: true }),
             ).toHaveValue(brief);

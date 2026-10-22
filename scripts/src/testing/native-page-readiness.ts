@@ -10,3 +10,13 @@ export async function waitForNativePageReady(control: Locator): Promise<void> {
     timeout: NATIVE_PAGE_READINESS_TIMEOUT_MS,
   });
 }
+
+// Prepared content can arrive in a lazy section after the URL has changed.
+// Separate section readiness from the exact-content check that follows it.
+export async function expectNativePageValue(
+  control: Locator,
+  value: string,
+): Promise<void> {
+  await waitForNativePageReady(control);
+  await expect(control).toHaveValue(value);
+}
