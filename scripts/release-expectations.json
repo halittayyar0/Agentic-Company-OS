@@ -46,7 +46,7 @@
       ]
     },
     "ui": {
-      "tests": 1381,
+      "tests": 1383,
       "workers": 2
     }
   },
@@ -192,13 +192,13 @@
   },
   "macos-arm-ui": {
     "ui": {
-      "tests": 29,
+      "tests": 31,
       "workers": 1
     }
   },
   "macos-intel-ui": {
     "ui": {
-      "tests": 29,
+      "tests": 31,
       "workers": 1
     }
   }
