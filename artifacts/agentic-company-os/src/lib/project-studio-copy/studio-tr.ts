@@ -172,13 +172,6 @@ const copy: ProjectStudioCopy = {
   deliveryHelp:
     "Bu, ajanın kaydettiği teslim özetidir. Doğrulama kayıtlarını {tab} sekmesinden inceleyebilirsin.",
   reviewDelivery: "Kanıtları incele",
-  downloadDelivery: "Özeti indir (.txt)",
-  deliveryDownloadError:
-    "Dosya hazırlanamadı. Özetin burada duruyor; indirmeyi yeniden dene.",
-  deliveryExportProject: "Proje {id}: {title}",
-  deliveryExportStatus: "Güncel durum: {status}",
-  deliveryExportNotice:
-    "Ajanın kaydettiği özet. Bu dosyayı indirmek çalışmayı doğrulamaz.",
   cycleDeliveryNote:
     "Bu, kaydedilmiş son teslimatı gösterir. Düzenli sorumluluğun güncel durumu yukarıda gösterilir.",
   deliverySummary: "Teslim özeti",

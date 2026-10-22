@@ -101,6 +101,20 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    modulePreload: {
+      resolveDependencies(_filename, dependencies, context) {
+        // The shell statically imports both vendors. Do not repeat their
+        // paths in every route's dynamic preload metadata. Keep initial HTML
+        // preloads and all other hosts unchanged; transfer budgets count both.
+        return context.hostType === "js" &&
+          /(?:^|\/)index-[^/]+\.js$/.test(context.hostId)
+          ? dependencies.filter(
+              (dependency) =>
+                !/(?:^|\/)vendor-(?:core|ui)-[^/]+\.js$/.test(dependency),
+            )
+          : dependencies;
+      },
+    },
     rollupOptions: {
       output: {
         // Repeated content-hash paths compress better with a smaller alphabet.
@@ -108,8 +122,36 @@ export default defineConfig({
         hashCharacters: "hex",
         manualChunks(id) {
           const moduleId = id.replaceAll("\\", "/");
+          // Preserve the entry's shared controls and locale provider in the
+          // shell when a feature view gets its own chunk.
+          if (
+            moduleId ===
+            path
+              .resolve(import.meta.dirname, "index.html")
+              .replaceAll("\\", "/")
+          )
+            return "index";
           if (moduleId.endsWith("/src/lib/completion-review-view.ts"))
             return "completion-review-view";
+          // Recovery controls also use the pure studio formatter. Sharing
+          // this tiny owner avoids importing the entire project view for it.
+          if (moduleId.endsWith("/src/lib/project-studio-copy.ts"))
+            return "project-studio-copy";
+          // Keep the existing shared language-file recovery owner separate.
+          if (
+            moduleId.endsWith("/src/components/i18n/language-pack-status.tsx")
+          )
+            return "language-pack-status";
+          // Only the new download implementation belongs to this feature.
+          // Existing report rendering and studio copy retain their budgets.
+          if (
+            moduleId.endsWith(
+              "/src/components/studio/project-delivery-download.tsx",
+            ) ||
+            moduleId.endsWith("/src/lib/project-delivery-export.ts") ||
+            moduleId.endsWith("/src/lib/delivery-download-copy.ts")
+          )
+            return "delivery-download";
           if (!moduleId.includes("/node_modules/")) return undefined;
           if (
             moduleId.includes("/recharts/") ||

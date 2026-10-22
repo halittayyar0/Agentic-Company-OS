@@ -1,3 +1,4 @@
+import { measureDeliveryDownloadBundle } from "./delivery-download-bundle-budget";
 import {
   measureOllamaPrivacyBundle,
   OLLAMA_PRIVACY_SOURCES,
@@ -367,6 +368,10 @@ const currentBundleManifest = JSON.parse(
     "utf8",
   ),
 );
+const deliveryDownload = measureDeliveryDownloadBundle(
+  currentBundleAssets,
+  currentBundleManifest,
+);
 const ollamaPrivacy = measureOllamaPrivacyBundle(
   currentBundleAssets,
   currentBundleManifest,
@@ -518,6 +523,7 @@ const emergencyLocaleAssets = languageLocales
   });
 const localeAssetNames = new Set(
   [
+    ...deliveryDownload.packs,
     ...completionConditions.packs,
     ...homeLocaleAssets,
     ...projectLocaleAssets,
@@ -574,6 +580,7 @@ const sharedCodeGzipBytes = sharedCodeAssets.reduce(
 );
 const totalCodeRawBytes =
   sharedCodeRawBytes +
+  Math.max(...deliveryDownload.packs.map((asset) => asset.contents.length)) +
   Math.max(
     ...completionConditions.packs.map((asset) => asset.contents.length),
   ) +
@@ -609,6 +616,11 @@ const totalCodeRawBytes =
   Math.max(...shellLocaleAssets.map((asset) => asset.rawBytes));
 const totalCodeGzipBytes =
   sharedCodeGzipBytes +
+  Math.max(
+    ...deliveryDownload.packs.map(
+      (asset) => gzipSync(asset.contents, { level: 9 }).length,
+    ),
+  ) +
   Math.max(
     ...completionConditions.packs.map(
       (asset) => gzipSync(asset.contents, { level: 9 }).length,
@@ -1077,6 +1089,7 @@ const budgetResumeGlobalGzipBytes =
   budgetResumeGzipBytes - Math.min(900, sharedResumeGzipBytes);
 if (
   totalCodeGzipBytes -
+    deliveryDownload.gzip -
     completionConditions.gzip -
     reusableWork.globalGzip -
     projectStartRecovery.globalGzip -
@@ -1099,12 +1112,13 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code after bounded feature accounting (${totalCodeGzipBytes - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
 if (
   totalCodeRawBytes -
+    deliveryDownload.raw -
     completionConditions.raw -
     reusableWork.globalRaw -
     projectStartRecovery.globalRaw -
@@ -1121,12 +1135,13 @@ if (
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `raw code after bounded feature accounting (${totalCodeRawBytes - completionConditions.raw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - deliveryDownload.raw - completionConditions.raw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
 if (
   totalCodeGzipBytes -
+    deliveryDownload.gzip -
     completionConditions.gzip -
     reusableWork.globalGzip -
     projectStartRecovery.globalGzip -
@@ -1143,7 +1158,7 @@ if (
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `gzip code after bounded feature accounting (${totalCodeGzipBytes - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -1335,4 +1350,8 @@ console.log(
 
 console.log(
   `Ollama privacy delta: ${ollamaPrivacy.raw} raw / ${ollamaPrivacy.gzip} gzip bytes (2 KB / 900 bytes cap); Settings share ${ollamaPrivacy.settingsRaw} raw / ${ollamaPrivacy.settingsGzip} gzip (600 / 200 cap), excluded from older first-task accounting. Existing base, total, asset, CSS and language ceilings retained.`,
+);
+
+console.log(
+  `Saved delivery download: ${deliveryDownload.raw} raw / ${deliveryDownload.gzip} gzip bytes (6 KB / 2.5 KB independent feature cap); seven new packs ${deliveryDownload.allLocaleRaw} raw / ${deliveryDownload.allLocaleGzip} gzip (6 KB / 3.5 KB disk cap). Only hash-bound exclusive new modules and one selected pack receive credit. Existing report, route, studio, vendor, media and total ceilings remain fixed.`,
 );

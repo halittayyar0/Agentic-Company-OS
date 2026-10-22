@@ -1,3 +1,4 @@
+import { loadDeliveryDownloadCopy } from "../../artifacts/agentic-company-os/src/lib/delivery-download-copy";
 import {
   inspectRoute,
   inspectReadableLabel,
@@ -13,7 +14,7 @@ import { readFile } from "node:fs/promises";
 import { LOCALES } from "../../artifacts/agentic-company-os/src/lib/i18n";
 import { loadExpertChatCopy } from "../../artifacts/agentic-company-os/src/lib/expert-chat-copy";
 import { loadComputerCopy } from "../../artifacts/agentic-company-os/src/lib/computer-copy";
-import { loadProjectStudioCopy } from "../../artifacts/agentic-company-os/src/lib/project-studio-copy";
+import { loadProjectStudioCopy as loadStudioCopy } from "../../artifacts/agentic-company-os/src/lib/project-studio-copy";
 import { loadResponseRetryRepairCopy } from "../../artifacts/agentic-company-os/src/lib/response-retry-repair-copy";
 import { loadMeetingTurnCopy } from "../../artifacts/agentic-company-os/src/lib/meeting-turn-copy";
 import { setupMessages } from "../../artifacts/agentic-company-os/src/lib/i18n";
@@ -804,6 +805,53 @@ for (const locale of LOCALES) {
       });
   });
 }
+
+test("delivery language failure keeps saved text and retries only the selected pack", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  const harness = await installProjectStudioMocks(page);
+  await page.route("**/api/tasks/101", (route) =>
+    json(route, {
+      ...project,
+      status: "completed",
+      resultSummary: "A saved report remains readable.",
+    }),
+  );
+  const requests: string[] = [];
+  let fail = true;
+  await page.route("**/delivery-copy-*.js", (route) => {
+    requests.push(route.request().url());
+    return fail ? route.abort("failed") : route.continue();
+  });
+  await page.goto("/projects/101");
+  const delivery = page.locator("#project-delivery-summary");
+  await expect(
+    delivery.getByText("A saved report remains readable."),
+  ).toBeVisible();
+  await expect(delivery.getByRole("alert")).toContainText(
+    setupMessages.en.languageFileError,
+  );
+  await expect(
+    delivery.getByRole("button", { name: "Review evidence", exact: true }),
+  ).toBeVisible();
+  fail = false;
+  await delivery
+    .getByRole("button", { name: "Check again", exact: true })
+    .click();
+  const save = delivery.getByRole("button", {
+    name: "Download summary (.txt)",
+    exact: true,
+  });
+  await expect(save).toBeVisible();
+  const waiting = page.waitForEvent("download");
+  await save.click();
+  expect((await waiting).suggestedFilename()).toBe("project-101-summary.txt");
+  expect(requests.length).toBeGreaterThanOrEqual(2);
+  expect(requests.every((url) => /delivery-copy-en-/.test(url))).toBe(true);
+  expect([...harness.unexpected]).toEqual([]);
+  expect(harness.messagePosts).toEqual([]);
+});
 
 for (const locale of LOCALES) {
   test(`${locale} saved delivery downloads the visible report locally without starting work`, async ({
@@ -4429,4 +4477,13 @@ for (const variant of routeAuditMatrix) {
     expect([...harness.unexpected]).toEqual([]);
     expect(errors).toEqual([]);
   });
+}
+
+async function loadProjectStudioCopy(
+  locale: Parameters<typeof loadStudioCopy>[0],
+) {
+  return {
+    ...(await loadStudioCopy(locale)),
+    ...(await loadDeliveryDownloadCopy(locale)),
+  };
 }

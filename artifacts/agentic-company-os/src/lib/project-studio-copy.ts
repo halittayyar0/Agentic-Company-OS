@@ -139,11 +139,6 @@ export type ProjectStudioCopy = {
   deliverySummary: string;
   deliveryHelp: string;
   reviewDelivery: string;
-  downloadDelivery: string;
-  deliveryDownloadError: string;
-  deliveryExportProject: string;
-  deliveryExportStatus: string;
-  deliveryExportNotice: string;
   cycleDeliveryNote: string;
   noDelivery: string;
 };

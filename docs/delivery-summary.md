@@ -24,3 +24,8 @@ If the browser cannot prepare the file, the report stays visible and an inline
 message offers another attempt. If no summary has been saved, the download
 action is unavailable. Cancelling a browser save prompt does not produce an
 application success claim.
+
+Only the selected download language is loaded. If its file cannot load, the
+saved report and evidence action remain available. The recovery action reloads
+the page; save any unfinished text on the page first. Reloading does not start
+a new task or regenerate the report.

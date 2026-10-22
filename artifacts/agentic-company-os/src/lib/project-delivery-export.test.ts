@@ -1,7 +1,8 @@
+import { loadDeliveryDownloadCopy } from "./delivery-download-copy";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { projectDeliveryExport } from "./project-delivery-export";
-import { loadProjectStudioCopy } from "./project-studio-copy";
+import { loadProjectStudioCopy as loadStudioCopy } from "./project-studio-copy";
 
 test("delivery files contain the visible report, not unrelated task data or a title-based path", async () => {
   const c = await loadProjectStudioCopy("en");
@@ -69,3 +70,12 @@ test("empty delivery and invalid task identities cannot produce a downloadable f
       null,
     );
 });
+
+async function loadProjectStudioCopy(
+  locale: Parameters<typeof loadStudioCopy>[0],
+) {
+  return {
+    ...(await loadStudioCopy(locale)),
+    ...(await loadDeliveryDownloadCopy(locale)),
+  };
+}

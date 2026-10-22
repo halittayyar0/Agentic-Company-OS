@@ -1,15 +1,17 @@
 import type { Task } from "@workspace/api-client-react";
-import { type ProjectStudioCopy, studioText } from "./project-studio-copy";
+import type { ProjectStudioCopy } from "./project-studio-copy";
+import type { DeliveryDownloadCopy } from "./delivery-download-copy";
 
 type Delivery = Pick<Task, "id" | "title" | "resultSummary" | "autonomyMode">;
 type ExportCopy = Pick<
   ProjectStudioCopy,
-  | "deliverySummary"
-  | "deliveryExportProject"
-  | "deliveryExportStatus"
-  | "deliveryExportNotice"
-  | "cycleDeliveryNote"
->;
+  "deliverySummary" | "cycleDeliveryNote"
+> &
+  DeliveryDownloadCopy;
+const studioText = (text: string, values: Record<string, string | number>) =>
+  text.replace(/\{(\w+)\}/g, (match, key: string) =>
+    String(values[key] ?? match),
+  );
 
 export function projectDeliveryExport(
   project: Delivery,

@@ -172,13 +172,6 @@ const copy: ProjectStudioCopy = {
   deliveryHelp:
     "This is the delivery summary saved by the agent. Review verification records in the {tab} tab.",
   reviewDelivery: "Review evidence",
-  downloadDelivery: "Download summary (.txt)",
-  deliveryDownloadError:
-    "The file could not be prepared. Your summary is still here; try downloading again.",
-  deliveryExportProject: "Project {id}: {title}",
-  deliveryExportStatus: "Current status: {status}",
-  deliveryExportNotice:
-    "Saved by the agent. Downloading this file does not verify the work.",
   cycleDeliveryNote:
     "This is the latest saved delivery. The current status of the recurring responsibility is shown above.",
   deliverySummary: "Delivery summary",

@@ -167,13 +167,6 @@ const copy: ProjectStudioCopy = {
   deliveryHelp:
     "هذا ملخص التسليم الذي حفظه الوكيل. راجع سجلات التحقق في تبويب «{tab}».",
   reviewDelivery: "راجع الأدلة",
-  downloadDelivery: "تنزيل الملخص (.txt)",
-  deliveryDownloadError:
-    "تعذّر إنشاء الملف. لا يزال الملخص محفوظًا هنا؛ حاول تنزيله مجددًا.",
-  deliveryExportProject: "المشروع {id}: {title}",
-  deliveryExportStatus: "الحالة الحالية: {status}",
-  deliveryExportNotice:
-    "هذا هو الملخص الذي حفظه الوكيل. تنزيل الملف لا يُعد تحققًا من العمل.",
   cycleDeliveryNote:
     "هذا أحدث تسليم محفوظ. تظهر الحالة الحالية للمهمة المتكررة أعلاه.",
   deliverySummary: "ملخص التسليم",

@@ -281,6 +281,13 @@ semantic colors and a minimum 44px hit area. Verify keyboard download, all seven
 UTF-8 files, light/dark and 200% text, recurring and empty states, preparation
 failure, retry and object-URL cleanup in `tests/ui/project-studio.spec.ts`.
 
+The download owner loads only the selected `delivery-copy` pack. Preserve the
+report and evidence action when that pack fails. Use the shared language-file
+status and its standard explicit page-reload recovery; never depend on the
+failed pack to explain recovery. Download implementation
+and copy have their own hash-bound exclusive bundle cap; existing studio,
+recovery, route, vendor and total caps remain fixed.
+
 ## Terminal and Browser request recovery
 
 Before a user action, save a versioned UUID with verified local readback and send that UUID to server admission. An accepted identity never dispatches again. Exact authenticated receipt reads, reloads and local review never resend the original action. Automatic exact-lease cleanup on leaving the browser remains a separate bounded lifecycle operation.
