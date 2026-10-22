@@ -3,6 +3,7 @@ import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/lib/markdown";
 import { type ProjectStudioCopy, studioText } from "@/lib/project-studio-copy";
+import { ProjectDeliveryDownload } from "./project-delivery-download";
 
 export function ProjectDeliverySummary({
   project,
@@ -15,7 +16,6 @@ export function ProjectDeliverySummary({
 }) {
   const summary = project.resultSummary?.trim();
   if (!summary && project.status !== "completed") return null;
-
   return (
     <section
       id="project-delivery-summary"
@@ -30,14 +30,19 @@ export function ProjectDeliverySummary({
           <FileText size={18} className="text-primary" aria-hidden />
           {c.deliverySummary}
         </h2>
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 max-w-full whitespace-normal"
-          onClick={onReview}
-        >
-          {c.reviewDelivery}
-        </Button>
+        <div className="flex max-w-full flex-wrap gap-2">
+          {summary ? (
+            <ProjectDeliveryDownload project={project} context={c} />
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            className="h-auto min-h-11 max-w-full gap-1 whitespace-normal px-2 py-2 [overflow-wrap:anywhere]"
+            onClick={onReview}
+          >
+            {c.reviewDelivery}
+          </Button>
+        </div>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         {studioText(c.deliveryHelp, { tab: c.evidence })}

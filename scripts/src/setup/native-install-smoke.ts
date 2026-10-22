@@ -79,6 +79,42 @@ export async function runNativeInstallSmoke(
   let started = false;
   let executor: ReturnType<typeof createInstallationExecutor> | undefined;
   const checks: string[] = [];
+  let stage = "initialize_database";
+  const preserveFailure = async (error: unknown) => {
+    const protectionReason =
+      error instanceof Error &&
+      error.cause instanceof Error &&
+      /^windows_private_storage_(?:startup_timeout|operation_timeout|spawn_failed|system_root_invalid|postcondition|check_failed|output_limit)$/u.test(
+        error.cause.message,
+      )
+        ? error.cause.message
+        : null;
+    const failure = {
+      schemaVersion: 1,
+      passed: false,
+      platform: process.platform,
+      architecture: process.arch,
+      stage,
+      errorCode:
+        error instanceof Error &&
+        error.message === "private_storage_protection_invalid"
+          ? "private_storage_protection_invalid"
+          : "native_installation_proof_failed",
+      protectionReason,
+    };
+    try {
+      await writeFile(
+        path.join(directory, "native-installation-failure.json"),
+        JSON.stringify(failure, null, 2) + "\n",
+        { flag: "wx", mode: 0o600 },
+      );
+    } catch {
+      // Preserve the original execution failure even if evidence cannot be saved.
+    }
+    process.stderr.write(
+      "Native installation failure: " + JSON.stringify(failure) + "\n",
+    );
+  };
   try {
     await command("initdb", [
       "-D",
@@ -97,6 +133,7 @@ export async function runNativeInstallSmoke(
       path.join(data, "postgresql.conf"),
       "\nunix_socket_directories = ''\n",
     );
+    stage = "start_database";
     await command("pg_ctl", [
       "-D",
       data,
@@ -108,6 +145,7 @@ export async function runNativeInstallSmoke(
       "start",
     ]);
     started = true;
+    stage = "create_database";
     await command("createdb", [
       "-h",
       "127.0.0.1",
@@ -148,9 +186,11 @@ export async function runNativeInstallSmoke(
           : {}),
       },
       (step, complete) => {
+        stage = step;
         if (complete) process.stdout.write(`verified ${step}\n`);
       },
     );
+    stage = "verify_saved_capability";
     const headers = {
       authorization: `Bearer ${result.operatorToken}`,
       "content-type": "application/json",
@@ -189,6 +229,7 @@ export async function runNativeInstallSmoke(
         directory,
       });
     }
+    stage = "verify_restart";
     await executor.stopNative();
     const restored = await readInstallation(privateDirectory, source);
     assert.equal(restored.complete, true);
@@ -228,6 +269,7 @@ export async function runNativeInstallSmoke(
         directory,
       });
     }
+    stage = "verify_backup_restore";
     const backup = await proveDatabaseBackup({
       database: "setup_proof",
       dumpPath: path.join(directory, "agentic-os.dump"),
@@ -252,6 +294,7 @@ export async function runNativeInstallSmoke(
         "additional fixture data persisted through installation resume and binary restore",
       );
     if (acceptance) {
+      stage = "additional_acceptance";
       await acceptance.run({
         baseUrl: result.url,
         operatorToken: result.operatorToken!,
@@ -263,6 +306,7 @@ export async function runNativeInstallSmoke(
           : "live model finite and recurring acceptance",
       );
     }
+    stage = "save_evidence";
     await writeFile(
       path.join(directory, "evidence.json"),
       JSON.stringify(
@@ -278,10 +322,22 @@ export async function runNativeInstallSmoke(
       ),
     );
     return directory;
+  } catch (error) {
+    await preserveFailure(error);
+    throw error;
   } finally {
-    await executor?.stopNative();
-    if (started)
-      await command("pg_ctl", ["-D", data, "-m", "fast", "-w", "stop"]);
+    try {
+      try {
+        await executor?.stopNative();
+      } finally {
+        if (started)
+          await command("pg_ctl", ["-D", data, "-m", "fast", "-w", "stop"]);
+      }
+    } catch (error) {
+      stage = "cleanup";
+      await preserveFailure(error);
+      throw error;
+    }
   }
 }
 if (

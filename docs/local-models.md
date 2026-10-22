@@ -15,19 +15,24 @@ Local tool calls and structured reviews request deterministic sampling. This
 reduces variation; it does not establish that a selected operation or answer is
 correct. Plain text and cloud requests keep their existing sampling settings.
 
-A real Windows CPU installation has completed a bounded first task and displayed
-its saved result at phone width. See the [first-result verification record](./verification/2026-10-11-local-first-result.md)
-for the exact task, actual token counts and limits. Tool support alone does not
-establish the quality of future tasks or of a completion reviewer.
+A real Windows CPU installation from the public **v0.5.6** native archive completed
+`58.5 + 14.5 = 73` through `calculate` using `qwen3.5:2b-q4_K_M`, with no remote
+request or paid provider. Fresh installation, backup/restore and restart passed.
+A separate GUI upgrade retained the previous task and settings, stayed paused,
+and completed a new local task after explicit resume. The
+[release verification](https://github.com/halittayyar0/Agentic-Company-OS/releases/download/v0.5.6/VERIFICATION.json)
+binds those checks to the exact published archive. They are bounded integration
+checks, not a guarantee of future task quality or continuous operation.
 
-The latest development trial did not complete on the small CPU model. Recorded
-usage, review-format validation and task-context recovery have since received
-scoped checks; this is not current release acceptance. See the
+Earlier development trials on a smaller CPU model did not complete. Their
+recorded-usage, review-format and task-context investigations remain historical
+evidence. See the
 [response-recovery record](./verification/2026-10-11-incomplete-response-recovery.md)
 for the context-capacity evidence. A subsequent trial reduced organization data
 without removing facts, but the runner rejected the model's malformed tool output.
 See the [latest verification record](./verification/2026-10-11-compact-organization-context.md)
-for that failure and the remaining gates.
+for that historical failure. Use the versioned release verification above for
+the v0.5.6 installation evidence.
 
 If the runner returns an error without usage, the task can pause for accounting
 recovery. A displayed recorded-token count of zero does not establish that the
@@ -51,7 +56,7 @@ If the application response is lost or belongs to another task, the interface
 reports uncertainty and reads the saved state again. It does not automatically
 repeat the write or resume the task. Without genuine saved usage evidence, the
 accounting block stays in place; there is no zero-token reset or manual override.
-In particular, the latest local model's parser failure did not report usage and
+In particular, that historical local model parser failure did not report usage and
 cannot be recovered by this action. See the
 [saved-usage recovery verification](./verification/2026-10-11-saved-usage-recovery.md)
 for measured tests and remaining limits.

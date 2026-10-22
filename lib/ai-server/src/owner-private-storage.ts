@@ -1,6 +1,14 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, open, realpath, rename, unlink } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  open,
+  realpath,
+  rename,
+  rmdir,
+  unlink,
+} from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -43,6 +51,7 @@ export function assertPrivateUnixMetadata(
 // explicit ACE must not survive an inheritance-only change.
 const WINDOWS_PROTECTION_SCRIPT = String.raw`
 $ErrorActionPreference = 'Stop'
+[Console]::Error.Write('ACOS_PRIVATE_STORAGE_STARTED')
 $target = $env:ACOS_PRIVATE_STORAGE_TARGET
 $directory = $env:ACOS_PRIVATE_STORAGE_DIRECTORY -eq '1'
 $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
@@ -113,8 +122,31 @@ async function windowsProtection(
       },
     );
     if (stdout.trim() !== "PRIVATE_OK") throw new Error("postcondition");
-  } catch {
-    throw new Error("private_storage_protection_invalid");
+  } catch (error) {
+    const failure = error as {
+      code?: unknown;
+      killed?: unknown;
+      stderr?: unknown;
+      message?: unknown;
+    };
+    const reason =
+      failure?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+        ? "windows_private_storage_output_limit"
+        : failure?.killed === true
+          ? typeof failure.stderr === "string" &&
+            failure.stderr.includes("ACOS_PRIVATE_STORAGE_STARTED")
+            ? "windows_private_storage_operation_timeout"
+            : "windows_private_storage_startup_timeout"
+          : failure?.code === "ENOENT"
+            ? "windows_private_storage_spawn_failed"
+            : failure?.message === "system_root"
+              ? "windows_private_storage_system_root_invalid"
+              : failure?.message === "postcondition"
+                ? "windows_private_storage_postcondition"
+                : "windows_private_storage_check_failed";
+    throw new Error("private_storage_protection_invalid", {
+      cause: new Error(reason),
+    });
   }
 }
 
@@ -180,9 +212,30 @@ export class OwnerPrivateStorage {
       if (exclusive || (error as NodeJS.ErrnoException).code !== "EEXIST")
         throw error;
     }
-    if (created && process.platform === "win32")
-      await windowsProtection(this.directory, true, true);
-    await this.assertProtected(this.directory, true);
+    const createdMetadata = created ? await lstat(this.directory) : undefined;
+    try {
+      if (created && process.platform === "win32")
+        await windowsProtection(this.directory, true, true);
+      await this.assertProtected(this.directory, true);
+    } catch (error) {
+      if (createdMetadata) {
+        try {
+          const current = await lstat(this.directory);
+          if (
+            current.dev === createdMetadata.dev &&
+            current.ino === createdMetadata.ino &&
+            current.isDirectory() &&
+            !current.isSymbolicLink()
+          )
+            // Remove only this attempt's still-empty directory. Never remove
+            // contents or repair an existing vault's permissions on failure.
+            await rmdir(this.directory);
+        } catch {
+          /* Retain anything that cannot be proved safe to remove. */
+        }
+      }
+      throw error;
+    }
   }
 
   async read(name: string): Promise<string | null> {

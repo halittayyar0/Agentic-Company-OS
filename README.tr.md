@@ -74,6 +74,8 @@ Düzenli bir iş için hem aralığı hem de her turun ne zaman tamamlanacağın
 
 **İyi bir görev tanımı şunları içerir:** kullanılacak bilgi, beklenen çıktı, doğrulama ölçütü ve eylem/harcama sınırları.
 
+Projenin kayıtlı teslim özetini **Özeti indir (.txt)** ile bilgisayarına kaydedebilirsin. Dosya güncel durumu ve ajanın raporunu içerir. İndirme model tokeni kullanmaz. [Teslim özetini kaydetme →](./docs/delivery-summary.md)
+
 ## Hangi ekran ne işe yarar?
 
 | Ekran                                      | Ne yaparsın?                                                                                 |

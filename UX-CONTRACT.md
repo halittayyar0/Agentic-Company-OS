@@ -260,7 +260,40 @@ Before an Operations/UI milestone is complete, run and report:
 
 Behavioral evidence belongs in project-owned tests. A static premium audit is a release gate but does not replace browser, accessibility, or failure-path verification. Auditor v1 currently case-folds JSX component names before native-tag rules; full-project strict output must therefore be line-triaged against `knownAuditLimitations` until that upstream defect is fixed. Known false positives are never silenced with redundant or semantically false code.
 
+## Saved delivery downloads
+
+`ProjectDeliverySummary` owns the visible delivery actions; the shared Button
+owns focus, emphasis and touch targets. `project-delivery-export.ts` owns the
+plain-text projection and bounded object-URL cleanup. Use the selected language
+for action, status, error and file metadata.
+
+Download only on an explicit action, using the current saved summary. Project
+title, numeric identity, current status and the report notice are the metadata
+allowlist. A recurring export identifies a saved delivery without claiming that
+the responsibility finished or inventing a cycle date. The local download makes
+no model call, starts no job and does not export the private project brief or raw
+execution records. Preserve the visible report on failure; provide an inline
+error and explicit retry. Never claim that the browser saved a file or verified
+the agent's work. Empty summaries expose no download action.
+
+The two delivery actions wrap at phone width and use existing outline controls,
+semantic colors and a minimum 44px hit area. Verify keyboard download, all seven
+UTF-8 files, light/dark and 200% text, recurring and empty states, preparation
+failure, retry and object-URL cleanup in `tests/ui/project-studio.spec.ts`.
+
+The download owner loads only the selected `delivery-copy` pack. Preserve the
+report and evidence action when that pack fails. Use the shared language-file
+status and its standard explicit page-reload recovery; never depend on the
+failed pack to explain recovery. Download implementation
+and copy have their own hash-bound exclusive bundle cap; existing studio,
+recovery, route, vendor and total caps remain fixed.
+
 ## Terminal and Browser request recovery
+
+On a new project's initial model check, keep Start disabled until the check
+settles and its notice finishes changing layout. A background refresh with an
+already usable model must not block Start. Keep the draft and existing explicit
+connection recovery when checking fails; never submit or retry automatically.
 
 Before a user action, save a versioned UUID with verified local readback and send that UUID to server admission. An accepted identity never dispatches again. Exact authenticated receipt reads, reloads and local review never resend the original action. Automatic exact-lease cleanup on leaving the browser remains a separate bounded lifecycle operation.
 

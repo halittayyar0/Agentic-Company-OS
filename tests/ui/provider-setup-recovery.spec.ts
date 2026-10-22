@@ -16,6 +16,46 @@ const READY_CATALOG = {
   ],
 };
 
+test("a first project waits for its initial model check before accepting one start", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() =>
+    localStorage.setItem("acos.locale.v1", "zh-CN"),
+  );
+  const harness = await installStudioFixtures(page);
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/model-catalog", async (route) => {
+    await pending;
+    return route.fulfill({ json: READY_CATALOG });
+  });
+  await page.goto("/projects/new");
+  await page
+    .getByRole("textbox", { name: "项目名称", exact: true })
+    .fill("One deliberate start");
+  await page
+    .getByRole("textbox", { name: "目标和范围", exact: true })
+    .fill("Prepare a short plan.");
+  const start = page.getByRole("button", { name: "启动项目", exact: true });
+  await expect(
+    page.getByText("正在检查可用模型…", { exact: true }),
+  ).toBeVisible();
+  await expect(start).toBeDisabled();
+  expect(harness.requests).toHaveLength(0);
+  release();
+  await expect(
+    page.getByText("正在检查可用模型…", { exact: true }),
+  ).toBeHidden();
+  await expect(start).toBeEnabled();
+  await start.click();
+  await expect
+    .poll(() => harness.requests.filter((r) => r.path === "/api/tasks").length)
+    .toBe(1);
+});
+
 for (const [locale, error, retry, checking] of [
   [
     "tr",
