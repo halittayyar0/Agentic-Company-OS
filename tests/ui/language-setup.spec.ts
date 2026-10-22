@@ -1,13 +1,24 @@
 import { expect, test, type Page } from "@playwright/test";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
 import { getCapabilityCatalog } from "../../artifacts/api-server/src/lib/capabilities/catalog";
-import customization from "../../artifacts/agentic-company-os/src/lib/customization-copy/customization-zh-TW";
 import {
   waitForNativePageReady,
   expectNativePageValue,
 } from "../../scripts/src/testing/native-page-readiness";
 
 test.use({ storageState: { cookies: [], origins: [] } });
+
+test("native prepared guide labels remain available to dynamic locale fixtures", async () => {
+  const locale = "zh-TW";
+  const copy = (
+    await import(
+      `../../artifacts/agentic-company-os/src/lib/customization-copy/customization-${locale}.ts`
+    )
+  ).default;
+  expect(copy.extensions[0]).toBe("個人技能和工具");
+  expect(copy.extensions[3]).toBe("標題");
+  expect(copy.extensions[8]).toBe("說明");
+});
 
 test("native first-page readiness accepts a delayed authenticated bootstrap", async ({
   page,
@@ -150,6 +161,13 @@ const preparedTitle = "Reusable arithmetic zh-TW — 分析";
 const preparedBrief =
   "Use calculate for 17 × 23, report 391, then complete this one task.\nDo not delegate.";
 async function preparedNativeGuide(page: Page) {
+  // Match the dynamic ESM loader used by the other locale fixtures.
+  const locale = "zh-TW";
+  const customization = (
+    await import(
+      `../../artifacts/agentic-company-os/src/lib/customization-copy/customization-${locale}.ts`
+    )
+  ).default;
   const harness = await installStudioFixtures(page);
   await page.route("**/api/skills?*", (route) =>
     route.fulfill({ json: getCapabilityCatalog("zh-TW") }),
