@@ -1,7 +1,76 @@
 import { expect, test } from "@playwright/test";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
+import { waitForNativePageReady } from "../../scripts/src/testing/native-page-readiness";
 
 test.use({ storageState: { cookies: [], origins: [] } });
+
+test("native first-page readiness accepts a delayed authenticated bootstrap", async ({
+  page,
+}) => {
+  const harness = await installStudioFixtures(page);
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.name));
+  await page.addInitScript(() =>
+    localStorage.setItem("acos.locale.v1", "zh-CN"),
+  );
+  await page.route("**/api/auth/status", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 6500));
+    await route.fulfill({
+      status: 200,
+      json: { enabled: false, authenticated: true, sessionExpiresAt: null },
+    });
+  });
+  await page.goto("/");
+  const draft = page.getByRole("textbox", {
+    name: "你想要的成果",
+    exact: true,
+  });
+  await waitForNativePageReady(draft);
+  await expect(draft).toHaveValue("");
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  expect(pageErrors).toEqual([]);
+  expect([...harness.unexpected]).toEqual([]);
+  expect(
+    harness.requests.filter((row) => row.path.startsWith("/api/tasks")),
+  ).toEqual([]);
+});
+
+test("native first-page readiness rejects a bootstrap that never finishes", async ({
+  page,
+}) => {
+  test.setTimeout(45_000);
+  const harness = await installStudioFixtures(page);
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.addInitScript(() =>
+    localStorage.setItem("acos.locale.v1", "zh-CN"),
+  );
+  await page.route("**/api/auth/status", async (route) => {
+    await pending;
+    await route
+      .fulfill({
+        status: 200,
+        json: { enabled: false, authenticated: true, sessionExpiresAt: null },
+      })
+      .catch(() => {});
+  });
+  try {
+    await page.goto("/");
+    await expect(
+      waitForNativePageReady(
+        page.getByRole("textbox", { name: "你想要的成果", exact: true }),
+      ),
+    ).rejects.toThrow(/Timeout:\s*30000ms/u);
+    expect(
+      harness.requests.filter((row) => row.path.startsWith("/api/tasks")),
+    ).toEqual([]);
+    expect([...harness.unexpected]).toEqual([]);
+  } finally {
+    release();
+  }
+});
 
 test("first run can choose Arabic and restore the RTL choice", async ({
   page,

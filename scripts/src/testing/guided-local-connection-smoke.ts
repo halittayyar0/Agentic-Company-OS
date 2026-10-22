@@ -11,6 +11,7 @@ import { runNativeInstallSmoke } from "../setup/native-install-smoke";
 import { createConnectionSaveDiagnostics } from "./connection-save-diagnostics";
 import { waitForNativeReadWindow } from "./native-read-window";
 import { isControlledArithmeticReview } from "./controlled-arithmetic-peer";
+import { waitForNativePageReady } from "./native-page-readiness";
 
 // Explicit offline acceptance, not a model-quality test. The real installer owns
 // a new PostgreSQL cluster, API and two workers. Only the model HTTP peer is fake.
@@ -297,7 +298,7 @@ try {
               name: h.desiredOutcome,
               exact: true,
             });
-            await expect(draft).toBeVisible();
+            await waitForNativePageReady(draft);
             await draft.fill(brief);
             phase = "open";
             await page
@@ -311,6 +312,7 @@ try {
             await expect(dialog).not.toBeVisible();
             await expect(draft).toHaveValue(brief);
             await page.reload();
+            await waitForNativePageReady(draft);
             await expect(draft).toHaveValue(brief);
             phase = "reopen";
             await page
