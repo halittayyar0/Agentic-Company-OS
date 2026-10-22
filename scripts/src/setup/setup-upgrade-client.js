@@ -186,7 +186,12 @@ globalThis.initializeSetupUpgrade = function ({ api, language, freshForm }) {
         language.dispatchEvent(new Event("change"));
       } else failure = "notFound";
     } catch (error) {
-      failure = error.message === "session" ? "session" : "notFound";
+      failure =
+        error.message === "session"
+          ? "session"
+          : error.name === "AbortError"
+            ? "offline"
+            : "notFound";
       $("path").setAttribute("aria-invalid", "true");
     } finally {
       busy = false;

@@ -32,6 +32,102 @@ const capabilities = {
   container: { ready: false, issues: [] },
 };
 
+test("native upgrade review waits for verified packages within its own bound while ordinary requests keep their deadline", async (t) => {
+  const browser = await chromium.launch({
+    headless: true,
+    chromiumSandbox: true,
+  });
+  t.after(() => browser.close());
+  for (const scenario of [
+    "verified-review",
+    "expired-review",
+    "ordinary-state",
+  ]) {
+    let entered!: () => void,
+      finish!: () => void,
+      executions = 0;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const session = await createSetupSession({
+      capabilities: async () => capabilities,
+      execute: async () => {
+        throw new Error("fresh installation forbidden");
+      },
+      upgrade: {
+        freshAvailable: false,
+        inspect: async () => {
+          entered();
+          await pending;
+          return { ...candidate, locale: "en" };
+        },
+        execute: async () => {
+          executions++;
+          throw new Error("review must never start an upgrade");
+        },
+      },
+    });
+    const page = await browser.newPage();
+    page.setDefaultTimeout(3000);
+    try {
+      await page.clock.install();
+      if (scenario === "ordinary-state") {
+        await page.route("**/api/state", async (route) => {
+          entered();
+          await pending;
+          await route.continue().catch(() => {});
+        });
+      }
+      await page.goto(session.url);
+      await started;
+      const localeResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/locale" &&
+          response.request().method() === "POST",
+      );
+      await page.locator("#language").selectOption("en");
+      const savedLocale = await localeResponse;
+      assert.equal(savedLocale.status(), 200);
+      assert.equal(await savedLocale.finished(), null);
+      // Advance the actual browser's request timer; the real authenticated
+      // session is still waiting for its read-only verification to finish.
+      await page.clock.fastForward(
+        scenario === "expired-review" ? 90_001 : 16_000,
+      );
+      if (scenario === "verified-review") {
+        finish();
+        await page.locator("#upgrade-confirm").waitFor({ state: "visible" });
+        assert.equal(await page.locator("#upgrade-confirm").isEnabled(), true);
+        assert.equal(await page.locator("#upgrade-error").innerText(), "");
+        assert.equal(
+          await page.locator("#upgrade-source-version").innerText(),
+          "0.5.5",
+        );
+        assert.equal(
+          await page.locator("#upgrade-target-version").innerText(),
+          "0.5.6",
+        );
+      } else {
+        await page.locator("#upgrade-check").waitFor({ state: "visible" });
+        assert.equal(await page.locator("#upgrade-confirm").isVisible(), false);
+        assert.match(
+          await page.locator("#upgrade-error").innerText(),
+          /could not reach the installer/iu,
+        );
+        finish();
+      }
+      assert.equal(executions, 0, scenario);
+    } finally {
+      finish();
+      await page.close();
+      await session.close();
+    }
+  }
+});
+
 test("every installer upgrade message is authored for all seven languages", () => {
   const source = readFileSync(
     new URL("./setup-upgrade-client.js", import.meta.url),
