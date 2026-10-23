@@ -260,6 +260,12 @@ Every task step has a durable physical attempt identity. Tool calls reserve a de
 
 Completion reports and approval requests are reviewed by a low-cost model. Verdicts (`pass`, `warn`, `block`) are stored as activity events. The judge uses the same bounded, cost-compatible model route plan as task execution; malformed JSON or invalid verdicts can move to a permitted fallback, but completion still fails closed after all routes are exhausted. Approval review failure becomes a visible warning, but the requested action still waits behind the independent human decision and any applicable scoped runtime gate. The judge sees selected text and remains an oversight layer, not proof that an action is safe.
 
+Explicit Ollama task, message and manual-agent selections are also oversight
+boundaries. They retain the selected Ollama route and never add a cloud-provider
+fallback. Explicit `:free` selections retain their free-only boundary; paid cloud
+execution selections continue to use the independent economy reviewer. This
+routing rule does not add file contents to the metadata-only completion snapshot.
+
 ## Model routing
 
 Runtime selection order is:

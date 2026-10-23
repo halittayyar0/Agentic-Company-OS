@@ -150,6 +150,13 @@ complete your job. Local models use your hardware, memory, storage and electrici
 A cloud model with `:free` in its name is not treated as free. Automatic local
 selection and fallback only use verified local models.
 
+An explicit Ollama selection also applies to completion and approval reviews,
+including a saved task selection, a message override, or a manually selected
+agent model. Those reviews cannot fall back to OpenRouter, direct OpenAI, or
+the Replit integration. If local review is unavailable, completion stays blocked;
+an approval warning still requires the separate human approval. A review receipt
+does not prove that the model understood the source document or completed the job.
+
 ## Cloud use is a separate permission
 
 Cloud use is **off by default**. The connection screen has an explicit checkbox

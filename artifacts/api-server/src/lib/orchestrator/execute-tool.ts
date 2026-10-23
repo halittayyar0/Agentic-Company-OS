@@ -319,13 +319,17 @@ export function resolveJudgeExecutionModelBoundary(input: {
   if (taskModelId) return taskModelId;
 
   const turnModelId = input.turnModelId?.trim();
-  if (turnModelId && /:free$/iu.test(turnModelId)) return turnModelId;
+  if (
+    turnModelId &&
+    (turnModelId.startsWith("ollama:") || /:free$/iu.test(turnModelId))
+  )
+    return turnModelId;
 
   const agentModelId = input.agentModelId?.trim();
   if (
     input.agentModelMode === "manual" &&
     agentModelId &&
-    /:free$/iu.test(agentModelId)
+    (agentModelId.startsWith("ollama:") || /:free$/iu.test(agentModelId))
   ) {
     return agentModelId;
   }

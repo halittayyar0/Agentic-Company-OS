@@ -91,19 +91,19 @@ export function selectJudgeModelPlan(params: {
   agent: Pick<Agent, "depth">;
   taskExecutionModelId?: string | null;
 }) {
-  // A user-owned free task must stay free across every inference call,
+  // Explicit local and free boundaries apply to every inference call,
   // including oversight. Paid execution pins deliberately keep the cheaper,
   // independent automatic judge instead of duplicating a premium call.
-  const freeTaskExecutionModelId = /:free$/iu.test(
-    params.taskExecutionModelId ?? "",
-  )
-    ? params.taskExecutionModelId
-    : null;
+  const requestedModelId = params.taskExecutionModelId?.trim() ?? "";
+  const boundedTaskExecutionModelId =
+    requestedModelId.startsWith("ollama:") || /:free$/iu.test(requestedModelId)
+      ? requestedModelId
+      : null;
   return selectModelPlan({
     purpose: "judge",
     agentDepth: params.agent.depth,
     agent: { modelMode: "auto", modelId: null },
-    taskExecutionModelId: freeTaskExecutionModelId,
+    taskExecutionModelId: boundedTaskExecutionModelId,
   });
 }
 
