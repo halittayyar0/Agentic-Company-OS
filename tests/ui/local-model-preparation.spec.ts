@@ -92,6 +92,7 @@ async function fixture(
     staleCatalog?: boolean;
     existingModel?: boolean;
     canonicalSave?: boolean;
+    liveSettingsCatalog?: boolean;
     server?: string;
   } = {},
 ) {
@@ -180,7 +181,12 @@ async function fixture(
         },
         catalog: {
           providers: [{ id: "ollama", available: true }],
-          models: options.staleCatalog || options.existingModel ? [model] : [],
+          models:
+            options.staleCatalog ||
+            options.existingModel ||
+            (options.liveSettingsCatalog && phase === "ready")
+              ? [model]
+              : [],
         },
       },
     });
@@ -623,7 +629,7 @@ test("an already usable local model keeps the established connection return with
 test("a download completed after reopening still returns the original job with refreshed model availability", async ({
   page,
 }) => {
-  const state = await fixture(page);
+  const state = await fixture(page, { liveSettingsCatalog: true });
   let dialog = await openLocal(page);
   await dialog
     .getByRole("button", { name: "Download model", exact: true })

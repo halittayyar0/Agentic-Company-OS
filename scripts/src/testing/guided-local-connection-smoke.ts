@@ -411,8 +411,12 @@ try {
                   dialog.getByRole("button", { name: p.stop, exact: true }),
                 ).toBeVisible();
                 preparationPeer.finish();
+                const prepared = dialog.getByRole("region", {
+                  name: p.title,
+                  exact: true,
+                });
                 await expect(
-                  dialog.getByRole("button", {
+                  prepared.getByRole("button", {
                     name: p.returnToJob,
                     exact: true,
                   }),
@@ -421,7 +425,7 @@ try {
                   requests.filter((x) => x.kind).length,
                   beforeCalls,
                 );
-                await dialog
+                await prepared
                   .getByRole("button", { name: p.returnToJob, exact: true })
                   .click();
                 await expect(draft).toBeFocused();
@@ -502,6 +506,43 @@ try {
               });
               console.log(`Offline guided runtime case passed: ${locale}`);
             } catch (error) {
+              const admission = preparationPeer
+                ? await request<{
+                    providers: { id: string; available: boolean }[];
+                    models: {
+                      id: string;
+                      supportsTools: boolean;
+                      executionLocation?: string;
+                      runtimeCompatibility?: string;
+                    }[];
+                  }>("/model-catalog")
+                    .then((catalog) => ({
+                      providers: catalog.providers,
+                      models: catalog.models
+                        .filter((model) => model.id.startsWith("ollama:"))
+                        .map(
+                          ({
+                            id,
+                            supportsTools,
+                            executionLocation,
+                            runtimeCompatibility,
+                          }) => ({
+                            id,
+                            supportsTools,
+                            executionLocation,
+                            runtimeCompatibility,
+                          }),
+                        ),
+                    }))
+                    .catch(() => null)
+                : null;
+              const focus = preparationPeer
+                ? await page
+                    .evaluate(
+                      "({ tag: document.activeElement?.tagName, id: document.activeElement?.id, name: document.activeElement?.getAttribute('name'), dialogOpen: !!document.querySelector('[role=dialog]') })",
+                    )
+                    .catch(() => null)
+                : null;
               const visibleControl = (name: string) =>
                 page
                   .getByRole("button", { name, exact: true })
@@ -525,6 +566,7 @@ try {
                 connection: diagnostics.snapshot(),
                 pageErrorCount: pageErrors.length,
                 modelRequestCount: requests.length,
+                ...(preparationPeer ? { admission, focus } : {}),
                 unexpectedModelRequestCount: unexpected.length,
               };
               // The original error and every assertion/deadline remain intact.
