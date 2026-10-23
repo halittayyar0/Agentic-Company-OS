@@ -54,6 +54,12 @@
 
 套件不含模型權重或供應商存取權。AI 任務需要設定好的 Ollama 模型或可用的供應商連線；雲端供應商可能收費。本機實用檢查無需付費供應商即可執行。
 
+首次使用本機模型時，開啟**連接模型 → 本機模型**。應用程式提供適用於模型伺服器作業系統的
+Ollama 官方安裝指南。執行 Ollama 0.40.3 或更新版本，儲存其私有位址，再選擇**下載模型**。
+入門模型會在該伺服器上佔用約 2 GB，另需暫存檔空間。檢查通過後返回保留的工作草稿，
+自行決定何時開始。已經等待該模型的工作可能繼續執行。
+[下載、儲存與復原 →](./docs/local-models.md#get-your-first-local-model)
+
 進階選項：獨立的 [Docker 套件](./docs/self-hosting.md#portable-container-installer)和[原始碼安裝](./docs/self-hosting.md#source-installation-prerequisites)保留各自的先決條件。
 
 ### 3. 明確交辦第一項工作

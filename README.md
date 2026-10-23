@@ -60,6 +60,13 @@ Data and credentials stay outside the extracted package in a private installatio
 
 Model weights and provider access are not included. AI jobs need a configured Ollama model or an available provider connection; cloud providers may charge your account. Local utility checks can run without a paid provider.
 
+For a first local model, open **Connect a model → Local model**. The app links to
+the official Ollama installer for your server's operating system. With Ollama
+0.40.3 or later running, save its private address and choose **Download model**.
+The starter uses about 2 GB plus temporary space on that server. Return to your
+preserved draft when the check passes, then choose when to start. Existing jobs
+waiting for the model may continue. [Download, storage and recovery →](./docs/local-models.md#get-your-first-local-model)
+
 **Advanced options:** the separate [Docker package](./docs/self-hosting.md#portable-container-installer) and [source installation](./docs/self-hosting.md#source-installation-prerequisites) retain their own requirements.
 
 ### 3. Give it a clear first job

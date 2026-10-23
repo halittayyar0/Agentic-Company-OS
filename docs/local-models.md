@@ -5,6 +5,45 @@ Ollama **0.18.0 or later** and an installed model that supports tools to run age
 jobs. Saving discovers the catalog; it does not download a model or test inference.
 Review the model and permissions before pressing **Start**.
 
+## Get your first local model
+
+The native application package includes its application runtime and private
+database. Model weights and Ollama itself are separate downloads.
+
+1. Open **Connect a model → Local model**. If Ollama is missing, use **Install
+   or update Ollama** and choose the operating system of the computer or server
+   that will run the model. These links open the official installation guides;
+   the app does not install an OS service or a second model runtime.
+2. Save the private address of that server and check the connection. The starter
+   requires Ollama **0.40.3 or later**. A phone uses the app server's connection,
+   not the phone's `localhost`.
+3. Choose **Download model** to request `qwen3.5:2b-q4_K_M`. Allow about **2 GB**
+   for model files, plus space for temporary files. The connected Ollama server
+   downloads from its registry using that server's network and storage. The
+   model name is a mutable registry tag; the completed receipt records the
+   actual digest reported by the server.
+4. Wait for the model check, then choose **Return to my job**. Your draft and
+   existing model choice stay intact. Review them and choose when to start.
+
+Downloading makes no inference request and creates no task or agent. Existing
+jobs already waiting for this model may continue when it becomes available.
+Observed byte counts describe reported layers, not an overall percentage or an
+estimated finish time. A restarted layer can reduce the observed count.
+
+You can close the dialog and reopen it to see the saved request. **Stop download**
+stops this application's request; another client of the same Ollama server may
+continue it. Partial files may remain. A missing acknowledgement is not a failed
+download: use **Check download**, or explicitly stop that request before starting
+a new one. The app never automatically repeats a download after reconnecting or
+restarting. After an abrupt application stop, ownership can take up to 30 seconds
+to expire before the saved transfer is marked interrupted.
+
+Changing the saved connection interrupts the old request. A historical completed
+receipt or a restored database does not establish that model files still exist;
+current server metadata must pass again. Database backups do not include Ollama
+weights. If a compatible local model is already available, you can use it without
+downloading this starter.
+
 For Qwen3.5 thinking models, use Ollama **0.40.3 or later**. Earlier runtimes
 can ignore structured-output constraints when thinking is disabled. Local
 reviews request an explicit verdict/reasoning schema; this constrains the reply

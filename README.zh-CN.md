@@ -54,6 +54,12 @@
 
 包内不含模型权重或服务商访问权限。AI 任务需要配置好的 Ollama 模型或可用的服务商连接；云服务商可能收费。本地实用检查无需付费服务商即可运行。
 
+首次使用本地模型时，打开**连接模型 → 本地模型**。应用提供适用于模型服务器操作系统的
+Ollama 官方安装指南。运行 Ollama 0.40.3 或更新版本，保存其私有地址，再选择**下载模型**。
+入门模型会在该服务器上占用约 2 GB，另需临时文件空间。检查通过后返回保留的任务草稿，
+自行决定何时开始。已经等待该模型的任务可能继续运行。
+[下载、存储与恢复 →](./docs/local-models.md#get-your-first-local-model)
+
 高级选项：独立的 [Docker 包](./docs/self-hosting.md#portable-container-installer)和[源代码安装](./docs/self-hosting.md#source-installation-prerequisites)保留各自的前置要求。
 
 ### 3. 明确交办第一项工作

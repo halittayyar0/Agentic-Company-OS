@@ -91,6 +91,7 @@ async function fixture(
     historicalReady?: boolean;
     staleCatalog?: boolean;
     existingModel?: boolean;
+    canonicalSave?: boolean;
     server?: string;
   } = {},
 ) {
@@ -156,8 +157,15 @@ async function fixture(
               : null,
         }
       : null;
-  await page.route("**/api/settings/llm", (route) =>
-    route.fulfill({
+  let address = "http://127.0.0.1:11434";
+  await page.route("**/api/settings/llm", (route) => {
+    if (options.canonicalSave && route.request().method() === "PUT") {
+      expect(route.request().postDataJSON().expectedRevision).toBe(revision);
+      revision++;
+      address = "http://127.0.0.1:11434/v1";
+      return route.fulfill({ json: { ok: true, revision } });
+    }
+    return route.fulfill({
       json: {
         revision,
         storage: "database",
@@ -166,7 +174,7 @@ async function fixture(
         ollama: {
           configured: true,
           reachable: true,
-          baseUrl: "http://127.0.0.1:11434",
+          baseUrl: address,
           localEnforcementSupported: true,
           cloudEnabled: false,
         },
@@ -175,8 +183,8 @@ async function fixture(
           models: options.staleCatalog || options.existingModel ? [model] : [],
         },
       },
-    }),
-  );
+    });
+  });
   await page.route("**/api/settings/ollama/preparations**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (route.request().method() === "POST" && !path.endsWith("/stop")) {
@@ -506,6 +514,34 @@ test("unsaved address cannot download and an old Ready receipt cannot restore a 
     }),
   ).toBeVisible();
   expect(state.starts).toEqual([]);
+});
+
+test("a confirmed canonical address readback unlocks the first download without another edit", async ({
+  page,
+}) => {
+  const state = await fixture(page, { canonicalSave: true });
+  const dialog = await openLocal(page);
+  const address = dialog.getByRole("textbox", {
+    name: "Ollama address",
+    exact: true,
+  });
+  await address.fill("http://127.0.0.1:11434/");
+  await dialog
+    .getByRole("button", { name: "Save connection", exact: true })
+    .click();
+  await expect(address).toHaveValue("http://127.0.0.1:11434/v1");
+  const download = dialog.getByRole("button", {
+    name: "Download model",
+    exact: true,
+  });
+  await expect(download).toBeEnabled();
+  await download.click();
+  expect(state.starts).toHaveLength(1);
+  expect(state.starts[0]).toMatchObject({
+    expectedRevision: 8,
+    modelId: "qwen35-2b",
+  });
+  expect([...state.harness.unexpected]).toEqual([]);
 });
 
 test("a stale compatible catalog cannot override a currently unreachable server", async ({

@@ -60,6 +60,14 @@ Varsayılan erişim yalnızca bu bilgisayardaki `127.0.0.1` adresidir. Terminali
 
 Model dosyaları ve sağlayıcı erişimi dahil değildir. Yapay zekâ işleri için yapılandırılmış Ollama modeli veya çalışan sağlayıcı bağlantısı gerekir; bulut sağlayıcısı ücret alabilir. Yerel yardımcı kontroller ücretli sağlayıcı olmadan çalışır.
 
+İlk yerel model için **Model bağla → Yerel model** yolunu aç. Uygulama, modeli
+çalıştıracak bilgisayarın işletim sistemine uygun resmi Ollama kurulum rehberini
+gösterir. Ollama 0.40.3 veya sonrası çalışırken özel adresini kaydet ve **Modeli
+indir** seçeneğini kullan. Başlangıç modeli o bilgisayarda yaklaşık 2 GB ve geçici
+dosya alanı kullanır. Kontrol geçince korunan görev taslağına dönüp ne zaman
+başlayacağını seç. Bu modeli bekleyen mevcut işler devam edebilir.
+[İndirme, depolama ve kurtarma →](./docs/local-models.md#get-your-first-local-model)
+
 Gelişmiş seçenekler: ayrı [Docker paketi](./docs/self-hosting.md#portable-container-installer) ve [kaynak koddan kurulum](./docs/self-hosting.md#source-installation-prerequisites) kendi gereksinimlerini korur.
 
 ### 3. İlk işini tanımla
