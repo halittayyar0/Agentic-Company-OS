@@ -54,6 +54,14 @@ pass floor by two. Existing source skip sets and UI expectations are unchanged.
 Workspace type checking passed. No application, database schema, package
 dependency or locale behavior was changed by this recovery.
 
+Independent review found that the shared native failure-file glob could label
+a preparation failure as guide evidence when the guide command was skipped.
+The guide upload now requires that its named command actually ran (success,
+failure or cancellation); preparation failures remain in the preparation
+artifact. The workflow regression failed before this correction and all 133
+release-verifier contracts passed afterward. No source case was added by this
+review correction, so the 3,082-case census remains unchanged.
+
 ## Still required
 
 PR 81 returned to draft and the local merge/qualification waiters stopped

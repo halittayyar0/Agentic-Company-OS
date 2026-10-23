@@ -95,3 +95,7 @@ producer explicitly in the fail-closed release verifier.
 - Source census 3,082 is derived from the verified original 3,080-case step
   plus two new standalone verifier cases; all top-level parameterized loops,
   source skips and UI expectations are unchanged.
+- Independent review found a shared failure-file glob could mislabel preparation
+  failure as guide evidence after a skipped guide. A regression failed before
+  binding its upload to an actually attempted guide; all 133 release contracts
+  passed after correction. The case census and acceptance gates are unchanged.

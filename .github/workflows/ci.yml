@@ -974,12 +974,13 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Prove seven-language reusable work through real API and workers
+        id: linux-reusable-guides
         env:
           ACOS_REUSABLE_GUIDES_SMOKE: "1"
           TMPDIR: ${{ runner.temp }}
         run: pnpm test:guides:native /usr/lib/postgresql/17/bin
       - name: Preserve owned reusable-guide evidence
-        if: always()
+        if: ${{ always() && (steps.linux-reusable-guides.outcome == 'success' || steps.linux-reusable-guides.outcome == 'failure' || steps.linux-reusable-guides.outcome == 'cancelled') }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: reusable-guides-linux-native-evidence

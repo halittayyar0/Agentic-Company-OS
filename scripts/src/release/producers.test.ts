@@ -178,6 +178,19 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
   );
   assert.match(preparation, /ACOS_REUSABLE_GUIDES_SMOKE: "1"/u);
   assert.match(preparation, /name: reusable-guides-linux-native-evidence/u);
+  assert.match(
+    preparation,
+    /name: Prove seven-language reusable work through real API and workers\n        id: linux-reusable-guides\n/u,
+  );
+  const guideUpload = preparation.slice(
+    preparation.indexOf("name: Preserve owned reusable-guide evidence"),
+  );
+  // A preparation failure skips the guide command. Its shared failure file
+  // must never be labelled as evidence from a guide that did not run.
+  assert.match(
+    guideUpload,
+    /if: \$\{\{ always\(\) && \(steps\.linux-reusable-guides\.outcome == 'success' \|\| steps\.linux-reusable-guides\.outcome == 'failure' \|\| steps\.linux-reusable-guides\.outcome == 'cancelled'\) \}\}/u,
+  );
   assert.ok(
     preparation.indexOf("name: Preserve model preparation evidence") <
       preparation.indexOf(`name: ${guide}`),
