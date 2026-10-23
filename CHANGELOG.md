@@ -5,6 +5,26 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.8] - 2026-10-23
+
+### Added
+
+- Guided starter-model downloads to the saved private Ollama server, with
+  observed progress, explicit stop/retry and durable request recovery. The flow
+  supports all seven application languages and retains the first-job draft.
+- Official Ollama installation guides for the model server's operating system.
+  The application package still includes its own runtime and private database;
+  Ollama and model weights remain separate downloads.
+- Native PostgreSQL and browser checks for preparation, interrupted ownership,
+  restored receipts and seven-language first jobs on desktop CI hosts.
+
+### Fixed
+
+- Use the confirmed canonical server address after saving, so normalization to
+  `/v1` does not leave the first download disabled.
+- Synchronize the ordinary local model catalog before publishing Ready, so a
+  cached empty list cannot block the first job after a successful download.
+
 ## [0.5.5] - 2026-10-20
 
 - Build native packages from the publisher's checksum-identical zlib GitHub
