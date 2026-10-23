@@ -2382,6 +2382,29 @@ export interface TaskCompletionRequirement {
  */
 export type TaskCompletionRequirements = TaskCompletionRequirement[];
 
+export type TaskResultFormatKind = typeof TaskResultFormatKind[keyof typeof TaskResultFormatKind];
+
+
+export const TaskResultFormatKind = {
+  table: 'table',
+} as const;
+
+/**
+ * Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.
+ * @nullable
+ */
+export type TaskResultFormat = {
+  kind: TaskResultFormatKind;
+  /**
+     * Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.
+     * @minItems 2
+     * @maxItems 8
+     * @items.minLength 1
+     * @items.maxLength 80
+     */
+  columns: string[];
+} | null;
+
 export type TaskPriority = typeof TaskPriority[keyof typeof TaskPriority];
 
 
@@ -2412,6 +2435,7 @@ export interface Task {
   title: string;
   brief: string;
   completionRequirements?: TaskCompletionRequirements;
+  resultFormat?: TaskResultFormat | null;
   status: TaskStatus;
   priority: TaskPriority;
   ownerAgentId: number;
@@ -3434,6 +3458,7 @@ export interface TaskInput {
      */
   brief: string;
   completionRequirements?: TaskCompletionRequirements;
+  resultFormat?: TaskResultFormat | null;
   /** Optional backwards-compatible coordinator override; every active agent still joins the project. */
   ownerAgentId?: number;
   priority?: TaskPriority;

@@ -5,6 +5,7 @@ import type {
 } from "@workspace/api-client-react";
 import type { ComposerDraft } from "./composer-draft";
 import { projectDraftSchema } from "./composer-draft";
+import { resultFormatInputSchema } from "./task-result-format-input";
 import {
   completionRequirementsSchema,
   canonicalCompletionRequirements,
@@ -27,6 +28,7 @@ const inputSchema = z.strictObject({
   autonomyMode: z.enum(["finite", "continuous"]),
   cadenceSeconds: z.optional(z.literal([900, 3600, 21600, 86400, 604800])),
   completionRequirements: z.optional(completionRequirementsSchema),
+  resultFormat: z.optional(resultFormatInputSchema),
 });
 const requestSchema = z.strictObject({
   version: z.literal(1),
@@ -52,6 +54,7 @@ function inputFor(draft: ProjectDraft, requestId: string): TaskInput {
           ),
         }
       : {}),
+    ...(draft.resultFormat ? { resultFormat: draft.resultFormat } : {}),
   };
 }
 const same = (a: unknown, b: unknown) =>

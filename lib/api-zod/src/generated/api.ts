@@ -1298,6 +1298,11 @@ export const installWorkforceBlueprintResponseTaskOneCompletionRequirementsItemT
 export const installWorkforceBlueprintResponseTaskOneCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const installWorkforceBlueprintResponseTaskOneCompletionRequirementsMax = 8;
 
+export const installWorkforceBlueprintResponseTaskOneResultFormatColumnsItemMax = 80;
+
+export const installWorkforceBlueprintResponseTaskOneResultFormatColumnsMin = 2;
+export const installWorkforceBlueprintResponseTaskOneResultFormatColumnsMax = 8;
+
 export const installWorkforceBlueprintResponseTaskOneModelFallbackCountMin = 0;
 
 export const installWorkforceBlueprintResponseTaskOneCadenceSecondsMin = 60;
@@ -1357,6 +1362,10 @@ export const InstallWorkforceBlueprintResponse = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(installWorkforceBlueprintResponseTaskOneCompletionRequirementsItemToolMax).regex(installWorkforceBlueprintResponseTaskOneCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(installWorkforceBlueprintResponseTaskOneCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(installWorkforceBlueprintResponseTaskOneResultFormatColumnsItemMax)).min(installWorkforceBlueprintResponseTaskOneResultFormatColumnsMin).max(installWorkforceBlueprintResponseTaskOneResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -1866,6 +1875,11 @@ export const sendAgentMessageResponseCreatedTasksItemCompletionRequirementsItemT
 export const sendAgentMessageResponseCreatedTasksItemCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const sendAgentMessageResponseCreatedTasksItemCompletionRequirementsMax = 8;
 
+export const sendAgentMessageResponseCreatedTasksItemResultFormatColumnsItemMax = 80;
+
+export const sendAgentMessageResponseCreatedTasksItemResultFormatColumnsMin = 2;
+export const sendAgentMessageResponseCreatedTasksItemResultFormatColumnsMax = 8;
+
 export const sendAgentMessageResponseCreatedTasksItemModelFallbackCountMin = 0;
 
 export const sendAgentMessageResponseCreatedTasksItemCadenceSecondsMin = 60;
@@ -1907,6 +1921,10 @@ export const SendAgentMessageResponse = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(sendAgentMessageResponseCreatedTasksItemCompletionRequirementsItemToolMax).regex(sendAgentMessageResponseCreatedTasksItemCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(sendAgentMessageResponseCreatedTasksItemCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(sendAgentMessageResponseCreatedTasksItemResultFormatColumnsItemMax)).min(sendAgentMessageResponseCreatedTasksItemResultFormatColumnsMin).max(sendAgentMessageResponseCreatedTasksItemResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2020,6 +2038,11 @@ export const sendAgentRequestResponseTaskCompletionRequirementsItemToolMax = 80;
 export const sendAgentRequestResponseTaskCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const sendAgentRequestResponseTaskCompletionRequirementsMax = 8;
 
+export const sendAgentRequestResponseTaskResultFormatColumnsItemMax = 80;
+
+export const sendAgentRequestResponseTaskResultFormatColumnsMin = 2;
+export const sendAgentRequestResponseTaskResultFormatColumnsMax = 8;
+
 export const sendAgentRequestResponseTaskModelFallbackCountMin = 0;
 
 export const sendAgentRequestResponseTaskCadenceSecondsMin = 60;
@@ -2034,6 +2057,11 @@ export const sendAgentRequestResponseCreatedTasksItemCompletionRequirementsItemT
 
 export const sendAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const sendAgentRequestResponseCreatedTasksItemCompletionRequirementsMax = 8;
+
+export const sendAgentRequestResponseCreatedTasksItemResultFormatColumnsItemMax = 80;
+
+export const sendAgentRequestResponseCreatedTasksItemResultFormatColumnsMin = 2;
+export const sendAgentRequestResponseCreatedTasksItemResultFormatColumnsMax = 8;
 
 export const sendAgentRequestResponseCreatedTasksItemModelFallbackCountMin = 0;
 
@@ -2084,6 +2112,10 @@ export const SendAgentRequestResponse = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(sendAgentRequestResponseTaskCompletionRequirementsItemToolMax).regex(sendAgentRequestResponseTaskCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(sendAgentRequestResponseTaskCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(sendAgentRequestResponseTaskResultFormatColumnsItemMax)).min(sendAgentRequestResponseTaskResultFormatColumnsMin).max(sendAgentRequestResponseTaskResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2123,6 +2155,10 @@ export const SendAgentRequestResponse = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(sendAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolMax).regex(sendAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(sendAgentRequestResponseCreatedTasksItemCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(sendAgentRequestResponseCreatedTasksItemResultFormatColumnsItemMax)).min(sendAgentRequestResponseCreatedTasksItemResultFormatColumnsMin).max(sendAgentRequestResponseCreatedTasksItemResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2216,6 +2252,11 @@ export const getAgentRequestResponseTaskCompletionRequirementsItemToolMax = 80;
 export const getAgentRequestResponseTaskCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const getAgentRequestResponseTaskCompletionRequirementsMax = 8;
 
+export const getAgentRequestResponseTaskResultFormatColumnsItemMax = 80;
+
+export const getAgentRequestResponseTaskResultFormatColumnsMin = 2;
+export const getAgentRequestResponseTaskResultFormatColumnsMax = 8;
+
 export const getAgentRequestResponseTaskModelFallbackCountMin = 0;
 
 export const getAgentRequestResponseTaskCadenceSecondsMin = 60;
@@ -2230,6 +2271,11 @@ export const getAgentRequestResponseCreatedTasksItemCompletionRequirementsItemTo
 
 export const getAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const getAgentRequestResponseCreatedTasksItemCompletionRequirementsMax = 8;
+
+export const getAgentRequestResponseCreatedTasksItemResultFormatColumnsItemMax = 80;
+
+export const getAgentRequestResponseCreatedTasksItemResultFormatColumnsMin = 2;
+export const getAgentRequestResponseCreatedTasksItemResultFormatColumnsMax = 8;
 
 export const getAgentRequestResponseCreatedTasksItemModelFallbackCountMin = 0;
 
@@ -2280,6 +2326,10 @@ export const GetAgentRequestResponse = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(getAgentRequestResponseTaskCompletionRequirementsItemToolMax).regex(getAgentRequestResponseTaskCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(getAgentRequestResponseTaskCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(getAgentRequestResponseTaskResultFormatColumnsItemMax)).min(getAgentRequestResponseTaskResultFormatColumnsMin).max(getAgentRequestResponseTaskResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2319,6 +2369,10 @@ export const GetAgentRequestResponse = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(getAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolMax).regex(getAgentRequestResponseCreatedTasksItemCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(getAgentRequestResponseCreatedTasksItemCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(getAgentRequestResponseCreatedTasksItemResultFormatColumnsItemMax)).min(getAgentRequestResponseCreatedTasksItemResultFormatColumnsMin).max(getAgentRequestResponseCreatedTasksItemResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2671,6 +2725,11 @@ export const listTasksResponseCompletionRequirementsItemToolMax = 80;
 export const listTasksResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const listTasksResponseCompletionRequirementsMax = 8;
 
+export const listTasksResponseResultFormatColumnsItemMax = 80;
+
+export const listTasksResponseResultFormatColumnsMin = 2;
+export const listTasksResponseResultFormatColumnsMax = 8;
+
 export const listTasksResponseModelFallbackCountMin = 0;
 
 export const listTasksResponseCadenceSecondsMin = 60;
@@ -2690,6 +2749,10 @@ export const ListTasksResponseItem = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(listTasksResponseCompletionRequirementsItemToolMax).regex(listTasksResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(listTasksResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(listTasksResponseResultFormatColumnsItemMax)).min(listTasksResponseResultFormatColumnsMin).max(listTasksResponseResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2739,6 +2802,11 @@ export const createTaskBodyCompletionRequirementsItemToolMax = 80;
 export const createTaskBodyCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const createTaskBodyCompletionRequirementsMax = 8;
 
+export const createTaskBodyResultFormatColumnsItemMax = 80;
+
+export const createTaskBodyResultFormatColumnsMin = 2;
+export const createTaskBodyResultFormatColumnsMax = 8;
+
 export const createTaskBodyCadenceSecondsMin = 60;
 export const createTaskBodyCadenceSecondsMax = 604800;
 
@@ -2752,6 +2820,10 @@ export const CreateTaskBody = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(createTaskBodyCompletionRequirementsItemToolMax).regex(createTaskBodyCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(createTaskBodyCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(createTaskBodyResultFormatColumnsItemMax)).min(createTaskBodyResultFormatColumnsMin).max(createTaskBodyResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "ownerAgentId": zod.number().optional().describe('Optional backwards-compatible coordinator override; every active agent still joins the project.'),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']).optional(),
   "dueAt": zod.coerce.date().optional(),
@@ -2764,6 +2836,11 @@ export const createTaskResponseCompletionRequirementsItemToolMax = 80;
 
 export const createTaskResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const createTaskResponseCompletionRequirementsMax = 8;
+
+export const createTaskResponseResultFormatColumnsItemMax = 80;
+
+export const createTaskResponseResultFormatColumnsMin = 2;
+export const createTaskResponseResultFormatColumnsMax = 8;
 
 export const createTaskResponseModelFallbackCountMin = 0;
 
@@ -2784,6 +2861,10 @@ export const CreateTaskResponse = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(createTaskResponseCompletionRequirementsItemToolMax).regex(createTaskResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(createTaskResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(createTaskResponseResultFormatColumnsItemMax)).min(createTaskResponseResultFormatColumnsMin).max(createTaskResponseResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2854,6 +2935,11 @@ export const getTaskResponseCompletionRequirementsItemToolMax = 80;
 export const getTaskResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const getTaskResponseCompletionRequirementsMax = 8;
 
+export const getTaskResponseResultFormatColumnsItemMax = 80;
+
+export const getTaskResponseResultFormatColumnsMin = 2;
+export const getTaskResponseResultFormatColumnsMax = 8;
+
 export const getTaskResponseModelFallbackCountMin = 0;
 
 export const getTaskResponseCadenceSecondsMin = 60;
@@ -2873,6 +2959,10 @@ export const GetTaskResponse = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(getTaskResponseCompletionRequirementsItemToolMax).regex(getTaskResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(getTaskResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(getTaskResponseResultFormatColumnsItemMax)).min(getTaskResponseResultFormatColumnsMin).max(getTaskResponseResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -2930,6 +3020,11 @@ export const listSubtasksResponseCompletionRequirementsItemToolMax = 80;
 export const listSubtasksResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const listSubtasksResponseCompletionRequirementsMax = 8;
 
+export const listSubtasksResponseResultFormatColumnsItemMax = 80;
+
+export const listSubtasksResponseResultFormatColumnsMin = 2;
+export const listSubtasksResponseResultFormatColumnsMax = 8;
+
 export const listSubtasksResponseModelFallbackCountMin = 0;
 
 export const listSubtasksResponseCadenceSecondsMin = 60;
@@ -2949,6 +3044,10 @@ export const ListSubtasksResponseItem = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(listSubtasksResponseCompletionRequirementsItemToolMax).regex(listSubtasksResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(listSubtasksResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(listSubtasksResponseResultFormatColumnsItemMax)).min(listSubtasksResponseResultFormatColumnsMin).max(listSubtasksResponseResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -3085,6 +3184,11 @@ export const cancelTaskResponseCompletionRequirementsItemToolMax = 80;
 export const cancelTaskResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const cancelTaskResponseCompletionRequirementsMax = 8;
 
+export const cancelTaskResponseResultFormatColumnsItemMax = 80;
+
+export const cancelTaskResponseResultFormatColumnsMin = 2;
+export const cancelTaskResponseResultFormatColumnsMax = 8;
+
 export const cancelTaskResponseModelFallbackCountMin = 0;
 
 export const cancelTaskResponseCadenceSecondsMin = 60;
@@ -3104,6 +3208,10 @@ export const CancelTaskResponse = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(cancelTaskResponseCompletionRequirementsItemToolMax).regex(cancelTaskResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(cancelTaskResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(cancelTaskResponseResultFormatColumnsItemMax)).min(cancelTaskResponseResultFormatColumnsMin).max(cancelTaskResponseResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),
@@ -3160,6 +3268,11 @@ export const updateTaskAutonomyResponseCompletionRequirementsItemToolMax = 80;
 export const updateTaskAutonomyResponseCompletionRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
 export const updateTaskAutonomyResponseCompletionRequirementsMax = 8;
 
+export const updateTaskAutonomyResponseResultFormatColumnsItemMax = 80;
+
+export const updateTaskAutonomyResponseResultFormatColumnsMin = 2;
+export const updateTaskAutonomyResponseResultFormatColumnsMax = 8;
+
 export const updateTaskAutonomyResponseModelFallbackCountMin = 0;
 
 export const updateTaskAutonomyResponseCadenceSecondsMin = 60;
@@ -3179,6 +3292,10 @@ export const UpdateTaskAutonomyResponse = zod.object({
   "kind": zod.enum(['tool_succeeded']),
   "tool": zod.string().min(1).max(updateTaskAutonomyResponseCompletionRequirementsItemToolMax).regex(updateTaskAutonomyResponseCompletionRequirementsItemToolRegExp).describe('Exact eligible tool name in the selected coordinator\'s current permitted catalog. Lifecycle, delegation, approval, load-only and Codex-turn names are not eligible.')
 })).max(updateTaskAutonomyResponseCompletionRequirementsMax).optional().describe('Optional owner-selected tools that must have a verified successful receipt in this task\'s current cycle before completion. Does not grant permissions or prove output quality; omission preserves legacy behavior.'),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(updateTaskAutonomyResponseResultFormatColumnsItemMax)).min(updateTaskAutonomyResponseResultFormatColumnsMin).max(updateTaskAutonomyResponseResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullish().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']),
   "ownerAgentId": zod.number(),

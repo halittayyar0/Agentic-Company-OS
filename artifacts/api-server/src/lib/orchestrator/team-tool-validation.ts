@@ -1,5 +1,6 @@
 import { getToolCopy, toolMessage } from "./tool-localization";
 import type { WorkspaceLocale } from "../workspace-locale";
+import { parseTaskResultFormat } from "@workspace/db/task-result-format";
 
 export const TEAM_TOOL_NAMES = new Set([
   "create_sub_agent",
@@ -53,6 +54,14 @@ export function validateTeamToolArgs(
   const positiveId = (value: unknown) =>
     typeof value === "number" && Number.isSafeInteger(value) && value > 0;
   if (name === "delegate_task") {
+    try {
+      parseTaskResultFormat(args.resultFormat);
+    } catch {
+      return toolMessage(locale, "teamChoiceInvalid", {
+        field: "resultFormat",
+        choices: "null / {kind:table, columns:[2–8]}",
+      });
+    }
     if (!positiveId(args.agentId))
       return toolMessage(locale, "teamNumberInvalid", { field: "agentId" });
     if (

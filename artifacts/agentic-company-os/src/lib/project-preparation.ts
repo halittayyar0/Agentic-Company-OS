@@ -2,6 +2,10 @@ import { hasComposerDraftInput } from "./composer-draft";
 import type { ProjectDraft } from "./project-start-request";
 import { readSkillDraft } from "./skill-draft";
 import {
+  resultFormatInputSchema,
+  type ResultFormat,
+} from "./task-result-format-input";
+import {
   completionRequirementsSchema,
   type CompletionRequirement,
 } from "./completion-requirements-input";
@@ -10,6 +14,7 @@ export type ProjectPreparation = {
   title: string;
   brief: string;
   completionRequirements?: CompletionRequirement[];
+  resultFormat?: ResultFormat;
   source?:
     | { kind: "project"; id: number; status: string; updatedAt: string }
     | { kind: "guide"; id: string; revision: number; enabled: boolean };
@@ -84,26 +89,28 @@ export function readProjectPreparation(
 ): ProjectPreparation | null {
   if (!state || typeof state !== "object" || Array.isArray(state)) return null;
   const draft = readSkillDraft(state);
-  if (!draft || !("acosSkillDraft" in state)) return null;
-  const value = state.acosSkillDraft;
+  if (!draft) return null;
+  const value = (state as { acosSkillDraft: unknown }).acosSkillDraft;
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const source =
     "source" in value && value.source !== undefined
       ? readSource(value.source)
       : undefined;
   if (source === null) return null;
-  if (
-    "completionRequirements" in value &&
-    value.completionRequirements !== undefined
-  ) {
+  const prepared: ProjectPreparation = source ? { ...draft, source } : draft;
+  for (const key of ["resultFormat", "completionRequirements"] as const) {
+    const input = (value as Record<string, unknown>)[key];
+    if (input === undefined) continue;
     if (source?.kind !== "project") return null;
-    const parsed = completionRequirementsSchema.safeParse(
-      value.completionRequirements,
-    );
+    const parsed = (
+      key === "resultFormat"
+        ? resultFormatInputSchema
+        : completionRequirementsSchema
+    ).safeParse(input);
     if (!parsed.success) return null;
-    return { ...draft, source, completionRequirements: parsed.data };
+    Object.assign(prepared, { [key]: parsed.data });
   }
-  return source ? { ...draft, source } : draft;
+  return prepared;
 }
 
 /** A later navigation seed must never be cleared by an earlier choice. */

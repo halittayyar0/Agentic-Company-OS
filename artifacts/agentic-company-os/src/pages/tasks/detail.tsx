@@ -64,6 +64,9 @@ const InferenceAccountingPanel = lazy(
 const ProjectReuseActions = lazy(
   () => import("@/components/studio/project-reuse-actions"),
 );
+const ResultFormatChoice = lazy(
+  () => import("@/components/tasks/result-format-choice"),
+);
 const CompletionRequirementsPanel = lazy(
   () => import("@/components/tasks/completion-requirements-panel"),
 );
@@ -418,6 +421,16 @@ function ProjectDetail({
                 <CodingSessionRecovery key={taskId} taskId={taskId} />
               </Suspense>
             </ErrorBoundary>
+            {project.resultFormat && (
+              <ErrorBoundary resetKey={taskId}>
+                <Suspense fallback={null}>
+                  <ResultFormatChoice
+                    value={project.resultFormat}
+                    onReload={() => window.location.reload()}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            )}
             {!!project.completionRequirements?.length && (
               <ErrorBoundary resetKey={taskId}>
                 <Suspense fallback={null}>

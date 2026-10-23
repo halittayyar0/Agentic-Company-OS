@@ -6984,6 +6984,8 @@ components:
           type: string
         completionRequirements:
           $ref: "#/components/schemas/TaskCompletionRequirements"
+        resultFormat:
+          $ref: "#/components/schemas/TaskResultFormat"
         status:
           $ref: "#/components/schemas/TaskStatus"
         priority:
@@ -7116,6 +7118,8 @@ components:
           maxLength: 8000
         completionRequirements:
           $ref: "#/components/schemas/TaskCompletionRequirements"
+        resultFormat:
+          $ref: "#/components/schemas/TaskResultFormat"
         ownerAgentId:
           type: number
           description: Optional backwards-compatible coordinator override; every active agent still joins the project.
@@ -7133,6 +7137,26 @@ components:
       required:
         - title
         - brief
+
+    TaskResultFormat:
+      type: [object, "null"]
+      additionalProperties: false
+      description: Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.
+      properties:
+        kind:
+          type: string
+          enum: [table]
+        columns:
+          type: array
+          minItems: 2
+          maxItems: 8
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 80
+          description: Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.
+      required: [kind, columns]
 
     TaskCompletionTools:
       type: object

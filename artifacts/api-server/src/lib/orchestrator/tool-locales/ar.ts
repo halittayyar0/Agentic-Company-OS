@@ -241,6 +241,12 @@ export const toolAr: ToolCopy = {
   teamTaskLost: "محظور: أُوقفت المهمة أو فُقدت صلاحية تنفيذها.",
   teamChildUnresolved:
     "محظور: لا تزال المهمة الفرعية المرتبطة taskId={id} في حالة {status}؛ احسم نتيجتها أو ألغها أولًا.",
+  teamResultFormatMismatch:
+    "لم تُقبل النتيجة. أعد جدولاً بالأعمدة المطلوبة:\n{header}\n{separator}\nأضف صفوف البيانات الفعلية. اترك سطراً فارغاً قبل أي شرح بعد الجدول. اجتياز فحص التنسيق لا يثبت دقة المعلومات.",
+  teamResultFormatUnavailable:
+    "تعذّر التحقق من تنسيق النتيجة المحفوظ. تبقى المهمة مفتوحة.",
+  teamResultFormatRejectedActivity:
+    "لم تُقبل النتيجة لأنها لا تطابق تنسيق الجدول المحفوظ.",
   teamCompletionRequirementsMissing:
     "لا يمكن إكمال المهمة: لا توجد في هذه الدورة سجلات نجاح صالحة للأدوات {tools}. نفّذ العمليات المطلوبة ضمن صلاحياتك الحالية؛ وستظل النتيجة بحاجة إلى مراجعة.",
   teamCompletionRejected:

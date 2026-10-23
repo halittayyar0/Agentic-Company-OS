@@ -218,6 +218,11 @@ export const toolZhTW: ToolCopy = {
   teamTaskLost: "已封鎖：任務已停止或已失去執行權限。",
   teamChildUnresolved:
     "已封鎖：子任務 taskId={id} 仍處於 {status} 狀態；請先處理該子任務的結果，或將其取消。",
+  teamResultFormatMismatch:
+    "結果未被接受。請依要求的欄位回傳表格：\n{header}\n{separator}\n加入實際資料列。表格後的說明前須留一空行。格式檢查通過不代表事實正確。",
+  teamResultFormatUnavailable: "無法驗證已儲存的結果格式。任務仍未完成。",
+  teamResultFormatRejectedActivity:
+    "結果不符合已儲存的表格格式，因此未被接受。",
   teamCompletionRequirementsMissing:
     "任務無法完成：本輪尚無 {tools} 的有效成功紀錄。請在現有權限內執行所需操作；結果仍需審核。",
   teamCompletionRejected:

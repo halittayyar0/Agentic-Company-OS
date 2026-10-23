@@ -561,6 +561,52 @@ test("agent creation and delegation preserve supplied source and use the executi
   assert.match(delegated.content, /Task created and delegated/);
 });
 
+test("delegation preserves an explicit child layout without silently inheriting or dropping one", async () => {
+  const ctx = await context("en", true);
+  const parentFormat = {
+    kind: "table" as const,
+    columns: ["Parent", "Result"],
+  };
+  await db
+    .update(tasksTable)
+    .set({ resultFormat: parentFormat })
+    .where(eq(tasksTable.id, ctx.taskId!));
+  const created = await call(ctx, "create_sub_agent", {
+    name: "Owned layout fixture",
+    role: "Test",
+    systemPrompt: "No inference",
+  });
+  assert.equal(created.toolOutcome, "succeeded");
+  const args = {
+    agentId: created.createdAgents[0].id,
+    title: "Child layout",
+    brief: "Controlled fixture only",
+  };
+  const plain = await call(ctx, "delegate_task", args);
+  assert.equal(plain.toolOutcome, "succeeded");
+  assert.equal(plain.createdTasks[0].resultFormat, null);
+  const resultFormat = { kind: "table" as const, columns: ["Child", "Source"] };
+  const selected = await call(ctx, "delegate_task", { ...args, resultFormat });
+  assert.equal(selected.toolOutcome, "succeeded");
+  assert.deepEqual(selected.createdTasks[0].resultFormat, resultFormat);
+  for (const invalid of [
+    { kind: "table", columns: ["Same", "Same"] },
+    { kind: "table", columns: ["A", "B"], bypass: true },
+  ]) {
+    const rejected = await call(ctx, "delegate_task", {
+      ...args,
+      resultFormat: invalid,
+    });
+    assert.equal(rejected.toolOutcome, "rejected");
+    assert.equal(rejected.createdTasks.length, 0);
+  }
+  const [parent] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, ctx.taskId!));
+  assert.deepEqual(parent.resultFormat, parentFormat);
+});
+
 test("progress and notes preserve supplied whitespace and report localized success", async () => {
   const ctx = await context("en", true);
   const progress = await call(ctx, "update_task_progress", {

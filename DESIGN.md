@@ -335,3 +335,12 @@ are recorded in `docs/frontend-ux-2026-09-04.md`; global baseline work does not
 claim these legacy workflows have migrated.
 
 These exact file/line fingerprints predate the 2026-09-26 layout and typography sweep; rerun and review the premium audit before using them as current release evidence.
+
+Result-format controls (2026-10-23) use the existing card/control tokens and a
+plain-text default. Table headings are explicit operator data, never proof of
+factual correctness. On narrow screens, heading inputs and removal controls
+stack with full-width touch targets; keep this readable at 320px and 200% text,
+including Arabic RTL. The saved layout is read-only and uses the same language
+pack as creation. A failed language load blocks submission while retaining the
+draft; no background inference, permissions change or automatic start follows
+from choosing a layout.

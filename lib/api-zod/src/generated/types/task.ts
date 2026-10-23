@@ -9,6 +9,7 @@ import type { TaskAutonomyMode } from './taskAutonomyMode';
 import type { TaskBlockedReason } from './taskBlockedReason';
 import type { TaskCompletionRequirements } from './taskCompletionRequirements';
 import type { TaskPriority } from './taskPriority';
+import type { TaskResultFormat } from './taskResultFormat';
 import type { TaskStatus } from './taskStatus';
 
 export interface Task {
@@ -16,6 +17,7 @@ export interface Task {
   title: string;
   brief: string;
   completionRequirements?: TaskCompletionRequirements;
+  resultFormat?: TaskResultFormat | null;
   status: TaskStatus;
   priority: TaskPriority;
   ownerAgentId: number;

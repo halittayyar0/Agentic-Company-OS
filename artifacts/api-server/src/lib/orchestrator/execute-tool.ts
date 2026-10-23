@@ -80,6 +80,8 @@ import { runJudge, type JudgeReviewRecord, type JudgeVerdict } from "./judge";
 import { loadCompletionEvidence } from "./completion-evidence";
 import { prepareCalculationEvidence } from "./calculation-evidence";
 import { loadCompletionRequirementResults } from "./completion-requirements";
+import { checkTaskResultFormat } from "../task-result-format";
+import { parseTaskResultFormat } from "@workspace/db/task-result-format";
 import {
   VmError,
   localizedVmErrorMessage,
@@ -1547,6 +1549,9 @@ function normalizeDurableDispatchArgs(
           args.cadenceSeconds === undefined
             ? null
             : invalidFiniteNumberMarker(args.cadenceSeconds),
+        ...(args.resultFormat == null
+          ? {}
+          : { resultFormat: parseTaskResultFormat(args.resultFormat) }),
       };
     }
     case "update_task_progress":
@@ -6616,6 +6621,7 @@ async function delegateTask(
   }
   const cadenceSeconds =
     autonomyMode === "continuous" ? (cadenceValue ?? 60) : null;
+  const resultFormat = parseTaskResultFormat(args.resultFormat);
 
   let task;
   try {
@@ -6656,6 +6662,7 @@ async function delegateTask(
             priority,
             autonomyMode,
             cadenceSeconds,
+            resultFormat,
             ownerAgentId: target.id,
             assignedByAgentId: ctx.agent.id,
             createdByUser: false,
@@ -6856,6 +6863,44 @@ async function completeTask(
       }),
       "rejected",
     );
+  }
+
+  const formatCheck = checkTaskResultFormat(task.resultFormat, resultSummary);
+  if (
+    formatCheck.status !== "not_requested" &&
+    formatCheck.status !== "satisfied"
+  ) {
+    const format =
+      formatCheck.status === "invalid_contract"
+        ? null
+        : parseTaskResultFormat(task.resultFormat);
+    const headings =
+      format?.columns.map((column) =>
+        column.replaceAll("\\", "\\\\").replaceAll("|", "\\|"),
+      ) ?? [];
+    const content = format
+      ? text("teamResultFormatMismatch", {
+          header: "| " + headings.join(" | ") + " |",
+          separator: "| " + headings.map(() => "---").join(" | ") + " |",
+        })
+      : copy.teamResultFormatUnavailable;
+    // A rejected layout must not reserve completion or spend a review call.
+    // The audit is fenced by the same live task ownership as other task writes.
+    await withTaskMutationFence(ctx, async (tx) => {
+      await tx.insert(activityEventsTable).values({
+        agentId: ctx.agent.id,
+        taskId: ctx.taskId,
+        type: "note",
+        severity: "warning",
+        summary: copy.teamResultFormatRejectedActivity,
+        detail: {
+          runtimeEvent: "task_result_format_rejected",
+          formatStatus: formatCheck.status,
+          columnCount: format?.columns.length ?? 0,
+        },
+      });
+    });
+    return empty(content, "rejected");
   }
 
   const lifecycleReservation = isDurableTaskContext(ctx)

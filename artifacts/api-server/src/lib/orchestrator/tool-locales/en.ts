@@ -250,6 +250,12 @@ export const toolEn: ToolCopy = {
     "BLOCKED: child task taskId={id} is still {status}; resolve its outcome or cancel it first.",
   teamCompletionRejected:
     "Review rejected this completion: {reason} Align the task with the original instruction before trying again.",
+  teamResultFormatMismatch:
+    "Result not accepted. Return a table with the requested columns:\n{header}\n{separator}\nAdd the actual data rows. Leave a blank line before any explanation after the table. Passing the format check does not prove factual accuracy.",
+  teamResultFormatUnavailable:
+    "The saved result format could not be verified. The task remains open.",
+  teamResultFormatRejectedActivity:
+    "The result was not accepted because it did not match the saved table layout.",
   teamCompletionRequirementsMissing:
     "The task cannot complete: this cycle has no valid success record for {tools}. Run the required operations within your existing permissions; the result still requires review.",
   teamCyclePrepared:

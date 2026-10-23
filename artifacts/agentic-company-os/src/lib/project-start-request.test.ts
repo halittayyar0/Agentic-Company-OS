@@ -17,6 +17,46 @@ const draft = {
   cadenceSeconds: 3600 as const,
 };
 const id = "335bedf7-d6eb-4eb1-870a-166ff54e3b7a";
+test("saved table layout survives reload, freezes identity and rejects a silently dropped contract", () => {
+  const store = storage();
+  const resultFormat = {
+    kind: "table" as const,
+    columns: ["Owner", "Action", "Date"],
+  };
+  const selected = { ...draft, resultFormat };
+  const request = beginProjectStart(selected, id, store);
+  assert.ok(request);
+  assert.deepEqual(request.input.resultFormat, resultFormat);
+  assert.deepEqual(readProjectStart(store).request, request);
+  store.setItem(
+    projectStartKey,
+    JSON.stringify({
+      ...request,
+      input: { ...request.input, resultFormat: undefined },
+    }),
+  );
+  assert.equal(readProjectStart(store).error, true);
+  assert.equal(beginProjectStart(selected, id, store), null);
+});
+test("incomplete table drafts remain saved but cannot dispatch until their headings are valid", async () => {
+  const { writeComposerDraft, readComposerDraft } =
+    await import("./composer-draft");
+  for (const columns of [
+    ["", "Action"],
+    ["Same", "Same"],
+    [" Owner", "Action"],
+  ]) {
+    const store = storage();
+    const selected = {
+      ...draft,
+      resultFormat: { kind: "table" as const, columns },
+    };
+    assert.equal(writeComposerDraft(selected, store), true);
+    assert.deepEqual(readComposerDraft("project", store).draft, selected);
+    assert.equal(beginProjectStart(selected, id, store), null);
+    assert.equal(store.getItem(projectStartKey), null);
+  }
+});
 function storage() {
   const values = new Map<string, string>();
   return {

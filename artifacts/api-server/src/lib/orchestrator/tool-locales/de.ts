@@ -280,6 +280,12 @@ export const toolDe: ToolCopy = {
     "BLOCKIERT: Die Aufgabe wurde gestoppt oder die Ausführungsberechtigung ging verloren.",
   teamChildUnresolved:
     "BLOCKIERT: Die Unteraufgabe taskId={id} hat weiterhin den Status {status}; kläre zuerst ihr Ergebnis oder brich sie ab.",
+  teamResultFormatMismatch:
+    "Ergebnis nicht akzeptiert. Gib eine Tabelle mit den verlangten Spalten zurück:\n{header}\n{separator}\nFüge die tatsächlichen Datenzeilen hinzu. Lass vor Erläuterungen nach der Tabelle eine Leerzeile. Die Formatprüfung bestätigt keine sachliche Richtigkeit.",
+  teamResultFormatUnavailable:
+    "Das gespeicherte Ergebnisformat konnte nicht geprüft werden. Die Aufgabe bleibt offen.",
+  teamResultFormatRejectedActivity:
+    "Das Ergebnis wurde abgelehnt, weil es nicht dem gespeicherten Tabellenformat entsprach.",
   teamCompletionRequirementsMissing:
     "Die Aufgabe kann nicht abgeschlossen werden: In diesem Zyklus fehlt ein gültiger Erfolgsnachweis für {tools}. Führe die erforderlichen Vorgänge mit deinen bestehenden Berechtigungen aus; das Ergebnis muss weiterhin geprüft werden.",
   teamCompletionRejected:

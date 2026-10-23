@@ -1,5 +1,37 @@
 # How task completion is reviewed
 
+## Choose a result format
+
+New projects default to **Free text**. To require a table, choose **Result format
+→ Table** and edit two to eight different column headings. The preview shows
+the exact order. Each heading accepts up to 80 UTF-16 code units; surrounding
+spaces, control characters and duplicates are rejected. Incomplete edits stay
+in the local draft and block starting until corrected. Choosing a format never
+starts work or grants permissions.
+
+The server saves this contract with the project. Before reserving completion
+or asking the model judge, it checks the proposed result for an unfenced pipe
+table with the exact headings, a separator row and one to 200 data rows of the
+same width. Literal pipes and backslashes must be escaped. Separate following
+prose with a blank line. Validation accepts CRLF and optional outer pipes, and
+is bounded to 65,536 input characters. A mismatch returns corrective feedback
+without a judge request or completion receipt. Existing step limits, usage
+accounting, permissions and backoff still apply; repeated malformed results
+cannot advance a regular-work cycle.
+
+This verifies layout only. It does not prove that facts, dates, row completeness
+or requested external effects are correct. Normal review still applies. The
+format is visible on the saved project and persists through draft recovery,
+exact submission retry, restart, backup and **Use brief again**. A different
+format or column order conflicts with an existing submission identity. Personal
+text guides contain instructions only. Delegated tasks default to free text;
+an explicitly supplied child format is independent of the parent's contract.
+Legacy tasks and requests without a format retain their previous behavior.
+
+The chooser and saved layout are available in all seven supported languages.
+Heading text stays in the language the operator entered. No paid service or
+additional agent is required for the structure check.
+
 ## Choose completion conditions
 
 When creating a project, expand **Completion conditions (Optional)** and choose

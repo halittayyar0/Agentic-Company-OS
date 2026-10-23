@@ -213,6 +213,12 @@ export const toolTr = {
     "ENGELLENDİ: bağlı alt görev taskId={id} halen {status}; önce alt görev sonucunu çöz veya iptal et.",
   teamCompletionRejected:
     "Denetim bu tamamlanmayı reddetti: {reason} Lütfen görevi orijinal talimatla uyumlu hale getirip tekrar dene.",
+  teamResultFormatMismatch:
+    "Sonuç kabul edilmedi. İstenen sütunlarla bir tablo döndür:\n{header}\n{separator}\nGerçek veri satırlarını ekle. Tablodan sonraki açıklamadan önce boş satır bırak. Biçim kontrolü bilgilerin doğruluğunu kanıtlamaz.",
+  teamResultFormatUnavailable:
+    "Kaydedilmiş sonuç biçimi doğrulanamadı. Görev açık kalıyor.",
+  teamResultFormatRejectedActivity:
+    "Sonuç, kaydedilmiş tablo biçimine uymadığı için kabul edilmedi.",
   teamCompletionRequirementsMissing:
     "Görev tamamlanamaz: bu döngüde {tools} için geçerli başarı kaydı yok. Gerekli işlemleri mevcut yetkilerinle yürüt; sonuç ayrıca denetlenecek.",
   teamCyclePrepared:

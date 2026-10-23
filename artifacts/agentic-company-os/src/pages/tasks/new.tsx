@@ -51,6 +51,9 @@ const ProjectPreparationChoice = lazy(
 const CompletionRequirementsChoice = lazy(
   () => import("@/components/tasks/completion-requirements-choice"),
 );
+const ResultFormatChoice = lazy(
+  () => import("@/components/tasks/result-format-choice"),
+);
 
 const AUTONOMY_OPTIONS = ["finite", "continuous"] as const;
 const PRIORITY_OPTIONS = ["low", "normal", "high", "urgent"] as const;
@@ -167,6 +170,7 @@ function NewTaskForm({
 
   const [preparationBlocked, setPreparationBlocked] = useState(true);
   const [requirementsBlocked, setRequirementsBlocked] = useState(true);
+  const [resultFormatBlocked, setResultFormatBlocked] = useState(true);
   const [providerChecking, setProviderChecking] = useState(true);
   const draft = useComposerDraft<Extract<ComposerDraft, { kind: "project" }>>({
     version: 1,
@@ -204,6 +208,7 @@ function NewTaskForm({
       taskStartBlocked ||
       preparationBlocked ||
       requirementsBlocked ||
+      resultFormatBlocked ||
       providerChecking ||
       !startState.ready ||
       startState.busy ||
@@ -465,6 +470,7 @@ function NewTaskForm({
                 disabled={
                   preparationBlocked ||
                   requirementsBlocked ||
+                  resultFormatBlocked ||
                   providerChecking ||
                   !startState.ready ||
                   !!startState.busy ||
@@ -511,6 +517,18 @@ function NewTaskForm({
           </div>
         </div>
 
+        <Suspense fallback={null}>
+          <ResultFormatChoice
+            value={draft.value.resultFormat ?? null}
+            onChange={(resultFormat) =>
+              draft.change({ ...draft.current.current, resultFormat })
+            }
+            onBlockedChange={setResultFormatBlocked}
+            onReload={() => {
+              if (draft.change(draft.current.current)) window.location.reload();
+            }}
+          />
+        </Suspense>
         <Suspense fallback={null}>
           <CompletionRequirementsChoice
             value={draft.value.completionRequirements ?? []}

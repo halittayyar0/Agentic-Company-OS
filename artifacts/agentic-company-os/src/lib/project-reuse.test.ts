@@ -22,6 +22,27 @@ const project = {
   provider: "old-provider",
   requestId: "old-uuid",
 };
+test("project reuse retains the explicit table while a text guide never acquires a hidden layout", () => {
+  const resultFormat = { kind: "table" as const, columns: ["مسؤول", "موعد"] };
+  assert.deepEqual(
+    prepareProjectText({ ...project, resultFormat })?.resultFormat,
+    resultFormat,
+  );
+  assert.equal(
+    prepareProjectText({
+      ...project,
+      resultFormat: { kind: "table", columns: ["same", "same"] },
+    }),
+    null,
+  );
+  const guide = preparePersonalGuide(
+    { ...project, resultFormat },
+    "user-table-source",
+    "Text only",
+  );
+  assert.ok(guide);
+  assert.equal(Object.hasOwn(guide, "resultFormat"), false);
+});
 
 test("reusing an owner operation contract prepares visible conditions but a personal text guide contains no executable criteria", () => {
   const completionRequirements = [

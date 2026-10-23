@@ -215,6 +215,10 @@ export const toolZhCN: ToolCopy = {
   teamTaskLost: "已阻止：任务已停止或执行权限已丢失。",
   teamChildUnresolved:
     "已阻止：子任务 taskId={id} 仍处于 {status} 状态；请先处理该子任务的结果，或将其取消。",
+  teamResultFormatMismatch:
+    "结果未被接受。请按要求的列返回表格：\n{header}\n{separator}\n添加实际数据行。表格后的说明前须留一空行。格式检查通过不代表事实准确。",
+  teamResultFormatUnavailable: "无法验证保存的结果格式。任务仍未完成。",
+  teamResultFormatRejectedActivity: "结果不符合保存的表格格式，因此未被接受。",
   teamCompletionRequirementsMissing:
     "任务无法完成：本轮尚无 {tools} 的有效成功记录。请在现有权限内执行所需操作；结果仍需审核。",
   teamCompletionRejected:

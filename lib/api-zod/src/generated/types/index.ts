@@ -332,6 +332,8 @@ export * from './taskResponseRetryInput';
 export * from './taskResponseRetryReceipt';
 export * from './taskResponseRetryReceiptOutcome';
 export * from './taskResponseRetryScope';
+export * from './taskResultFormat';
+export * from './taskResultFormatKind';
 export * from './taskResumeInput';
 export * from './taskStatus';
 export * from './testLlmInput';

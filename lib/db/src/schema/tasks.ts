@@ -16,6 +16,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { agentsTable } from "./agents";
 import type { CompletionRequirement } from "../completion-requirements";
+import type { TaskResultFormat } from "../task-result-format";
 
 export const taskStatusValues = [
   "pending",
@@ -58,6 +59,7 @@ export const tasksTable = pgTable(
       .$type<CompletionRequirement[]>()
       .notNull()
       .default([]),
+    resultFormat: jsonb("result_format").$type<TaskResultFormat>(),
     status: text("status").notNull().default("pending"),
     priority: text("priority").notNull().default("normal"),
     ownerAgentId: integer("owner_agent_id")
@@ -150,6 +152,10 @@ export const tasksTable = pgTable(
     check(
       "tasks_progress_percent_check",
       sql`${table.progressPercent} between 0 and 100`,
+    ),
+    check(
+      "tasks_result_format_check",
+      sql`public.acos_valid_task_result_format(${table.resultFormat})`,
     ),
     check("tasks_tokens_used_check", sql`${table.tokensUsed} >= 0`),
     check("tasks_step_attempts_check", sql`${table.stepAttempts} >= 0`),
