@@ -28,6 +28,7 @@ export function fixture(phase: "pr" | "main" = "pr") {
     "Linux owned PID namespace lifetime",
     "Coding helper known-live privacy and namespace regression",
     "Native installation Windows",
+    "Local model preparation through native PostgreSQL and seven-language UI",
   ];
   const stepNames = [
     "Test",
@@ -47,6 +48,9 @@ export function fixture(phase: "pr" | "main" = "pr") {
     "Prove native installation resume and binary backup restoration",
     "Prove seven-language first-job connection through real API and workers",
     "Prove seven-language reusable work through real API and workers",
+    "Prove local model preparation and interrupted recovery in seven languages",
+    "Preserve model preparation evidence",
+    "Preserve owned reusable-guide evidence",
     "Verify local database migration",
     "Preserve native installation and guided first-job evidence",
     "Require complete source and installation acceptance",
@@ -212,7 +216,8 @@ export function fixture(phase: "pr" | "main" = "pr") {
         .filter(
           (job) =>
             !job.name.startsWith("Native source") &&
-            !job.name.startsWith("Native installation"),
+            !job.name.startsWith("Native installation") &&
+            !job.name.startsWith("Local model preparation"),
         )
         .map((job) => ({
           sha: job.head_sha,

@@ -3,6 +3,7 @@ import { installStudioFixtures } from "./helpers/studio-fixtures";
 import { LOCALES } from "../../artifacts/agentic-company-os/src/lib/i18n";
 import { loadNewProjectCopy } from "../../artifacts/agentic-company-os/src/lib/new-project-copy";
 import { loadResultFormatCopy } from "../../artifacts/agentic-company-os/src/lib/task-result-format-copy";
+import { loadReusableWorkCopy } from "../../artifacts/agentic-company-os/src/lib/reusable-work-copy";
 
 // Rendering/recovery fixtures do not certify model output or execution.
 for (const locale of LOCALES)
@@ -200,8 +201,6 @@ for (const locale of ["en", "ar"] as const)
     const columns = ["Owner | جهة", "Action", "Date 😀"];
     const fixture = await savedLayoutTask(page, columns);
     const c = await loadResultFormatCopy(locale);
-    const { loadReusableWorkCopy } =
-      await import("../../artifacts/agentic-company-os/src/lib/reusable-work-copy");
     const reuse = await loadReusableWorkCopy(locale);
     await page.goto("/projects/101");
     const panel = page.getByRole("region", { name: c.saved, exact: true });

@@ -4,6 +4,7 @@ import {
   type Locale,
 } from "../../artifacts/agentic-company-os/src/lib/i18n";
 import { loadApprovalCopy } from "../../artifacts/agentic-company-os/src/lib/approval-copy";
+import { loadDeliveryDownloadCopy } from "../../artifacts/agentic-company-os/src/lib/delivery-download-copy";
 import { loadTaskResultReviewCopy } from "../../artifacts/agentic-company-os/src/lib/task-result-review-copy";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
 const hash = "a".repeat(64);
@@ -386,8 +387,6 @@ for (const locale of ["en", "ar"] as const)
     await delivery.screenshot({
       path: info.outputPath(`operator-provenance-${locale}-320px.png`),
     });
-    const { loadDeliveryDownloadCopy } =
-      await import("../../artifacts/agentic-company-os/src/lib/delivery-download-copy");
     const d = await loadDeliveryDownloadCopy(locale);
     const downloaded = page.waitForEvent("download");
     await delivery

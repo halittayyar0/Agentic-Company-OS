@@ -172,7 +172,7 @@ for (const changedChecks of [false, true])
         assert.equal(actual.status, 0, actual.stderr);
         const report = JSON.parse(await readFile(reportPath, "utf8"));
         assert.equal(report.publicationReady, false);
-        assert.equal(report.suites.producers.length, 15);
+        assert.equal(report.suites.producers.length, 16);
         assert.equal(report.suites.stages.length, 6);
         assert.equal(report.sourceAndUiLogsPassed, true);
       }

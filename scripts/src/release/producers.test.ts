@@ -59,15 +59,144 @@ test("required Windows gate fails instead of skipping after unsuccessful install
   }
 });
 
-test("producer proof binds all ten original Actions gates and five native dependencies", async () => {
+test("producer proof binds all ten original Actions gates and six native dependencies", async () => {
   const f = fixture();
   const proof = await verifyRequiredProducers(f.api, f.readLog, f.report);
-  assert.equal(proof.length, 15);
+  assert.equal(proof.length, 16);
 });
 test("main producer proof retains original PR provenance and binds the squash jobs", async () => {
   const f = fixture("main");
   const proof = await verifyRequiredProducers(f.api, f.readLog, f.report);
-  assert.equal(proof.length, 30);
+  assert.equal(proof.length, 32);
+});
+
+test("producer proof rejects missing or unbound Linux preparation and reusable-guide evidence", async () => {
+  const name =
+    "Local model preparation through native PostgreSQL and seven-language UI";
+  const dependency = (f: ReturnType<typeof fixture>) =>
+    f.jobs.find(
+      (job) =>
+        job.name === name &&
+        job.head_sha ===
+          (f.report.phase === "main" ? f.report.main : f.report.head),
+    )!;
+  const mutations: ((f: ReturnType<typeof fixture>) => void)[] = [
+    (f) => {
+      f.jobs.splice(f.jobs.indexOf(dependency(f)), 1);
+    },
+    (f) => {
+      f.jobs.push({ ...dependency(f), id: 91 });
+    },
+    (f) => {
+      dependency(f).head_sha = "f".repeat(40);
+    },
+    (f) => {
+      dependency(f).run_id = 90;
+    },
+    (f) => {
+      dependency(f).run_attempt = 2;
+    },
+    (f) => {
+      const job = dependency(f);
+      f.logs.set(
+        job.id,
+        f.logs
+          .get(job.id)!
+          .replaceAll(
+            f.report.phase === "main" ? f.report.main : f.report.testedMerge,
+            "f".repeat(40),
+          ),
+      );
+    },
+    ...[
+      "Prove local model preparation and interrupted recovery in seven languages",
+      "Prove seven-language reusable work through real API and workers",
+      "Preserve model preparation evidence",
+      "Preserve owned reusable-guide evidence",
+    ].flatMap((required) => [
+      (f: ReturnType<typeof fixture>) => {
+        const job = dependency(f);
+        job.steps = job.steps.filter((step) => step.name !== required);
+      },
+      (f: ReturnType<typeof fixture>) => {
+        const job = dependency(f);
+        job.steps.push({
+          ...job.steps.find((step) => step.name === required)!,
+        });
+      },
+      ...["failure", "cancelled", "skipped"].map(
+        (conclusion) => (f: ReturnType<typeof fixture>) => {
+          dependency(f).steps.find(
+            (step) => step.name === required,
+          )!.conclusion = conclusion;
+        },
+      ),
+      (f: ReturnType<typeof fixture>) => {
+        dependency(f).steps.find((step) => step.name === required)!.status =
+          "in_progress";
+      },
+    ]),
+  ];
+  for (const phase of ["pr", "main"] as const) {
+    for (const [index, mutate] of mutations.entries()) {
+      const f = fixture(phase);
+      mutate(f);
+      await assert.rejects(
+        verifyRequiredProducers(f.api, f.readLog, f.report),
+        `${phase} Linux preparation dependency mutation ${index}`,
+      );
+    }
+  }
+});
+
+test("Linux guide acceptance shares the preparation runner without relaxing release limits", () => {
+  const workflow = readFileSync(
+    new URL("../../../.github/workflows/ci.yml", import.meta.url),
+    "utf8",
+  );
+  const jobs = [
+    ...workflow.matchAll(
+      /^  [a-z][\w-]*:\n[\s\S]*?(?=^  [a-z][\w-]*:|$(?![\s\S]))/gmu,
+    ),
+  ].map((match) => match[0]);
+  const source = jobs.find((job) =>
+    job.includes("name: Format, audit, test, typecheck, and build"),
+  )!;
+  const preparation = jobs.find((job) =>
+    job.startsWith("  local-model-preparation:\n"),
+  )!;
+  assert.ok(source && preparation);
+  assert.match(source, /^    timeout-minutes: 75$/mu);
+  assert.match(preparation, /^    timeout-minutes: 25$/mu);
+  const guide =
+    "Prove seven-language reusable work through real API and workers";
+  assert.equal(source.includes(guide), false);
+  assert.equal(preparation.split(guide).length, 2);
+  assert.match(
+    preparation,
+    /run: pnpm test:guides:native \/usr\/lib\/postgresql\/17\/bin/u,
+  );
+  assert.match(preparation, /ACOS_REUSABLE_GUIDES_SMOKE: "1"/u);
+  assert.match(preparation, /name: reusable-guides-linux-native-evidence/u);
+  assert.ok(
+    preparation.indexOf("name: Preserve model preparation evidence") <
+      preparation.indexOf(`name: ${guide}`),
+  );
+  const ui = readFileSync(
+    new URL("../../../playwright.config.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(ui, /workers: 2,/u);
+  assert.match(ui, /retries: 0,/u);
+  assert.equal(
+    JSON.parse(
+      readFileSync(
+        new URL("../../release-expectations.json", import.meta.url),
+        "utf8",
+      ),
+    ).linux.ui.tests,
+    1465,
+  );
 });
 
 test("producer proof rejects missing, unbound, or incomplete Windows installation evidence", async () => {
