@@ -306,6 +306,9 @@ Recovery states and dialogs use all seven selected languages, 44px controls, sem
 The existing Local model connection dialog owns starter-model preparation. Its
 inline named region loads code and only the selected language after the operator
 opens Local model; the initial composer makes no preparation request. The shared
+address form stays disabled through lazy code, language and initial preparation
+discovery, so discovery cannot disable an already focused editable field.
+API-key setup does not depend on the local preparation module. The shared
 Dialog owns the single vertical scroller. Button size `touch` maintains a 44px
 minimum on desktop and phones and grows with text; other existing sizes retain
 their established desktop variants.

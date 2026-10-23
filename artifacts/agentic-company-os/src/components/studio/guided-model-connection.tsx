@@ -200,7 +200,10 @@ function ProviderForm({
   const [value, setValue] = useState<string | null>(null);
   const [baseRevision, setBaseRevision] = useState<number | null>(null);
   const [cloudDraft, setCloudDraft] = useState<boolean | null>(null);
-  const [preparing, setPreparing] = useState(false);
+  // The lazy preparation screen must discover an existing/unknown transfer
+  // before editing is enabled. Otherwise its first pending read can disable
+  // an already focused input while the operator is entering an address.
+  const [preparing, setPreparing] = useState(choice !== "api");
   const [busy, setBusy] = useState(false),
     [needsReview, setNeedsReview] = useState(false);
   const [notice, setNotice] = useState<

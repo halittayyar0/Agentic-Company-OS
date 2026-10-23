@@ -353,9 +353,19 @@ try {
                 .getByRole("textbox", { name: c.endpoint, exact: true })
                 .fill(endpoint);
               phase = "save";
+              const submittedConnection = page.waitForRequest(
+                (request) =>
+                  new URL(request.url()).pathname === "/api/settings/llm" &&
+                  request.method() === "PUT",
+              );
               await dialog
                 .getByRole("button", { name: c.save, exact: true })
                 .click();
+              assert.equal(
+                (await submittedConnection).postDataJSON().ollamaBaseUrl,
+                endpoint,
+                "the form must submit the address entered by the operator",
+              );
               await expect(
                 dialog.getByRole("status", { name: c.save, exact: true }),
               ).toContainText(c.saved);
