@@ -2198,6 +2198,108 @@ paths:
               schema:
                 $ref: "#/components/schemas/ModelCatalog"
 
+  /settings/ollama/preparations:
+    get:
+      operationId: getLocalModelPreparation
+      tags: [settings]
+      summary: Read the saved local server, starter recipe and latest download receipt
+      responses:
+        "200":
+          description: Live metadata and durable preparation receipt, without inference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalModelPreparationSnapshot"
+        "401":
+          description: Operator authentication required
+        "409":
+          description: Saved connection changed during metadata inspection
+        "503":
+          description: Preparation runtime is unavailable
+    post:
+      operationId: startLocalModelPreparation
+      tags: [settings]
+      summary: Explicitly obtain the curated model on the saved private Ollama server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartLocalModelPreparationInput"
+      responses:
+        "202":
+          description: Durable receipt; the same ID never dispatches twice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalModelPreparationReceipt"
+        "400":
+          description: Invalid request or private server is not configured
+        "401":
+          description: Operator authentication required
+        "409":
+          description: Request identity conflicts or connection revision changed
+        "429":
+          description: Too many start requests
+        "503":
+          description: Preparation runtime is unavailable
+
+  /settings/ollama/preparations/{requestId}:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getLocalModelPreparationReceipt
+      tags: [settings]
+      summary: Reconcile a known preparation without resending a download
+      responses:
+        "200":
+          description: Durable receipt only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalModelPreparationReceipt"
+        "400":
+          description: Invalid request identity
+        "401":
+          description: Operator authentication required
+        "404":
+          description: Preparation not found
+        "503":
+          description: Preparation runtime is unavailable
+
+  /settings/ollama/preparations/{requestId}/stop:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: stopLocalModelPreparation
+      tags: [settings]
+      summary: Stop this application's download request without deleting shared model files
+      responses:
+        "200":
+          description: Idempotent stop receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalModelPreparationReceipt"
+        "400":
+          description: Invalid identity or unexpected stop payload
+        "401":
+          description: Operator authentication required
+        "404":
+          description: Preparation not found
+        "503":
+          description: Preparation runtime is unavailable
+
   /settings/llm:
     get:
       operationId: getLlmSettings
@@ -3728,6 +3830,189 @@ components:
           type: string
           enum: [tr, en, de, ru, zh-CN, zh-TW, ar]
       required: [locale]
+
+    StartLocalModelPreparationInput:
+      type: object
+      additionalProperties: false
+      required: [requestId, expectedRevision, modelId]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        expectedRevision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        modelId:
+          type: string
+          enum: [qwen35-2b]
+
+    LocalModelPreparationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          requestId,
+          modelId,
+          providerRevision,
+          state,
+          phase,
+          observedCompletedBytes,
+          observedTotalBytes,
+          progressReset,
+          failureCode,
+          resultModelId,
+          resultDigest,
+          createdAt,
+          updatedAt,
+          finishedAt,
+        ]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        modelId:
+          type: string
+          enum: [qwen35-2b]
+        providerRevision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        state:
+          type: string
+          enum:
+            [
+              requested,
+              downloading,
+              verifying,
+              stopping,
+              ready,
+              interrupted,
+              failed,
+            ]
+        phase:
+          type: string
+          enum: [preparing, downloading, checking, downloaded]
+        observedCompletedBytes:
+          type: integer
+          minimum: 0
+          maximum: 3221225472
+        observedTotalBytes:
+          type: integer
+          minimum: 0
+          maximum: 3221225472
+        progressReset:
+          type: boolean
+        failureCode:
+          type: string
+          nullable: true
+          enum:
+            [
+              INTERRUPTED,
+              CONFIG_CHANGED,
+              SERVER_UNAVAILABLE,
+              RUNTIME_UPDATE_REQUIRED,
+              MODEL_UNVERIFIED,
+              DISPATCH_FAILED,
+              DEADLINE_EXCEEDED,
+              INVALID_PROGRESS,
+              FRAME_TOO_LARGE,
+              TOO_MANY_LAYERS,
+              MODEL_TOO_LARGE,
+              UPSTREAM_ERROR,
+              INCOMPLETE_PROGRESS,
+              STREAM_FAILED,
+            ]
+        resultModelId:
+          type: string
+          nullable: true
+          enum: ["ollama:qwen3.5:2b-q4_K_M"]
+        resultDigest:
+          type: string
+          nullable: true
+          pattern: "^sha256:[a-f0-9]{64}$"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    LocalModelPreparationSnapshot:
+      type: object
+      additionalProperties: false
+      required: [revision, recipe, availability, preparation]
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        recipe:
+          type: object
+          additionalProperties: false
+          required: [id, model, minimumRuntimeVersion, estimatedBytes, guides]
+          properties:
+            id:
+              type: string
+              enum: [qwen35-2b]
+            model:
+              type: string
+              enum: ["qwen3.5:2b-q4_K_M"]
+            minimumRuntimeVersion:
+              type: string
+              enum: ["0.40.3"]
+            estimatedBytes:
+              type: integer
+              enum: [1945782446]
+            guides:
+              type: object
+              additionalProperties: false
+              required: [download, windows, macos, linux]
+              properties:
+                download:
+                  type: string
+                  enum: ["https://ollama.com/download"]
+                windows:
+                  type: string
+                  enum: ["https://docs.ollama.com/windows"]
+                macos:
+                  type: string
+                  enum: ["https://docs.ollama.com/macos"]
+                linux:
+                  type: string
+                  enum: ["https://docs.ollama.com/linux"]
+        availability:
+          type: object
+          additionalProperties: false
+          required: [server, available, modelId, digest]
+          properties:
+            server:
+              type: string
+              enum:
+                [
+                  compatible,
+                  update_required,
+                  unreachable,
+                  unverified,
+                  unconfigured,
+                ]
+            available:
+              type: boolean
+            modelId:
+              type: string
+              nullable: true
+              enum: ["ollama:qwen3.5:2b-q4_K_M"]
+            digest:
+              type: string
+              nullable: true
+              pattern: "^sha256:[a-f0-9]{64}$"
+        preparation:
+          $ref: "#/components/schemas/LocalModelPreparationReceipt"
+          nullable: true
 
     LlmSettings:
       type: object

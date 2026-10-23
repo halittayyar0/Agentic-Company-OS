@@ -83,6 +83,8 @@ import type {
   LlmSettings,
   LlmTestFailure,
   LlmTestSuccess,
+  LocalModelPreparationReceipt,
+  LocalModelPreparationSnapshot,
   Message,
   MessageInput,
   ModelCatalog,
@@ -130,6 +132,7 @@ import type {
   SavePersonalCapabilityBody,
   SignOutChatGPTAccount200,
   SourceChange,
+  StartLocalModelPreparationInput,
   StreamOperationsParams,
   Task,
   TaskAnswerReceipt,
@@ -6935,6 +6938,302 @@ export function useGetModelCatalog<TData = Awaited<ReturnType<typeof getModelCat
 
 
 
+
+export const getGetLocalModelPreparationUrl = () => {
+
+
+
+
+  return `/api/settings/ollama/preparations`
+}
+
+/**
+ * @summary Read the saved local server, starter recipe and latest download receipt
+ */
+export const getLocalModelPreparation = async ( options?: Parameters<typeof customFetch>[1]): Promise<LocalModelPreparationSnapshot> => {
+
+  return customFetch<LocalModelPreparationSnapshot>(getGetLocalModelPreparationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLocalModelPreparationQueryKey = () => {
+    return [
+    `/api/settings/ollama/preparations`
+    ] as const;
+    }
+
+
+export const getGetLocalModelPreparationQueryOptions = <TData = Awaited<ReturnType<typeof getLocalModelPreparation>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLocalModelPreparation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLocalModelPreparationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLocalModelPreparation>>> = ({ signal }) => getLocalModelPreparation({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLocalModelPreparation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLocalModelPreparationQueryResult = NonNullable<Awaited<ReturnType<typeof getLocalModelPreparation>>>
+export type GetLocalModelPreparationQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the saved local server, starter recipe and latest download receipt
+ */
+
+export function useGetLocalModelPreparation<TData = Awaited<ReturnType<typeof getLocalModelPreparation>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLocalModelPreparation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLocalModelPreparationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStartLocalModelPreparationUrl = () => {
+
+
+
+
+  return `/api/settings/ollama/preparations`
+}
+
+/**
+ * @summary Explicitly obtain the curated model on the saved private Ollama server
+ */
+export const startLocalModelPreparation = async (startLocalModelPreparationInput: StartLocalModelPreparationInput, options?: Parameters<typeof customFetch>[1]): Promise<LocalModelPreparationReceipt> => {
+
+  return customFetch<LocalModelPreparationReceipt>(getStartLocalModelPreparationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(startLocalModelPreparationInput)
+  }
+);}
+
+
+
+
+
+export const getStartLocalModelPreparationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startLocalModelPreparation>>, TError,{data: BodyType<StartLocalModelPreparationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startLocalModelPreparation>>, TError,{data: BodyType<StartLocalModelPreparationInput>}, TContext> => {
+
+const mutationKey = ['startLocalModelPreparation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startLocalModelPreparation>>, {data: BodyType<StartLocalModelPreparationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  startLocalModelPreparation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartLocalModelPreparationMutationResult = NonNullable<Awaited<ReturnType<typeof startLocalModelPreparation>>>
+    export type StartLocalModelPreparationMutationBody = BodyType<StartLocalModelPreparationInput>
+    export type StartLocalModelPreparationMutationError = ErrorType<void>
+
+    /**
+ * @summary Explicitly obtain the curated model on the saved private Ollama server
+ */
+export const useStartLocalModelPreparation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startLocalModelPreparation>>, TError,{data: BodyType<StartLocalModelPreparationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startLocalModelPreparation>>,
+        TError,
+        {data: BodyType<StartLocalModelPreparationInput>},
+        TContext
+      > => {
+      return useMutation(getStartLocalModelPreparationMutationOptions(options));
+    }
+
+export const getGetLocalModelPreparationReceiptUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/settings/ollama/preparations/${requestId}`
+}
+
+/**
+ * @summary Reconcile a known preparation without resending a download
+ */
+export const getLocalModelPreparationReceipt = async (requestId: string, options?: Parameters<typeof customFetch>[1]): Promise<LocalModelPreparationReceipt> => {
+
+  return customFetch<LocalModelPreparationReceipt>(getGetLocalModelPreparationReceiptUrl(requestId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLocalModelPreparationReceiptQueryKey = (requestId: string,) => {
+    return [
+    `/api/settings/ollama/preparations/${requestId}`
+    ] as const;
+    }
+
+
+export const getGetLocalModelPreparationReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getLocalModelPreparationReceipt>>, TError = ErrorType<void>>(requestId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLocalModelPreparationReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLocalModelPreparationReceiptQueryKey(requestId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLocalModelPreparationReceipt>>> = ({ signal }) => getLocalModelPreparationReceipt(requestId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: requestId !== null && requestId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLocalModelPreparationReceipt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLocalModelPreparationReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getLocalModelPreparationReceipt>>>
+export type GetLocalModelPreparationReceiptQueryError = ErrorType<void>
+
+
+/**
+ * @summary Reconcile a known preparation without resending a download
+ */
+
+export function useGetLocalModelPreparationReceipt<TData = Awaited<ReturnType<typeof getLocalModelPreparationReceipt>>, TError = ErrorType<void>>(
+ requestId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLocalModelPreparationReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLocalModelPreparationReceiptQueryOptions(requestId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStopLocalModelPreparationUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/settings/ollama/preparations/${requestId}/stop`
+}
+
+/**
+ * @summary Stop this application's download request without deleting shared model files
+ */
+export const stopLocalModelPreparation = async (requestId: string, options?: Parameters<typeof customFetch>[1]): Promise<LocalModelPreparationReceipt> => {
+
+  return customFetch<LocalModelPreparationReceipt>(getStopLocalModelPreparationUrl(requestId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStopLocalModelPreparationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopLocalModelPreparation>>, TError,{requestId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof stopLocalModelPreparation>>, TError,{requestId: string}, TContext> => {
+
+const mutationKey = ['stopLocalModelPreparation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof stopLocalModelPreparation>>, {requestId: string}> = (props) => {
+          const {requestId} = props ?? {};
+
+          return  stopLocalModelPreparation(requestId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StopLocalModelPreparationMutationResult = NonNullable<Awaited<ReturnType<typeof stopLocalModelPreparation>>>
+
+    export type StopLocalModelPreparationMutationError = ErrorType<void>
+
+    /**
+ * @summary Stop this application's download request without deleting shared model files
+ */
+export const useStopLocalModelPreparation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopLocalModelPreparation>>, TError,{requestId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof stopLocalModelPreparation>>,
+        TError,
+        {requestId: string},
+        TContext
+      > => {
+      return useMutation(getStopLocalModelPreparationMutationOptions(options));
+    }
 
 export const getGetLlmSettingsUrl = () => {
 

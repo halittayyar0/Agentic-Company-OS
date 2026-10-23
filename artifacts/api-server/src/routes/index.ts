@@ -20,6 +20,7 @@ import { chatgptConnectionRuntime } from "../lib/chatgpt-connection-runtime";
 import { createCodexTaskStatusRouter } from "./codex-task-status";
 import { createCodexSessionRecoveryRouter } from "./codex-session-recovery";
 import { createInferenceAccountingRouter } from "./inference-accounting";
+import { createSettingsModelPreparationsRouter } from "./settings-model-preparations";
 
 const router: IRouter = Router();
 
@@ -32,6 +33,7 @@ router.use(approvalsRouter);
 router.use(orgRouter);
 router.use(vmRouter);
 router.use(settingsRouter);
+router.use(createSettingsModelPreparationsRouter());
 router.use(opsControlRouter);
 router.use(companyChatRouter);
 router.use(workforceBlueprintRouter);
