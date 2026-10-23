@@ -439,6 +439,31 @@ The inbox keeps an open host review tied to a fingerprint of its visible request
 
 The decision-time regression test advances an injected clock after the transaction's lock calls. It proves the timestamp is sampled at the correct point in this path; it does not replace a native PostgreSQL lock-wait or replica test.
 
+Task result review is a separate authority boundary. A genuine private-source
+completion rejection can create one bounded, expiring
+`approval_requests.completion_proposal` with
+`scope.toolName=operator_confirm_task_result`; its `action_payload` is always
+null. The marker is server-only, excluded from model approval tools, automatic
+policy approval, executable workers and historical-approved task resumption.
+The current step atomically pauses, persists the proposal and finalizes its
+completion-call receipt as `status=awaiting_approval`. Replaying that successful
+receipt means suspended, not completed.
+
+Reading the exact output and resolving this review require configured operator
+credential authentication even if the ordinary development API is open.
+Confirmation requires `confirmTaskResult=true` and the exact canonical proposal
+digest. Inside the ordinary runtime-control → agent → approval → task locks,
+the server rechecks task/owner configuration, cycle, original source receipt
+bindings and blocked review event, required successful operations and current
+tool availability, result layout, settled children, and absence of active leases
+or attempts. It consumes the proposal and saves the result in one transaction.
+`tasks.completion_authority=operator` labels the last saved result; automatic
+completion writes `agent` and legacy null remains unknown. Recurring work
+advances once and schedules from confirmation time. Original judge rejection is
+never rewritten to pass, and confirmation executes no external action or
+inference. Rejection, expiry, cancellation and deactivation purge the pending
+proposal, while older backups retain their snapshots.
+
 ## Scaling boundaries
 
 The current architecture has explicit limits:

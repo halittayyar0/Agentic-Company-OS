@@ -1,5 +1,6 @@
 import type { Locale } from "./i18n";
 export type ApprovalCopy = {
+  reviewResult: string;
   emptyPage: string;
   closedPreview: string;
   eyebrow: string;

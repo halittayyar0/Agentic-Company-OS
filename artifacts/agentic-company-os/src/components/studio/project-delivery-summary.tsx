@@ -6,6 +6,9 @@ import { Markdown } from "@/lib/markdown";
 import { type ProjectStudioCopy, studioText } from "@/lib/project-studio-copy";
 import { ProjectDeliveryDownload } from "./project-delivery-download";
 const ResultTable = lazy(() => import("../tasks/result-table"));
+const OperatorResultProvenance = lazy(
+  () => import("../tasks/operator-result-provenance"),
+);
 
 export function ProjectDeliverySummary({
   project,
@@ -54,6 +57,11 @@ export function ProjectDeliverySummary({
           {c.cycleDeliveryNote}
         </p>
       ) : null}
+      {project.completionAuthority === "operator" && summary && (
+        <Suspense fallback={null}>
+          <OperatorResultProvenance />
+        </Suspense>
+      )}
       {summary ? (
         <div dir="auto" className="mt-4 min-w-0 [overflow-wrap:anywhere]">
           {project.resultFormat ? (

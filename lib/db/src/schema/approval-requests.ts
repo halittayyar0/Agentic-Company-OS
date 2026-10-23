@@ -8,6 +8,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -15,6 +16,7 @@ import { z } from "zod/v4";
 import { agentsTable } from "./agents";
 import { runtimeInstancesTable } from "./runtime-operations";
 import { tasksTable } from "./tasks";
+import type { TaskCompletionProposal } from "../task-result-review";
 
 export const approvalCategoryValues = [
   "spend",
@@ -69,6 +71,11 @@ export const approvalRequestsTable = pgTable(
     // Internal-only capability payload. API response schemas deliberately omit
     // it; the server consumes it once after an explicit approval decision.
     actionPayload: jsonb("action_payload").$type<ApprovalActionPayload>(),
+    // Exact proposed output for credential-authenticated operator review only.
+    // Never an executable action and never included in approval list responses.
+    completionProposal: jsonb(
+      "completion_proposal",
+    ).$type<TaskCompletionProposal>(),
     status: text("status").notNull().default("pending"),
     decisionNote: text("decision_note"),
     automaticPolicyRevision: integer("automatic_policy_revision"),
@@ -107,6 +114,32 @@ export const approvalRequestsTable = pgTable(
     index("approval_requests_status_expiry_idx").on(
       table.status,
       table.expiresAt,
+    ),
+    uniqueIndex("approval_requests_pending_result_review_idx")
+      .on(table.taskId)
+      .where(
+        sql`${table.status} = 'pending' and ${table.scope}->>'toolName' = 'operator_confirm_task_result'`,
+      ),
+    check(
+      "approval_requests_result_review_check",
+      sql`coalesce((
+        (${table.completionProposal} is null and coalesce(${table.scope}->>'toolName', '') <> 'operator_confirm_task_result')
+        or (
+          ${table.scope}->>'toolName' = 'operator_confirm_task_result'
+          and ${table.actionPayload} is null
+          and ${table.automaticPolicyRevision} is null
+          and ${table.category} = 'other' and ${table.amountUsd} is null
+          and ${table.expiresAt} is not null and ${table.expiresAt} > ${table.createdAt}
+          and ${table.expiresAt} <= ${table.createdAt} + interval '24 hours'
+          and ${table.browserRuntimeInstanceId} is null
+          and (
+            (${table.status} = 'pending' and ${table.consumedAt} is null
+              and ${table.resolvedAt} is null and ${table.completionProposal} is not null
+              and public.acos_valid_completion_proposal(${table.completionProposal}, ${table.taskId}, ${table.agentId}))
+            or (${table.status} <> 'pending' and ${table.completionProposal} is null)
+          )
+        )
+      ), false)`,
     ),
     check(
       "approval_requests_category_check",

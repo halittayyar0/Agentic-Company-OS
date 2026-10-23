@@ -125,6 +125,7 @@ function publicTask(task: Task) {
     tokensUsed: task.tokensUsed,
     estimatedCostUsd: task.estimatedCostUsd,
     resultSummary: task.resultSummary,
+    completionAuthority: task.completionAuthority,
     executionModelId: task.executionModelId,
     lastModelId: task.lastModelId,
     lastModelProvider: task.lastModelProvider,

@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./completion-requirements": "./src/completion-requirements.ts",
     "./task-result-format": "./src/task-result-format.ts",
+    "./task-result-review": "./src/task-result-review.ts",
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {

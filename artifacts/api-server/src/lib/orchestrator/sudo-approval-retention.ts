@@ -98,6 +98,7 @@ export async function scrubExpiredApprovals(
                 : "Approval expired",
               resolvedAt: now,
               actionPayload: null,
+              completionProposal: null,
               scope: redactApprovalCapabilityScope(
                 liveApproval.scope,
                 "EXPIRED",

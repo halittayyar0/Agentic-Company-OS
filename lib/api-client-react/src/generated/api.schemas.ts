@@ -2415,6 +2415,18 @@ export const TaskPriority = {
   urgent: 'urgent',
 } as const;
 
+/**
+ * Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.
+ * @nullable
+ */
+export type TaskCompletionAuthority = typeof TaskCompletionAuthority[keyof typeof TaskCompletionAuthority] | null;
+
+
+export const TaskCompletionAuthority = {
+  agent: 'agent',
+  operator: 'operator',
+} as const;
+
 export type TaskBlockedReason = typeof TaskBlockedReason[keyof typeof TaskBlockedReason];
 
 
@@ -2450,6 +2462,11 @@ export interface Task {
   estimatedCostUsd: string | null;
   /** @nullable */
   resultSummary: string | null;
+  /**
+     * Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.
+     * @nullable
+     */
+  completionAuthority?: TaskCompletionAuthority;
   /**
      * User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.
      * @nullable
@@ -3775,6 +3792,59 @@ export interface ApprovalScope {
   preview?: string | null;
 }
 
+export type TaskResultReviewMetadataKind = typeof TaskResultReviewMetadataKind[keyof typeof TaskResultReviewMetadataKind];
+
+
+export const TaskResultReviewMetadataKind = {
+  task_result: 'task_result',
+} as const;
+
+export interface TaskResultReviewMetadata {
+  kind: TaskResultReviewMetadataKind;
+  /**
+     * @nullable
+     * @pattern ^[a-f0-9]{64}$
+     */
+  proposalHash: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  cycleNumber: number | null;
+  available: boolean;
+}
+
+export type TaskResultReviewJudgeReasonCode = typeof TaskResultReviewJudgeReasonCode[keyof typeof TaskResultReviewJudgeReasonCode];
+
+
+export const TaskResultReviewJudgeReasonCode = {
+  source_mismatch: 'source_mismatch',
+  missing_required_action: 'missing_required_action',
+  unauthorized_action: 'unauthorized_action',
+  insufficient_evidence: 'insufficient_evidence',
+} as const;
+
+export interface TaskResultReview {
+  /** @minimum 1 */
+  approvalId: number;
+  /** @minimum 1 */
+  taskId: number;
+  /** @minimum 0 */
+  cycleNumber: number;
+  /** @pattern ^[a-f0-9]{64}$ */
+  proposalHash: string;
+  /**
+     * @minLength 1
+     * @maxLength 65536
+     */
+  resultSummary: string;
+  resultFormat: TaskResultFormat | null;
+  judgeReasonCode: TaskResultReviewJudgeReasonCode;
+  expiresAt: string;
+  /** @maxItems 8 */
+  requirements: TaskCompletionRequirementState[];
+}
+
 export interface ApprovalRequest {
   id: number;
   taskId: number;
@@ -3795,6 +3865,7 @@ export interface ApprovalRequest {
   expiresAt: string | null;
   /** @nullable */
   consumedAt: string | null;
+  resultReview?: TaskResultReviewMetadata;
 }
 
 export type ApprovalDecisionInputLocale = typeof ApprovalDecisionInputLocale[keyof typeof ApprovalDecisionInputLocale];
@@ -3819,6 +3890,8 @@ export const ApprovalDecisionInputDecision = {
 } as const;
 
 export interface ApprovalDecisionInput {
+  /** Required true with the exact expectedArgsHash when confirming a proposed task result. Never inferred from ordinary approval. */
+  confirmTaskResult?: boolean;
   /**
      * Optional reviewed scope digest. Null asserts an unscoped request. A changed scope is rejected while the decision locks are held.
      * @minLength 64

@@ -149,6 +149,7 @@ import type {
   TaskResponseRetryInput,
   TaskResponseRetryReceipt,
   TaskResponseRetryScope,
+  TaskResultReview,
   TaskResumeInput,
   TestLlmInput,
   UpdateCapabilityPacksBody,
@@ -6701,6 +6702,83 @@ export function useListApprovals<TData = Awaited<ReturnType<typeof listApprovals
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListApprovalsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTaskResultReviewUrl = (approvalId: number,) => {
+
+
+
+
+  return `/api/approvals/${approvalId}/result-review`
+}
+
+/**
+ * @summary Read an exact proposed result with configured operator credential authentication
+ */
+export const getTaskResultReview = async (approvalId: number, options?: Parameters<typeof customFetch>[1]): Promise<TaskResultReview> => {
+
+  return customFetch<TaskResultReview>(getGetTaskResultReviewUrl(approvalId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskResultReviewQueryKey = (approvalId: number,) => {
+    return [
+    `/api/approvals/${approvalId}/result-review`
+    ] as const;
+    }
+
+
+export const getGetTaskResultReviewQueryOptions = <TData = Awaited<ReturnType<typeof getTaskResultReview>>, TError = ErrorType<unknown>>(approvalId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskResultReview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskResultReviewQueryKey(approvalId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskResultReview>>> = ({ signal }) => getTaskResultReview(approvalId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: approvalId !== null && approvalId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskResultReview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskResultReviewQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskResultReview>>>
+export type GetTaskResultReviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read an exact proposed result with configured operator credential authentication
+ */
+
+export function useGetTaskResultReview<TData = Awaited<ReturnType<typeof getTaskResultReview>>, TError = ErrorType<unknown>>(
+ approvalId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskResultReview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskResultReviewQueryOptions(approvalId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

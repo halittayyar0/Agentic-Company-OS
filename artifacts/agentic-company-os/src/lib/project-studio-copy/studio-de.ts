@@ -178,7 +178,7 @@ const copy: ProjectStudioCopy = {
   model: "Gespeichertes Modell",
   unknownModel: "Kein Modell gespeichert",
   deliveryHelp:
-    "Dies ist die vom Agenten gespeicherte Ergebnisübersicht. Prüfnachweise findest du im Tab {tab}.",
+    "Dies ist die gespeicherte Ergebnisübersicht. Prüfnachweise findest du im Tab {tab}.",
   reviewDelivery: "Nachweise prüfen",
   cycleDeliveryNote:
     "Dies ist das zuletzt gespeicherte Ergebnis. Der aktuelle Status der wiederkehrenden Aufgabe steht oben.",

@@ -695,7 +695,7 @@ async function recoverActiveOperationInvocations(
   }
 }
 
-async function resumeResolvedApprovalTasks(now: Date): Promise<void> {
+export async function resumeResolvedApprovalTasks(now: Date): Promise<void> {
   const candidates = await db
     .select({
       id: tasksTable.id,
@@ -758,7 +758,9 @@ async function resumeResolvedApprovalTasks(now: Date): Promise<void> {
           return;
         }
         const hasApproved = approvals.some(
-          (approval) => approval.status === "approved",
+          (approval) =>
+            approval.status === "approved" &&
+            approval.scope?.toolName !== "operator_confirm_task_result",
         );
         const hasPending = approvals.some(
           (approval) => approval.status === "pending",

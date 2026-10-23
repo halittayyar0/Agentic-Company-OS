@@ -1,5 +1,10 @@
 import { measureDeliveryDownloadBundle } from "./delivery-download-bundle-budget";
 import {
+  measureResultReviewApi,
+  measureResultReviewIntegration,
+  measureTaskResultReviewBundle,
+} from "./task-result-review-bundle-budget";
+import {
   measureOllamaPrivacyBundle,
   OLLAMA_PRIVACY_SOURCES,
 } from "./ollama-privacy-bundle-budget";
@@ -375,6 +380,39 @@ const resultFormat = measureResultFormatAssets(
     ),
   ),
   [formatDraft, formatChoice, formatPanel, formatDelivery],
+);
+const resultReviewAssets = codeAssets.map((asset) => ({
+  fileName: asset.fileName,
+  contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+}));
+const resultReviewManifest = JSON.parse(
+  readFileSync(
+    resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+    "utf8",
+  ),
+);
+const resultReviewApi = measureResultReviewApi(
+  resultReviewAssets,
+  resultReviewManifest,
+  [...draftControls.values()],
+);
+const priorReviewApiControl = draftControls.get(resultReviewApi.fileName)!;
+draftControls.set(resultReviewApi.fileName, {
+  ...resultReviewApi,
+  raw: priorReviewApiControl.raw + resultReviewApi.raw,
+  gzip: priorReviewApiControl.gzip + resultReviewApi.gzip,
+});
+const resultReviewIntegration = measureResultReviewIntegration(
+  resultReviewAssets,
+  resultReviewManifest,
+);
+const resultReview = measureTaskResultReviewBundle(
+  resultReviewAssets,
+  resultReviewManifest,
+  {
+    raw: resultReviewApi.raw + resultReviewIntegration.raw,
+    gzip: resultReviewApi.gzip + resultReviewIntegration.gzip,
+  },
 );
 const composerScope = resolveComposerDraftScope(
   codeAssets.map((asset) => ({
@@ -1197,6 +1235,7 @@ if (
     deliveryDownload.gzip -
     completionConditions.gzip -
     resultFormat.globalGzip -
+    resultReview.globalGzip -
     reusableWork.globalGzip -
     projectStartRecovery.globalGzip -
     inferenceAccounting.gzip -
@@ -1219,7 +1258,7 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
@@ -1228,6 +1267,7 @@ if (
     deliveryDownload.raw -
     completionConditions.raw -
     resultFormat.globalRaw -
+    resultReview.globalRaw -
     reusableWork.globalRaw -
     projectStartRecovery.globalRaw -
     inferenceAccounting.raw -
@@ -1244,7 +1284,7 @@ if (
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `raw code after bounded feature accounting (${totalCodeRawBytes - deliveryDownload.raw - completionConditions.raw - resultFormat.globalRaw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - localPreparation.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - deliveryDownload.raw - completionConditions.raw - resultFormat.globalRaw - resultReview.globalRaw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - localPreparation.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
@@ -1253,6 +1293,7 @@ if (
     deliveryDownload.gzip -
     completionConditions.gzip -
     resultFormat.globalGzip -
+    resultReview.globalGzip -
     reusableWork.globalGzip -
     projectStartRecovery.globalGzip -
     inferenceAccounting.gzip -
@@ -1269,7 +1310,7 @@ if (
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `gzip code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -1473,4 +1514,8 @@ console.log(
 
 console.log(
   `Explicit result format: ${resultFormat.raw} raw / ${resultFormat.gzip} gzip selected (9800 / 4300 cap); ${resultFormat.globalRaw} raw / ${resultFormat.globalGzip} gzip including all seven packs (13500 / 7200 cap). Only new source-owned assets and exact integration fragments; original ceilings unchanged.`,
+);
+
+console.log(
+  `Operator result review: ${resultReview.raw} raw / ${resultReview.gzip} gzip selected; ${resultReview.globalRaw} raw / ${resultReview.globalGzip} gzip with seven packs. Only new source-owned chunks and exact new integration fragments; original ceilings unchanged.`,
 );

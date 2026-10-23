@@ -7,5 +7,5 @@ export default {
   deliveryExportProject: "Projekt {id}: {title}",
   deliveryExportStatus: "Aktueller Status: {status}",
   deliveryExportNotice:
-    "Vom Agenten gespeicherte Zusammenfassung. Dieser Download bestätigt nicht, dass die Arbeit korrekt ist.",
+    "Gespeichertes Aufgabenergebnis. Der Download bestätigt nicht die ausgeführte Arbeit.",
 } satisfies DeliveryDownloadCopy;

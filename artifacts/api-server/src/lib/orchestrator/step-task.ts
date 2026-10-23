@@ -34,6 +34,10 @@ import type { RuntimeOperationsConfig } from "../runtime-operations-config";
 import { getToolsForAgent } from "./tools";
 import { executeTool, type DurableTaskLifecycleIntent } from "./execute-tool";
 import { LocalSourceReview } from "./local-source-review";
+import { TASK_RESULT_REVIEW_TOOL } from "@workspace/db/task-result-review";
+import { completionProposalDigest } from "../task-result-review-proposal";
+import { assertCompletionProposalEvidence } from "../task-result-review";
+import { taskResultReviewCopy } from "../task-result-review-copy";
 import { buildTaskStepPrompts } from "./system-prompt";
 import { readWorkspaceLocale, type WorkspaceLocale } from "../workspace-locale";
 import {
@@ -233,6 +237,7 @@ async function applyDurableTaskLifecycleIntent(
         status: intent.continuous ? "in_progress" : "completed",
         progressPercent: intent.continuous ? 0 : 100,
         resultSummary: intent.resultSummary,
+        completionAuthority: "agent",
         completedAt: intent.continuous ? null : intent.cycleCompletedAt,
         nextAttemptAt: intent.nextRunAt,
         consecutiveFailures: 0,
@@ -301,6 +306,85 @@ async function applyDurableTaskLifecycleIntent(
       taskId: task.id,
       status: intent.continuous ? "in_progress" : "completed",
     };
+  }
+
+  if (intent.kind === "result_review") {
+    const [currentTask] = await tx
+      .select()
+      .from(tasksTable)
+      .where(eq(tasksTable.id, task.id));
+    const [currentOwner] = await tx
+      .select()
+      .from(agentsTable)
+      .where(eq(agentsTable.id, agent.id));
+    if (!currentTask || !currentOwner) throw new TaskLeaseOwnershipLostError();
+    await assertCompletionProposalEvidence(
+      tx,
+      intent.proposal,
+      currentTask,
+      currentOwner,
+    );
+    await assertOutstandingApprovalCapacity(tx);
+    const [suspended] = await tx
+      .update(tasksTable)
+      .set({
+        status: "awaiting_approval",
+        blockedReason: null,
+        nextAttemptAt: null,
+      })
+      .where(
+        and(
+          eq(tasksTable.id, task.id),
+          eq(tasksTable.ownerAgentId, agent.id),
+          eq(tasksTable.leaseOwner, task.leaseOwner),
+          inArray(tasksTable.status, ["pending", "planning", "in_progress"]),
+        ),
+      )
+      .returning({ id: tasksTable.id });
+    if (!suspended) throw new TaskLeaseOwnershipLostError();
+    const resultCopy = taskResultReviewCopy(locale);
+    const createdAt = new Date();
+    const [approval] = await tx
+      .insert(approvalRequestsTable)
+      .values({
+        taskId: task.id,
+        agentId: agent.id,
+        category: "other",
+        title: resultCopy.title,
+        description: resultCopy.pending,
+        scope: {
+          toolName: TASK_RESULT_REVIEW_TOOL,
+          argsHash: completionProposalDigest(intent.proposal),
+          preview: resultCopy.pending,
+        },
+        completionProposal: intent.proposal,
+        actionPayload: null,
+        createdAt,
+        expiresAt: new Date(
+          Math.min(
+            intent.expiresAt.getTime(),
+            createdAt.getTime() + 24 * 60 * 60_000,
+          ),
+        ),
+      })
+      .returning({ id: approvalRequestsTable.id });
+    if (!approval) throw new TaskLeaseOwnershipLostError();
+    await tx.insert(activityEventsTable).values({
+      agentId: agent.id,
+      taskId: task.id,
+      type: "approval_requested",
+      summary: resultCopy.pending,
+      detail: {
+        approvalId: approval.id,
+        runtimeEvent: "task_result_review_requested",
+        judgeReviewId: intent.proposal.judgeReviewId,
+        judgeVerdict: "block",
+        judgeReasonCode: intent.proposal.judgeReasonCode,
+        proposalHash: completionProposalDigest(intent.proposal),
+      },
+      severity: "warning",
+    });
+    return { taskId: task.id, status: "awaiting_approval" };
   }
 
   if (intent.kind === "approval") {

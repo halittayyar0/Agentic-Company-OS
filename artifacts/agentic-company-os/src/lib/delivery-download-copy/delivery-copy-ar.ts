@@ -7,5 +7,5 @@ export default {
   deliveryExportProject: "المشروع {id}: {title}",
   deliveryExportStatus: "الحالة الحالية: {status}",
   deliveryExportNotice:
-    "هذا هو الملخص الذي حفظه الوكيل. تنزيل الملف لا يُعد تحققًا من العمل.",
+    "نتيجة مهمة محفوظة. تنزيل هذا الملف لا يؤكد التحقق من العمل.",
 } satisfies DeliveryDownloadCopy;

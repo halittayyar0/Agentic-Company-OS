@@ -1376,6 +1376,7 @@ export const InstallWorkforceBlueprintResponse = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -1935,6 +1936,7 @@ export const SendAgentMessageResponse = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -2126,6 +2128,7 @@ export const SendAgentRequestResponse = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -2169,6 +2172,7 @@ export const SendAgentRequestResponse = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -2340,6 +2344,7 @@ export const GetAgentRequestResponse = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -2383,6 +2388,7 @@ export const GetAgentRequestResponse = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -2763,6 +2769,7 @@ export const ListTasksResponseItem = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -2875,6 +2882,7 @@ export const CreateTaskResponse = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -2973,6 +2981,7 @@ export const GetTaskResponse = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -3058,6 +3067,7 @@ export const ListSubtasksResponseItem = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -3222,6 +3232,7 @@ export const CancelTaskResponse = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -3306,6 +3317,7 @@ export const UpdateTaskAutonomyResponse = zod.object({
   "tokensUsed": zod.number(),
   "estimatedCostUsd": zod.string().nullable(),
   "resultSummary": zod.string().nullable(),
+  "completionAuthority": zod.union([zod.literal('agent'),zod.literal('operator'),zod.literal(null)]).nullish().describe('Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.'),
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
@@ -4322,6 +4334,11 @@ export const ListApprovalsQueryParams = zod.object({
   "beforeId": zod.coerce.number().int().min(1).optional().describe('Return rows with an id lower than this cursor.')
 })
 
+export const listApprovalsResponseResultReviewProposalHashRegExp = new RegExp('^[a-f0-9]{64}$');
+export const listApprovalsResponseResultReviewCycleNumberMin = 0;
+
+
+
 export const ListApprovalsResponseItem = zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -4341,9 +4358,63 @@ export const ListApprovalsResponseItem = zod.object({
   "createdAt": zod.coerce.date(),
   "resolvedAt": zod.coerce.date().nullable(),
   "expiresAt": zod.coerce.date().nullable(),
-  "consumedAt": zod.coerce.date().nullable()
+  "consumedAt": zod.coerce.date().nullable(),
+  "resultReview": zod.object({
+  "kind": zod.enum(['task_result']),
+  "proposalHash": zod.string().regex(listApprovalsResponseResultReviewProposalHashRegExp).nullable(),
+  "cycleNumber": zod.number().int().min(listApprovalsResponseResultReviewCycleNumberMin).nullable(),
+  "available": zod.boolean()
+}).optional()
 })
 export const ListApprovalsResponse = zod.array(ListApprovalsResponseItem)
+
+
+/**
+ * @summary Read an exact proposed result with configured operator credential authentication
+ */
+
+
+
+export const GetTaskResultReviewParams = zod.object({
+  "approvalId": zod.coerce.number().int().min(1)
+})
+
+
+
+export const getTaskResultReviewResponseCycleNumberMin = 0;
+
+export const getTaskResultReviewResponseProposalHashRegExp = new RegExp('^[a-f0-9]{64}$');
+export const getTaskResultReviewResponseResultSummaryMax = 65536;
+
+export const getTaskResultReviewResponseResultFormatColumnsItemMax = 80;
+
+export const getTaskResultReviewResponseResultFormatColumnsMin = 2;
+export const getTaskResultReviewResponseResultFormatColumnsMax = 8;
+
+export const getTaskResultReviewResponseRequirementsItemToolRegExp = new RegExp('^[a-zA-Z][a-zA-Z0-9_]{0,79}$');
+export const getTaskResultReviewResponseRequirementsMax = 8;
+
+
+
+export const GetTaskResultReviewResponse = zod.object({
+  "approvalId": zod.number().int().min(1),
+  "taskId": zod.number().int().min(1),
+  "cycleNumber": zod.number().int().min(getTaskResultReviewResponseCycleNumberMin),
+  "proposalHash": zod.string().regex(getTaskResultReviewResponseProposalHashRegExp),
+  "resultSummary": zod.string().min(1).max(getTaskResultReviewResponseResultSummaryMax),
+  "resultFormat": zod.object({
+  "kind": zod.enum(['table']),
+  "columns": zod.array(zod.string().min(1).max(getTaskResultReviewResponseResultFormatColumnsItemMax)).min(getTaskResultReviewResponseResultFormatColumnsMin).max(getTaskResultReviewResponseResultFormatColumnsMax).describe('Unique canonical headings in requested order; no surrounding whitespace, control characters or malformed Unicode.')
+}).nullable().describe('Optional owner-selected result layout, fixed at creation. Null or omission preserves plain results. A matching format proves only layout, not facts, completeness or execution authority.'),
+  "judgeReasonCode": zod.enum(['source_mismatch', 'missing_required_action', 'unauthorized_action', 'insufficient_evidence']),
+  "expiresAt": zod.coerce.date(),
+  "requirements": zod.array(zod.object({
+  "kind": zod.enum(['tool_succeeded']),
+  "tool": zod.string().regex(getTaskResultReviewResponseRequirementsItemToolRegExp),
+  "satisfied": zod.boolean(),
+  "available": zod.boolean()
+})).max(getTaskResultReviewResponseRequirementsMax)
+})
 
 
 /**
@@ -4369,12 +4440,18 @@ export const resolveApprovalBodyConfirmationRegExp = new RegExp('^[a-fA-F0-9]{8}
 
 
 export const ResolveApprovalBody = zod.object({
+  "confirmTaskResult": zod.boolean().optional().describe('Required true with the exact expectedArgsHash when confirming a proposed task result. Never inferred from ordinary approval.'),
   "expectedArgsHash": zod.string().min(resolveApprovalBodyExpectedArgsHashMin).max(resolveApprovalBodyExpectedArgsHashMax).regex(resolveApprovalBodyExpectedArgsHashRegExp).nullish().describe('Optional reviewed scope digest. Null asserts an unscoped request. A changed scope is rejected while the decision locks are held.'),
   "locale": zod.enum(['tr', 'en', 'de', 'ru', 'zh-CN', 'zh-TW', 'ar']).default(resolveApprovalBodyLocaleDefault),
   "decision": zod.enum(['approved', 'rejected']),
   "note": zod.string().max(resolveApprovalBodyNoteMax).optional(),
   "confirmation": zod.string().min(resolveApprovalBodyConfirmationMin).max(resolveApprovalBodyConfirmationMax).regex(resolveApprovalBodyConfirmationRegExp).optional().describe('First eight hexadecimal characters of the scoped argsHash. Required by the server when approving vm_run_sudo_command; omitted for other approvals and rejections.\n')
 })
+
+export const resolveApprovalResponseResultReviewProposalHashRegExp = new RegExp('^[a-f0-9]{64}$');
+export const resolveApprovalResponseResultReviewCycleNumberMin = 0;
+
+
 
 export const ResolveApprovalResponse = zod.object({
   "id": zod.number(),
@@ -4395,7 +4472,13 @@ export const ResolveApprovalResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "resolvedAt": zod.coerce.date().nullable(),
   "expiresAt": zod.coerce.date().nullable(),
-  "consumedAt": zod.coerce.date().nullable()
+  "consumedAt": zod.coerce.date().nullable(),
+  "resultReview": zod.object({
+  "kind": zod.enum(['task_result']),
+  "proposalHash": zod.string().regex(resolveApprovalResponseResultReviewProposalHashRegExp).nullable(),
+  "cycleNumber": zod.number().int().min(resolveApprovalResponseResultReviewCycleNumberMin).nullable(),
+  "available": zod.boolean()
+}).optional()
 })
 
 

@@ -83,6 +83,12 @@ import type { LocalSourceReview } from "./local-source-review";
 import { loadCompletionRequirementResults } from "./completion-requirements";
 import { checkTaskResultFormat } from "../task-result-format";
 import { parseTaskResultFormat } from "@workspace/db/task-result-format";
+import { type TaskCompletionProposal } from "@workspace/db/task-result-review";
+import { withAgentConfigVersion } from "../agent-config-version";
+import {
+  completionProposalContextHash,
+  readCompletionProposal,
+} from "../task-result-review-proposal";
 import {
   VmError,
   localizedVmErrorMessage,
@@ -260,6 +266,12 @@ export interface DurableLifecycleOperationFinalization {
 }
 
 export type DurableTaskLifecycleIntent =
+  | {
+      kind: "result_review";
+      proposal: TaskCompletionProposal;
+      expiresAt: Date;
+      operationFinalization: DurableLifecycleOperationFinalization;
+    }
   | {
       kind: "complete";
       resultSummary: string;
@@ -571,11 +583,16 @@ async function withTaskMutationFence<T>(
 
 function persistJudgeReview(
   ctx: ToolRuntimeContext,
-): ((review: JudgeReviewRecord) => Promise<void>) | undefined {
+): ((review: JudgeReviewRecord) => Promise<number>) | undefined {
   if (!ctx.taskId || ctx.preapprovedAction) return undefined;
   return async (review) => {
-    await withTaskMutationFence(ctx, async (tx) => {
-      await tx.insert(activityEventsTable).values(review);
+    return withTaskMutationFence(ctx, async (tx) => {
+      const [saved] = await tx
+        .insert(activityEventsTable)
+        .values(review)
+        .returning({ id: activityEventsTable.id });
+      if (!saved) throw new Error("Judge event was not persisted");
+      return saved.id;
     });
   };
 }
@@ -2088,7 +2105,10 @@ async function lifecycleOperationDispositionResult(
     return {
       ...replayed,
       taskLifecycleEffect:
-        toolName === "complete_task" ? "completed" : "suspended",
+        toolName === "complete_task" &&
+        operation.receipt.resultData?.status !== "awaiting_approval"
+          ? "completed"
+          : "suspended",
     };
   }
   return unavailableNormalizedOperationResult(
@@ -2995,6 +3015,7 @@ export async function finalizeSucceededApprovedActionReceipt(input: {
                 progressPercent: 100,
                 completedAt: now,
                 resultSummary: summary,
+                completionAuthority: null,
               }
           : {}),
       })
@@ -6950,6 +6971,9 @@ async function completeTask(
     agentModelMode: ctx.agent.modelMode,
     agentModelId: ctx.agent.modelId,
   });
+  const privateLocalSources = ctx.localSourceReview?.forJudge(
+    judgeExecutionModelId,
+  );
   const judgeResult = await runJudge({
     locale,
     agent: ctx.agent,
@@ -6959,7 +6983,7 @@ async function completeTask(
     actionSummary: resultSummary,
     completionEvidence: await loadCompletionEvidence(task),
     taskExecutionModelId: judgeExecutionModelId,
-    privateLocalSources: ctx.localSourceReview?.forJudge(judgeExecutionModelId),
+    privateLocalSources,
     beforeAttempt: () => heartbeatJudgeTaskLease(ctx),
     persistReview: persistJudgeReview(ctx),
   });
@@ -6970,6 +6994,66 @@ async function completeTask(
   if (judgeResult.unavailable)
     throw judgeResult.providerFailure ?? new Error(judgeResult.reasoning);
   if (judgeResult.verdict === "block") {
+    if (
+      isDurableTaskContext(ctx) &&
+      privateLocalSources &&
+      judgeResult.privateReview &&
+      lifecycleReservation?.disposition === "reserved"
+    ) {
+      const proposal = readCompletionProposal({
+        schemaVersion: 1,
+        taskId: task.id,
+        ownerAgentId: ctx.agent.id,
+        ownerConfigVersion: withAgentConfigVersion(ctx.agent).configVersion,
+        cycleNumber: task.cycleCount,
+        cycleStartedAt: (
+          task.lastCycleCompletedAt ?? task.createdAt
+        ).toISOString(),
+        originAttemptId: ctx.runtimeAttemptId,
+        judgeReviewId: judgeResult.privateReview.id,
+        judgeReasonCode: judgeResult.privateReview.reasonCode,
+        contextHash: completionProposalContextHash(
+          task,
+          withAgentConfigVersion(ctx.agent),
+        ),
+        resultSummary: resultSummary.trim(),
+        resultSummaryHash: createHash("sha256")
+          .update(resultSummary.trim(), "utf8")
+          .digest("hex"),
+        sourceReceipts: privateLocalSources.documents.map((document) => ({
+          receiptId: document.receiptId,
+          argumentHash: canonicalArgumentHash({ path: document.requestedPath }),
+          fileSha256: document.sha256,
+          byteCount: document.byteCount,
+        })),
+      });
+      if (proposal) {
+        const claimed = await claimDurableLifecycleOperation(
+          ctx,
+          lifecycleReservation,
+        );
+        if (claimed.disposition !== "prepared")
+          return lifecycleOperationDispositionResult(
+            "complete_task",
+            claimed,
+            locale,
+          );
+        return {
+          content: text("teamCompletionRejected", {
+            reason: judgeResult.reasoning,
+          }),
+          createdTasks: [],
+          createdAgents: [],
+          toolOutcome: "succeeded",
+          durableTaskLifecycleIntent: {
+            kind: "result_review",
+            proposal,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60_000),
+            operationFinalization: claimed.finalization,
+          },
+        };
+      }
+    }
     return empty(
       text("teamCompletionRejected", { reason: judgeResult.reasoning }),
       "rejected",
@@ -7043,6 +7127,7 @@ async function completeTask(
         status: continuous ? "in_progress" : "completed",
         progressPercent: continuous ? 0 : 100,
         resultSummary,
+        completionAuthority: "agent",
         completedAt: continuous ? null : cycleCompletedAt,
         nextAttemptAt: nextRunAt,
         consecutiveFailures: 0,

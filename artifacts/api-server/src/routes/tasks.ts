@@ -657,6 +657,7 @@ router.post("/tasks/:taskId/cancel", async (req, res): Promise<void> => {
             decisionNote: "Task cancelled by user",
             resolvedAt,
             actionPayload: null,
+            completionProposal: null,
             scope: redactApprovalCapabilityScope(approval.scope, "CANCELLED"),
           })
           .where(

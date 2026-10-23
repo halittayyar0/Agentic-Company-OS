@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import {
   db,
   agentsTable,
   approvalRequestsTable,
   tasksTable,
+  taskAttemptsTable,
   activityEventsTable,
   approvalStatusValues,
   type ApprovalScope,
@@ -13,6 +14,7 @@ import {
   ListApprovalsResponse,
   ResolveApprovalBody,
   ResolveApprovalResponse,
+  GetTaskResultReviewResponse,
 } from "@workspace/api-zod";
 import { reserveOperation } from "../lib/orchestrator/operation-receipts";
 import { scrubExpiredApprovals } from "../lib/orchestrator/sudo-approval-retention";
@@ -27,6 +29,23 @@ import {
   parsePositiveInteger,
   setNextCursor,
 } from "../lib/http-params";
+import {
+  createOperatorAuth,
+  readOperatorAuthOptions,
+  readOperatorAuditId,
+} from "../lib/operator-auth";
+import {
+  assertCompletionProposalEvidence,
+  isTaskResultReview,
+  resultReviewMetadata,
+  ResultReviewConflict,
+} from "../lib/task-result-review";
+import {
+  readCompletionProposal,
+  completionProposalDigest,
+} from "../lib/task-result-review-proposal";
+import { parseTaskResultFormat } from "@workspace/db/task-result-format";
+import { taskResultReviewCopy } from "../lib/task-result-review-copy";
 
 import {
   EmergencyStopError,
@@ -46,6 +65,10 @@ const decisionLabels = {
 export interface ApprovalDecisionDependencies {
   now?: () => Date;
   afterDecisionLocks?: () => Promise<void>;
+  resultReviewAuth?: Pick<
+    ReturnType<typeof createOperatorAuth>,
+    "enabled" | "authenticate"
+  >;
 }
 class ApprovalDecisionError extends Error {
   constructor(
@@ -60,6 +83,31 @@ export function createApprovalsRouter(
   dependencies: ApprovalDecisionDependencies = {},
 ): IRouter {
   const router: IRouter = Router();
+  const resultReviewAuth =
+    dependencies.resultReviewAuth ??
+    createOperatorAuth(readOperatorAuthOptions());
+  const requireResultReviewAuth = (
+    req: Parameters<typeof resultReviewAuth.authenticate>[0],
+    res: import("express").Response,
+  ): boolean => {
+    res.setHeader("Cache-Control", "no-store");
+    if (!resultReviewAuth.enabled) {
+      res.status(503).json({
+        code: "TASK_RESULT_REVIEW_AUTH_REQUIRED",
+        error:
+          "Configure operator credential authentication before reviewing task results",
+      });
+      return false;
+    }
+    if (!resultReviewAuth.authenticate(req).authenticated) {
+      res.status(401).json({
+        code: "TASK_RESULT_REVIEW_UNAUTHENTICATED",
+        error: "Operator authentication required",
+      });
+      return false;
+    }
+    return true;
+  };
   class ApprovalResolutionConflict extends Error {}
 
   function approvalEventScope(
@@ -109,8 +157,90 @@ export function createApprovalsRouter(
     const hasMore = rows.length > page.value.limit;
     const approvals = rows.slice(0, page.value.limit);
     setNextCursor(res, approvals, hasMore);
-    res.json(ListApprovalsResponse.parse(approvals));
+    res.json(
+      ListApprovalsResponse.parse(
+        approvals.map((approval) => ({
+          ...approval,
+          ...resultReviewMetadata(approval),
+        })),
+      ),
+    );
   });
+
+  router.get(
+    "/approvals/:approvalId/result-review",
+    async (req, res): Promise<void> => {
+      if (!requireResultReviewAuth(req, res)) return;
+      const id = parsePositiveInteger(req.params.approvalId, "approvalId");
+      if (!id.ok) {
+        res.status(400).json({ code: "APPROVAL_INPUT_INVALID" });
+        return;
+      }
+      await scrubExpiredApprovals();
+      try {
+        const result = await db.transaction(
+          async (tx) => {
+            const [approval] = await tx
+              .select()
+              .from(approvalRequestsTable)
+              .where(eq(approvalRequestsTable.id, id.value));
+            if (!approval || !isTaskResultReview(approval)) return null;
+            const proposal = readCompletionProposal(
+              approval.completionProposal,
+            );
+            const now = dependencies.now?.() ?? new Date();
+            if (
+              !proposal ||
+              approval.status !== "pending" ||
+              approval.consumedAt ||
+              !approval.expiresAt ||
+              approval.expiresAt <= now ||
+              approval.actionPayload ||
+              approval.automaticPolicyRevision !== null ||
+              completionProposalDigest(proposal) !== approval.scope?.argsHash
+            )
+              throw new ResultReviewConflict();
+            const [task] = await tx
+              .select()
+              .from(tasksTable)
+              .where(eq(tasksTable.id, approval.taskId));
+            const [owner] = await tx
+              .select()
+              .from(agentsTable)
+              .where(eq(agentsTable.id, approval.agentId));
+            if (!task || !owner || task.status !== "awaiting_approval")
+              throw new ResultReviewConflict();
+            const requirements = await assertCompletionProposalEvidence(
+              tx,
+              proposal,
+              task,
+              owner,
+            );
+            return {
+              approvalId: approval.id,
+              taskId: task.id,
+              cycleNumber: proposal.cycleNumber,
+              proposalHash: completionProposalDigest(proposal),
+              resultSummary: proposal.resultSummary,
+              resultFormat: parseTaskResultFormat(task.resultFormat),
+              judgeReasonCode: proposal.judgeReasonCode,
+              expiresAt: approval.expiresAt,
+              requirements,
+            };
+          },
+          { isolationLevel: "repeatable read", accessMode: "read only" },
+        );
+        if (!result) {
+          res.status(404).json({ code: "TASK_RESULT_REVIEW_NOT_FOUND" });
+          return;
+        }
+        res.json(GetTaskResultReviewResponse.parse(result));
+      } catch (error) {
+        if (!(error instanceof ResultReviewConflict)) throw error;
+        res.status(409).json({ code: error.code, error: error.message });
+      }
+    },
+  );
 
   router.post(
     "/approvals/:approvalId/decision",
@@ -146,7 +276,25 @@ export function createApprovalsRouter(
         });
         return;
       }
+      if (isTaskResultReview(approval) && !requireResultReviewAuth(req, res))
+        return;
       if (approval.status !== "pending") {
+        if (
+          isTaskResultReview(approval) &&
+          approval.status === parsed.data.decision &&
+          (approval.status === "rejected" ||
+            (parsed.data.confirmTaskResult === true &&
+              parsed.data.expectedArgsHash === approval.scope?.argsHash &&
+              approval.consumedAt))
+        ) {
+          res.json(
+            ResolveApprovalResponse.parse({
+              ...approval,
+              ...resultReviewMetadata(approval),
+            }),
+          );
+          return;
+        }
         if (
           parsed.data.decision === "approved" &&
           /approval expired$/iu.test(approval.decisionNote ?? "")
@@ -203,11 +351,11 @@ export function createApprovalsRouter(
             .from(approvalRequestsTable)
             .where(eq(approvalRequestsTable.id, approvalId));
           const [liveAgent] = await tx
-            .select({ isActive: agentsTable.isActive })
+            .select()
             .from(agentsTable)
             .where(eq(agentsTable.id, approval.agentId));
           const [liveTask] = await tx
-            .select({ status: tasksTable.status })
+            .select()
             .from(tasksTable)
             .where(eq(tasksTable.id, approval.taskId));
           const decisionNow = dependencies.now?.() ?? new Date();
@@ -230,6 +378,174 @@ export function createApprovalsRouter(
             liveTask?.status !== "awaiting_approval"
           ) {
             throw new ApprovalResolutionConflict();
+          }
+          if (isTaskResultReview(liveApproval)) {
+            if (
+              !resultReviewAuth.enabled ||
+              !resultReviewAuth.authenticate(req).authenticated
+            )
+              throw new ApprovalDecisionError(
+                401,
+                "TASK_RESULT_REVIEW_UNAUTHENTICATED",
+                "Operator authentication required",
+              );
+            if (status === "approved") {
+              if (
+                parsed.data.confirmTaskResult !== true ||
+                !parsed.data.expectedArgsHash
+              )
+                throw new ApprovalDecisionError(
+                  400,
+                  "TASK_RESULT_REVIEW_CONFIRMATION_REQUIRED",
+                  "Explicit result confirmation and the reviewed digest are required",
+                );
+              const proposal = readCompletionProposal(
+                liveApproval.completionProposal,
+              );
+              if (
+                !proposal ||
+                completionProposalDigest(proposal) !==
+                  parsed.data.expectedArgsHash ||
+                completionProposalDigest(proposal) !==
+                  liveApproval.scope?.argsHash ||
+                liveApproval.actionPayload !== null ||
+                liveApproval.automaticPolicyRevision !== null
+              )
+                throw new ResultReviewConflict();
+              if (
+                liveTask.leaseOwner !== null ||
+                liveAgent.runLeaseOwner !== null ||
+                liveAgent.currentTaskId !== null
+              )
+                throw new ResultReviewConflict();
+              const [activeAttempt] = await tx
+                .select({ id: taskAttemptsTable.id })
+                .from(taskAttemptsTable)
+                .where(
+                  and(
+                    eq(taskAttemptsTable.agentId, liveAgent.id),
+                    inArray(taskAttemptsTable.state, ["claimed", "running"]),
+                  ),
+                )
+                .limit(1);
+              if (activeAttempt) throw new ResultReviewConflict();
+              await assertCompletionProposalEvidence(
+                tx,
+                proposal,
+                liveTask,
+                liveAgent,
+              );
+              const continuous = liveTask.autonomyMode === "continuous";
+              await tx
+                .update(tasksTable)
+                .set({
+                  status: continuous ? "in_progress" : "completed",
+                  resultSummary: proposal.resultSummary,
+                  completionAuthority: "operator",
+                  progressPercent: continuous ? 0 : 100,
+                  completedAt: continuous ? null : decisionNow,
+                  nextAttemptAt: continuous
+                    ? new Date(
+                        decisionNow.getTime() +
+                          (liveTask.cadenceSeconds ?? 3600) * 1000,
+                      )
+                    : null,
+                  consecutiveFailures: 0,
+                  lastError: null,
+                  blockedReason: null,
+                  ...(continuous
+                    ? {
+                        cycleCount: liveTask.cycleCount + 1,
+                        lastCycleCompletedAt: decisionNow,
+                      }
+                    : {}),
+                })
+                .where(eq(tasksTable.id, liveTask.id));
+            } else {
+              await tx
+                .update(tasksTable)
+                .set({
+                  status: "blocked",
+                  blockedReason: "approval_rejected",
+                  nextAttemptAt: null,
+                })
+                .where(eq(tasksTable.id, liveTask.id));
+            }
+            const [resolved] = await tx
+              .update(approvalRequestsTable)
+              .set({
+                status,
+                decisionNote: note,
+                resolvedAt: decisionNow,
+                consumedAt: status === "approved" ? decisionNow : null,
+                completionProposal: null,
+              })
+              .where(eq(approvalRequestsTable.id, liveApproval.id))
+              .returning();
+            if (!resolved) throw new ApprovalResolutionConflict();
+            const reviewCopy = taskResultReviewCopy(parsed.data.locale ?? "tr");
+            await tx.insert(activityEventsTable).values({
+              agentId: liveAgent.id,
+              taskId: liveTask.id,
+              type: "approval_resolved",
+              summary:
+                status === "approved"
+                  ? reviewCopy.confirmed
+                  : reviewCopy.rejected,
+              detail: {
+                runtimeEvent: "task_result_review_resolved",
+                approvalId: resolved.id,
+                decision: status,
+                completionAuthority: status === "approved" ? "operator" : null,
+                actorKind: "operator",
+                actorId: readOperatorAuditId(),
+                proposalHash: resolved.scope?.argsHash,
+                actionQueued: false,
+                judgeVerdict: "block",
+                cycleNumber: liveTask.cycleCount,
+              },
+              severity: status === "approved" ? "info" : "warning",
+            });
+            if (status === "approved") {
+              await tx.insert(activityEventsTable).values({
+                agentId: liveAgent.id,
+                taskId: liveTask.id,
+                type: "task_status_changed",
+                summary: reviewCopy.confirmed,
+                severity: "info",
+                detail: {
+                  runtimeEvent: "task_result_operator_confirmed",
+                  approvalId: resolved.id,
+                  status:
+                    liveTask.autonomyMode === "continuous"
+                      ? "in_progress"
+                      : "completed",
+                  completionAuthority: "operator",
+                  judgeVerdict: "block",
+                  judgeReviewId: liveApproval.completionProposal?.judgeReviewId,
+                  cycleNumber: liveTask.cycleCount,
+                  actorKind: "operator",
+                  actorId: readOperatorAuditId(),
+                },
+              });
+              if (
+                liveTask.parentTaskId &&
+                liveTask.autonomyMode !== "continuous"
+              ) {
+                await tx.insert(activityEventsTable).values({
+                  taskId: liveTask.parentTaskId,
+                  agentId: liveTask.assignedByAgentId,
+                  type: "progress_update",
+                  summary: reviewCopy.confirmed,
+                  severity: "info",
+                  detail: {
+                    completedSubtaskId: liveTask.id,
+                    completionAuthority: "operator",
+                  },
+                });
+              }
+            }
+            return resolved;
           }
           if (status === "approved") {
             if (
@@ -359,6 +675,10 @@ export function createApprovalsRouter(
           return resolved;
         });
       } catch (error) {
+        if (error instanceof ResultReviewConflict) {
+          res.status(409).json({ code: error.code, error: error.message });
+          return;
+        }
         if (error instanceof CodexApprovalConflict) {
           res.status(409).json({
             error: "Native approval scope or ownership changed",
@@ -405,7 +725,12 @@ export function createApprovalsRouter(
         throw error;
       }
 
-      res.json(ResolveApprovalResponse.parse(updated));
+      res.json(
+        ResolveApprovalResponse.parse({
+          ...updated,
+          ...resultReviewMetadata(updated),
+        }),
+      );
     },
   );
 

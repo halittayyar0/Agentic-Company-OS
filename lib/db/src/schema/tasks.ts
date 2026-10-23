@@ -17,6 +17,7 @@ import { z } from "zod/v4";
 import { agentsTable } from "./agents";
 import type { CompletionRequirement } from "../completion-requirements";
 import type { TaskResultFormat } from "../task-result-format";
+import type { TaskCompletionAuthority } from "../task-result-review";
 
 export const taskStatusValues = [
   "pending",
@@ -81,6 +82,9 @@ export const tasksTable = pgTable(
       scale: 6,
     }),
     resultSummary: text("result_summary"),
+    completionAuthority: text(
+      "completion_authority",
+    ).$type<TaskCompletionAuthority>(),
     // A manual agent selection is snapshotted when the task is created. This
     // keeps unattended/continuous work on the user-selected primary model even
     // if the agent's later chat default changes. Null deliberately means
@@ -158,6 +162,10 @@ export const tasksTable = pgTable(
       sql`public.acos_valid_task_result_format(${table.resultFormat})`,
     ),
     check("tasks_tokens_used_check", sql`${table.tokensUsed} >= 0`),
+    check(
+      "tasks_completion_authority_check",
+      sql`${table.completionAuthority} is null or (${table.completionAuthority} in ('agent', 'operator') and ${table.resultSummary} is not null)`,
+    ),
     check("tasks_step_attempts_check", sql`${table.stepAttempts} >= 0`),
     check(
       "tasks_consecutive_failures_check",

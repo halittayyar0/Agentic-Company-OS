@@ -193,3 +193,82 @@ that those suites already passed.
 
 All 131 release-verifier contract tests passed after the expectation update;
 backend type checking, build and the follow-up patch secret scan also passed.
+
+### Operator review follow-up, in development
+
+The pre-commit clarification candidate `1ffe672` also failed the unchanged
+genuine held-file task: five actual responses recorded 16,712 tokens, the correct
+proposed table reached private review, and the reviewer again returned
+`block/missing_required_action`. The following actor response ended at the
+length limit and the app stopped safely. Cleanup passed; actual completed-task
+browser evidence was not reached. Retained proof SHA-256:
+`93a6bb3b7c0b4d7073c750be3ab432896495846a7bdd47e2a4d7a5b46c6427bd`.
+All three genuine autonomous failures remain failures.
+
+The follow-up now pauses after a genuine private-source rejection and offers
+credential-authenticated operator review of the exact proposed result. This is
+a separate, visibly operator-confirmed outcome, not a changed model verdict.
+Mandatory operations, format, settled children and current ownership/context
+still gate confirmation. Confirmation does not call a model or execute an
+external action. The review uses a dedicated non-executable proposal field,
+not an approved-action payload.
+
+Development evidence so far: 25 strict envelope/migration cases passed; 40
+targeted task-step, operator-decision and existing approval cases passed with no
+skips. The task-step cases include automatic local-review success, malformed
+review failure, genuine block suspension and repeat receipt handling for finite
+and recurring tasks. The repeat is a storage/recovery fixture, not another model
+quality attempt. Backend and generated-library type checking passed.
+
+PostgreSQL 17.10 development verification passed all 23 API cases, including
+concurrent decisions against actual database locks. Separate storage-only
+pending/confirmed fixtures survived restart and binary backup/restore with exact
+readback SHA-256
+`bed4f672038d9bb3060dda873af87f2dca8d280c185e922eac1f5dd9bbd6780e`;
+backup SHA-256
+`ef5af71b902d857889105343f0a89fa7cd7bb3b63a9007f5c3474e0ed95632df`.
+The owned database stopped and cleanup verification passed. These are development
+fixtures, not package, genuine model or long-running reliability evidence.
+
+The expanded development regression group passed 185 cases with zero skips,
+including private review privacy/accounting, durable lifecycle crash boundaries,
+operation evidence and existing approval policy behavior.
+
+Fourteen new review browser cases passed on the final UI build across seven
+languages, including 320px, 200% text, RTL, credential/unknown-outcome failures,
+exact acknowledgement and operator provenance through reload/download.
+Nineteen existing approval locale cases also passed on that build; nineteen
+table cases passed before the final neutral-description copy correction.
+ROOT inspected English and Arabic component screenshots after removing
+misleading command-permission and agent-authorship copy. These are browser
+fixtures, not physical phones or genuine model output.
+
+Frontend/scripts type checking, production build and independent feature bundle
+accounting passed. Selected-language transfer measures 13,870 raw / 5,447 gzip
+bytes; all seven packs measure 23,170 / 10,299. Existing ceilings are unchanged;
+only compiler-verified dedicated sources and exact new GET/AST fragments receive
+separate accounting. A bounded independent backend source review found no
+actionable defects; it did not repeat the native database or model checks.
+Production/all dependency audits found no known vulnerabilities and the
+production license policy passed.
+
+The complete development source run finished with 3,080 tests: 3,045 passed,
+zero failed/cancelled/todo and 35 existing platform skips. Comparing the exact
+skip names to the Windows CI baseline found only the previously recorded local
+symlink-creation `EPERM` skip. The original CI skip sets remain unchanged.
+Source log SHA-256:
+`1cf1c637edb092925d485e22fdc84382f33d03a12c2e2a6c2c79e9fb9c2da3f3`.
+This is a development run, not an attested frozen PR/platform run.
+
+The reviewed source census increases all four platform expectations from 3,024
+to 3,080 and each expected pass count by 56; Linux UI discovery increases from
+1,451 to 1,465 cases. Discovery is not execution of that complete UI set.
+Original skip names, workers, Mac UI counts and producer deadlines are unchanged.
+All 131 release-verifier contract cases passed after the census update.
+The complete workspace build and type checks, current bundle check, staged-file
+format check and full-patch secret scan also passed.
+
+The implementation is not release-qualified. Actual automatic/assisted
+task/browser acceptance, fresh original source/UI
+census, mandatory original producers and exact-main/package/public delivery
+checks remain separate evidence gates.

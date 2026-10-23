@@ -7,6 +7,7 @@
  */
 import type { TaskAutonomyMode } from './taskAutonomyMode';
 import type { TaskBlockedReason } from './taskBlockedReason';
+import type { TaskCompletionAuthority } from './taskCompletionAuthority';
 import type { TaskCompletionRequirements } from './taskCompletionRequirements';
 import type { TaskPriority } from './taskPriority';
 import type { TaskResultFormat } from './taskResultFormat';
@@ -32,6 +33,11 @@ export interface Task {
   estimatedCostUsd: string | null;
   /** @nullable */
   resultSummary: string | null;
+  /**
+     * Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.
+     * @nullable
+     */
+  completionAuthority?: TaskCompletionAuthority;
   /**
      * User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.
      * @nullable

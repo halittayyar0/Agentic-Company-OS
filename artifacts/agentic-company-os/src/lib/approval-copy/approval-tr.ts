@@ -1,5 +1,6 @@
 import type { ApprovalCopy } from "../approval-copy";
 export default {
+  reviewResult: "Önerilen sonucu incele",
   emptyPage: "Bu sayfada talep yok",
   closedPreview: "Kapanmış yetkilerde komut önizlemesi gösterilmez.",
   eyebrow: "İnsan kontrolü",

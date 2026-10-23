@@ -157,6 +157,34 @@ the Replit integration. If local review is unavailable, completion stays blocked
 an approval warning still requires the separate human approval. A review receipt
 does not prove that the model understood the source document or completed the job.
 
+If a completion review genuinely rejects a result supported by bounded local
+file observations, the task can pause for **operator result review**. Open the
+request in Approvals, inspect the exact proposed output, acknowledge the review,
+and choose Confirm result or Reject. This requires configured operator credential
+authentication and a signed-in operator; disabling API authentication does not
+enable this confirmation. The app does not configure credentials for you.
+
+Confirmation makes no model call and executes no command. It saves only the
+reviewed result for the current task or recurring cycle, with operator
+provenance. The original model rejection remains in the activity history. Saved
+format, required successful operations, settled children, unchanged task/owner
+settings, absence of active workers, and emergency stop are checked again before
+confirmation. Changed or expired proposals cannot be confirmed. A continuous
+task schedules its next cycle from the confirmation time.
+
+The pending exact output is retained in the application database and its backups
+for at most 24 hours while the app's expiry maintenance runs; rejection,
+confirmation, cancellation or owner deactivation clears the proposal payload.
+An offline backup still contains its earlier snapshot. Requested extracted facts
+can therefore be present in the proposed output. Original private review-source
+observations are not added to the proposal, activities or backups. Approval lists
+contain only review metadata; the full output is downloaded after opening the
+review and requires operator authentication.
+
+This recovery path is assisted completion. It does not demonstrate that a small
+model reliably completes the same task autonomously, and unavailable or malformed
+model reviews cannot create a confirmable proposal.
+
 ## Cloud use is a separate permission
 
 Cloud use is **off by default**. The connection screen has an explicit checkbox

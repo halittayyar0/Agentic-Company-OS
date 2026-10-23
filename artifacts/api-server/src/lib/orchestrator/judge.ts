@@ -83,6 +83,11 @@ export interface JudgeResult {
   reasoning: string;
   unavailable?: boolean;
   providerFailure?: ModelRoutesExhaustedError;
+  /** Server-persisted genuine private review, never inferred from actor prose. */
+  privateReview?: {
+    id: number;
+    reasonCode: Exclude<keyof typeof privateReasonKeys, "scope_satisfied">;
+  };
 }
 
 export interface JudgeReviewRecord {
@@ -161,7 +166,7 @@ export async function runJudge(
     taskExecutionModelId?: string | null;
     redactActionSummaryInActivity?: boolean;
     beforeAttempt?: (route: ModelRouteCandidate) => Promise<void>;
-    persistReview?: (review: JudgeReviewRecord) => Promise<void>;
+    persistReview?: (review: JudgeReviewRecord) => Promise<void | number>;
   },
   dependencies: { createCompletion?: typeof createChatCompletion } = {},
 ): Promise<JudgeResult> {
@@ -391,17 +396,37 @@ ${
             ? "warning"
             : "info",
     };
+    let reviewId: number | void;
     if (persistReview) {
       try {
-        await persistReview(review);
+        reviewId = await persistReview(review);
       } catch (error) {
         throw new JudgeOwnershipBoundaryError(error);
       }
     } else {
-      await db.insert(activityEventsTable).values(review);
+      const [saved] = await db
+        .insert(activityEventsTable)
+        .values(review)
+        .returning({ id: activityEventsTable.id });
+      reviewId = saved?.id;
     }
 
-    return { verdict, reasoning: safeReasoning };
+    return {
+      verdict,
+      reasoning: safeReasoning,
+      ...(privateLocalSources &&
+      verdict === "block" &&
+      typeof reviewId === "number" &&
+      routed.value.privateReasonCode &&
+      routed.value.privateReasonCode !== "scope_satisfied"
+        ? {
+            privateReview: {
+              id: reviewId,
+              reasonCode: routed.value.privateReasonCode,
+            },
+          }
+        : {}),
+    };
   } catch (error) {
     if (error instanceof JudgeOwnershipBoundaryError) throw error.original;
     if (

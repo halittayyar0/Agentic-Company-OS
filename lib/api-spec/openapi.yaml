@@ -2147,6 +2147,26 @@ paths:
                 items:
                   $ref: "#/components/schemas/ApprovalRequest"
 
+  /approvals/{approvalId}/result-review:
+    parameters:
+      - name: approvalId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      operationId: getTaskResultReview
+      tags: [approvals]
+      summary: Read an exact proposed result with configured operator credential authentication
+      responses:
+        "200":
+          description: Private proposed result; response must not be cached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResultReview"
+
   /approvals/{approvalId}/decision:
     parameters:
       - name: approvalId
@@ -7006,6 +7026,10 @@ components:
           type: [string, "null"]
         resultSummary:
           type: [string, "null"]
+        completionAuthority:
+          type: [string, "null"]
+          enum: [agent, operator, null]
+          description: Authority for the last saved result. Null means legacy or unknown provenance; operator confirmation does not imply model review passed.
         executionModelId:
           type: [string, "null"]
           description: User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.
@@ -7513,6 +7537,75 @@ components:
           type: [string, "null"]
       required: [toolName, argsHash]
 
+    TaskResultReviewMetadata:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          enum: [task_result]
+        proposalHash:
+          type: [string, "null"]
+          pattern: "^[a-f0-9]{64}$"
+        cycleNumber:
+          type: [integer, "null"]
+          minimum: 0
+        available:
+          type: boolean
+      required: [kind, proposalHash, cycleNumber, available]
+
+    TaskResultReview:
+      type: object
+      additionalProperties: false
+      properties:
+        approvalId:
+          type: integer
+          minimum: 1
+        taskId:
+          type: integer
+          minimum: 1
+        cycleNumber:
+          type: integer
+          minimum: 0
+        proposalHash:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+        resultSummary:
+          type: string
+          minLength: 1
+          maxLength: 65536
+        resultFormat:
+          $ref: "#/components/schemas/TaskResultFormat"
+        judgeReasonCode:
+          type: string
+          enum:
+            [
+              source_mismatch,
+              missing_required_action,
+              unauthorized_action,
+              insufficient_evidence,
+            ]
+        expiresAt:
+          type: string
+          format: date-time
+        requirements:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/TaskCompletionRequirementState"
+      required:
+        [
+          approvalId,
+          taskId,
+          cycleNumber,
+          proposalHash,
+          resultSummary,
+          resultFormat,
+          judgeReasonCode,
+          expiresAt,
+          requirements,
+        ]
+
     ApprovalRequest:
       type: object
       properties:
@@ -7550,6 +7643,8 @@ components:
         consumedAt:
           type: [string, "null"]
           format: date-time
+        resultReview:
+          $ref: "#/components/schemas/TaskResultReviewMetadata"
       required:
         - id
         - taskId
@@ -7569,6 +7664,9 @@ components:
     ApprovalDecisionInput:
       type: object
       properties:
+        confirmTaskResult:
+          type: boolean
+          description: Required true with the exact expectedArgsHash when confirming a proposed task result. Never inferred from ordinary approval.
         expectedArgsHash:
           type: [string, "null"]
           minLength: 64

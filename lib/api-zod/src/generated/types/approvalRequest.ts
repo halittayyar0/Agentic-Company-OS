@@ -8,6 +8,7 @@
 import type { ApprovalCategory } from './approvalCategory';
 import type { ApprovalScope } from './approvalScope';
 import type { ApprovalStatus } from './approvalStatus';
+import type { TaskResultReviewMetadata } from './taskResultReviewMetadata';
 
 export interface ApprovalRequest {
   id: number;
@@ -29,4 +30,5 @@ export interface ApprovalRequest {
   expiresAt: Date | null;
   /** @nullable */
   consumedAt: Date | null;
+  resultReview?: TaskResultReviewMetadata;
 }
