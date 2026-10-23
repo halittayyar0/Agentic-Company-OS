@@ -5,6 +5,10 @@ import { logger } from "./lib/logger";
 import { readCodexConfigurationReport } from "./lib/codex-task-capability";
 import { bootstrapProviders } from "./lib/provider-bootstrap";
 import { setProviderRuntimeIdentity } from "./lib/provider-runtime-config";
+import {
+  initializeOllamaPreparationRuntime,
+  closeOllamaPreparationRuntime,
+} from "./lib/ollama-preparation-runtime";
 import { reconcileInterruptedComputerActivities } from "./lib/orchestrator/execute-tool";
 import { markRuntimeOperationsUnknownAfterDrainTimeout } from "./lib/orchestrator/operation-receipts";
 import {
@@ -157,6 +161,7 @@ function createHttpRuntimeController(
                 );
               },
               closeSessions: async () => {
+                await closeOllamaPreparationRuntime(runtimeHandle);
                 await chatgptConnectionRuntime.close();
                 await closeAllSessions();
               },
@@ -206,6 +211,7 @@ async function cleanupFailedStart(
             await markRuntimeOperationsUnknownAfterDrainTimeout(runtimeHandle);
           },
           closeSessions: async () => {
+            await closeOllamaPreparationRuntime(runtimeHandle);
             await chatgptConnectionRuntime.close();
             await closeAllSessions();
           },
@@ -282,6 +288,10 @@ export async function startHttpRuntime(
       await setProviderRuntimeIdentity(runtimeHandle, options.environment);
     }
     await initializeRuntimeControlApi(options.environment);
+    await initializeOllamaPreparationRuntime(
+      runtimeHandle,
+      options.environment,
+    );
 
     // Every API/combined replica observes a stop accepted by another replica,
     // including API-only processes that never own scheduler claims.

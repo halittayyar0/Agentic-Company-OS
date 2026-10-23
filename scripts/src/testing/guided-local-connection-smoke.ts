@@ -12,6 +12,10 @@ import { createConnectionSaveDiagnostics } from "./connection-save-diagnostics";
 import { waitForNativeReadWindow } from "./native-read-window";
 import { isControlledArithmeticReview } from "./controlled-arithmetic-peer";
 import { waitForNativePageReady } from "./native-page-readiness";
+import {
+  createPreparationSmokePeer,
+  createPreparationRestartProof,
+} from "./local-model-preparation-smoke";
 
 // Explicit offline acceptance, not a model-quality test. The real installer owns
 // a new PostgreSQL cluster, API and two workers. Only the model HTTP peer is fake.
@@ -63,7 +67,11 @@ const beforeSource = await sourceIdentity();
 const locales = ["en", "tr", "de", "ru", "zh-CN", "zh-TW", "ar"];
 const requests: { method: string; path: string; kind?: string }[] = [];
 const unexpected: string[] = [];
-const model = "acos-fixture:latest";
+const preparationPeer =
+  process.env.ACOS_MODEL_PREPARATION_SMOKE === "1"
+    ? createPreparationSmokePeer()
+    : null;
+const model = preparationPeer?.model ?? "acos-fixture:latest";
 const peer = createServer(async (req, res) => {
   try {
     let bytes = 0;
@@ -78,7 +86,9 @@ const peer = createServer(async (req, res) => {
       method = req.method!;
     const body = bytes ? JSON.parse(Buffer.concat(parts).toString("utf8")) : {};
     res.setHeader("Content-Type", "application/json");
-    if (route === "/api/version" && method === "GET") {
+    if (preparationPeer?.handle(method, route, body, res)) {
+      requests.push({ method, path: route });
+    } else if (route === "/api/version" && method === "GET") {
       requests.push({ method, path: route });
       res.end(JSON.stringify({ version: "0.18.0" }));
     } else if (route === "/api/tags" && method === "GET") {
@@ -188,309 +198,448 @@ assert.ok(peerAddress && typeof peerAddress === "object");
 const endpoint = `http://127.0.0.1:${peerAddress.port}`;
 let evidenceDirectory: string | undefined;
 try {
-  evidenceDirectory = await runNativeInstallSmoke(postgresBin, pnpmPath, {
-    kind: "offline-guided",
-    run: async ({ baseUrl, operatorToken, directory }) => {
-      let lastResponseHeaders = new Headers();
-      const request = async <T = Record<string, unknown>>(
-        route: string,
-        method = "GET",
-        body?: unknown,
-      ): Promise<T> => {
-        const send = () =>
-          fetch(baseUrl + "/api" + route, {
-            method,
-            redirect: "error",
-            signal: AbortSignal.timeout(15_000),
-            headers: {
-              authorization: `Bearer ${operatorToken}`,
-              "Content-Type": "application/json",
-            },
-            ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-          });
-        let response = await send();
-        // The fixture performs fourteen deliberate settings writes. A confirmed
-        // pre-route 429 permits one retry after the real window, never an unknown
-        // save outcome. Keep the production limit unchanged.
-        if (response.status === 429) {
-          const seconds = Number(response.headers.get("Retry-After"));
-          assert.ok(Number.isInteger(seconds) && seconds > 0 && seconds <= 60);
-          await response.body?.cancel();
-          console.log("Offline fixture awaiting confirmed rate-limit window");
-          await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
-          response = await send();
-        }
-        assert.equal(
-          response.ok,
-          true,
-          `${method} ${route}: ${response.status}`,
-        );
-        lastResponseHeaders = response.headers;
-        const value: unknown = await response.json();
-        assert.ok(value && typeof value === "object");
-        return value as T;
-      };
-      assert.equal((await fetch(baseUrl + "/api/tasks")).status, 401);
-      const initialAgents = await request<Array<{ id: number }>>("/agents");
-      const initialTasks = await request<Array<{ id: number }>>("/tasks");
-      assert.equal(initialTasks.length, 0);
-      const browser = await chromium.launch({ headless: true });
-      const results: unknown[] = [];
-      const copyRoot = path.join(
-        source,
-        "artifacts/agentic-company-os/src/lib",
-      );
-      const shell = await import(
-        pathToFileURL(path.join(copyRoot, "i18n.ts")).href
-      );
-      const home = await import(
-        pathToFileURL(path.join(copyRoot, "home-copy.ts")).href
-      );
-      const connection = await import(
-        pathToFileURL(path.join(copyRoot, "connection-copy.ts")).href
-      );
-      try {
-        for (const locale of locales) {
-          await request("/agents");
-          const readWindow = await waitForNativeReadWindow(lastResponseHeaders);
-          const settings = await request("/settings/llm");
-          await request("/settings/llm", "PUT", {
-            expectedRevision: settings.revision,
-            ollamaBaseUrl: null,
-          });
-          const beforeCalls = requests.filter((x) => x.kind).length;
-          const beforeTasks = await request<Array<{ id: number }>>("/tasks");
-          const h = await home.loadHomeCopy(locale),
-            c = await connection.loadConnectionCopy(locale);
-          const s = await shell.loadShellMessages(locale);
-          const context = await browser.newContext({
-            viewport: { width: locale === "ar" ? 320 : 390, height: 844 },
-            reducedMotion: "reduce",
-            extraHTTPHeaders: { authorization: `Bearer ${operatorToken}` },
-          });
-          await context.addInitScript(
-            (value) => localStorage.setItem("acos.locale.v1", value),
-            locale,
-          );
-          const page = await context.newPage();
-          const pageErrors: string[] = [];
-          page.on("pageerror", () => pageErrors.push("pageerror"));
-          const diagnostics = createConnectionSaveDiagnostics(baseUrl);
-          page.on("response", (response) =>
-            diagnostics.observe({
-              url: response.url(),
-              method: response.request().method(),
-              status: response.status(),
-              headers: response.headers(),
-            }),
-          );
-          await page.route("**/*", (route) =>
-            new URL(route.request().url()).origin === new URL(baseUrl).origin
-              ? route.continue()
-              : route.abort(),
-          );
-          const brief =
-            "Use calculate for 17 × 23, report 391, then complete this one task. Do not delegate, create agents, browse or write files.";
-          let phase: "prepare" | "open" | "reopen" | "save" | "run" = "prepare";
-          try {
-            await page.goto(baseUrl);
-            const draft = page.getByRole("textbox", {
-              name: h.desiredOutcome,
-              exact: true,
+  evidenceDirectory = await runNativeInstallSmoke(
+    postgresBin,
+    pnpmPath,
+    {
+      kind: "offline-guided",
+      run: async ({ baseUrl, operatorToken, directory }) => {
+        let lastResponseHeaders = new Headers();
+        const request = async <T = Record<string, unknown>>(
+          route: string,
+          method = "GET",
+          body?: unknown,
+        ): Promise<T> => {
+          const send = () =>
+            fetch(baseUrl + "/api" + route, {
+              method,
+              redirect: "error",
+              signal: AbortSignal.timeout(15_000),
+              headers: {
+                authorization: `Bearer ${operatorToken}`,
+                "Content-Type": "application/json",
+              },
+              ...(body === undefined ? {} : { body: JSON.stringify(body) }),
             });
-            await waitForNativePageReady(draft);
-            await draft.fill(brief);
-            phase = "open";
-            await page
-              .getByRole("button", { name: s.providerSetupAction, exact: true })
-              .click();
-            let dialog = page.getByRole("dialog");
-            await dialog
-              .getByRole("button", { name: c.local, exact: true })
-              .click();
-            await page.keyboard.press("Escape");
-            await expect(dialog).not.toBeVisible();
-            await expect(draft).toHaveValue(brief);
-            await page.reload();
-            await waitForNativePageReady(draft);
-            await expect(draft).toHaveValue(brief);
-            phase = "reopen";
-            await page
-              .getByRole("button", { name: s.providerSetupAction, exact: true })
-              .click();
-            dialog = page.getByRole("dialog");
-            await dialog
-              .getByRole("button", { name: c.local, exact: true })
-              .click();
-            await dialog
-              .getByRole("textbox", { name: c.endpoint, exact: true })
-              .fill(endpoint);
-            phase = "save";
-            await dialog
-              .getByRole("button", { name: c.save, exact: true })
-              .click();
-            await expect(dialog.getByRole("status")).toContainText(c.saved);
-            assert.equal(requests.filter((x) => x.kind).length, beforeCalls);
-            assert.equal(
-              (await request<unknown[]>("/tasks")).length,
-              beforeTasks.length,
+          let response = await send();
+          // The fixture performs fourteen deliberate settings writes. A confirmed
+          // pre-route 429 permits one retry after the real window, never an unknown
+          // save outcome. Keep the production limit unchanged.
+          if (response.status === 429) {
+            const seconds = Number(response.headers.get("Retry-After"));
+            assert.ok(
+              Number.isInteger(seconds) && seconds > 0 && seconds <= 60,
             );
-            const saved = await request<{
-              ollama: { baseUrl: string; addressSource: string };
-            }>("/settings/llm");
-            assert.equal(saved.ollama.baseUrl, endpoint + "/v1");
-            assert.equal(saved.ollama.addressSource, "runtime");
-            await page.keyboard.press("Escape");
-            await expect(draft).toHaveValue(brief);
-            assert.equal(
-              await page.evaluate(
-                "document.documentElement.scrollWidth <= innerWidth",
-              ),
-              true,
-            );
-            assert.equal(
-              await page.locator("html").getAttribute("dir"),
-              locale === "ar" ? "rtl" : "ltr",
-            );
-            await page.screenshot({
-              path: path.join(directory, `guided-${locale}.png`),
-              fullPage: true,
-            });
-            phase = "run";
-            await page
-              .getByRole("button", { name: h.startProject, exact: true })
-              .click();
-            await expect(page).toHaveURL(/\/projects\/\d+$/, {
-              timeout: 15_000,
-            });
-            const id = Number(new URL(page.url()).pathname.split("/").at(-1));
-            assert.ok(Number.isSafeInteger(id) && id > 0);
-            let task: Record<string, unknown> = {};
-            const deadline = Date.now() + 60_000;
-            while (Date.now() < deadline) {
-              task = await request(`/tasks/${id}`);
-              if (task.status === "completed") break;
-              assert.ok(
-                !["failed", "blocked", "cancelled"].includes(
-                  String(task.status),
-                ),
-                `task_${String(task.status)}`,
-              );
-              await new Promise((resolve) => setTimeout(resolve, 500));
-            }
-            assert.equal(task.status, "completed");
-            assert.match(String(task.resultSummary), /391/);
-            assert.equal(task.lastModelId, "ollama:" + model);
-            assert.equal(task.modelFallbackCount, 0);
-            assert.equal(
-              (await request<unknown[]>("/agents")).length,
-              initialAgents.length,
-            );
-            assert.equal(
-              (await request<unknown[]>("/tasks")).length,
-              beforeTasks.length + 1,
-            );
-            assert.deepEqual(
-              requests
-                .slice()
-                .filter((x) => x.kind)
-                .slice(beforeCalls)
-                .map((x) => x.kind),
-              ["calculate", "complete_task", "judge"],
-            );
-            assert.deepEqual(pageErrors, []);
-            results.push({
-              locale,
-              readWindow,
-              taskId: id,
-              status: task.status,
-              model: task.lastModelId,
-              noAutomaticSubmission: true,
-              noInferenceOnSave: true,
-              draftRetained: true,
-              overflow: false,
-              tools: ["calculate", "complete_task"],
-              calls: 3,
-              simulatedUsage: true,
-            });
-            console.log(`Offline guided runtime case passed: ${locale}`);
-          } catch (error) {
-            const visibleControl = (name: string) =>
-              page
-                .getByRole("button", { name, exact: true })
-                .first()
-                .isVisible()
-                .catch(() => null);
-            const [connect, connections, checkAgain] = await Promise.all([
-              visibleControl(s.providerSetupAction),
-              visibleControl(s.connections),
-              visibleControl(s.checkAgain),
-            ]);
-            const failure = {
-              passed: false,
-              scope:
-                "Offline first-job failure observation, not runtime acceptance. Cause unconfirmed.",
-              locale,
-              phase,
-              controls: { connect, connections, checkAgain },
-              ...beforeSource,
-              completedLocales: results.length,
-              connection: diagnostics.snapshot(),
-              pageErrorCount: pageErrors.length,
-              modelRequestCount: requests.length,
-              unexpectedModelRequestCount: unexpected.length,
-            };
-            // The original error and every assertion/deadline remain intact.
-            // Stdout also retains this safe record if artifact collection fails.
-            console.log(JSON.stringify({ guidedConnectionFailure: failure }));
-            try {
-              await writeFile(
-                path.join(directory, "guided-local-runtime-failure.json"),
-                JSON.stringify(failure, null, 2),
-                { flag: "wx", mode: 0o600 },
-              );
-            } catch {
-              console.log(
-                "Offline failure observation file could not be saved",
-              );
-            }
-            throw error;
-          } finally {
-            await context.close();
+            await response.body?.cancel();
+            console.log("Offline fixture awaiting confirmed rate-limit window");
+            await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+            response = await send();
           }
+          assert.equal(
+            response.ok,
+            true,
+            `${method} ${route}: ${response.status}`,
+          );
+          lastResponseHeaders = response.headers;
+          const value: unknown = await response.json();
+          assert.ok(value && typeof value === "object");
+          return value as T;
+        };
+        assert.equal((await fetch(baseUrl + "/api/tasks")).status, 401);
+        const initialAgents = await request<Array<{ id: number }>>("/agents");
+        const initialTasks = await request<Array<{ id: number }>>("/tasks");
+        assert.equal(initialTasks.length, 0);
+        const browser = await chromium.launch({ headless: true });
+        const results: unknown[] = [];
+        const copyRoot = path.join(
+          source,
+          "artifacts/agentic-company-os/src/lib",
+        );
+        const shell = await import(
+          pathToFileURL(path.join(copyRoot, "i18n.ts")).href
+        );
+        const home = await import(
+          pathToFileURL(path.join(copyRoot, "home-copy.ts")).href
+        );
+        const connection = await import(
+          pathToFileURL(path.join(copyRoot, "connection-copy.ts")).href
+        );
+        try {
+          for (const locale of locales) {
+            if (preparationPeer) {
+              preparationPeer.reset();
+              await preparationPeer.awaitStartWindow();
+            }
+            await request("/agents");
+            const readWindow =
+              await waitForNativeReadWindow(lastResponseHeaders);
+            const settings = await request("/settings/llm");
+            await request("/settings/llm", "PUT", {
+              expectedRevision: settings.revision,
+              ollamaBaseUrl: null,
+            });
+            const beforeCalls = requests.filter((x) => x.kind).length;
+            const beforeTasks = await request<Array<{ id: number }>>("/tasks");
+            const h = await home.loadHomeCopy(locale),
+              c = await connection.loadConnectionCopy(locale);
+            const s = await shell.loadShellMessages(locale);
+            const context = await browser.newContext({
+              viewport: { width: locale === "ar" ? 320 : 390, height: 844 },
+              reducedMotion: "reduce",
+              extraHTTPHeaders: { authorization: `Bearer ${operatorToken}` },
+            });
+            await context.addInitScript(
+              (value) => localStorage.setItem("acos.locale.v1", value),
+              locale,
+            );
+            const page = await context.newPage();
+            const pageErrors: string[] = [];
+            page.on("pageerror", () => pageErrors.push("pageerror"));
+            const diagnostics = createConnectionSaveDiagnostics(baseUrl);
+            page.on("response", (response) =>
+              diagnostics.observe({
+                url: response.url(),
+                method: response.request().method(),
+                status: response.status(),
+                headers: response.headers(),
+              }),
+            );
+            await page.route("**/*", (route) =>
+              new URL(route.request().url()).origin === new URL(baseUrl).origin
+                ? route.continue()
+                : route.abort(),
+            );
+            const brief =
+              "Use calculate for 17 × 23, report 391, then complete this one task. Do not delegate, create agents, browse or write files.";
+            let phase: "prepare" | "open" | "reopen" | "save" | "run" =
+              "prepare";
+            try {
+              await page.goto(baseUrl);
+              const draft = page.getByRole("textbox", {
+                name: h.desiredOutcome,
+                exact: true,
+              });
+              await waitForNativePageReady(draft);
+              await draft.fill(brief);
+              phase = "open";
+              await page
+                .getByRole("button", {
+                  name: s.providerSetupAction,
+                  exact: true,
+                })
+                .click();
+              let dialog = page.getByRole("dialog");
+              await dialog
+                .getByRole("button", { name: c.local, exact: true })
+                .click();
+              await page.keyboard.press("Escape");
+              await expect(dialog).not.toBeVisible();
+              await expect(draft).toHaveValue(brief);
+              await page.reload();
+              await waitForNativePageReady(draft);
+              await expect(draft).toHaveValue(brief);
+              phase = "reopen";
+              await page
+                .getByRole("button", {
+                  name: s.providerSetupAction,
+                  exact: true,
+                })
+                .click();
+              dialog = page.getByRole("dialog");
+              await dialog
+                .getByRole("button", { name: c.local, exact: true })
+                .click();
+              await dialog
+                .getByRole("textbox", { name: c.endpoint, exact: true })
+                .fill(endpoint);
+              phase = "save";
+              const submittedConnection = page.waitForRequest(
+                (request) =>
+                  new URL(request.url()).pathname === "/api/settings/llm" &&
+                  request.method() === "PUT",
+              );
+              await dialog
+                .getByRole("button", { name: c.save, exact: true })
+                .click();
+              assert.equal(
+                (await submittedConnection).postDataJSON().ollamaBaseUrl,
+                endpoint,
+                "the form must submit the address entered by the operator",
+              );
+              await expect(
+                dialog.getByRole("status", { name: c.save, exact: true }),
+              ).toContainText(c.saved);
+              assert.equal(requests.filter((x) => x.kind).length, beforeCalls);
+              assert.equal(
+                (await request<unknown[]>("/tasks")).length,
+                beforeTasks.length,
+              );
+              const saved = await request<{
+                ollama: { baseUrl: string; addressSource: string };
+              }>("/settings/llm");
+              assert.equal(saved.ollama.baseUrl, endpoint + "/v1");
+              assert.equal(saved.ollama.addressSource, "runtime");
+              if (preparationPeer) {
+                const { loadModelPreparationCopy } = await import(
+                  pathToFileURL(
+                    path.join(copyRoot, "local-model-preparation-copy.ts"),
+                  ).href
+                );
+                const p = await loadModelPreparationCopy(locale);
+                const pullsBefore = preparationPeer.pulls;
+                await dialog
+                  .getByRole("button", { name: p.download, exact: true })
+                  .click();
+                await expect(
+                  dialog.getByRole("button", { name: p.stop, exact: true }),
+                ).toBeVisible();
+                await expect
+                  .poll(
+                    async () =>
+                      (await request<any>("/settings/ollama/preparations"))
+                        .preparation?.observedCompletedBytes,
+                  )
+                  .toBe(128);
+                assert.equal(preparationPeer.pulls, pullsBefore + 1);
+                assert.equal(
+                  requests.filter((x) => x.kind).length,
+                  beforeCalls,
+                );
+                await page.keyboard.press("Escape");
+                await expect(draft).toHaveValue(brief);
+                await page
+                  .getByRole("button", {
+                    name: s.providerSetupAction,
+                    exact: true,
+                  })
+                  .click();
+                dialog = page.getByRole("dialog");
+                await dialog
+                  .getByRole("button", { name: c.local, exact: true })
+                  .click();
+                await expect(
+                  dialog.getByRole("button", { name: p.stop, exact: true }),
+                ).toBeVisible();
+                preparationPeer.finish();
+                const prepared = dialog.getByRole("region", {
+                  name: p.title,
+                  exact: true,
+                });
+                await expect(
+                  prepared.getByRole("button", {
+                    name: p.returnToJob,
+                    exact: true,
+                  }),
+                ).toBeVisible({ timeout: 15_000 });
+                assert.equal(
+                  requests.filter((x) => x.kind).length,
+                  beforeCalls,
+                );
+                await prepared
+                  .getByRole("button", { name: p.returnToJob, exact: true })
+                  .click();
+                await expect(draft).toBeFocused();
+                assert.equal(preparationPeer.pulls, pullsBefore + 1);
+              } else await page.keyboard.press("Escape");
+              await expect(draft).toHaveValue(brief);
+              assert.equal(
+                await page.evaluate(
+                  "document.documentElement.scrollWidth <= innerWidth",
+                ),
+                true,
+              );
+              assert.equal(
+                await page.locator("html").getAttribute("dir"),
+                locale === "ar" ? "rtl" : "ltr",
+              );
+              await page.screenshot({
+                path: path.join(directory, `guided-${locale}.png`),
+                fullPage: true,
+              });
+              phase = "run";
+              await page
+                .getByRole("button", { name: h.startProject, exact: true })
+                .click();
+              await expect(page).toHaveURL(/\/projects\/\d+$/, {
+                timeout: 15_000,
+              });
+              const id = Number(new URL(page.url()).pathname.split("/").at(-1));
+              assert.ok(Number.isSafeInteger(id) && id > 0);
+              let task: Record<string, unknown> = {};
+              const deadline = Date.now() + 60_000;
+              while (Date.now() < deadline) {
+                task = await request(`/tasks/${id}`);
+                if (task.status === "completed") break;
+                assert.ok(
+                  !["failed", "blocked", "cancelled"].includes(
+                    String(task.status),
+                  ),
+                  `task_${String(task.status)}`,
+                );
+                await new Promise((resolve) => setTimeout(resolve, 500));
+              }
+              assert.equal(task.status, "completed");
+              assert.match(String(task.resultSummary), /391/);
+              assert.equal(task.lastModelId, "ollama:" + model);
+              assert.equal(task.modelFallbackCount, 0);
+              assert.equal(
+                (await request<unknown[]>("/agents")).length,
+                initialAgents.length,
+              );
+              assert.equal(
+                (await request<unknown[]>("/tasks")).length,
+                beforeTasks.length + 1,
+              );
+              assert.deepEqual(
+                requests
+                  .slice()
+                  .filter((x) => x.kind)
+                  .slice(beforeCalls)
+                  .map((x) => x.kind),
+                ["calculate", "complete_task", "judge"],
+              );
+              assert.deepEqual(pageErrors, []);
+              results.push({
+                locale,
+                readWindow,
+                taskId: id,
+                status: task.status,
+                model: task.lastModelId,
+                noAutomaticSubmission: true,
+                noInferenceOnSave: true,
+                draftRetained: true,
+                overflow: false,
+                tools: ["calculate", "complete_task"],
+                calls: 3,
+                simulatedUsage: true,
+                preparationVerified: Boolean(preparationPeer),
+              });
+              console.log(`Offline guided runtime case passed: ${locale}`);
+            } catch (error) {
+              const admission = preparationPeer
+                ? await request<{
+                    providers: { id: string; available: boolean }[];
+                    models: {
+                      id: string;
+                      supportsTools: boolean;
+                      executionLocation?: string;
+                      runtimeCompatibility?: string;
+                    }[];
+                  }>("/model-catalog")
+                    .then((catalog) => ({
+                      providers: catalog.providers,
+                      models: catalog.models
+                        .filter((model) => model.id.startsWith("ollama:"))
+                        .map(
+                          ({
+                            id,
+                            supportsTools,
+                            executionLocation,
+                            runtimeCompatibility,
+                          }) => ({
+                            id,
+                            supportsTools,
+                            executionLocation,
+                            runtimeCompatibility,
+                          }),
+                        ),
+                    }))
+                    .catch(() => null)
+                : null;
+              const focus = preparationPeer
+                ? await page
+                    .evaluate(
+                      "({ tag: document.activeElement?.tagName, id: document.activeElement?.id, name: document.activeElement?.getAttribute('name'), dialogOpen: !!document.querySelector('[role=dialog]') })",
+                    )
+                    .catch(() => null)
+                : null;
+              const visibleControl = (name: string) =>
+                page
+                  .getByRole("button", { name, exact: true })
+                  .first()
+                  .isVisible()
+                  .catch(() => null);
+              const [connect, connections, checkAgain] = await Promise.all([
+                visibleControl(s.providerSetupAction),
+                visibleControl(s.connections),
+                visibleControl(s.checkAgain),
+              ]);
+              const failure = {
+                passed: false,
+                scope:
+                  "Offline first-job failure observation, not runtime acceptance. Cause unconfirmed.",
+                locale,
+                phase,
+                controls: { connect, connections, checkAgain },
+                ...beforeSource,
+                completedLocales: results.length,
+                connection: diagnostics.snapshot(),
+                pageErrorCount: pageErrors.length,
+                modelRequestCount: requests.length,
+                ...(preparationPeer ? { admission, focus } : {}),
+                unexpectedModelRequestCount: unexpected.length,
+              };
+              // The original error and every assertion/deadline remain intact.
+              // Stdout also retains this safe record if artifact collection fails.
+              console.log(JSON.stringify({ guidedConnectionFailure: failure }));
+              try {
+                await writeFile(
+                  path.join(directory, "guided-local-runtime-failure.json"),
+                  JSON.stringify(failure, null, 2),
+                  { flag: "wx", mode: 0o600 },
+                );
+              } catch {
+                console.log(
+                  "Offline failure observation file could not be saved",
+                );
+              }
+              throw error;
+            } finally {
+              await context.close();
+            }
+          }
+          assert.deepEqual(unexpected, []);
+          const afterSource = await sourceIdentity();
+          assert.deepEqual(
+            afterSource,
+            beforeSource,
+            "Source changed during native acceptance",
+          );
+          await writeFile(
+            path.join(directory, "guided-local-runtime-evidence.json"),
+            JSON.stringify(
+              {
+                passed: true,
+                verifiedAt: new Date().toISOString(),
+                platform: process.platform,
+                nodeVersion: process.version,
+                ...beforeSource,
+                sourceStable: true,
+                locales,
+                results,
+                requests,
+                ...(preparationPeer
+                  ? {
+                      preparationPulls: preparationPeer.pulls,
+                      preparationRestartAndBinaryRestore: true,
+                    }
+                  : {}),
+                scope:
+                  "Real installer, owned PostgreSQL, authenticated API, two workers and rendered UI. Only Ollama responses/judge are fixed offline fixtures. No human login, paid call, real model quality, native Codex, physical phone, container, other host OS or 24h acceptance.",
+              },
+              null,
+              2,
+            ),
+          );
+        } finally {
+          await browser.close();
         }
-        assert.deepEqual(unexpected, []);
-        const afterSource = await sourceIdentity();
-        assert.deepEqual(
-          afterSource,
-          beforeSource,
-          "Source changed during native acceptance",
-        );
-        await writeFile(
-          path.join(directory, "guided-local-runtime-evidence.json"),
-          JSON.stringify(
-            {
-              passed: true,
-              verifiedAt: new Date().toISOString(),
-              platform: process.platform,
-              nodeVersion: process.version,
-              ...beforeSource,
-              sourceStable: true,
-              locales,
-              results,
-              requests,
-              scope:
-                "Real installer, owned PostgreSQL, authenticated API, two workers and rendered UI. Only Ollama responses/judge are fixed offline fixtures. No human login, paid call, real model quality, native Codex, physical phone, container, other host OS or 24h acceptance.",
-            },
-            null,
-            2,
-          ),
-        );
-      } finally {
-        await browser.close();
-      }
+      },
     },
-  });
+    preparationPeer
+      ? createPreparationRestartProof(preparationPeer, endpoint)
+      : undefined,
+  );
   console.log(JSON.stringify({ passed: true, evidenceDirectory }));
 } finally {
   peer.closeAllConnections();

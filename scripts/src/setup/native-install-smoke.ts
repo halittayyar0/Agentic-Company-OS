@@ -38,7 +38,8 @@ export async function runNativeInstallSmoke(
   postgresBin: string,
   pnpmPath: string,
   acceptance?: (
-    { kind?: "live-model"; providerKey: string } | { kind: "offline-guided" }
+    | { kind?: "live-model"; providerKey: string }
+    | { kind: "offline-guided" | "local-model" }
   ) & {
     run: (context: {
       baseUrl: string;
@@ -162,9 +163,7 @@ export async function runNativeInstallSmoke(
         port: appPort,
         accessMode: "read_only",
         provider:
-          acceptance && acceptance.kind !== "offline-guided"
-            ? "openrouter"
-            : "later",
+          acceptance && "providerKey" in acceptance ? "openrouter" : "later",
         phoneAccess: "local",
         toolPacks: ["data", "documents"],
       },
@@ -303,7 +302,9 @@ export async function runNativeInstallSmoke(
       checks.push(
         acceptance.kind === "offline-guided"
           ? "offline guided connection with real API, workers and browser acceptance"
-          : "live model finite and recurring acceptance",
+          : acceptance.kind === "local-model"
+            ? "genuine local model preparation and first task acceptance"
+            : "live model finite and recurring acceptance",
       );
     }
     stage = "save_evidence";

@@ -4340,6 +4340,182 @@ export const GetModelCatalogResponse = zod.object({
 
 
 /**
+ * @summary Read the saved local server, starter recipe and latest download receipt
+ */
+export const getLocalModelPreparationResponseRevisionMin = 0;
+export const getLocalModelPreparationResponseRevisionMax = 9007199254740991;
+
+export const getLocalModelPreparationResponseAvailabilityDigestRegExp = new RegExp('^sha256:[a-f0-9]{64}$');
+export const getLocalModelPreparationResponsePreparationProviderRevisionMin = 0;
+export const getLocalModelPreparationResponsePreparationProviderRevisionMax = 9007199254740991;
+
+export const getLocalModelPreparationResponsePreparationObservedCompletedBytesMin = 0;
+export const getLocalModelPreparationResponsePreparationObservedCompletedBytesMax = 3221225472;
+
+export const getLocalModelPreparationResponsePreparationObservedTotalBytesMin = 0;
+export const getLocalModelPreparationResponsePreparationObservedTotalBytesMax = 3221225472;
+
+export const getLocalModelPreparationResponsePreparationResultDigestRegExp = new RegExp('^sha256:[a-f0-9]{64}$');
+
+
+export const GetLocalModelPreparationResponse = zod.object({
+  "revision": zod.number().int().min(getLocalModelPreparationResponseRevisionMin).max(getLocalModelPreparationResponseRevisionMax),
+  "recipe": zod.object({
+  "id": zod.enum(['qwen35-2b']),
+  "model": zod.enum(['qwen3.5:2b-q4_K_M']),
+  "minimumRuntimeVersion": zod.enum(['0.40.3']),
+  "estimatedBytes": zod.literal(1945782446),
+  "guides": zod.object({
+  "download": zod.enum(['https://ollama.com/download']),
+  "windows": zod.enum(['https://docs.ollama.com/windows']),
+  "macos": zod.enum(['https://docs.ollama.com/macos']),
+  "linux": zod.enum(['https://docs.ollama.com/linux'])
+})
+}),
+  "availability": zod.object({
+  "server": zod.enum(['compatible', 'update_required', 'unreachable', 'unverified', 'unconfigured']),
+  "available": zod.boolean(),
+  "modelId": zod.enum(['ollama:qwen3.5:2b-q4_K_M']).nullable(),
+  "digest": zod.string().regex(getLocalModelPreparationResponseAvailabilityDigestRegExp).nullable()
+}),
+  "preparation": zod.object({
+  "requestId": zod.string().uuid(),
+  "modelId": zod.enum(['qwen35-2b']),
+  "providerRevision": zod.number().int().min(getLocalModelPreparationResponsePreparationProviderRevisionMin).max(getLocalModelPreparationResponsePreparationProviderRevisionMax),
+  "state": zod.enum(['requested', 'downloading', 'verifying', 'stopping', 'ready', 'interrupted', 'failed']),
+  "phase": zod.enum(['preparing', 'downloading', 'checking', 'downloaded']),
+  "observedCompletedBytes": zod.number().int().min(getLocalModelPreparationResponsePreparationObservedCompletedBytesMin).max(getLocalModelPreparationResponsePreparationObservedCompletedBytesMax),
+  "observedTotalBytes": zod.number().int().min(getLocalModelPreparationResponsePreparationObservedTotalBytesMin).max(getLocalModelPreparationResponsePreparationObservedTotalBytesMax),
+  "progressReset": zod.boolean(),
+  "failureCode": zod.enum(['INTERRUPTED', 'CONFIG_CHANGED', 'SERVER_UNAVAILABLE', 'RUNTIME_UPDATE_REQUIRED', 'MODEL_UNVERIFIED', 'DISPATCH_FAILED', 'DEADLINE_EXCEEDED', 'INVALID_PROGRESS', 'FRAME_TOO_LARGE', 'TOO_MANY_LAYERS', 'MODEL_TOO_LARGE', 'UPSTREAM_ERROR', 'INCOMPLETE_PROGRESS', 'STREAM_FAILED']).nullable(),
+  "resultModelId": zod.enum(['ollama:qwen3.5:2b-q4_K_M']).nullable(),
+  "resultDigest": zod.string().regex(getLocalModelPreparationResponsePreparationResultDigestRegExp).nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable()
+}).nullable()
+})
+
+
+/**
+ * @summary Explicitly obtain the curated model on the saved private Ollama server
+ */
+export const startLocalModelPreparationBodyExpectedRevisionMin = 0;
+export const startLocalModelPreparationBodyExpectedRevisionMax = 9007199254740991;
+
+
+
+export const StartLocalModelPreparationBody = zod.object({
+  "requestId": zod.string().uuid(),
+  "expectedRevision": zod.number().int().min(startLocalModelPreparationBodyExpectedRevisionMin).max(startLocalModelPreparationBodyExpectedRevisionMax),
+  "modelId": zod.enum(['qwen35-2b'])
+})
+
+export const startLocalModelPreparationResponseProviderRevisionMin = 0;
+export const startLocalModelPreparationResponseProviderRevisionMax = 9007199254740991;
+
+export const startLocalModelPreparationResponseObservedCompletedBytesMin = 0;
+export const startLocalModelPreparationResponseObservedCompletedBytesMax = 3221225472;
+
+export const startLocalModelPreparationResponseObservedTotalBytesMin = 0;
+export const startLocalModelPreparationResponseObservedTotalBytesMax = 3221225472;
+
+export const startLocalModelPreparationResponseResultDigestRegExp = new RegExp('^sha256:[a-f0-9]{64}$');
+
+
+export const StartLocalModelPreparationResponse = zod.object({
+  "requestId": zod.string().uuid(),
+  "modelId": zod.enum(['qwen35-2b']),
+  "providerRevision": zod.number().int().min(startLocalModelPreparationResponseProviderRevisionMin).max(startLocalModelPreparationResponseProviderRevisionMax),
+  "state": zod.enum(['requested', 'downloading', 'verifying', 'stopping', 'ready', 'interrupted', 'failed']),
+  "phase": zod.enum(['preparing', 'downloading', 'checking', 'downloaded']),
+  "observedCompletedBytes": zod.number().int().min(startLocalModelPreparationResponseObservedCompletedBytesMin).max(startLocalModelPreparationResponseObservedCompletedBytesMax),
+  "observedTotalBytes": zod.number().int().min(startLocalModelPreparationResponseObservedTotalBytesMin).max(startLocalModelPreparationResponseObservedTotalBytesMax),
+  "progressReset": zod.boolean(),
+  "failureCode": zod.enum(['INTERRUPTED', 'CONFIG_CHANGED', 'SERVER_UNAVAILABLE', 'RUNTIME_UPDATE_REQUIRED', 'MODEL_UNVERIFIED', 'DISPATCH_FAILED', 'DEADLINE_EXCEEDED', 'INVALID_PROGRESS', 'FRAME_TOO_LARGE', 'TOO_MANY_LAYERS', 'MODEL_TOO_LARGE', 'UPSTREAM_ERROR', 'INCOMPLETE_PROGRESS', 'STREAM_FAILED']).nullable(),
+  "resultModelId": zod.enum(['ollama:qwen3.5:2b-q4_K_M']).nullable(),
+  "resultDigest": zod.string().regex(startLocalModelPreparationResponseResultDigestRegExp).nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Reconcile a known preparation without resending a download
+ */
+export const GetLocalModelPreparationReceiptParams = zod.object({
+  "requestId": zod.coerce.string().uuid()
+})
+
+export const getLocalModelPreparationReceiptResponseProviderRevisionMin = 0;
+export const getLocalModelPreparationReceiptResponseProviderRevisionMax = 9007199254740991;
+
+export const getLocalModelPreparationReceiptResponseObservedCompletedBytesMin = 0;
+export const getLocalModelPreparationReceiptResponseObservedCompletedBytesMax = 3221225472;
+
+export const getLocalModelPreparationReceiptResponseObservedTotalBytesMin = 0;
+export const getLocalModelPreparationReceiptResponseObservedTotalBytesMax = 3221225472;
+
+export const getLocalModelPreparationReceiptResponseResultDigestRegExp = new RegExp('^sha256:[a-f0-9]{64}$');
+
+
+export const GetLocalModelPreparationReceiptResponse = zod.object({
+  "requestId": zod.string().uuid(),
+  "modelId": zod.enum(['qwen35-2b']),
+  "providerRevision": zod.number().int().min(getLocalModelPreparationReceiptResponseProviderRevisionMin).max(getLocalModelPreparationReceiptResponseProviderRevisionMax),
+  "state": zod.enum(['requested', 'downloading', 'verifying', 'stopping', 'ready', 'interrupted', 'failed']),
+  "phase": zod.enum(['preparing', 'downloading', 'checking', 'downloaded']),
+  "observedCompletedBytes": zod.number().int().min(getLocalModelPreparationReceiptResponseObservedCompletedBytesMin).max(getLocalModelPreparationReceiptResponseObservedCompletedBytesMax),
+  "observedTotalBytes": zod.number().int().min(getLocalModelPreparationReceiptResponseObservedTotalBytesMin).max(getLocalModelPreparationReceiptResponseObservedTotalBytesMax),
+  "progressReset": zod.boolean(),
+  "failureCode": zod.enum(['INTERRUPTED', 'CONFIG_CHANGED', 'SERVER_UNAVAILABLE', 'RUNTIME_UPDATE_REQUIRED', 'MODEL_UNVERIFIED', 'DISPATCH_FAILED', 'DEADLINE_EXCEEDED', 'INVALID_PROGRESS', 'FRAME_TOO_LARGE', 'TOO_MANY_LAYERS', 'MODEL_TOO_LARGE', 'UPSTREAM_ERROR', 'INCOMPLETE_PROGRESS', 'STREAM_FAILED']).nullable(),
+  "resultModelId": zod.enum(['ollama:qwen3.5:2b-q4_K_M']).nullable(),
+  "resultDigest": zod.string().regex(getLocalModelPreparationReceiptResponseResultDigestRegExp).nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Stop this application's download request without deleting shared model files
+ */
+export const StopLocalModelPreparationParams = zod.object({
+  "requestId": zod.coerce.string().uuid()
+})
+
+export const stopLocalModelPreparationResponseProviderRevisionMin = 0;
+export const stopLocalModelPreparationResponseProviderRevisionMax = 9007199254740991;
+
+export const stopLocalModelPreparationResponseObservedCompletedBytesMin = 0;
+export const stopLocalModelPreparationResponseObservedCompletedBytesMax = 3221225472;
+
+export const stopLocalModelPreparationResponseObservedTotalBytesMin = 0;
+export const stopLocalModelPreparationResponseObservedTotalBytesMax = 3221225472;
+
+export const stopLocalModelPreparationResponseResultDigestRegExp = new RegExp('^sha256:[a-f0-9]{64}$');
+
+
+export const StopLocalModelPreparationResponse = zod.object({
+  "requestId": zod.string().uuid(),
+  "modelId": zod.enum(['qwen35-2b']),
+  "providerRevision": zod.number().int().min(stopLocalModelPreparationResponseProviderRevisionMin).max(stopLocalModelPreparationResponseProviderRevisionMax),
+  "state": zod.enum(['requested', 'downloading', 'verifying', 'stopping', 'ready', 'interrupted', 'failed']),
+  "phase": zod.enum(['preparing', 'downloading', 'checking', 'downloaded']),
+  "observedCompletedBytes": zod.number().int().min(stopLocalModelPreparationResponseObservedCompletedBytesMin).max(stopLocalModelPreparationResponseObservedCompletedBytesMax),
+  "observedTotalBytes": zod.number().int().min(stopLocalModelPreparationResponseObservedTotalBytesMin).max(stopLocalModelPreparationResponseObservedTotalBytesMax),
+  "progressReset": zod.boolean(),
+  "failureCode": zod.enum(['INTERRUPTED', 'CONFIG_CHANGED', 'SERVER_UNAVAILABLE', 'RUNTIME_UPDATE_REQUIRED', 'MODEL_UNVERIFIED', 'DISPATCH_FAILED', 'DEADLINE_EXCEEDED', 'INVALID_PROGRESS', 'FRAME_TOO_LARGE', 'TOO_MANY_LAYERS', 'MODEL_TOO_LARGE', 'UPSTREAM_ERROR', 'INCOMPLETE_PROGRESS', 'STREAM_FAILED']).nullable(),
+  "resultModelId": zod.enum(['ollama:qwen3.5:2b-q4_K_M']).nullable(),
+  "resultDigest": zod.string().regex(stopLocalModelPreparationResponseResultDigestRegExp).nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable()
+})
+
+
+/**
  * @summary Read redacted LLM provider settings and the live model catalog
  */
 export const getLlmSettingsResponseRevisionMin = 0;

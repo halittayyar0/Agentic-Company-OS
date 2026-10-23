@@ -64,6 +64,7 @@ export default function GuidedModelConnection({
 }) {
   const { locale, t } = useLocale();
   const [choice, setChoice] = useState<Choice | null>(null);
+  const [preparationReady, setPreparationReady] = useState(false);
   const copy = useQuery({
     queryKey: ["connection-copy", locale],
     queryFn: () => loadConnectionCopy(locale),
@@ -134,7 +135,13 @@ export default function GuidedModelConnection({
             ) : choice === "chatgpt" ? (
               <ChatGPTConnectionSlot c={c} />
             ) : (
-              <ProviderForm key={choice} choice={choice} c={c} />
+              <ProviderForm
+                key={choice}
+                choice={choice}
+                c={c}
+                onReturn={onClose}
+                onReadyChange={setPreparationReady}
+              />
             )}
             <Link
               href="/settings"
@@ -142,14 +149,16 @@ export default function GuidedModelConnection({
             >
               {c.advanced}
             </Link>
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11"
-              onClick={onClose}
-            >
-              {c.done}
-            </Button>
+            {!preparationReady ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={onClose}
+              >
+                {c.done}
+              </Button>
+            ) : null}
           </>
         )}
       </DialogContent>
@@ -175,9 +184,13 @@ function ChatGPTConnectionSlot({ c }: { c: ConnectionCopy }) {
 function ProviderForm({
   choice,
   c,
+  onReturn,
+  onReadyChange,
 }: {
   choice: "ollama" | "api";
   c: ConnectionCopy;
+  onReturn(): void;
+  onReadyChange(available: boolean): void;
 }) {
   const { t } = useLocale();
   const id = useId(),
@@ -187,6 +200,10 @@ function ProviderForm({
   const [value, setValue] = useState<string | null>(null);
   const [baseRevision, setBaseRevision] = useState<number | null>(null);
   const [cloudDraft, setCloudDraft] = useState<boolean | null>(null);
+  // The lazy preparation screen must discover an existing/unknown transfer
+  // before editing is enabled. Otherwise its first pending read can disable
+  // an already focused input while the operator is entering an address.
+  const [preparing, setPreparing] = useState(choice !== "api");
   const [busy, setBusy] = useState(false),
     [needsReview, setNeedsReview] = useState(false);
   const [notice, setNotice] = useState<
@@ -214,12 +231,13 @@ function ProviderForm({
       );
     }
   }, [state.data, state.isFetching, state.isError, value, choice]);
-  const blocked =
+  const unavailable =
     busy ||
     needsReview ||
     state.isError ||
     state.isFetching ||
     baseRevision === null;
+  const blocked = unavailable || preparing;
   const refresh = async () => {
     if (guard.current || state.isFetching) return;
     const current = await state.refetch();
@@ -285,8 +303,7 @@ function ProviderForm({
           throw new Error("Cloud permission readback is unconfirmed");
         setBaseRevision(receipt.revision);
         setNeedsReview(false);
-        if (restore && choice === "ollama")
-          setValue(current.data.ollama.baseUrl ?? "");
+        if (choice === "ollama") setValue(current.data.ollama.baseUrl ?? "");
         if (choice === "ollama")
           setCloudDraft(
             typeof current.data.ollama.cloudEnabled === "boolean"
@@ -318,6 +335,32 @@ function ProviderForm({
       </h3>
       {state.isPending ? <p role="status">{t("loadingScreen")}</p> : null}
       {state.isError ? <p role="alert">{c.unconfirmed}</p> : null}
+      {choice === "ollama" && state.data && !state.isError ? (
+        <PreparationSlot
+          revision={baseRevision}
+          confirmed={
+            !unavailable &&
+            baseRevision === state.data.revision &&
+            value?.trim() === state.data.ollama.baseUrl
+          }
+          catalogReady={
+            state.data.catalog.providers.some(
+              (provider) => provider.id === "ollama" && provider.available,
+            ) &&
+            state.data.catalog.models.some(
+              (model) =>
+                model.provider === "ollama" &&
+                model.executionLocation === "local" &&
+                model.supportsTools &&
+                modelConnectionReady(model),
+            )
+          }
+          onActiveChange={setPreparing}
+          onReadyChange={onReadyChange}
+          onRefresh={refresh}
+          onReturn={onReturn}
+        />
+      ) : null}
       <form
         className="min-w-0 space-y-3"
         onSubmit={(event) => {
@@ -362,7 +405,7 @@ function ProviderForm({
           maxLength={choice === "ollama" ? 2048 : 512}
           autoComplete="off"
           spellCheck={false}
-          disabled={busy || baseRevision === null}
+          disabled={busy || preparing || baseRevision === null}
           aria-describedby={`${id}-hint`}
           className="min-h-11 min-w-0"
           onChange={(event) => {
@@ -441,6 +484,7 @@ function ProviderForm({
       {notice ? (
         <p
           role={notice === "saved" ? "status" : "alert"}
+          aria-label={c.save}
           className="rounded-control border p-3 text-sm leading-6"
         >
           {c[notice]}
@@ -512,5 +556,22 @@ function ProviderForm({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function PreparationSlot(
+  props: import("./local-model-preparation").ModelPreparationProps,
+) {
+  const module = useQuery({
+    queryKey: ["local-model-preparation-module"],
+    queryFn: () => import("./local-model-preparation-slot"),
+    retry: false,
+    staleTime: Infinity,
+  });
+  const Component = module.data?.default;
+  return Component ? (
+    <Component {...props} />
+  ) : (
+    <ConnectionModuleStatus error={module.isError} />
   );
 }

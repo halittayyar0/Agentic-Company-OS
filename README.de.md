@@ -54,6 +54,14 @@ Die App bindet standardmäßig an Loopback (`127.0.0.1`). Lass das Terminal geö
 
 Modellgewichte und Anbieterzugang sind nicht enthalten. KI-Aufgaben brauchen ein eingerichtetes Ollama-Modell oder eine verfügbare Anbieterverbindung; Cloud-Anbieter können Gebühren berechnen. Lokale Hilfsprüfungen funktionieren ohne kostenpflichtigen Anbieter.
 
+Für das erste lokale Modell öffne **Modell verbinden → Lokales Modell**. Die App
+verlinkt die offizielle Ollama-Anleitung für das Betriebssystem des Modellservers.
+Mit laufendem Ollama ab 0.40.3 speicherst du dessen private Adresse und wählst
+**Modell herunterladen**. Das Startmodell benötigt dort etwa 2 GB plus temporären
+Speicherplatz. Nach der Prüfung kehrst du zum erhaltenen Entwurf zurück und
+entscheidest, wann du startest. Bereits auf dieses Modell wartende Aufgaben können
+weiterlaufen. [Download, Speicher und Wiederherstellung →](./docs/local-models.md#get-your-first-local-model)
+
 Erweiterte Optionen: Das separate [Docker-Paket](./docs/self-hosting.md#portable-container-installer) und die [Quellcode-Installation](./docs/self-hosting.md#source-installation-prerequisites) behalten ihre eigenen Voraussetzungen.
 
 ### 3. Einen klaren ersten Auftrag geben

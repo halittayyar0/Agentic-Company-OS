@@ -744,6 +744,218 @@ export interface WorkspaceLocaleSetting {
   locale: WorkspaceLocaleSettingLocale;
 }
 
+export type StartLocalModelPreparationInputModelId = typeof StartLocalModelPreparationInputModelId[keyof typeof StartLocalModelPreparationInputModelId];
+
+
+export const StartLocalModelPreparationInputModelId = {
+  'qwen35-2b': 'qwen35-2b',
+} as const;
+
+export interface StartLocalModelPreparationInput {
+  requestId: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  expectedRevision: number;
+  modelId: StartLocalModelPreparationInputModelId;
+}
+
+export type LocalModelPreparationReceiptModelId = typeof LocalModelPreparationReceiptModelId[keyof typeof LocalModelPreparationReceiptModelId];
+
+
+export const LocalModelPreparationReceiptModelId = {
+  'qwen35-2b': 'qwen35-2b',
+} as const;
+
+export type LocalModelPreparationReceiptState = typeof LocalModelPreparationReceiptState[keyof typeof LocalModelPreparationReceiptState];
+
+
+export const LocalModelPreparationReceiptState = {
+  requested: 'requested',
+  downloading: 'downloading',
+  verifying: 'verifying',
+  stopping: 'stopping',
+  ready: 'ready',
+  interrupted: 'interrupted',
+  failed: 'failed',
+} as const;
+
+export type LocalModelPreparationReceiptPhase = typeof LocalModelPreparationReceiptPhase[keyof typeof LocalModelPreparationReceiptPhase];
+
+
+export const LocalModelPreparationReceiptPhase = {
+  preparing: 'preparing',
+  downloading: 'downloading',
+  checking: 'checking',
+  downloaded: 'downloaded',
+} as const;
+
+export type LocalModelPreparationReceiptFailureCode = typeof LocalModelPreparationReceiptFailureCode[keyof typeof LocalModelPreparationReceiptFailureCode] | null;
+
+
+export const LocalModelPreparationReceiptFailureCode = {
+  INTERRUPTED: 'INTERRUPTED',
+  CONFIG_CHANGED: 'CONFIG_CHANGED',
+  SERVER_UNAVAILABLE: 'SERVER_UNAVAILABLE',
+  RUNTIME_UPDATE_REQUIRED: 'RUNTIME_UPDATE_REQUIRED',
+  MODEL_UNVERIFIED: 'MODEL_UNVERIFIED',
+  DISPATCH_FAILED: 'DISPATCH_FAILED',
+  DEADLINE_EXCEEDED: 'DEADLINE_EXCEEDED',
+  INVALID_PROGRESS: 'INVALID_PROGRESS',
+  FRAME_TOO_LARGE: 'FRAME_TOO_LARGE',
+  TOO_MANY_LAYERS: 'TOO_MANY_LAYERS',
+  MODEL_TOO_LARGE: 'MODEL_TOO_LARGE',
+  UPSTREAM_ERROR: 'UPSTREAM_ERROR',
+  INCOMPLETE_PROGRESS: 'INCOMPLETE_PROGRESS',
+  STREAM_FAILED: 'STREAM_FAILED',
+} as const;
+
+export type LocalModelPreparationReceiptResultModelId = typeof LocalModelPreparationReceiptResultModelId[keyof typeof LocalModelPreparationReceiptResultModelId] | null;
+
+
+export const LocalModelPreparationReceiptResultModelId = {
+  'ollama:qwen35:2b-q4_K_M': 'ollama:qwen3.5:2b-q4_K_M',
+} as const;
+
+export interface LocalModelPreparationReceipt {
+  requestId: string;
+  modelId: LocalModelPreparationReceiptModelId;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  providerRevision: number;
+  state: LocalModelPreparationReceiptState;
+  phase: LocalModelPreparationReceiptPhase;
+  /**
+     * @minimum 0
+     * @maximum 3221225472
+     */
+  observedCompletedBytes: number;
+  /**
+     * @minimum 0
+     * @maximum 3221225472
+     */
+  observedTotalBytes: number;
+  progressReset: boolean;
+  failureCode: LocalModelPreparationReceiptFailureCode;
+  resultModelId: LocalModelPreparationReceiptResultModelId;
+  /** @pattern ^sha256:[a-f0-9]{64}$ */
+  resultDigest: string | null;
+  createdAt: string;
+  updatedAt: string;
+  finishedAt: string | null;
+}
+
+export type LocalModelPreparationSnapshotRecipeId = typeof LocalModelPreparationSnapshotRecipeId[keyof typeof LocalModelPreparationSnapshotRecipeId];
+
+
+export const LocalModelPreparationSnapshotRecipeId = {
+  'qwen35-2b': 'qwen35-2b',
+} as const;
+
+export type LocalModelPreparationSnapshotRecipeModel = typeof LocalModelPreparationSnapshotRecipeModel[keyof typeof LocalModelPreparationSnapshotRecipeModel];
+
+
+export const LocalModelPreparationSnapshotRecipeModel = {
+  'qwen35:2b-q4_K_M': 'qwen3.5:2b-q4_K_M',
+} as const;
+
+export type LocalModelPreparationSnapshotRecipeMinimumRuntimeVersion = typeof LocalModelPreparationSnapshotRecipeMinimumRuntimeVersion[keyof typeof LocalModelPreparationSnapshotRecipeMinimumRuntimeVersion];
+
+
+export const LocalModelPreparationSnapshotRecipeMinimumRuntimeVersion = {
+  '0403': '0.40.3',
+} as const;
+
+export type LocalModelPreparationSnapshotRecipeEstimatedBytes = typeof LocalModelPreparationSnapshotRecipeEstimatedBytes[keyof typeof LocalModelPreparationSnapshotRecipeEstimatedBytes];
+
+
+export const LocalModelPreparationSnapshotRecipeEstimatedBytes = {
+  NUMBER_1945782446: 1945782446,
+} as const;
+
+export type LocalModelPreparationSnapshotRecipeGuidesDownload = typeof LocalModelPreparationSnapshotRecipeGuidesDownload[keyof typeof LocalModelPreparationSnapshotRecipeGuidesDownload];
+
+
+export const LocalModelPreparationSnapshotRecipeGuidesDownload = {
+  'https://ollamacom/download': 'https://ollama.com/download',
+} as const;
+
+export type LocalModelPreparationSnapshotRecipeGuidesWindows = typeof LocalModelPreparationSnapshotRecipeGuidesWindows[keyof typeof LocalModelPreparationSnapshotRecipeGuidesWindows];
+
+
+export const LocalModelPreparationSnapshotRecipeGuidesWindows = {
+  'https://docsollamacom/windows': 'https://docs.ollama.com/windows',
+} as const;
+
+export type LocalModelPreparationSnapshotRecipeGuidesMacos = typeof LocalModelPreparationSnapshotRecipeGuidesMacos[keyof typeof LocalModelPreparationSnapshotRecipeGuidesMacos];
+
+
+export const LocalModelPreparationSnapshotRecipeGuidesMacos = {
+  'https://docsollamacom/macos': 'https://docs.ollama.com/macos',
+} as const;
+
+export type LocalModelPreparationSnapshotRecipeGuidesLinux = typeof LocalModelPreparationSnapshotRecipeGuidesLinux[keyof typeof LocalModelPreparationSnapshotRecipeGuidesLinux];
+
+
+export const LocalModelPreparationSnapshotRecipeGuidesLinux = {
+  'https://docsollamacom/linux': 'https://docs.ollama.com/linux',
+} as const;
+
+export type LocalModelPreparationSnapshotRecipeGuides = {
+  download: LocalModelPreparationSnapshotRecipeGuidesDownload;
+  windows: LocalModelPreparationSnapshotRecipeGuidesWindows;
+  macos: LocalModelPreparationSnapshotRecipeGuidesMacos;
+  linux: LocalModelPreparationSnapshotRecipeGuidesLinux;
+};
+
+export type LocalModelPreparationSnapshotRecipe = {
+  id: LocalModelPreparationSnapshotRecipeId;
+  model: LocalModelPreparationSnapshotRecipeModel;
+  minimumRuntimeVersion: LocalModelPreparationSnapshotRecipeMinimumRuntimeVersion;
+  estimatedBytes: LocalModelPreparationSnapshotRecipeEstimatedBytes;
+  guides: LocalModelPreparationSnapshotRecipeGuides;
+};
+
+export type LocalModelPreparationSnapshotAvailabilityServer = typeof LocalModelPreparationSnapshotAvailabilityServer[keyof typeof LocalModelPreparationSnapshotAvailabilityServer];
+
+
+export const LocalModelPreparationSnapshotAvailabilityServer = {
+  compatible: 'compatible',
+  update_required: 'update_required',
+  unreachable: 'unreachable',
+  unverified: 'unverified',
+  unconfigured: 'unconfigured',
+} as const;
+
+export type LocalModelPreparationSnapshotAvailabilityModelId = typeof LocalModelPreparationSnapshotAvailabilityModelId[keyof typeof LocalModelPreparationSnapshotAvailabilityModelId] | null;
+
+
+export const LocalModelPreparationSnapshotAvailabilityModelId = {
+  'ollama:qwen35:2b-q4_K_M': 'ollama:qwen3.5:2b-q4_K_M',
+} as const;
+
+export type LocalModelPreparationSnapshotAvailability = {
+  server: LocalModelPreparationSnapshotAvailabilityServer;
+  available: boolean;
+  modelId: LocalModelPreparationSnapshotAvailabilityModelId;
+  /** @pattern ^sha256:[a-f0-9]{64}$ */
+  digest: string | null;
+};
+
+export interface LocalModelPreparationSnapshot {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  revision: number;
+  recipe: LocalModelPreparationSnapshotRecipe;
+  availability: LocalModelPreparationSnapshotAvailability;
+  preparation: LocalModelPreparationReceipt | null;
+}
+
 export type LlmSettingsStorage = typeof LlmSettingsStorage[keyof typeof LlmSettingsStorage];
 
 

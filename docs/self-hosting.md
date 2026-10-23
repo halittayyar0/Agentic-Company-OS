@@ -116,8 +116,11 @@ require their own accepted evidence; a green offline gate is not that proof.
 **Advanced alternative: build from source.** The following toolchain requirements and manual deployment sections apply to source installations, not to first installation with a native archive.
 
 For an existing Ollama server, review [local model addresses and cloud permission](./local-models.md).
-The app requires a running server version of 0.18.0 or later; setup does not install
-Ollama or download model weights.
+The app requires a running server version of 0.18.0 or later. It does not install
+Ollama. **Connect a model → Local model** links to official runtime installation
+guides and can explicitly download a starter model to the saved private server
+with Ollama 0.40.3 or later. Allow about 2 GB plus temporary space on that server;
+see [first-model preparation and recovery](./local-models.md#get-your-first-local-model).
 
 - 64-bit host supported by Node.js 24 and the repository's native dependencies
 - Node.js 24

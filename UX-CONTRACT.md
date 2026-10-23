@@ -300,3 +300,42 @@ Before a user action, save a versioned UUID with verified local readback and sen
 Treat completion and output availability separately. Missing records are inconclusive; lost keys do not turn a completed command into an invitation to repeat it. Browser historical receipts cannot restore private control authority or pixels. Legacy IDs remain explicitly local-only. Preserve original source text and newer drafts, and correlate late responses with the complete original intent, not just the UUID. A changed local record blocks review/clearing.
 
 Recovery states and dialogs use all seven selected languages, 44px controls, semantic themes and Arabic RTL. Review opens on Cancel; cancellation restores its trigger, while successful Terminal clearing returns focus to the command draft. Local clearing does not cancel server execution or delete a durable receipt. See `docs/operator-recovery.md` for the protocol and verification limits.
+
+## Guided local model preparation
+
+The existing Local model connection dialog owns starter-model preparation. Its
+inline named region loads code and only the selected language after the operator
+opens Local model; the initial composer makes no preparation request. The shared
+address form stays disabled through lazy code, language and initial preparation
+discovery, so discovery cannot disable an already focused editable field.
+API-key setup does not depend on the local preparation module. The shared
+Dialog owns the single vertical scroller. Button size `touch` maintains a 44px
+minimum on desktop and phones and grows with text; other existing sizes retain
+their established desktop variants.
+
+The download action binds to the confirmed saved private server and its revision.
+Unsaved edits cannot start it; active or unacknowledged requests lock connection
+mutations. Show approximate model size, server disk/network ownership and the
+possibility of existing provider-waiting work continuing before Download. This
+action creates no new task or inference request. Official installation help asks
+for the server's operating system, with Windows/macOS/Linux links.
+
+Progress uses real phases and observed bytes, without an inferred overall percent.
+Stop affects this request; partial files and unrelated server downloads may remain.
+A held UUID survives dialog close in page memory. Accepted receipts survive API
+restart and backup; full reload reads those server receipts. Lost acknowledgements
+use GET, never an automatic Start retry. Explicit Stop consumes an unacknowledged
+UUID before an explicit new-ID retry, fencing delayed Starts.
+
+Live model and server checks take precedence over historical Ready receipts and
+retained catalog rows. A reachable, admitted local model offers one Return to my
+job action; it refreshes connection metadata, preserves the draft and model pin,
+and restores focus without submitting the job. Initial prerequisite guidance is
+descriptive; actual read/request failures use alerts. Save feedback is named for
+its action so it remains distinct from concurrent metadata progress.
+
+All seven packs are authored separately, including Arabic RTL and LTR model IDs.
+Failed UI/language chunks preserve the mounted connection and draft and offer
+explicit reload through the existing recovery controls. Existing bundle ceilings
+remain unchanged; this feature receives only its bounded, hash-verified exclusive
+new code and one selected pack, with a separate bound for all seven packs on disk.
