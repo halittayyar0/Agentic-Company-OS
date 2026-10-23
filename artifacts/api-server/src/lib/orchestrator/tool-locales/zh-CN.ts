@@ -306,6 +306,12 @@ export const toolZhCN: ToolCopy = {
   previewLink: "链接：{url}",
   previewForm: "表单提交目标：{url}",
   judgeMissingReason: "审核未返回理由。",
+  judgeSourceSatisfied:
+    "本地来源审核认为已满足请求范围；这不代表外部事实经过独立核实。",
+  judgeSourceMismatch: "拟议结果与已读取的来源不符。请比较来源与请求的输出。",
+  judgeSourceMissingAction: "任务明确要求的操作缺乏充分的执行证据。",
+  judgeSourceUnauthorized: "拟议操作超出了任务授权范围。",
+  judgeSourceInsufficient: "现有来源和执行证据不足以支持完成声明。",
   judgeSudoReason:
     "sudo 提议被归类为 {verdict}；完整命令仅在本地人工批准界面中显示。",
   judgeReview: "审核（{purpose}）：{verdict}",

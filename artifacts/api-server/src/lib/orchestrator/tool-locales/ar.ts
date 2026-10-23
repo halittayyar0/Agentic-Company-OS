@@ -341,6 +341,14 @@ export const toolAr: ToolCopy = {
   previewLink: "الرابط: {url}",
   previewForm: "وجهة النموذج: {url}",
   judgeMissingReason: "لم تُرجع المراجعة مبررًا.",
+  judgeSourceSatisfied:
+    "وجدت مراجعة المصدر المحلية أن النطاق المطلوب مستوفى؛ وهذا ليس تحققًا مستقلاً من الحقائق الخارجية.",
+  judgeSourceMismatch:
+    "تتعارض النتيجة المقترحة مع المصدر المقروء. قارن المصدر بالمخرجات المطلوبة.",
+  judgeSourceMissingAction: "لا تتوفر أدلة تنفيذ كافية لإجراء مطلوب صراحةً.",
+  judgeSourceUnauthorized: "يتجاوز الإجراء المقترح النطاق المصرح به للمهمة.",
+  judgeSourceInsufficient:
+    "لا تكفي المصادر وأدلة التنفيذ المتاحة لدعم ادعاء إكمال المهمة.",
   judgeSudoReason:
     "صُنّف اقتراح sudo بأنه {verdict}؛ ولا يُعرض الأمر المحدد إلا ضمن الموافقة البشرية المحلية.",
   judgeReview: "المراجعة ({purpose}): {verdict}",

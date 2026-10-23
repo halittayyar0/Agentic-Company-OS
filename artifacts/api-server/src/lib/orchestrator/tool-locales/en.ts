@@ -356,6 +356,16 @@ export const toolEn: ToolCopy = {
   previewLink: "Link: {url}",
   previewForm: "Form target: {url}",
   judgeMissingReason: "The review returned no reasoning.",
+  judgeSourceSatisfied:
+    "The local source review found the requested scope satisfied; this is not independent verification of external facts.",
+  judgeSourceMismatch:
+    "The proposed result conflicts with the read source. Compare the source with the requested output.",
+  judgeSourceMissingAction:
+    "An explicitly required action lacks sufficient execution evidence.",
+  judgeSourceUnauthorized:
+    "The proposed action exceeds the task's authorized scope.",
+  judgeSourceInsufficient:
+    "The available source and execution evidence do not sufficiently support the completion claim.",
   judgeSudoReason:
     "The sudo proposal was classified as {verdict}; the exact command is shown only in the local human approval.",
   judgeReview: "Review ({purpose}): {verdict}",

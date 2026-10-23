@@ -397,6 +397,16 @@ export const toolDe: ToolCopy = {
   previewLink: "Link: {url}",
   previewForm: "Formularziel: {url}",
   judgeMissingReason: "Die Prüfung hat keine Begründung zurückgegeben.",
+  judgeSourceSatisfied:
+    "Die lokale Quellenprüfung bewertet den angeforderten Umfang als erfüllt; externe Fakten wurden nicht unabhängig bestätigt.",
+  judgeSourceMismatch:
+    "Das vorgeschlagene Ergebnis widerspricht der gelesenen Quelle. Vergleichen Sie Quelle und angeforderte Ausgabe.",
+  judgeSourceMissingAction:
+    "Für eine ausdrücklich verlangte Aktion fehlen ausreichende Ausführungsnachweise.",
+  judgeSourceUnauthorized:
+    "Die vorgeschlagene Aktion überschreitet den genehmigten Aufgabenumfang.",
+  judgeSourceInsufficient:
+    "Die verfügbaren Quellen und Ausführungsnachweise reichen für die Abschlussbehauptung nicht aus.",
   judgeSudoReason:
     "Der sudo-Vorschlag wurde als {verdict} eingestuft; der exakte Befehl wird nur bei der lokalen Genehmigung durch einen Menschen angezeigt.",
   judgeReview: "Prüfung ({purpose}): {verdict}",

@@ -33,6 +33,7 @@ import { redactAuditText } from "../audit-redaction";
 import type { RuntimeOperationsConfig } from "../runtime-operations-config";
 import { getToolsForAgent } from "./tools";
 import { executeTool, type DurableTaskLifecycleIntent } from "./execute-tool";
+import { LocalSourceReview } from "./local-source-review";
 import { buildTaskStepPrompts } from "./system-prompt";
 import { readWorkspaceLocale, type WorkspaceLocale } from "../workspace-locale";
 import {
@@ -674,6 +675,12 @@ export async function stepTask(
       authorizedTools.map((tool) => tool.function.name),
     );
     const maxToolCallsPerRound = resolveMaxToolCallsPerRound();
+    const localSourceReview = new LocalSourceReview({
+      taskId: task.id,
+      agentId: agent.id,
+      originAttemptId: task.runtimeAttemptId,
+      logicalExecutionId: task.logicalExecutionId,
+    });
     const toolCatalog = exclusivePolicy
       ? null
       : createTaskToolCatalog(authorizedTools);
@@ -1174,6 +1181,7 @@ export async function stepTask(
             detachOperationInvocation: (invocationId) =>
               leaseHeartbeat.detachOperationInvocation(invocationId),
             computerLoopId,
+            localSourceReview,
             exclusiveTurnPolicy: exclusivePolicy ?? undefined,
             operationIdentity: {
               executionKind: "task_step",

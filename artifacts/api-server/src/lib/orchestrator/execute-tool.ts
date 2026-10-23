@@ -79,6 +79,7 @@ import { avatarColorFor } from "./avatar-color";
 import { runJudge, type JudgeReviewRecord, type JudgeVerdict } from "./judge";
 import { loadCompletionEvidence } from "./completion-evidence";
 import { prepareCalculationEvidence } from "./calculation-evidence";
+import type { LocalSourceReview } from "./local-source-review";
 import { loadCompletionRequirementResults } from "./completion-requirements";
 import { checkTaskResultFormat } from "../task-result-format";
 import { parseTaskResultFormat } from "@workspace/db/task-result-format";
@@ -188,8 +189,10 @@ export interface ToolRuntimeContext {
   assertTaskLease?: (action?: string) => Promise<void>;
   /** Unique to one outer model loop; prevents stale cross-run verification. */
   computerLoopId?: string;
-  /** Effective chat-turn model, used only to preserve an explicit free spend boundary. */
+  /** Effective turn model; explicit local/free oversight boundaries survive. */
   turnModelId?: string;
+  /** Private, bounded source observations owned only by this task-step invocation. */
+  localSourceReview?: LocalSourceReview;
   /** Server-derived, per-chat-turn allowlist for explicit only/sadece requests. */
   exclusiveTurnPolicy?: ExclusiveTurnPolicy;
   /** Server-owned logical/physical identity for durable operation receipts. */
@@ -1950,6 +1953,11 @@ async function runDurableReadOnlyTool(
       resultData: calculation ? { calculation } : null,
       now: new Date(),
     });
+    if (toolName === "vm_read_file")
+      ctx.localSourceReview?.confirmRead(
+        ctx.operationIdentity.callSlot,
+        receipt,
+      );
     return { ...result, receiptId: receipt.id };
   } catch (error) {
     try {
@@ -1978,6 +1986,8 @@ async function runDurableReadOnlyTool(
       throw error;
     }
   } finally {
+    if (toolName === "vm_read_file")
+      ctx.localSourceReview?.discardRead(ctx.operationIdentity.callSlot);
     ctx.detachOperationInvocation?.(claimed.invocation.id);
   }
 }
@@ -5007,6 +5017,13 @@ async function vmReadFile(
       "info",
       finished,
     );
+    if (ctx.operationIdentity?.executionKind === "task_step")
+      await ctx.localSourceReview?.stageRead(
+        ctx.operationIdentity.callSlot,
+        ctx.turnModelId,
+        args,
+        file,
+      );
     return empty(
       formatComputerStep(
         finished,
@@ -6927,6 +6944,12 @@ async function completeTask(
     ctx = { ...ctx, locale };
   }
 
+  const judgeExecutionModelId = resolveJudgeExecutionModelBoundary({
+    taskExecutionModelId: task.executionModelId,
+    turnModelId: ctx.turnModelId,
+    agentModelMode: ctx.agent.modelMode,
+    agentModelId: ctx.agent.modelId,
+  });
   const judgeResult = await runJudge({
     locale,
     agent: ctx.agent,
@@ -6935,12 +6958,8 @@ async function completeTask(
     originalBrief: task.brief,
     actionSummary: resultSummary,
     completionEvidence: await loadCompletionEvidence(task),
-    taskExecutionModelId: resolveJudgeExecutionModelBoundary({
-      taskExecutionModelId: task.executionModelId,
-      turnModelId: ctx.turnModelId,
-      agentModelMode: ctx.agent.modelMode,
-      agentModelId: ctx.agent.modelId,
-    }),
+    taskExecutionModelId: judgeExecutionModelId,
+    privateLocalSources: ctx.localSourceReview?.forJudge(judgeExecutionModelId),
     beforeAttempt: () => heartbeatJudgeTaskLease(ctx),
     persistReview: persistJudgeReview(ctx),
   });

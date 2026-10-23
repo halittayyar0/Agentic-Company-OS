@@ -106,3 +106,63 @@ After the renderer follow-up, all 19 table-format Chromium cases passed together
 with no retries or skips, covering the original seven-language creation flows
 and both actual delivered-table fixtures. The additional parser/render and
 budget-boundary run passed 19 tests. All workspace type checks passed again.
+
+## Retained genuine-file failure and private-review follow-up
+
+The clean `dc7426b76d09633dd064f639aca173baaa206677` candidate failed its genuine
+held-file task. The local Qwen model emitted a structurally correct table with
+the three required owners and dates, but its semantic reviewer had only receipt
+metadata and rejected it. The reviewer also invented a file-writing requirement
+that the original brief expressly prohibited. Repeated reads followed. The
+unchanged harness stopped before a thirteenth inference; 12 responses recorded
+40,787 tokens, and the application correctly fenced the missing usage receipt.
+The task was blocked, not completed. Cleanup passed and actual browser delivery
+was not reached. The retained proof SHA-256 is
+`b8f7d768781c46ec39e3d0bf3e5b1951a61f5195e58b9578d3313b7da315b4d1`.
+This is neither a natural application token-limit stop nor a successful task.
+
+The independent security audit then found that explicit local selections were
+dropped during judge routing when cloud providers were also configured. Two new
+tests reproduced that defect. Commit `57658b6` preserves Ollama task, message and
+manual-agent boundaries. Its final focused run passed 46 tests, including actual
+owned-loopback completion/approval requests, malformed responses, usage accounting
+and unchanged paid/free routing. Backend type checking, build and patch secret
+scan passed. Those protocol fixtures do not establish model quality.
+
+The follow-up keeps source observations private and ephemeral rather than
+expanding durable receipt output. Four complete small UTF-8 reads at most are
+bound to successful original receipts within one task step. Only the same model
+and captured local endpoint authority can receive them. The persisted completion
+snapshot stays metadata-only; public reasoning uses five authored codes in seven
+languages. A changed file after the read does not change the captured observation.
+A restart, later step or other worker loses this context and must treat it as
+unavailable. No genuine acceptance has yet been rerun for this follow-up.
+
+An intermediate integration fixture expected finite completion to increment a
+recurring-cycle counter. The finite task had correctly completed; only that test
+assertion was wrong. It now expects zero for finite work and one for a recurring
+cycle. The subsequent focused run passed 97 tests without retries or skips.
+
+The next independent review found that an essential-gap reason paired with
+`warn` could still complete work. Four tests reproduced that defect; private
+reviews now admit only `pass` for `scope_satisfied` and `block` for each essential
+gap. Full task-step fixtures verify that contradictory warnings cannot close
+finite work or advance a recurring cycle. The combined review/step run passed
+24 tests. Normal metadata-only advisory reviews remain unchanged.
+
+A separate byte-bound regression proved that JSON-sized source text can grow
+after XML escaping. Admission and prompt construction now share the same exact
+encoding. Four 3,000-byte ampersand documents retain only one within the wire
+bound. All 24 source-observation cases passed, including this regression.
+
+The final focused source run passed 108 tests with zero failures, cancellations,
+retries or skips. All workspace type checks and the workspace build passed. The
+complete staged patch, including new source and test files, passed Gitleaks.
+Fresh frozen-candidate platform and release checks are still required.
+
+The held-task helper's launch assertion now recognizes the word `unresolved`,
+which the unchanged user brief itself requests. Eight helper checks cover the
+accepted synonyms and reject a resolved decision or invented launch date; the
+original owner/action/date, completed-status, action-scope and 12-call assertions
+remain. The retained genuine failure occurred before this summary assertion and
+is not reclassified by this lexical correction.

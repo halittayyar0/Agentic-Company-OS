@@ -310,6 +310,12 @@ export const toolZhTW: ToolCopy = {
   previewLink: "連結：{url}",
   previewForm: "表單提交目標：{url}",
   judgeMissingReason: "審查未傳回理由。",
+  judgeSourceSatisfied:
+    "本機來源審查認為已滿足請求範圍；這不代表外部事實經過獨立核實。",
+  judgeSourceMismatch: "擬議結果與已讀取的來源不符。請比較來源與請求的輸出。",
+  judgeSourceMissingAction: "任務明確要求的操作缺乏充分的執行證據。",
+  judgeSourceUnauthorized: "擬議操作超出了任務授權範圍。",
+  judgeSourceInsufficient: "現有來源和執行證據不足以支持完成聲明。",
   judgeSudoReason:
     "sudo 提議被歸類為 {verdict}；完整指令僅在本機人工核准介面中顯示。",
   judgeReview: "審查（{purpose}）：{verdict}",

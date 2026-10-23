@@ -317,6 +317,16 @@ export const toolTr = {
   previewLink: "Bağlantı: {url}",
   previewForm: "Form hedefi: {url}",
   judgeMissingReason: "Denetim gerekçe döndürmedi.",
+  judgeSourceSatisfied:
+    "Yerel kaynak incelemesi istenen kapsamı yeterli buldu; bu, dış dünyadaki olguların bağımsız doğrulaması değildir.",
+  judgeSourceMismatch:
+    "Önerilen sonuç, okunan kaynakla uyuşmuyor. Kaynağı ve istenen çıktıyı karşılaştırın.",
+  judgeSourceMissingAction:
+    "Görevde açıkça istenen bir işlem için yeterli yürütme kanıtı yok.",
+  judgeSourceUnauthorized:
+    "Önerilen işlem, görevin izin verdiği kapsamı aşıyor.",
+  judgeSourceInsufficient:
+    "Mevcut kaynak ve yürütme kanıtı, tamamlama iddiasını desteklemeye yetmiyor.",
   judgeSudoReason:
     "Sudo önerisi {verdict} olarak sınıflandırıldı; tam komut yalnızca yerel insan onayında gösterilir.",
   judgeReview: "Denetim ({purpose}): {verdict}",

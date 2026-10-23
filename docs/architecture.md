@@ -370,6 +370,15 @@ review retains this same metadata. It is execution context for a model-dependent
 review, not an artifact correctness certificate or a replacement for terminal
 ownership fences. See [completion review](./completion-review.md).
 
+An explicitly local Ollama task can additionally supply a private prompt-only
+selection of complete small files read during the same `stepTask` invocation.
+`LocalSourceReview` owns this bounded memory; successful original read receipts
+bind the captured bytes before use. The selection is not part of
+`CompletionEvidence` or any saved result envelope and disappears on return or
+restart. Exact model/origin/configuration authority is checked again at accounted
+dispatch, with no review fallback. Enum-only reason codes keep model quotations
+out of public review reasoning. See the source bounds and limits in the linked guide.
+
 Tool exposure depends on the agent permission object and whether a task is active:
 
 | Capability                                      | Runtime gate                                                       |
