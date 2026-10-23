@@ -24,6 +24,7 @@ import {
   measureResultFormatDraft,
   measureResultFormatChoice,
   measureResultFormatAssets,
+  measureResultTableDelivery,
 } from "./task-result-format-bundle-budget";
 import {
   assertNoExcludedBundleModules,
@@ -350,6 +351,18 @@ draftControls.set(formatPanel.fileName, {
   raw: priorPanelControl.raw + formatPanel.raw,
   gzip: priorPanelControl.gzip + formatPanel.gzip,
 });
+const formatDelivery = measureResultTableDelivery(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
+);
 const resultFormat = measureResultFormatAssets(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
@@ -361,7 +374,7 @@ const resultFormat = measureResultFormatAssets(
       "utf8",
     ),
   ),
-  [formatDraft, formatChoice, formatPanel],
+  [formatDraft, formatChoice, formatPanel, formatDelivery],
 );
 const composerScope = resolveComposerDraftScope(
   codeAssets.map((asset) => ({
@@ -1459,5 +1472,5 @@ console.log(
 );
 
 console.log(
-  `Explicit result format: ${resultFormat.raw} raw / ${resultFormat.gzip} gzip selected (6500 / 3000 cap); ${resultFormat.globalRaw} raw / ${resultFormat.globalGzip} gzip including all seven packs (10000 / 5500 cap). Only new source-owned assets and exact integration fragments; original ceilings unchanged.`,
+  `Explicit result format: ${resultFormat.raw} raw / ${resultFormat.gzip} gzip selected (9800 / 4300 cap); ${resultFormat.globalRaw} raw / ${resultFormat.globalGzip} gzip including all seven packs (13500 / 7200 cap). Only new source-owned assets and exact integration fragments; original ceilings unchanged.`,
 );

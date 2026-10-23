@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   resultFormatDraftControl,
   measureResultFormatAssets,
+  resultTableDeliveryControl,
 } from "./task-result-format-bundle-budget";
 import { createHash } from "node:crypto";
 const text =
@@ -49,7 +50,11 @@ function fixture(extraLogic = "", extraPack = "", borrowed = false) {
     {
       name: "input.js",
       text: "const validate=true;",
-      modules: [root + "lib/task-result-format-input.ts"],
+      modules: [
+        root + "lib/task-result-format-input.ts",
+        root + "components/tasks/result-table.tsx",
+        root + "lib/task-result-table.ts",
+      ],
     },
     ...["en", "tr", "de", "ru", "zh-CN", "zh-TW", "ar"].map((locale) => ({
       name: `result-format-${locale}.js`,
@@ -90,10 +95,57 @@ test("layout budgets distinguish one selected language from seven disk packs wit
   assert.throws(() => measureResultFormatAssets(f.assets, f.manifest, []));
 });
 test("oversized new logic, a language pack or integration cannot escape the separate layout limits", () => {
-  for (const f of [fixture("x".repeat(4500)), fixture("", "x".repeat(1000))])
+  for (const f of [fixture("x".repeat(7600)), fixture("", "x".repeat(1000))])
     assert.throws(() => measureResultFormatAssets(f.assets, f.manifest, []));
   const f = fixture();
   assert.throws(() =>
-    measureResultFormatAssets(f.assets, f.manifest, [{ raw: 6500, gzip: 0 }]),
+    measureResultFormatAssets(f.assets, f.manifest, [{ raw: 9800, gzip: 0 }]),
   );
+});
+
+const delivery =
+  'const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/result-table-fixture.js","assets/input-fixture.js","assets/legacy.js"])))=>i.map(i=>d[i]);\nconst oldBefore=1,Table=R.lazy(()=>L(()=>import("./result-table-fixture.js"),__vite__mapDeps([0,1,2]))),oldAfter=2;function render(p,s,c){const legacy="keep";return p.resultFormat?J.jsx(R.Suspense,{fallback:J.jsx(Markdown,{content:s}),children:J.jsx(Table,{content:s,format:p.resultFormat,label:c.deliverySummary})}):J.jsx(Markdown,{content:s})}';
+test("saved-result delivery credit reconstructs the exact original Markdown and preserves adjacent legacy code", () => {
+  const result = resultTableDeliveryControl(
+    asset(delivery),
+    "result-table-fixture.js",
+    "input-fixture.js",
+  );
+  const text = result.contents.toString();
+  assert.ok(text.includes("return J.jsx(Markdown,{content:s})"));
+  assert.ok(
+    text.includes("oldBefore=1") &&
+      text.includes("oldAfter=2") &&
+      text.includes('const legacy="keep"'),
+  );
+  assert.ok(
+    text.includes("assets/legacy.js") &&
+      !text.includes("result-table-fixture.js") &&
+      !text.includes("resultFormat"),
+  );
+  const larger = resultTableDeliveryControl(
+    asset(delivery + 'const oldFeature="' + "x".repeat(4000) + '";'),
+    "result-table-fixture.js",
+    "input-fixture.js",
+  );
+  assert.equal(larger.raw, result.raw);
+  assert.ok(larger.contents.includes("oldFeature="));
+});
+test("changed delivery fallback, result bindings or preload paths earn no table integration credit", () => {
+  for (const changed of [
+    delivery.replace(
+      "fallback:J.jsx(Markdown,{content:s})",
+      "fallback:J.jsx(Markdown,{content:other})",
+    ),
+    delivery.replace("format:p.resultFormat", "format:other.resultFormat"),
+    delivery.replace("assets/input-fixture.js", "assets/old-feature.js"),
+    delivery.replace("label:c.deliverySummary", "label:other()"),
+  ])
+    assert.throws(() =>
+      resultTableDeliveryControl(
+        asset(changed),
+        "result-table-fixture.js",
+        "input-fixture.js",
+      ),
+    );
 });

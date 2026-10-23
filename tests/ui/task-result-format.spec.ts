@@ -128,7 +128,11 @@ test("removing an explicit layout requires a deliberate choice and does not leav
   expect([...fixture.unexpected]).toEqual([]);
 });
 
-async function savedLayoutTask(page: Page, columns: string[]) {
+async function savedLayoutTask(
+  page: Page,
+  columns: string[],
+  resultSummary: string | null = null,
+) {
   const fixture = await installStudioFixtures(page);
   const project = {
     id: 101,
@@ -143,7 +147,7 @@ async function savedLayoutTask(page: Page, columns: string[]) {
     progressPercent: 10,
     tokensUsed: 0,
     estimatedCostUsd: null,
-    resultSummary: null,
+    resultSummary,
     executionModelId: null,
     lastModelId: null,
     lastModelProvider: null,
@@ -213,6 +217,65 @@ for (const locale of ["en", "ar"] as const)
     await expect(picker.getByRole("combobox")).toHaveValue("table");
     for (const [index, heading] of columns.entries())
       await expect(picker.getByRole("textbox").nth(index)).toHaveValue(heading);
+    expect(fixture.requests).toHaveLength(0);
+    expect([...fixture.unexpected]).toEqual([]);
+  });
+
+for (const locale of ["en", "ar"] as const)
+  test(`${locale} accepted table delivery renders safe cells and scrolls inside the 320px result`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.addInitScript(
+      (locale) => localStorage.setItem("acos.locale.v1", locale),
+      locale,
+    );
+    const columns = ["Owner | جهة", "Action", "Date 😀"];
+    const summary =
+      "| Owner \\| جهة | Action | Date 😀 |\n| --- | --- | --- |\n| Mira | Review <script>alert(1)</script> | 2026-10-26 |\n| Deniz | FAQ \\| source | 2026-10-27 |\n\nLaunch remains undecided.";
+    const fixture = await savedLayoutTask(page, columns, summary);
+    await page.goto("/projects/101");
+    const delivery = page.locator("#project-delivery-summary"),
+      table = delivery.getByRole("table");
+    await expect(table).toBeVisible();
+    await expect(table.getByRole("columnheader")).toHaveText(columns);
+    await expect(table.getByRole("cell")).toHaveText([
+      "Mira",
+      "Review <script>alert(1)</script>",
+      "2026-10-26",
+      "Deniz",
+      "FAQ | source",
+      "2026-10-27",
+    ]);
+    await expect(
+      delivery.getByText("Launch remains undecided.", { exact: true }),
+    ).toBeVisible();
+    await expect(delivery.locator("script")).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    const scroll = delivery.locator('div[role="region"]');
+    expect(
+      await scroll.evaluate(
+        (element) => element.scrollWidth > element.clientWidth,
+      ),
+    ).toBe(true);
+    await scroll.focus();
+    await scroll.press(
+      (await scroll.evaluate(
+        (element) => getComputedStyle(element).direction,
+      )) === "rtl"
+        ? "ArrowLeft"
+        : "ArrowRight",
+    );
+    await expect
+      .poll(() => scroll.evaluate((element) => Math.abs(element.scrollLeft)))
+      .toBeGreaterThan(0);
+    await delivery.screenshot({
+      path: info.outputPath("rendered-result-table.png"),
+    });
     expect(fixture.requests).toHaveLength(0);
     expect([...fixture.unexpected]).toEqual([]);
   });

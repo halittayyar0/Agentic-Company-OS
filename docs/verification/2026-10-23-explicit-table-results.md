@@ -70,3 +70,39 @@ not prove a product source-test failure or a successful Intel source suite.
 
 Physical phones, native-speaker review, signing/notarization, general model
 reliability and a 24-hour soak are not certified. The broader Goal remains active.
+
+## Review follow-up: readable delivered tables
+
+One independent read-only review found that the original conservative Markdown
+renderer displayed accepted tables as literal pipe text. A dedicated, lazy
+result renderer now draws semantic column headers and cells only for a matching
+saved contract. Prefix/footer prose retain the existing safe Markdown behavior.
+Cells use React text nodes; source HTML and scripts are not executed. The
+bounded display parser has parity cases against the server's structure gate.
+
+Five parser/render tests passed, including escaped pipes/backslashes, source
+HTML, invalid/fenced tables, row limits and unchanged plain-text fallback. Two
+additional 320px English/Arabic browser cases passed with actual table cells,
+keyboard horizontal scrolling inside the result and no document overflow. An
+initial Arabic keyboard fixture assumed LTR scrolling; its retained failure was
+corrected to select the arrow from the rendered direction. No production RTL
+behavior was changed to accommodate that fixture.
+
+The final rendering scope increases this new, unpublished feature's separate
+bounded allowance; it does not increase any original application ceiling. With
+semantic table rendering included, measured selected transfer is 9,043 raw /
+3,964 gzip bytes (9,800 / 4,300 cap), and all seven packs plus exact integration
+are 12,421 raw / 6,416 gzip (13,500 / 7,200 cap). The mixed legacy delivery chunk
+receives only its exact new conditional, import and preload-path delta; its
+original Markdown branch remains in the control. Boundary tests reject changed
+fallbacks, content bindings, borrowed modules and unrelated byte credit.
+
+The development-wide source run finished with 2,958 tests: 2,923 passed, zero
+failed/cancelled, and 35 existing platform skips. It began before later test
+files were added and while source work continued, so this is development
+evidence only. Fresh original frozen-candidate CI remains required.
+
+After the renderer follow-up, all 19 table-format Chromium cases passed together
+with no retries or skips, covering the original seven-language creation flows
+and both actual delivered-table fixtures. The additional parser/render and
+budget-boundary run passed 19 tests. All workspace type checks passed again.

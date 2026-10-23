@@ -19,6 +19,10 @@ without a judge request or completion receipt. Existing step limits, usage
 accounting, permissions and backoff still apply; repeated malformed results
 cannot advance a regular-work cycle.
 
+A matching saved result is displayed as a table with column headers and a
+keyboard-focusable scroll region on narrow screens. Unselected or malformed
+tables keep the existing text rendering; downloading preserves the saved text.
+
 This verifies layout only. It does not prove that facts, dates, row completeness
 or requested external effects are correct. Normal review still applies. The
 format is visible on the saved project and persists through draft recovery,

@@ -140,6 +140,148 @@ export function measureResultFormatChoice(
   return resultFormatChoiceControl(control[0], logic, view, panel);
 }
 
+export function resultTableDeliveryControl(
+  asset: BundleAsset,
+  logicName: string,
+  inputName: string,
+) {
+  const text = asset.contents.toString("utf8"),
+    source = ts.createSourceFile(
+      asset.fileName,
+      text,
+      ts.ScriptTarget.Latest,
+      true,
+    );
+  const conditionals: ts.ConditionalExpression[] = [],
+    declarations: ts.VariableDeclaration[] = [];
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isConditionalExpression(node) &&
+      ts.isPropertyAccessExpression(node.condition) &&
+      node.condition.name.text === "resultFormat"
+    )
+      conditionals.push(node);
+    if (ts.isVariableDeclaration(node)) declarations.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  assert.equal(
+    conditionals.length,
+    1,
+    "Expected one saved-format delivery mount",
+  );
+  const mount = conditionals[0],
+    plain = mount.whenFalse.getText(source),
+    id = "[$A-Z_a-z][$\\w]*";
+  const original = new RegExp(
+    `^(${id})\\.jsx\\((${id}),\\{content:(${id})\\}\\)$`,
+    "u",
+  ).exec(plain);
+  assert.ok(original, "Unknown original plain-text delivery");
+  const project = (
+    mount.condition as ts.PropertyAccessExpression
+  ).expression.getText(source);
+  const escaped = (value: string) =>
+    value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const matching = new RegExp(
+    `^${escaped(original[1])}\\.jsx\\((${id})\\.Suspense,\\{fallback:${escaped(plain)},children:${escaped(original[1])}\\.jsx\\((${id}),\\{content:${escaped(original[3])},format:${escaped(project)}\\.resultFormat,label:${id}\\.deliverySummary\\}\\)\\}\\)$`,
+    "u",
+  ).exec(mount.whenTrue.getText(source));
+  assert.ok(matching, "Unknown saved-format delivery or fallback");
+  const lazy = declarations.filter(
+    (node) => node.name.getText(source) === matching[2],
+  );
+  assert.equal(lazy.length, 1);
+  const declaration = lazy[0];
+  assert.ok(
+    declaration.initializer && ts.isVariableDeclarationList(declaration.parent),
+  );
+  assert.match(
+    declaration.initializer.getText(source),
+    new RegExp(
+      `^${escaped(matching[1])}\\.lazy\\(\\(\\)=>${id}\\(\\(\\)=>import\\("\\./${escaped(logicName)}"\\),__vite__mapDeps\\(\\[[\\d,]+\\]\\)\\)\\)$`,
+      "u",
+    ),
+  );
+  const parts = [
+    { start: mount.getStart(source), end: mount.end, replacement: plain },
+  ];
+  if (declaration.parent.declarations.length === 1) {
+    assert.ok(ts.isVariableStatement(declaration.parent.parent));
+    parts.push({
+      start: declaration.parent.parent.getStart(source),
+      end: declaration.parent.parent.end,
+      replacement: "",
+    });
+  } else if (text[declaration.getStart(source) - 1] === ",")
+    parts.push({
+      start: declaration.getStart(source) - 1,
+      end: declaration.end,
+      replacement: "",
+    });
+  else {
+    assert.equal(text[declaration.end], ",");
+    parts.push({
+      start: declaration.getStart(source),
+      end: declaration.end + 1,
+      replacement: "",
+    });
+  }
+  for (const name of [logicName, inputName]) {
+    const path = JSON.stringify("assets/" + name),
+      paths = [...text.matchAll(new RegExp(escaped(path), "gu"))];
+    assert.equal(paths.length, 1, "Ambiguous result-table preload path");
+    parts.push({
+      start: paths[0].index!,
+      end: paths[0].index! + path.length,
+      replacement: '""',
+    });
+  }
+  let control = text,
+    boundary = text.length;
+  for (const part of parts.sort((a, b) => b.start - a.start)) {
+    assert.ok(part.end <= boundary);
+    control =
+      control.slice(0, part.start) + part.replacement + control.slice(part.end);
+    boundary = part.start;
+  }
+  const contents = Buffer.from(control),
+    raw = asset.contents.length - contents.length,
+    gzip = Math.max(
+      0,
+      gzipSync(asset.contents, { level: 9 }).length -
+        gzipSync(contents, { level: 9 }).length,
+    );
+  assert.ok(
+    raw > 0 && raw <= 800 && gzip <= 350,
+    "Result-table delivery wiring exceeds its independent cap",
+  );
+  return { fileName: asset.fileName, contents, raw, gzip };
+}
+
+export function measureResultTableDelivery(
+  assets: readonly BundleAsset[],
+  manifest: unknown,
+) {
+  const root = "artifacts/agentic-company-os/src/";
+  const owner = resolveBundleModuleAsset(
+    assets,
+    manifest,
+    root + "components/studio/project-delivery-summary.tsx",
+  );
+  const logic = resolveBundleModuleAsset(
+    assets,
+    manifest,
+    root + "components/tasks/result-table.tsx",
+  );
+  const input = resolveBundleModuleAsset(
+    assets,
+    manifest,
+    root + "lib/task-result-format-input.ts",
+  );
+  return resultTableDeliveryControl(owner, logic.fileName, input.fileName);
+}
+
 export function measureResultFormatAssets(
   assets: readonly BundleAsset[],
   manifest: unknown,
@@ -150,6 +292,8 @@ export function measureResultFormatAssets(
     "components/tasks/result-format-choice.tsx",
     "lib/task-result-format-copy.ts",
     "lib/task-result-format-input.ts",
+    "components/tasks/result-table.tsx",
+    "lib/task-result-table.ts",
   ].map((name) => root + name);
   const logic = resolveExclusiveBundleAssets(
     assets,
@@ -178,7 +322,7 @@ export function measureResultFormatAssets(
   const allRaw = packs.reduce((n, a) => n + a.raw, 0),
     allGzip = packs.reduce((n, a) => n + a.gzip, 0);
   assert.ok(
-    logicRaw <= 4500 && logicGzip <= 1900,
+    logicRaw <= 7600 && logicGzip <= 3500,
     "Result-format logic exceeds its independent cap",
   );
   assert.ok(
@@ -196,7 +340,7 @@ export function measureResultFormatAssets(
   const globalRaw = commonRaw + allRaw,
     globalGzip = commonGzip + allGzip;
   assert.ok(
-    raw <= 6500 && gzip <= 3000 && globalRaw <= 10000 && globalGzip <= 5500,
+    raw <= 9800 && gzip <= 4300 && globalRaw <= 13500 && globalGzip <= 7200,
     "Result-format transfer exceeds its independent cap",
   );
   return {

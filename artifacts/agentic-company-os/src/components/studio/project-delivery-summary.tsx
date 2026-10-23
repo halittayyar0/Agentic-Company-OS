@@ -1,9 +1,11 @@
 import type { Task } from "@workspace/api-client-react";
+import { lazy, Suspense } from "react";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/lib/markdown";
 import { type ProjectStudioCopy, studioText } from "@/lib/project-studio-copy";
 import { ProjectDeliveryDownload } from "./project-delivery-download";
+const ResultTable = lazy(() => import("../tasks/result-table"));
 
 export function ProjectDeliverySummary({
   project,
@@ -54,7 +56,17 @@ export function ProjectDeliverySummary({
       ) : null}
       {summary ? (
         <div dir="auto" className="mt-4 min-w-0 [overflow-wrap:anywhere]">
-          <Markdown content={summary} />
+          {project.resultFormat ? (
+            <Suspense fallback={<Markdown content={summary} />}>
+              <ResultTable
+                content={summary}
+                format={project.resultFormat}
+                label={c.deliverySummary}
+              />
+            </Suspense>
+          ) : (
+            <Markdown content={summary} />
+          )}
         </div>
       ) : (
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">

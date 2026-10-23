@@ -344,3 +344,7 @@ including Arabic RTL. The saved layout is read-only and uses the same language
 pack as creation. A failed language load blocks submission while retaining the
 draft; no background inference, permissions change or automatic start follows
 from choosing a layout.
+
+Accepted table deliveries use semantic column headers, isolated text cells and
+a focusable horizontal scroll region on small screens. Keep untrusted HTML as
+text and preserve the conservative Markdown path for other results.
