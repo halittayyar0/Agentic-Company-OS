@@ -166,3 +166,30 @@ accepted synonyms and reject a resolved decision or invented launch date; the
 original owner/action/date, completed-status, action-scope and 12-call assertions
 remain. The retained genuine failure occurred before this summary assertion and
 is not reclassified by this lexical correction.
+
+The private-source candidate `1480652e98e02aaf671945ad9ebd19961a222201` also
+failed genuine task acceptance. Its correct proposed table reached review with
+the actual original source included, but the reviewer returned
+`block/missing_required_action`. The next actor response ended with
+`finish_reason=length`; the existing incomplete-response guard paused the task.
+Five actual responses recorded 16,647 tokens. Cleanup passed, but no completed
+task or actual browser delivery was reached. The retained proof SHA-256 is
+`427cd953c7dface7d0a02cc163420f02a7455d70f7a2f652c2b0498f71df7367`.
+The source handoff and public-reason privacy have narrow evidence; local-model
+task quality is still unqualified.
+
+The reviewer instructions now explicitly identify an actual completion request
+as a pre-commit review: its successful receipt and completed status cannot exist
+yet. Every other explicitly required action still needs evidence. The exact
+missing action inferred by the model above is unknown, so this clarification
+does not establish the cause of that failure or turn it into a pass. Forty
+targeted review/task-step tests passed after the clarification.
+
+Reviewed release expectations increase from 2,897 to 3,024 source cases across
+the four source platforms and from 1,432 to 1,451 Linux UI cases. The original
+skip-name sets, Mac UI counts, workers and producer requirements are unchanged.
+These counts must match fresh original full-suite outputs; they are not a claim
+that those suites already passed.
+
+All 131 release-verifier contract tests passed after the expectation update;
+backend type checking, build and the follow-up patch secret scan also passed.

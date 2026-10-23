@@ -240,6 +240,15 @@ for (const purpose of ["completion", "approval"] as const) {
     assert.equal(review.reasoning.trim(), "An advisory issue remains.");
     assert.equal(peer.completions().length, 1);
     const body = peer.completions()[0]!.body;
+    const systemPolicy = (
+      body.messages as Array<{ role: string; content: string }>
+    ).find((message) => message.role === "system")!.content;
+    assert.equal(
+      systemPolicy.includes(
+        "pre-commit review of an actual complete_task request",
+      ),
+      purpose === "completion",
+    );
     assert.equal(body.reasoning_effort, undefined);
     assert.equal(body.temperature, 0);
     assert.deepEqual(body.response_format, expectedLocalReviewFormat);

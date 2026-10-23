@@ -184,7 +184,7 @@ export async function runJudge(
 
   const instructions =
     purpose === "completion"
-      ? "Review an agent's claim that it completed its assigned task."
+      ? "Review an agent's claim that it completed its assigned task. This is the pre-commit review of an actual complete_task request. The request remains uncommitted until its review is accepted. Do not require a prior successful complete_task receipt or an already completed task status for this request. Every other explicitly required action must still be supported by the available evidence."
       : "Review an agent's request for human approval of a risky action (spending, deletion, publication or external communication).";
 
   const policy = `You are a compliance reviewer. The <task>, <proposal> and
