@@ -2,6 +2,7 @@ import type { Page, Route } from "@playwright/test";
 import { AGENT_TEMPLATES } from "../../../artifacts/api-server/src/lib/agent-templates";
 import { getLocalizedAgentTemplates } from "../../../artifacts/api-server/src/lib/agent-template-localization";
 import { isWorkspaceLocale } from "../../../artifacts/api-server/src/lib/workspace-locale";
+import { starterModelRecipe } from "../../../artifacts/api-server/src/lib/ollama-preparation-catalog";
 
 const now = "2026-09-04T09:00:00.000Z";
 export const studioAgents = AGENT_TEMPLATES.filter(
@@ -134,6 +135,21 @@ export async function installStudioFixtures(page: Page) {
     }
     if (path === "/api/model-catalog")
       return json(route, { providers: [], models: [] });
+    if (
+      path === "/api/settings/ollama/preparations" &&
+      request.method() === "GET"
+    )
+      return json(route, {
+        revision: 7,
+        recipe: starterModelRecipe,
+        availability: {
+          server: "unconfigured",
+          available: false,
+          modelId: null,
+          digest: null,
+        },
+        preparation: null,
+      });
     if (["/api/tasks", "/api/activity", "/api/approvals"].includes(path))
       return json(route, []);
     unexpected.add(`${request.method()} ${path}`);

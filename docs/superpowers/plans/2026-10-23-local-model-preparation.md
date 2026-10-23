@@ -83,8 +83,10 @@
 
 - Modify: `artifacts/agentic-company-os/src/components/studio/guided-model-connection.tsx`
 - Create: `components/studio/local-model-preparation.tsx`, `components/studio/local-model-preparation-slot.tsx`
-- Create: `lib/local-model-preparation-api.ts`, `lib/local-model-preparation-copy.ts` and seven `lib/local-model-preparation-copy/<locale>.ts` packs, relative to the frontend source root
-- Test: `artifacts/agentic-company-os/tests/local-model-preparation.spec.ts`
+- Create: `lib/local-model-preparation-api.ts`, `lib/local-model-preparation-copy.ts` and seven `lib/local-model-preparation-copy/preparation-<locale>.ts` packs, relative to the frontend source root
+- Extend: shared `components/ui/button.tsx` with the tested 44px touch size; use it in `model-connection-launcher.tsx` recovery controls. Shorten `lib/connection-copy/connection-ru.ts` without dropping privacy/permission meaning.
+- Extend: `tests/ui/helpers/studio-fixtures.ts` with explicit read-only preparation metadata and name the existing saved-connection feedback in `tests/ui/guided-model-connection.spec.ts`; preserve assertions and deadlines.
+- Test: `tests/ui/local-model-preparation.spec.ts` (the maintained Playwright owner)
 - Modify: `UX-CONTRACT.md` and the owning bundle-budget verifier/tests for an exclusive feature measurement.
 
 **Interfaces:**
@@ -92,11 +94,11 @@
 - Consumes Task2 generated request/DTO types through the current customFetch owner; stable request IDs live in memory and durable server receipts, not credential storage.
 - `LocalModelPreparation` consumes confirmed provider revision, current catalog availability and parent refresh callback; emits active-state changes for connection mutation locking. It creates no task and does not replace the draft's existing model pin.
 
-- [ ] Write failing browser cases for seven locales/Arabic RTL/phone width, absent server guide, old runtime, download→checking→available, split progress, lost acknowledgement, duplicate clicks, stop/reopen, connection edit/change, missing model after old Ready, and module/locale load failure. Expected: the new entry/control is absent.
-- [ ] Implement the lazy inline section within the existing Dialog, using current primitives, one scroller and 44px actions. Add official server installation handoffs and visible estimated bytes/storage ownership.
-- [ ] Implement honest progress/error/stop/explicit retry and latest-catalog precedence. Close/reopen preserves the draft and reattaches to the receipt. No automatic start, inference, cloud consent change or unrelated provider save.
-- [ ] Author all seven packs and test keyboard/focus/200%/reduced motion. Run the new UI file with two workers and no retries. Expected: all specified cases pass with no hidden fallback.
-- [ ] Measure only exclusive new modules/packs under the spec caps. Run unchanged existing bundle gates and affected connection/start UI tests; format and commit `feat: guide the first local model download in seven languages`.
+- [x] Write failing browser cases for seven locales/Arabic RTL/phone width, absent server guide, old runtime, download→checking→available, split progress, lost acknowledgement, duplicate clicks, stop/reopen, connection edit/change, missing model after old Ready, and module/locale load failure. Expected: the new entry/control is absent.
+- [x] Implement the lazy inline section within the existing Dialog, using current primitives, one scroller and 44px actions. Add official server installation handoffs and visible estimated bytes/storage ownership.
+- [x] Implement honest progress/error/stop/explicit retry and latest-catalog precedence. Close/reopen preserves the draft and reattaches to the receipt. No automatic start, inference, cloud consent change or unrelated provider save.
+- [x] Author all seven packs and test keyboard/focus/200%/reduced motion. Run the new UI file with two workers and no retries. Expected: all specified cases pass with no hidden fallback.
+- [x] Measure only exclusive new modules/packs under the spec caps. Run unchanged existing bundle gates and affected connection/start UI tests; format and commit `feat: guide the first local model download in seven languages`.
 
 ### Task 4: Real first-result and compatibility verification
 

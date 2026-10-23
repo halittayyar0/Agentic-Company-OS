@@ -15,6 +15,7 @@ import {
 } from "./composer-draft-bundle-budget";
 import { measureCompletionRequirementsBundle } from "./completion-requirements-bundle-budget";
 import { measureConnectionBundle } from "./connection-bundle-budget";
+import { measureLocalModelPreparationBundle } from "./local-model-preparation-bundle-budget";
 import { measureInferenceAccountingBundle } from "./inference-accounting-bundle-budget";
 import { measureResponseRetryRepairBundle } from "./response-retry-repair-bundle-budget";
 import { measureProjectStartRecoveryBundle } from "./project-start-recovery-bundle-budget";
@@ -443,6 +444,13 @@ const connection = measureConnectionBundle(
   })),
   currentBundleManifest,
 );
+const localPreparation = measureLocalModelPreparationBundle(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  currentBundleManifest,
+);
 const inferenceAccounting = measureInferenceAccountingBundle(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
@@ -524,6 +532,7 @@ const emergencyLocaleAssets = languageLocales
 const localeAssetNames = new Set(
   [
     ...deliveryDownload.packs,
+    ...localPreparation.packs,
     ...completionConditions.packs,
     ...homeLocaleAssets,
     ...projectLocaleAssets,
@@ -580,6 +589,7 @@ const sharedCodeGzipBytes = sharedCodeAssets.reduce(
 );
 const totalCodeRawBytes =
   sharedCodeRawBytes +
+  Math.max(...localPreparation.packs.map((asset) => asset.contents.length)) +
   Math.max(...deliveryDownload.packs.map((asset) => asset.contents.length)) +
   Math.max(
     ...completionConditions.packs.map((asset) => asset.contents.length),
@@ -616,6 +626,11 @@ const totalCodeRawBytes =
   Math.max(...shellLocaleAssets.map((asset) => asset.rawBytes));
 const totalCodeGzipBytes =
   sharedCodeGzipBytes +
+  Math.max(
+    ...localPreparation.packs.map(
+      (asset) => gzipSync(asset.contents, { level: 9 }).length,
+    ),
+  ) +
   Math.max(
     ...deliveryDownload.packs.map(
       (asset) => gzipSync(asset.contents, { level: 9 }).length,
@@ -1096,6 +1111,7 @@ if (
     inferenceAccounting.gzip -
     retryRepair.gzip -
     connection.gzip -
+    localPreparation.gzip -
     ollamaPrivacy.gzip -
     composerDraft.gzip -
     codingRecovery.gzip -
@@ -1112,7 +1128,7 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
@@ -1125,6 +1141,7 @@ if (
     inferenceAccounting.raw -
     retryRepair.raw -
     connection.raw -
+    localPreparation.raw -
     ollamaPrivacy.raw -
     composerDraft.raw -
     codingRecovery.raw -
@@ -1135,7 +1152,7 @@ if (
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `raw code after bounded feature accounting (${totalCodeRawBytes - deliveryDownload.raw - completionConditions.raw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - deliveryDownload.raw - completionConditions.raw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - localPreparation.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
@@ -1148,6 +1165,7 @@ if (
     inferenceAccounting.gzip -
     retryRepair.gzip -
     connection.gzip -
+    localPreparation.gzip -
     ollamaPrivacy.gzip -
     composerDraft.gzip -
     codingRecovery.gzip -
@@ -1158,7 +1176,7 @@ if (
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `gzip code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -1354,4 +1372,8 @@ console.log(
 
 console.log(
   `Saved delivery download: ${deliveryDownload.raw} raw / ${deliveryDownload.gzip} gzip bytes (6 KB / 2.5 KB independent feature cap); seven new packs ${deliveryDownload.allLocaleRaw} raw / ${deliveryDownload.allLocaleGzip} gzip (6 KB / 3.5 KB disk cap). Only hash-bound exclusive new modules and one selected pack receive credit. Existing report, route, studio, vendor, media and total ceilings remain fixed.`,
+);
+
+console.log(
+  `Local model preparation: ${localPreparation.raw} raw / ${localPreparation.gzip} gzip bytes (12 KiB / 4 KiB exclusive cap); seven packs ${localPreparation.allLocaleRaw} raw / ${localPreparation.allLocaleGzip} gzip (32 KiB / 16 KiB disk cap). Existing ceilings unchanged.`,
 );

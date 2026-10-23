@@ -22,7 +22,7 @@ export function ConnectionModuleStatus({
         <Button
           type="button"
           variant="outline"
-          className="min-h-11"
+          size="touch"
           onClick={() => window.location.reload()}
         >
           {recoveryCopy[locale].reload}
@@ -32,7 +32,8 @@ export function ConnectionModuleStatus({
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 ms-2"
+          size="touch"
+          className="ms-2"
           onClick={onClose}
         >
           {t("close")}

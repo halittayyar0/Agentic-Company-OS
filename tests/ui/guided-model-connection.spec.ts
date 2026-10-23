@@ -223,7 +223,9 @@ test("reopening setup reads the current endpoint and revision before initializin
   await dialog
     .getByRole("button", { name: "Save connection", exact: true })
     .click();
-  await expect(dialog.getByRole("status")).toContainText("Connection saved");
+  await expect(
+    dialog.getByRole("status", { name: "Save connection", exact: true }),
+  ).toContainText("Connection saved");
   expect(writes).toEqual([
     { expectedRevision: 8, ollamaBaseUrl: "http://10.0.0.3:11434" },
   ]);
@@ -581,7 +583,9 @@ test("a ready catalog keeps the connection dialog open until returning focus to 
   await dialog
     .getByRole("button", { name: "Save connection", exact: true })
     .click();
-  await expect(dialog.getByRole("status")).toContainText("not been tested");
+  await expect(
+    dialog.getByRole("status", { name: "Save connection", exact: true }),
+  ).toContainText("not been tested");
   await expect(
     dialog.getByText("Fixture local model", { exact: true }),
   ).toBeVisible();
@@ -648,7 +652,9 @@ test("installation default restoration sends null and retains an environment-bac
   await dialog
     .getByRole("button", { name: "Use installation default", exact: true })
     .click();
-  await expect(dialog.getByRole("status")).toContainText("Connection saved");
+  await expect(
+    dialog.getByRole("status", { name: "Save connection", exact: true }),
+  ).toContainText("Connection saved");
   await expect(
     dialog.getByRole("textbox", { name: "Ollama address", exact: true }),
   ).toHaveValue("http://10.0.0.2:11434");
@@ -834,8 +840,12 @@ test("connect a local model in place with a fenced save and no automatic job or 
   await dialog
     .getByRole("button", { name: "Save connection", exact: true })
     .click();
-  await expect(dialog.getByRole("status")).toContainText("Connection saved");
-  await expect(dialog.getByRole("status")).toContainText("not been tested");
+  await expect(
+    dialog.getByRole("status", { name: "Save connection", exact: true }),
+  ).toContainText("Connection saved");
+  await expect(
+    dialog.getByRole("status", { name: "Save connection", exact: true }),
+  ).toContainText("not been tested");
   expect(calls).toEqual([
     { expectedRevision: 7, ollamaBaseUrl: "http://127.0.0.1:11434" },
   ]);
@@ -1073,7 +1083,9 @@ test("API keys are saved only on demand, never survive closing or enter browser 
   await dialog
     .getByRole("button", { name: "Save connection", exact: true })
     .click();
-  await expect(dialog.getByRole("status")).toContainText("Connection saved");
+  await expect(
+    dialog.getByRole("status", { name: "Save connection", exact: true }),
+  ).toContainText("Connection saved");
   await expect(dialog.getByLabel("API key", { exact: true })).toHaveValue("");
   expect(writes).toEqual([
     { expectedRevision: 7, openaiApiKey: "fixture-key-not-a-real-secret" },
