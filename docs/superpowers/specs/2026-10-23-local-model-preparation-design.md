@@ -88,6 +88,12 @@ whether the model already exists before another dispatch. Backups retain receipt
 not external Ollama model files. Restore/reopen must show live model availability,
 not infer it from an old ready row.
 
+An explicit Stop also consumes a not-yet-admitted UUID as an interrupted receipt.
+Its hash identifies the domain-separated cancellation intent, with revision zero
+(no server was admitted). A delayed Start then conflicts instead of dispatching.
+This lets unknown acknowledgement recovery settle through Stop before an explicit
+retry with a new UUID. It neither pulls a model nor changes another receipt.
+
 ## Transport and progress
 
 Send only `{model: "qwen3.5:2b-q4_K_M", stream: true, insecure: false}` to the

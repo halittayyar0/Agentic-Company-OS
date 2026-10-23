@@ -2286,7 +2286,7 @@ paths:
       summary: Stop this application's download request without deleting shared model files
       responses:
         "200":
-          description: Idempotent stop receipt
+          description: Idempotent stop receipt; an unacknowledged ID is consumed so delayed starts cannot dispatch
           content:
             application/json:
               schema:

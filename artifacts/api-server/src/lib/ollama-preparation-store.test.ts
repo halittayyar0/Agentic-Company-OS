@@ -160,6 +160,20 @@ test("durable preparation identity, one active slot, stop and lease fencing surv
       false,
       "Ready must fence configuration under the same database lock",
     );
+    const notAcknowledgedId = randomUUID();
+    assert.equal(
+      (await store.requestStop(notAcknowledgedId))?.state,
+      "interrupted",
+      "explicit stop must consume an unacknowledged identity before a delayed start can arrive",
+    );
+    await assert.rejects(
+      store.reserve({
+        ...input,
+        requestId: notAcknowledgedId,
+        expectedRevision: 2,
+      }),
+      (error: { code?: string }) => error.code === "REQUEST_CONFLICT",
+    );
   } finally {
     await closeDatabase();
   }

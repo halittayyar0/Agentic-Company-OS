@@ -7,6 +7,7 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { OllamaPullProgress } from "./ollama-preparation-protocol";
+import { createHash } from "node:crypto";
 
 export type PreparationRow = typeof table.$inferSelect;
 export interface PreparationStart {
@@ -246,6 +247,26 @@ export function createOllamaPreparationStore(owner: {
   async function requestStop(
     requestId: string,
   ): Promise<PreparationRow | null> {
+    await dbReady;
+    // Fence a Start whose HTTP acknowledgement was lost or is still in flight.
+    // A terminal cancellation receipt never occupies the active slot.
+    await db
+      .insert(table)
+      .values({
+        requestId,
+        requestHash: createHash("sha256")
+          .update(JSON.stringify({ kind: "stop-before-start", requestId }))
+          .digest("hex"),
+        modelId: "qwen35-2b",
+        providerRevision: 0,
+        state: "interrupted",
+        ownerRuntimeId: owner.runtimeId,
+        ownerEpoch: owner.epoch,
+        leaseExpiresAt: sql`clock_timestamp()`,
+        failureCode: "INTERRUPTED",
+        finishedAt: sql`clock_timestamp()`,
+      })
+      .onConflictDoNothing();
     await db
       .update(table)
       .set({ state: "stopping", updatedAt: sql`clock_timestamp()` })
