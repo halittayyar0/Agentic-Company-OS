@@ -1,3 +1,4 @@
+import { toolMessage } from "../../artifacts/api-server/src/lib/orchestrator/tool-localization";
 import { loadDeliveryDownloadCopy } from "../../artifacts/agentic-company-os/src/lib/delivery-download-copy";
 import {
   inspectRoute,
@@ -4476,6 +4477,84 @@ for (const variant of routeAuditMatrix) {
     expect(harness.meetingCreatePosts).toEqual([]);
     expect([...harness.unexpected]).toEqual([]);
     expect(errors).toEqual([]);
+  });
+}
+
+for (const locale of LOCALES) {
+  test(`${locale} schema recovery audit fits a 320px project without creating work`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.addInitScript(
+      (value) => localStorage.setItem("acos.locale.v1", value),
+      locale,
+    );
+    const harness = await installProjectStudioMocks(page);
+    const summary = toolMessage(locale, "toolSchemaRecovered", {
+      tool: "vm_read_file",
+    });
+    const mutations: string[] = [];
+    const localeWrites: { method: string; body: unknown }[] = [];
+    page.on("request", (request) => {
+      if (
+        new URL(request.url()).pathname.startsWith("/api/") &&
+        !["GET", "HEAD"].includes(request.method())
+      )
+        if (new URL(request.url()).pathname === "/api/settings/locale") {
+          localeWrites.push({
+            method: request.method(),
+            body: request.postDataJSON(),
+          });
+        } else {
+          mutations.push(
+            request.method() + " " + new URL(request.url()).pathname,
+          );
+        }
+    });
+    await page.route("**/api/tasks/101/activity?**", (route) =>
+      json(route, [
+        {
+          ...projectActivity[0],
+          type: "note",
+          summary,
+          severity: "warning",
+          detail: {
+            runtimeEvent: "tool_call_not_advertised",
+            guard: "model_request_tool_schema",
+            outcome: "blocked_before_execution",
+            blockedTool: "vm_read_file",
+            advertisedTools: ["calculate", "complete_task", "load_tools"],
+            schemaRecoveredForNextRequest: true,
+          },
+        },
+      ]),
+    );
+    await page.goto("/projects/101?view=evidence");
+    const message = page.getByText(summary, { exact: true });
+    await expect(message).toBeVisible();
+    await message.scrollIntoViewIfNeeded();
+    expect(
+      await message.evaluate(
+        (node) =>
+          node.scrollWidth <= node.clientWidth &&
+          node.scrollHeight <= node.clientHeight,
+      ),
+    ).toBe(true);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await expect(page.locator("html")).toHaveAttribute(
+      "dir",
+      locale === "ar" ? "rtl" : "ltr",
+    );
+    await page.screenshot({
+      path: info.outputPath(`schema-recovery-${locale}-phone.png`),
+    });
+    expect(localeWrites).toEqual([{ method: "PUT", body: { locale } }]);
+    expect(mutations).toEqual([]);
+    expect([...harness.unexpected]).toEqual([]);
   });
 }
 

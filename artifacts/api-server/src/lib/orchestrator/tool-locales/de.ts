@@ -482,6 +482,8 @@ export const toolDe: ToolCopy = {
   taskToolFallbackInstruction:
     "Das vorherige Modell konnte das Werkzeugprotokoll zweimal nicht verwenden. Behalte den Kontext bei und fahre mit einem konkreten Schritt fort, der genau einem zulässigen Werkzeugschema entspricht.",
   operationCompleted: "Vorgang abgeschlossen: {tool}.",
+  toolSchemaRecovered:
+    "{tool} wurde in dieser Anfrage nicht angeboten und nicht ausgeführt. Das bereits erlaubte Werkzeugschema ist für die nächste Anfrage geladen; rufe es mit passenden Argumenten erneut auf. Berechtigungen bleiben unverändert.",
   toolSchemaUnavailable:
     "{tool} wurde nicht angeboten und nicht ausgeführt. Nutze angebotene Werkzeuge oder lade ein gelistetes optionales Werkzeug mit load_tools für die nächste Anfrage. Berechtigungen bleiben unverändert.",
   modelFailure: "{reason} ({source})",

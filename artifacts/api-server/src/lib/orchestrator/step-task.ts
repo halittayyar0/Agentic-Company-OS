@@ -1076,9 +1076,17 @@ export async function stepTask(
           }
         }
         if (!routed.value.advertisedToolNames.has(toolName)) {
-          const content = toolMessage(locale, "toolSchemaUnavailable", {
-            tool: redactAuditText(toolName, 128),
-          });
+          // Discovery may prepare only a later request. This batch keeps its
+          // original advertised set, so none of its rejected proposals execute.
+          const schemaRecoveredForNextRequest =
+            toolCatalog?.recover(toolName) ?? false;
+          const content = toolMessage(
+            locale,
+            schemaRecoveredForNextRequest
+              ? "toolSchemaRecovered"
+              : "toolSchemaUnavailable",
+            { tool: redactAuditText(toolName, 128) },
+          );
           await persistOwnedStepWrite(async (tx) => {
             await tx.insert(activityEventsTable).values({
               agentId: agent.id,
@@ -1091,6 +1099,7 @@ export async function stepTask(
                 outcome: "blocked_before_execution",
                 blockedTool: redactAuditText(toolName, 128),
                 advertisedTools: [...routed.value.advertisedToolNames],
+                schemaRecoveredForNextRequest,
               },
               severity: "warning",
             });

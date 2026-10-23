@@ -439,6 +439,8 @@ export const toolEn: ToolCopy = {
   taskToolFallbackInstruction:
     "The previous model failed to use the tool protocol twice. Keep the same context and continue with one concrete step that exactly matches an allowed tool schema.",
   operationCompleted: "Operation completed: {tool}.",
+  toolSchemaRecovered:
+    "{tool} was not offered in this request and was not executed. Its authorized schema is loaded for the next request; call it again with arguments matching that schema. Permissions are unchanged.",
   toolSchemaUnavailable:
     "{tool} was not offered in this request and was not executed. Use an offered tool, or load an indexed optional tool with load_tools and call it in the next request. Permissions are unchanged.",
   modelFailure: "{reason} ({source})",

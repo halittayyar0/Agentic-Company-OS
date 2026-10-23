@@ -38,6 +38,14 @@ export function createTaskToolCatalog(authorized: Tool[]) {
         .filter((tool) => !CORE.has(tool.function.name))
         .map((tool) => tool.function.name)
         .join(", "),
+    recover(name: string): boolean {
+      const tool = byName.get(name);
+      if (!tool || CORE.has(name)) return false;
+      if (selected.includes(tool)) return true;
+      if (selected.length >= 8) return false;
+      selected = [...selected, tool];
+      return true;
+    },
     load(raw: string): string {
       let input: unknown;
       try {

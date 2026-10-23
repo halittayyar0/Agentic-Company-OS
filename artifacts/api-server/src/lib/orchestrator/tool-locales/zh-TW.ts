@@ -382,6 +382,8 @@ export const toolZhTW: ToolCopy = {
   taskToolFallbackInstruction:
     "上一個模型已兩次未能使用工具協定。保留相同上下文，並透過一個完全符合允許的工具參數結構的具體步驟繼續。",
   operationCompleted: "操作已完成：{tool}。",
+  toolSchemaRecovered:
+    "本次請求未提供 {tool}，因此未執行。已為下一次請求載入該已授權工具的結構描述；請使用符合要求的參數重新呼叫。權限未變更。",
   toolSchemaUnavailable:
     "本次請求未提供 {tool}，因此未執行。請使用已提供的工具，或先透過 load_tools 載入清單中的選用工具，再在下一次請求中呼叫。權限未變更。",
   modelFailure: "{reason}（{source}）",

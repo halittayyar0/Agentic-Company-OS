@@ -339,3 +339,18 @@ Failed UI/language chunks preserve the mounted connection and draft and offer
 explicit reload through the existing recovery controls. Existing bundle ceilings
 remain unchanged; this feature receives only its bounded, hash-verified exclusive
 new code and one selected pack, with a separate bound for all seven packs on disk.
+
+## Recovery of an unadvertised task tool
+
+A tool omitted from the actual model request cannot execute in that response,
+even when another call in the response loads it. For an already authorized
+optional tool, the server may add its original schema to the next request after
+rejecting the proposal. Preserve the selected schemas and the eight-tool bound.
+Unknown tools, full catalogs and exclusive execution allowlists do not expand.
+This is schema discovery, not action approval, execution or task progress.
+
+The rejected-call audit and model feedback retain the original execution
+language and distinguish schema recovery from a blocked unavailable tool. The
+operator can see that the first action did not run and permissions did not change.
+All failed and successful reported model usage remains accounted; the task brief,
+lease checks, completion evidence and approval boundaries remain unchanged.

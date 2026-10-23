@@ -400,6 +400,8 @@ export const toolTr = {
   taskToolFallbackInstruction:
     "Önceki model araç protokolünü iki kez kullanamadı. Aynı bağlamı koru; izinli araç şemasına tam uyan tek bir somut adımla devam et.",
   operationCompleted: "İşlem tamamlandı: {tool}.",
+  toolSchemaRecovered:
+    "{tool} bu istekte sunulmadığı için çalıştırılmadı. Yetkili araç şeması sonraki istek için yüklendi; şemaya uygun argümanlarla yeniden çağır. İzinler değişmedi.",
   toolSchemaUnavailable:
     "{tool} bu istekte sunulmadığı için çalıştırılmadı. Sunulan bir aracı kullan veya dizindeki ek aracı load_tools ile yükleyip sonraki istekte çağır. İzinler değişmedi.",
   modelFailure: "{reason} ({source})",

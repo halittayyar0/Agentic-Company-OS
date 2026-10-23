@@ -377,6 +377,8 @@ export const toolZhCN: ToolCopy = {
   taskToolFallbackInstruction:
     "上一个模型已两次未能使用工具协议。保留相同上下文，并通过一个完全符合允许的工具参数结构的具体步骤继续。",
   operationCompleted: "操作已完成：{tool}。",
+  toolSchemaRecovered:
+    "本次请求未提供 {tool}，因此未执行。已为下一次请求加载该已授权工具的模式；请按模式要求的参数重新调用。权限未改变。",
   toolSchemaUnavailable:
     "本次请求未提供 {tool}，因此未执行。请使用已提供的工具，或先通过 load_tools 加载列表中的可选工具，再在下一次请求中调用。权限未改变。",
   modelFailure: "{reason}（{source}）",

@@ -5,6 +5,15 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.9] - 2026-10-23
+
+### Fixed
+
+- After rejecting an optional tool that was not offered, load its already
+  authorized schema for the next model request. The rejected call still does not
+  execute; permissions, same-response boundaries and schema limits remain intact.
+  Recovery feedback and the operator audit explain this in all seven languages.
+
 ## [0.5.8] - 2026-10-23
 
 ### Added
