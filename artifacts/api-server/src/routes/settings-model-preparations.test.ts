@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import express from "express";
+import { rateLimit } from "express-rate-limit";
 import { dbReady, closeDatabase } from "@workspace/db";
 import { createOperatorAuth } from "../lib/operator-auth";
 import { OllamaPreparationConflict } from "../lib/ollama-preparation-store";
@@ -22,6 +23,16 @@ test("preparation routes require operator authentication, narrow inputs and expl
     const token = "owned-route-token-not-a-real-credential-000";
     const app = express();
     app.use(express.json());
+    // Match the standalone accounting fixture's modeled middleware. Production
+    // already mounts its own API and authentication limits in app.ts.
+    app.use(
+      rateLimit({
+        limit: 100,
+        windowMs: 60_000,
+        standardHeaders: "draft-6",
+        legacyHeaders: false,
+      }),
+    );
     app.use(
       createOperatorAuth({ token, secureCookies: false }).requireAuthentication,
     );
@@ -64,7 +75,9 @@ test("preparation routes require operator authentication, narrow inputs and expl
         [`${base}/${requestId}`, "GET"],
         [`${base}/${requestId}/stop`, "POST"],
       ]) {
-        assert.equal((await fetch(url, { method })).status, 401);
+        const anonymous = await fetch(url, { method });
+        assert.equal(anonymous.status, 401);
+        assert.equal(anonymous.headers.get("ratelimit-limit"), "100");
       }
       assert.equal(starts, 0);
       assert.equal(stops, 0);
