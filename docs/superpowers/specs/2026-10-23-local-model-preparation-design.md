@@ -120,7 +120,10 @@ Downloaded is the upstream acknowledgement, not application Ready.
   into UI/log messages. Release the reader on completion or failure.
 - After success, re-check the bound server's model metadata: actual local location,
   tools capability, runtime compatibility and current provider revision. Store its
-  actual catalog ID/digest. Only then mark ready and invalidate the model catalog.
+  actual catalog ID/digest. Force a metadata refresh of the existing Ollama
+  catalog and require its usable local entry before publishing Ready. Recheck
+  the connection revision after that refresh; a recent empty cache must not
+  leave first-job admission or draft-focus recovery stale.
 
 ## UI and ownership
 

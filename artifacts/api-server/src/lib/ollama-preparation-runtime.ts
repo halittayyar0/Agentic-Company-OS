@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { refreshModelCatalog } from "@workspace/ai-server";
+import { refreshOllamaCatalog } from "@workspace/ai-server";
 import { requireHttpRuntimeHandle } from "./http-runtime-context";
 import type { RuntimeInstanceHandle } from "./orchestrator/runtime-instance-registry";
 import { readProviderRuntimeConfigSnapshot } from "./provider-runtime-config";
 import { createOllamaPreparationStore } from "./ollama-preparation-store";
 import { createOllamaPreparationTransport } from "./ollama-preparation-transport";
+import { starterModelRecipe } from "./ollama-preparation-catalog";
+import { OllamaPreparationTransportError } from "./ollama-preparation-transport";
 import {
   createOllamaModelPreparation,
   OllamaPreparationServiceError,
@@ -34,7 +36,20 @@ export async function initializeOllamaPreparationRuntime(
       environment,
       readState: () => readProviderRuntimeConfigSnapshot(environment),
       transport: createOllamaPreparationTransport(),
-      refreshCatalog: refreshModelCatalog,
+      refreshCatalog: async () => {
+        const catalog = await refreshOllamaCatalog(true);
+        if (
+          !catalog.reachable ||
+          !catalog.models.some(
+            (model) =>
+              model.id === `ollama:${starterModelRecipe.model}` &&
+              model.executionLocation === "local" &&
+              model.supportsTools &&
+              model.runtimeCompatibility === "compatible",
+          )
+        )
+          throw new OllamaPreparationTransportError("MODEL_UNVERIFIED");
+      },
     }),
   };
 }

@@ -197,6 +197,13 @@ export function createOllamaModelPreparation(dependencies: {
         !availability.digest
       )
         throw new OllamaPreparationTransportError("MODEL_UNVERIFIED");
+      // Synchronize the ordinary catalog before publishing Ready. Otherwise a
+      // recent empty cache can keep first-job admission and focus recovery stale.
+      await dependencies.refreshCatalog().catch(() => {
+        throw new OllamaPreparationTransportError("MODEL_UNVERIFIED");
+      });
+      if (!(await current()))
+        throw new OllamaPreparationConflict("CONFIG_CHANGED");
       if (
         !(await store.finish(row.requestId, {
           state: "ready",
@@ -207,8 +214,6 @@ export function createOllamaModelPreparation(dependencies: {
         await abortFencedWrite();
         throw new Error("CONFIG_CHANGED");
       }
-      // Catalog refresh is metadata only. Existing scheduler admission stays authoritative.
-      await dependencies.refreshCatalog().catch(() => undefined);
     } catch (error) {
       if (deadline.aborted) failure = "DEADLINE_EXCEEDED";
       else if (!controller.signal.aborted) {

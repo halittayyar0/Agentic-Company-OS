@@ -41,6 +41,9 @@ test("operator preparation dispatches once, rechecks local admission, preserves 
       "shutdown",
       "changed-before",
       "changed-after",
+      "changed-catalog",
+      "stop-catalog",
+      "catalog-unavailable",
       "incomplete",
       "already-available",
       "unverified",
@@ -68,6 +71,7 @@ test("operator preparation dispatches once, rechecks local admission, preserves 
         let revision = 1;
         let pulls = 0;
         let cancelled = 0;
+        let catalogFresh = false;
         const service = module.createOllamaModelPreparation({
           store,
           readState: async () => ({
@@ -120,7 +124,17 @@ test("operator preparation dispatches once, rechecks local admission, preserves 
               });
             },
           },
-          refreshCatalog: async () => {},
+          refreshCatalog: async () => {
+            // A recent empty catalog remains authoritative until the forced
+            // metadata refresh has finished, even though pull metadata is ready.
+            await delay(30);
+            if (mode === "changed-catalog") revision = 2;
+            if (mode === "stop-catalog")
+              await store.requestStop(input.requestId);
+            if (mode === "catalog-unavailable")
+              throw new Error("PRIVATE_SENTINEL");
+            catalogFresh = true;
+          },
         });
         const input = {
           requestId: randomUUID(),
@@ -156,10 +170,16 @@ test("operator preparation dispatches once, rechecks local admission, preserves 
               ? "ready"
               : mode === "stop" ||
                   mode === "shutdown" ||
-                  mode.startsWith("stop-before")
+                  mode.startsWith("stop-")
                 ? "interrupted"
                 : "failed";
           assert.equal(receipt.state, expected);
+          if (expected === "ready")
+            assert.equal(
+              catalogFresh,
+              true,
+              "Ready must wait for a fresh ordinary model catalog",
+            );
           assert.equal(
             pulls,
             mode === "already-available" ||
@@ -174,7 +194,7 @@ test("operator preparation dispatches once, rechecks local admission, preserves 
             assert.equal(receipt.failureCode, "CONFIG_CHANGED");
           if (mode === "incomplete")
             assert.equal(receipt.failureCode, "INCOMPLETE_PROGRESS");
-          if (mode === "unverified")
+          if (mode === "unverified" || mode === "catalog-unavailable")
             assert.equal(receipt.failureCode, "MODEL_UNVERIFIED");
           const serial = JSON.stringify(receipt);
           assert.equal(

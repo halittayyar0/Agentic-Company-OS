@@ -424,6 +424,7 @@ try {
                 await dialog
                   .getByRole("button", { name: p.returnToJob, exact: true })
                   .click();
+                await expect(draft).toBeFocused();
                 assert.equal(preparationPeer.pulls, pullsBefore + 1);
               } else await page.keyboard.press("Escape");
               await expect(draft).toHaveValue(brief);
