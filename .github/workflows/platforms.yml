@@ -135,6 +135,12 @@ jobs:
           ACOS_REUSABLE_GUIDES_SMOKE: "1"
           TMPDIR: ${{ runner.temp }}
         run: pnpm test:guides:native "$(brew --prefix postgresql@17)/bin"
+      - name: Prove local model preparation and interrupted recovery in seven languages
+        env:
+          ACOS_GUIDED_LOCAL_SMOKE: "1"
+          ACOS_MODEL_PREPARATION_SMOKE: "1"
+          TMPDIR: ${{ runner.temp }}
+        run: pnpm test:connection:native "$(brew --prefix postgresql@17)/bin"
       - name: Verify local database migration
         run: pnpm --filter @workspace/db run migrate
       - name: Exercise first-run and capability library

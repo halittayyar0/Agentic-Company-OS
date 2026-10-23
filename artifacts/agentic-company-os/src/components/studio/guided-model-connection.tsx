@@ -300,8 +300,7 @@ function ProviderForm({
           throw new Error("Cloud permission readback is unconfirmed");
         setBaseRevision(receipt.revision);
         setNeedsReview(false);
-        if (choice === "ollama")
-          setValue(current.data.ollama.baseUrl ?? "");
+        if (choice === "ollama") setValue(current.data.ollama.baseUrl ?? "");
         if (choice === "ollama")
           setCloudDraft(
             typeof current.data.ollama.cloudEnabled === "boolean"
