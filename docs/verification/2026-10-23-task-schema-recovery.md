@@ -43,8 +43,18 @@ validates the exact locale write and still rejects every other mutation.
 
 This is prepared version 0.5.9, not a public release. It does not claim to fix
 general model quality or the earlier meeting-note task's scope divergence.
-An owned native PostgreSQL/API/worker test with genuine local inference, exact
-request capture and requested-result checks is still required. Full original
+A fresh owned PostgreSQL/API/two-worker test with genuine local Qwen on commit
+`1f935f3` observed recovery after the first rejected proposal, followed by a real
+file read. All four model responses recorded 11,845 tokens; cleanup passed. The
+application marked the task complete after its judge passed the result, but the
+independent check rejected it: the requested pipe-separated action rows were
+missing. This is failed requested-result acceptance, despite correct extracted
+facts. Proof SHA-256: `358fd1c67026b5026094c0d00332902f6b23071bb892ab497ac8aa0f186ebd4c`.
+
+Two direct replays of the captured post-read request, one changing only the
+task-mode outcome sentence, both retained the format defect. No speculative
+policy edit was made. General result-format and judge reliability remain open;
+this schema-discovery change does not resolve them. Full original
 cross-platform/security checks, ordinary integration and actual-main package and
 public-byte validation also remain required. Physical phones, native-speaker
 review, signing/notarization and 24-hour reliability are not certified.
