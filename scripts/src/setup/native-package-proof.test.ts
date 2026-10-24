@@ -8,14 +8,34 @@ test("Windows installation CI uses the reviewed PostgreSQL security release", as
     new URL("../../../.github/workflows/ci.yml", import.meta.url),
     "utf8",
   );
-  assert.deepEqual(
-    [
-      ...ci.matchAll(
-        /https:\/\/get\.enterprisedb\.com\/postgresql\/postgresql-(\d+\.\d+)-1-windows-x64-binaries\.zip/gu,
-      ),
-    ].map((match) => match[1]),
-    ["17.11", "17.11"],
-  );
+  const reviewedUrl =
+    "https://get.enterprisedb.com/postgresql/postgresql-17.11-1-windows-x64-binaries.zip";
+  const assertReviewedDownloads = (workflow: string) =>
+    assert.deepEqual(
+      [
+        ...workflow.matchAll(
+          /^[ \t]*-Uri[ \t]+"([^"\r\n]+)"[ \t]*`?[ \t]*$/gmu,
+        ),
+      ].map((match) => match[1]),
+      [reviewedUrl, reviewedUrl],
+    );
+  assertReviewedDownloads(ci);
+  for (const url of [
+    "https://example.invalid/?next=" + reviewedUrl,
+    reviewedUrl + ".unreviewed",
+    reviewedUrl + "?unreviewed",
+    reviewedUrl + "#unreviewed",
+    reviewedUrl.replace("get.enterprisedb.com", "get.enterprisedb.com.invalid"),
+    reviewedUrl.replace("get.enterprisedb.com", "get.enterprisedb.com:444"),
+    reviewedUrl.replace("get.enterprisedb.com", "get.enterprisedb.com@invalid"),
+    reviewedUrl.replace("https:", "http:"),
+    reviewedUrl.replace("17.11", "17.10"),
+  ]) {
+    assert.throws(
+      () => assertReviewedDownloads(ci.replaceAll(reviewedUrl, url)),
+      "The entire PostgreSQL download operand must match the reviewed URL",
+    );
+  }
   for (const name of [
     "ci.yml",
     "platforms.yml",
