@@ -16,6 +16,28 @@ test("Windows installation CI uses the reviewed PostgreSQL security release", as
     ].map((match) => match[1]),
     ["17.11", "17.11"],
   );
+  for (const name of [
+    "ci.yml",
+    "platforms.yml",
+    "distribution.yml",
+    "native-packages.yml",
+  ]) {
+    const workflow = await readFile(
+      new URL(`../../../.github/workflows/${name}`, import.meta.url),
+      "utf8",
+    );
+    const versions = [
+      ...workflow.matchAll(/^\s+node-version:\s*(\S+)\s*$/gmu),
+    ].map((match) => match[1]);
+    assert.ok(
+      versions.length > 0,
+      `${name} must explicitly select its host runtime`,
+    );
+    assert.ok(
+      versions.every((version) => version === "24.22.1"),
+      `${name} must not reuse an affected preinstalled Node 24 cache`,
+    );
+  }
 });
 
 test("new native packages admit patched runtimes while rejecting previously valid old pins", async () => {
