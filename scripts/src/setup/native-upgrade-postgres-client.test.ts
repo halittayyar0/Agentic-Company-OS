@@ -20,13 +20,23 @@ test("staging IPC client joins clean exit, aborts startup and rejects malformed 
   const root = await mkdtemp(
     path.join(await realpath(tmpdir()), "acos-stage-ipc-"),
   );
-  t.after(() => rm(root, { recursive: true, force: true }));
   const files = nativeRequiredFiles({
     platform: process.platform,
     architecture: process.arch,
   });
   const node = files[0],
     entry = "scripts/src/setup/stage-postgres.mjs";
+  t.after(async () => {
+    // Windows can briefly retain a lock on the copied executable after exit.
+    // Limit backoff to that file; recursive parent retries multiply the wait.
+    await rm(path.join(root, node), {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
+    await rm(root, { recursive: true, force: true });
+  });
   for (const file of [...files, entry]) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true });
     if (file === node) await copyFile(process.execPath, path.join(root, file));
