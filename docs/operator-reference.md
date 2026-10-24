@@ -59,13 +59,13 @@ Playwright sessions and snapshot-ref registries stay in the worker process that 
 
 ## Quick start
 
-**Portable container setup:** install Node.js 24 and start Docker with a Linux engine and Compose v2. Extract the setup ZIP from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest), then open `START.cmd` on Windows or run `sh START.command` on macOS/Linux. Follow the private local link and choose your language, provider and permissions. No Git, pnpm or source build is needed for this path. [Public start page](https://halittayyar0.github.io/Agentic-Company-OS/) · [Efficient work and budgets](efficient-work.md).
+**Portable container setup:** install Node.js 24.22.1 or newer 24.x and start Docker with a Linux engine and Compose v2. Extract the setup ZIP from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest), then open `START.cmd` on Windows or run `sh START.command` on macOS/Linux. Follow the private local link and choose your language, provider and permissions. No Git, pnpm or source build is needed for this path. [Public start page](https://halittayyar0.github.io/Agentic-Company-OS/) · [Efficient work and budgets](efficient-work.md).
 
 **Guided installation:** after installing the prerequisites below, run `pnpm install --frozen-lockfile` and `pnpm run setup`. The browser wizard selects this computer or a container, seven languages, a model provider, execution permissions, tool packs and optional private phone access. See [setup and restart instructions](self-hosting.md#guided-installation-windows-linux-and-macos).
 
 ### Prerequisites
 
-- Node.js 24
+- Node.js 24.22.1 or newer 24.x
 - Corepack
 - The exact pnpm version declared in the root `package.json` `packageManager` field
 - Chrome, Edge, or a compatible Chromium installation for browser tools

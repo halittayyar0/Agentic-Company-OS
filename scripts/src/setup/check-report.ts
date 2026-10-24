@@ -16,7 +16,7 @@ const remedies: Record<
   unsupported_platform: "Use Windows, macOS or Linux.",
   unsupported_architecture: "Use an x64 or ARM64 computer.",
   node_24_required:
-    "Install Node.js 24 and run this command with that version.",
+    "Install Node.js 24.22.1 or a newer 24.x release and run this command again.",
   docker_unavailable:
     "Install Docker with the Compose v2 plugin, then start its Linux engine.",
   docker_engine_unavailable:

@@ -13,7 +13,7 @@ test("soak compose uses an attested image and one read-only run-scoped control m
   ]);
 
   const pinnedNode =
-    "node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e";
+    "node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205";
   assert.deepEqual(
     [...dockerfile.matchAll(/^[\t ]*FROM[\t ]+([^\r\n]+)$/gimu)].map(
       ([, stage]) => stage.trim().split(/\s+/u),
@@ -139,15 +139,15 @@ test("Windows CI verifies a SHA256-pinned PostgreSQL 17 artifact and runs native
     /windows-runtime:[\s\S]*?(?=\n  [a-z][a-z0-9-]+:|$)/u,
   )?.[0];
   assert.ok(windowsJob);
-  assert.match(windowsJob, /postgresql-17\.10-1-windows-x64-binaries\.zip/u);
+  assert.match(windowsJob, /postgresql-17\.11-1-windows-x64-binaries\.zip/u);
   assert.match(
     windowsJob,
-    /f9aafca58e7026a1ef2caeee711acf761671e57904d430adc85f468374f5a821/u,
+    /6eabdf00d2893713b75db4336a23c3fdf505f056e217ec6e2e95d901750cfea3/u,
   );
   assert.match(windowsJob, /Get-FileHash[^\n]*SHA256/u);
   assert.match(
     windowsJob,
-    /Get-Item[^\n]*\$archive[^\n]*\.Length[\s\S]*?333925750/u,
+    /Get-Item[^\n]*\$archive[^\n]*\.Length[\s\S]*?340719294/u,
   );
   assert.match(windowsJob, /endurance:native-postgres-smoke/u);
   assert.match(

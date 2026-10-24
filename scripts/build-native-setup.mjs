@@ -21,7 +21,10 @@ import { Transform } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { build } from "../artifacts/api-server/node_modules/esbuild/lib/main.js";
-import { nodeArchiveDownloadUrl } from "./native-runtime-download.mjs";
+import {
+  nodeArchiveDownloadUrl,
+  postgresSourceDownloadUrl,
+} from "./native-runtime-download.mjs";
 
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -71,6 +74,7 @@ if (
 )
   throw new Error("Unsupported host or invalid pinned runtime inputs");
 const nodeDownloadUrl = nodeArchiveDownloadUrl(target, node);
+postgresSourceDownloadUrl(pins.postgres);
 const head = (
   await execute("git", ["rev-parse", "HEAD"], { cwd: root })
 ).stdout.trim();
@@ -284,6 +288,14 @@ try {
     `v${node.version}`
   )
     throw new Error("Bundled Node version mismatch");
+  await execute(
+    executable,
+    [path.join(root, "scripts/test-runtime-security.mjs")],
+    {
+      timeout: 10000,
+      windowsHide: true,
+    },
+  );
   for (const row of pgProvenance.files)
     await copyTree(
       path.join(pgPrefix, row.path),

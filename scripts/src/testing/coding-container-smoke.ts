@@ -170,7 +170,7 @@ export async function runCodingContainerSmoke(image: string) {
       {
         platform: "linux",
         architecture: "x64",
-        nodeVersion: "v24.20.0",
+        nodeVersion: "v24.22.1",
         postgresClientVersion: null,
         composeVersion: "2.40.0",
         native: { ready: true, issues: [] },

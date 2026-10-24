@@ -13,6 +13,14 @@ The project is alpha and has no stable release line.
 
 Security support during alpha is best-effort and has no response-time SLA.
 
+## Runtime security updates
+
+Source and portable-container setup require Node.js 24.22.1 or a newer 24.x release. New native packages pin Node.js 24.22.1 and PostgreSQL 17.11; the application container pins the corresponding Node security image. Check the actual package manifest and release verification before upgrading an older installation. JavaScript dependency audits do not cover these bundled runtimes.
+
+The [Node October security release](https://nodejs.org/en/blog/release/v24.22.1) fixes DNS input handling, TLS identity checks and other runtime vulnerabilities. [PostgreSQL 17.11](https://www.postgresql.org/docs/17/release-17-11.html) includes security fixes for psql and the database server. Earlier published packages can contain affected runtimes even when their npm dependency audit passed.
+
+Back up before upgrading. Reading an old installation's metadata remains supported for upgrade and recovery; this does not qualify its old binaries for a new release. PostgreSQL 17.x does not require dump/restore solely for this minor update. Operators using logical decoding plugins, pgcrypto, btree_gist or ltree must review PostgreSQL's migration notes for their own extensions and data. The installer does not expand plugin permissions or automatically repair encrypted data or indexes.
+
 ## Reporting a vulnerability
 
 Do **not** open a public issue containing vulnerability details, proof-of-concept payloads, secrets, or affected deployment information.

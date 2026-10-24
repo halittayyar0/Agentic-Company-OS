@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS compiler
+FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS compiler
 USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc libc6-dev meson ninja-build pkg-config libcap-dev python3 \
@@ -26,18 +26,19 @@ RUN gcc -Wall -Wextra -Werror /source/proc-info-guard-test.c -o /source/proc-inf
     && dpkg-query -W gcc libc6-dev libcap-dev libcap2 meson ninja-build pkg-config python3 > /source/build-packages.txt
 
 
-FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS build
+FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS build
 
 WORKDIR /app
 ENV CI=true
 
 RUN corepack enable && corepack prepare pnpm@10.17.1 --activate
 COPY . .
+RUN node scripts/test-runtime-security.mjs
 RUN pnpm install --frozen-lockfile
 RUN pnpm run build
 RUN pnpm --filter @workspace/api-server deploy --prod --legacy /prod/api
 
-FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS runtime
+FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS runtime
 
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \

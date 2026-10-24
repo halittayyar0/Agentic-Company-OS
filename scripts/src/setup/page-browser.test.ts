@@ -4,6 +4,68 @@ import { chromium } from "@playwright/test";
 import { createSetupSession } from "./session";
 import type { InstallationPlan } from "./plan";
 import type { InstallationCredentials } from "./session";
+import { detectInstallCapabilities } from "./preflight";
+
+test("setup explains the patched Node requirement in seven locales and recovers after recheck", async (t) => {
+  const browser = await chromium.launch({
+    headless: true,
+    chromiumSandbox: true,
+  });
+  t.after(() => browser.close());
+  let nodeVersion = "v24.22.0";
+  const session = await createSetupSession({
+    capabilities: () =>
+      detectInstallCapabilities({
+        platform: "linux",
+        arch: "x64",
+        nodeVersion,
+        run: async () => {
+          throw new Error("optional tools unavailable");
+        },
+      }),
+    execute: async () => {
+      throw new Error("installation must not run during a readiness recheck");
+    },
+  });
+  t.after(() => session.close());
+  const page = await browser.newPage();
+  for (const width of [320, 1024]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(session.url);
+    await page
+      .locator("#requirements-list")
+      .getByRole("listitem")
+      .first()
+      .waitFor();
+    await page.locator('[name="mode"][value="native"]').check();
+    for (const locale of ["tr", "en", "de", "ru", "zh-CN", "zh-TW", "ar"]) {
+      await page.locator("#language").selectOption(locale);
+      assert.match(
+        await page.locator("#requirements-list").innerText(),
+        /24\.22\.1/,
+      );
+      assert.equal(await page.locator("#next").isDisabled(), true);
+      assert.equal(
+        await page.locator("html").getAttribute("dir"),
+        locale === "ar" ? "rtl" : "ltr",
+      );
+      assert.equal(
+        await page.evaluate(
+          "document.documentElement.scrollWidth <= innerWidth",
+        ),
+        true,
+      );
+    }
+  }
+  nodeVersion = "v24.22.1";
+  await page.locator("#recheck").click();
+  await page.locator("#next:not([disabled])").waitFor();
+  assert.equal(
+    await page.locator('[name="mode"][value="native"]').isChecked(),
+    true,
+  );
+  assert.equal(await page.locator("#language").inputValue(), "ar");
+});
 
 test("bundled native setup needs no database credential and explains the separate Docker distribution in every locale", async (t) => {
   const browser = await chromium.launch({

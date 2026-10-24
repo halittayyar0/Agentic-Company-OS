@@ -13,7 +13,7 @@ Please read the [Code of Conduct](./CODE_OF_CONDUCT.md) before participating. Se
 
 ## Development setup
 
-Use Node.js 24 and the exact pnpm release declared in the root `package.json` `packageManager` field.
+Use Node.js 24.22.1 or newer 24.x and the exact pnpm release declared in the root `package.json` `packageManager` field.
 
 ```bash
 corepack enable

@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "auditedDate": "2026-10-16",
+  "auditedDate": "2026-10-24",
   "sources": [
     {
       "component": "PostgreSQL",
-      "version": "17.10",
-      "url": "https://ftp.postgresql.org/pub/source/v17.10/postgresql-17.10.tar.bz2",
-      "sha256": "078a03516dcdbdb705fecaf415ea3d13a956c589e46f09fed68a06fb00598c90",
-      "checksumUrl": "https://ftp.postgresql.org/pub/source/v17.10/postgresql-17.10.tar.bz2.sha256",
+      "version": "17.11",
+      "url": "https://ftp.postgresql.org/pub/source/v17.11/postgresql-17.11.tar.bz2",
+      "sha256": "dd27f2b3c59e73ed14aa3324901242bf69a032a6347805f274e6260322d42979",
+      "checksumUrl": "https://ftp.postgresql.org/pub/source/v17.11/postgresql-17.11.tar.bz2.sha256",
       "licenseFiles": [
         "POSTGRESQL-COPYRIGHT.txt",
         "POSTGRESQL-REGEX-COPYRIGHT.txt",
@@ -25,18 +25,18 @@
     },
     {
       "component": "Node.js",
-      "version": "24.21.0",
-      "url": "https://nodejs.org/dist/v24.21.0/",
-      "sourceUrl": "https://nodejs.org/dist/v24.21.0/node-v24.21.0.tar.gz",
-      "checksumUrl": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
-      "licenseUrl": "https://raw.githubusercontent.com/nodejs/node/v24.21.0/LICENSE",
+      "version": "24.22.1",
+      "url": "https://nodejs.org/dist/v24.22.1/",
+      "sourceUrl": "https://nodejs.org/dist/v24.22.1/node-v24.22.1.tar.gz",
+      "checksumUrl": "https://nodejs.org/dist/v24.22.1/SHASUMS256.txt",
+      "licenseUrl": "https://raw.githubusercontent.com/nodejs/node/v24.22.1/LICENSE",
       "licenseFiles": ["NODE-LICENSE.txt"],
       "licenseHandling": "Retain the LICENSE from the exact hash-verified target Node distribution; compare it with this pinned-tag reference before packaging."
     }
   ],
   "noticeSha256": {
     "NODE-LICENSE.txt": "5888dbb9a1d2b18f2c3e6c5f6af1b39de658372b402a0577b002777f14c62ace",
-    "POSTGRESQL-ADDITIONAL-SOURCE-NOTICES.txt": "d3298850fb65ebf7d0743c07a51865ca570b969f72353eb53a626627f4b5ed16",
+    "POSTGRESQL-ADDITIONAL-SOURCE-NOTICES.txt": "323670e75a408c81f42980fd06283584d7c5602fecbccdc9c968d56190c88142",
     "POSTGRESQL-COPYRIGHT.txt": "3d6af92ff8a4c2cdf69afb1cf44edea727922f5cd0cf8b5f72b11cdecac8fdfd",
     "POSTGRESQL-REGEX-COPYRIGHT.txt": "5027cfe4f54842896b01ca6be28becc9a018623aaadc0f5b51350da71118cb0e",
     "POSTGRESQL-TIMEZONE-README.txt": "fc1ef049eb3c965a60291102e22177e33fae2bd0ad002ee38c9b2d463268d261",

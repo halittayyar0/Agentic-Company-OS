@@ -59,13 +59,13 @@ Playwright oturumları ve snapshot-ref registry'leri, onları oluşturan worker 
 
 ## Hızlı başlangıç
 
-**Hazır konteyner kurulumu:** Node.js 24 kurun ve Docker Linux motoru ile Compose v2’yi başlatın. [Sürümlerden](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) kurulum ZIP’ini çıkarın. Windows’ta `START.cmd`, macOS/Linux’ta `sh START.command` çalıştırın. Yazılan özel bağlantıda dilini, modelini ve yetkilerini seç. Bu yol Git, pnpm veya kaynak derlemesi gerektirmez. [Başlangıç sayfası](https://halittayyar0.github.io/Agentic-Company-OS/) · [Verimli çalışma ve bütçeler](efficient-work.md).
+**Hazır konteyner kurulumu:** Node.js 24.22.1 veya daha yeni bir 24.x sürümü kurun ve Docker Linux motoru ile Compose v2’yi başlatın. [Sürümlerden](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest) kurulum ZIP’ini çıkarın. Windows’ta `START.cmd`, macOS/Linux’ta `sh START.command` çalıştırın. Yazılan özel bağlantıda dilini, modelini ve yetkilerini seç. Bu yol Git, pnpm veya kaynak derlemesi gerektirmez. [Başlangıç sayfası](https://halittayyar0.github.io/Agentic-Company-OS/) · [Verimli çalışma ve bütçeler](efficient-work.md).
 
 **Kaynak koddan kurulum sihirbazı:** aşağıdaki gereksinimleri kurduktan sonra `pnpm install --frozen-lockfile` ve `pnpm run setup` çalıştırın. Tarayıcıda bilgisayar/container, yedi dil, model sağlayıcısı, yetki modu, araç paketleri ve isteğe bağlı özel telefon erişimi seçilir. [Kurulum ve yeniden başlatma](self-hosting.md#guided-installation-windows-linux-and-macos) belgesini inceleyin.
 
 ### Gereksinimler
 
-- Node.js 24
+- Node.js 24.22.1 veya daha yeni bir 24.x sürümü
 - Corepack
 - Kök `package.json` içindeki `packageManager` alanında belirtilen tam pnpm sürümü
 - Tarayıcı araçları için Chrome, Edge veya uyumlu Chromium

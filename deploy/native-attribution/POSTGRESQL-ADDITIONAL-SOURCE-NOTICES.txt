@@ -1,4 +1,4 @@
-Selected original notices from the hash-verified PostgreSQL 17.10 source.
+Selected original notices from the hash-verified PostgreSQL 17.11 source.
 Includes files beyond the minimal build to preserve upstream notices.
 
 

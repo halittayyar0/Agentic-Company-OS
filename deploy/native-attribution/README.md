@@ -1,7 +1,7 @@
 # Native runtime attribution
 
-The portable distribution includes Node.js 24.21.0 and a project-built PostgreSQL
-17.10 with static zlib 1.3.2. The source archive URLs, verified SHA-256 values,
+The portable distribution includes Node.js 24.22.1 and a project-built PostgreSQL
+17.11 with static zlib 1.3.2. The source archive URLs, verified SHA-256 values,
 and hashes of the preserved notices are in `sources.json`.
 
 Copy this directory into every native release. Preserve the LICENSE file from
