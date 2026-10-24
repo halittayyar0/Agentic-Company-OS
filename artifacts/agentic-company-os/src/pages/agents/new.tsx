@@ -1,8 +1,10 @@
+import {
+  newAgentResolver,
+  type NewAgentFormValues as Values,
+} from "@/lib/new-agent-schema";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "wouter";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod/v4-mini";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getGetOrgSummaryQueryKey,
@@ -64,60 +66,6 @@ import {
 } from "@/lib/agent-directory-copy";
 import { cn } from "@/lib/utils";
 
-const makeSchema = (copy: NewAgentCopy) =>
-  z
-    .object({
-      name: z
-        .string()
-        .check(
-          z.trim(),
-          z.minLength(2, copy.validation.nameShort),
-          z.maxLength(80, copy.validation.nameLong),
-        ),
-      role: z
-        .string()
-        .check(
-          z.trim(),
-          z.minLength(2, copy.validation.roleShort),
-          z.maxLength(120, copy.validation.roleLong),
-        ),
-      department: z
-        .string()
-        .check(z.trim(), z.maxLength(120, copy.validation.departmentLong)),
-      parentAgentId: z.string(),
-      templateKey: z.string(),
-      isCustom: z.boolean(),
-      systemPrompt: z
-        .string()
-        .check(z.maxLength(65536, copy.validation.promptLong)),
-      modelMode: z.enum(["auto", "manual"]),
-      modelId: z.string(),
-    })
-    .check((context) => {
-      const values = context.value;
-      if (!values.isCustom && !values.templateKey)
-        context.issues.push({
-          code: "custom",
-          input: values,
-          path: ["templateKey"],
-          message: copy.validation.template,
-        });
-      if (values.isCustom && values.systemPrompt.trim().length < 20)
-        context.issues.push({
-          code: "custom",
-          input: values,
-          path: ["systemPrompt"],
-          message: copy.validation.promptShort,
-        });
-      if (values.modelMode === "manual" && !values.modelId)
-        context.issues.push({
-          code: "custom",
-          input: values,
-          path: ["modelId"],
-          message: copy.validation.model,
-        });
-    });
-type Values = z.infer<ReturnType<typeof makeSchema>>;
 const DEFAULT_PERMISSIONS: AgentPermissions = {
   canCreateSubAgents: false,
   canDelegate: false,
@@ -261,7 +209,7 @@ function NewAgentForm({
   const [failure, setFailure] = useState(false);
   const [manualModelReady, setManualModelReady] = useState(false);
   const form = useForm<Values>({
-    resolver: zodResolver(makeSchema(copy)),
+    resolver: newAgentResolver(copy),
     defaultValues: {
       name: "",
       role: "",

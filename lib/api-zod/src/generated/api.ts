@@ -13,7 +13,7 @@ import * as zod from 'zod';
  * @summary Apply saved usage evidence without requesting inference or resuming work
  */
 export const ReconcileInferenceAccountingParams = zod.object({
-  "attemptId": zod.coerce.string().uuid()
+  "attemptId": zod.uuid()
 })
 
 export const reconcileInferenceAccountingQueryScopeIdMax = 2147483647;
@@ -34,8 +34,8 @@ export const ReconcileInferenceAccountingBody = zod.object({
 
 export const ReconcileInferenceAccountingResponse = zod.object({
   "scopeType": zod.enum(['task', 'agent']),
-  "scopeId": zod.number().int().min(1),
-  "attemptId": zod.string().uuid(),
+  "scopeId": zod.int().min(1),
+  "attemptId": zod.uuid(),
   "outcome": zod.enum(['applied', 'pending'])
 })
 
@@ -87,29 +87,29 @@ export const getInferenceAccountingStatusResponseAttemptsMax = 20;
 
 export const GetInferenceAccountingStatusResponse = zod.object({
   "scopeType": zod.enum(['task', 'agent']),
-  "scopeId": zod.number().int().min(1).max(getInferenceAccountingStatusResponseScopeIdMax),
-  "rootTaskId": zod.number().int().min(1).nullable(),
+  "scopeId": zod.int().min(1).max(getInferenceAccountingStatusResponseScopeIdMax),
+  "rootTaskId": zod.int().min(1).nullable(),
   "status": zod.enum(['clear', 'pending', 'recovery_required']),
-  "observedAt": zod.number().int().min(getInferenceAccountingStatusResponseObservedAtMin),
-  "unsettledCount": zod.number().int().min(getInferenceAccountingStatusResponseUnsettledCountMin),
+  "observedAt": zod.int().min(getInferenceAccountingStatusResponseObservedAtMin),
+  "unsettledCount": zod.int().min(getInferenceAccountingStatusResponseUnsettledCountMin),
   "hasMore": zod.boolean(),
   "attempts": zod.array(zod.object({
-  "id": zod.string().uuid(),
-  "agentId": zod.number().int().min(1),
-  "taskId": zod.number().int().min(1).nullable(),
+  "id": zod.uuid(),
+  "agentId": zod.int().min(1),
+  "taskId": zod.int().min(1).nullable(),
   "modelId": zod.string().max(getInferenceAccountingStatusResponseAttemptsItemModelIdMax),
   "provider": zod.string().max(getInferenceAccountingStatusResponseAttemptsItemProviderMax),
   "kind": zod.enum(['chat', 'task_step', 'judge']),
   "savedEvidenceAvailable": zod.boolean().optional(),
   "state": zod.enum(['reserved', 'dispatched', 'uncertain', 'accounted', 'not_dispatched']),
-  "createdAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemCreatedAtMin),
-  "requestDeadlineAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemRequestDeadlineAtMin),
-  "dispatchedAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemDispatchedAtMin).nullable(),
-  "settledAt": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemSettledAtMin).nullable(),
+  "createdAt": zod.int().min(getInferenceAccountingStatusResponseAttemptsItemCreatedAtMin),
+  "requestDeadlineAt": zod.int().min(getInferenceAccountingStatusResponseAttemptsItemRequestDeadlineAtMin),
+  "dispatchedAt": zod.int().min(getInferenceAccountingStatusResponseAttemptsItemDispatchedAtMin).nullable(),
+  "settledAt": zod.int().min(getInferenceAccountingStatusResponseAttemptsItemSettledAtMin).nullable(),
   "usage": zod.union([zod.object({
-  "promptTokens": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOnePromptTokensMin),
-  "completionTokens": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOneCompletionTokensMin),
-  "totalTokens": zod.number().int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOneTotalTokensMin),
+  "promptTokens": zod.int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOnePromptTokensMin),
+  "completionTokens": zod.int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOneCompletionTokensMin),
+  "totalTokens": zod.int().min(getInferenceAccountingStatusResponseAttemptsItemUsageOneTotalTokensMin),
   "usageReported": zod.boolean(),
   "reportedCostUsd": zod.string().regex(getInferenceAccountingStatusResponseAttemptsItemUsageOneReportedCostUsdRegExp).nullable()
 }),zod.null()])
@@ -133,9 +133,9 @@ export const getCodexSessionRecoveryResponseRevisionMax = 9007199254740991;
 
 
 export const GetCodexSessionRecoveryResponse = zod.object({
-  "taskId": zod.number().int().min(1),
+  "taskId": zod.int().min(1),
   "sessionState": zod.enum(['none', 'running', 'ready', 'uncertain', 'reset']),
-  "revision": zod.number().int().min(1).max(getCodexSessionRecoveryResponseRevisionMax).nullable(),
+  "revision": zod.int().min(1).max(getCodexSessionRecoveryResponseRevisionMax).nullable(),
   "cleanupState": zod.union([zod.literal('unknown'),zod.literal('not_launched'),zod.literal('verified'),zod.literal(null)]).nullable(),
   "canReset": zod.boolean(),
   "reason": zod.union([zod.enum(['task_missing', 'session_missing', 'revision_changed', 'revision_exhausted', 'task_active', 'session_running', 'cleanup_unknown', 'native_pending', 'already_reset']),zod.null()]),
@@ -159,8 +159,8 @@ export const recoverCodexSessionBodyExpectedRevisionMax = 9007199254740991;
 
 
 export const RecoverCodexSessionBody = zod.object({
-  "requestId": zod.string().uuid(),
-  "expectedRevision": zod.number().int().min(1).max(recoverCodexSessionBodyExpectedRevisionMax),
+  "requestId": zod.uuid(),
+  "expectedRevision": zod.int().min(1).max(recoverCodexSessionBodyExpectedRevisionMax),
   "acknowledgeUncertainEffects": zod.literal(true)
 })
 
@@ -175,13 +175,13 @@ export const recoverCodexSessionResponseRecordedAtMax = 9007199254740991;
 
 
 export const RecoverCodexSessionResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "taskId": zod.number().int().min(1),
-  "expectedRevision": zod.number().int().min(1).max(recoverCodexSessionResponseExpectedRevisionMax),
+  "requestId": zod.uuid(),
+  "taskId": zod.int().min(1),
+  "expectedRevision": zod.int().min(1).max(recoverCodexSessionResponseExpectedRevisionMax),
   "outcome": zod.enum(['accepted', 'rejected']),
   "reason": zod.union([zod.enum(['task_missing', 'session_missing', 'revision_changed', 'revision_exhausted', 'task_active', 'session_running', 'cleanup_unknown', 'native_pending', 'already_reset']),zod.null()]),
-  "revision": zod.number().int().min(1).max(recoverCodexSessionResponseRevisionMax).nullable(),
-  "recordedAt": zod.number().int().min(recoverCodexSessionResponseRecordedAtMin).max(recoverCodexSessionResponseRecordedAtMax),
+  "revision": zod.int().min(1).max(recoverCodexSessionResponseRevisionMax).nullable(),
+  "recordedAt": zod.int().min(recoverCodexSessionResponseRecordedAtMin).max(recoverCodexSessionResponseRecordedAtMax),
   "taskResumed": zod.literal(false),
   "effectsReconciled": zod.literal(false)
 })
@@ -195,7 +195,7 @@ export const RecoverCodexSessionResponse = zod.object({
 
 export const GetCodexSessionRecoveryReceiptParams = zod.object({
   "taskId": zod.coerce.number().int().min(1),
-  "requestId": zod.coerce.string().uuid()
+  "requestId": zod.uuid()
 })
 
 
@@ -209,13 +209,13 @@ export const getCodexSessionRecoveryReceiptResponseRecordedAtMax = 9007199254740
 
 
 export const GetCodexSessionRecoveryReceiptResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "taskId": zod.number().int().min(1),
-  "expectedRevision": zod.number().int().min(1).max(getCodexSessionRecoveryReceiptResponseExpectedRevisionMax),
+  "requestId": zod.uuid(),
+  "taskId": zod.int().min(1),
+  "expectedRevision": zod.int().min(1).max(getCodexSessionRecoveryReceiptResponseExpectedRevisionMax),
   "outcome": zod.enum(['accepted', 'rejected']),
   "reason": zod.union([zod.enum(['task_missing', 'session_missing', 'revision_changed', 'revision_exhausted', 'task_active', 'session_running', 'cleanup_unknown', 'native_pending', 'already_reset']),zod.null()]),
-  "revision": zod.number().int().min(1).max(getCodexSessionRecoveryReceiptResponseRevisionMax).nullable(),
-  "recordedAt": zod.number().int().min(getCodexSessionRecoveryReceiptResponseRecordedAtMin).max(getCodexSessionRecoveryReceiptResponseRecordedAtMax),
+  "revision": zod.int().min(1).max(getCodexSessionRecoveryReceiptResponseRevisionMax).nullable(),
+  "recordedAt": zod.int().min(getCodexSessionRecoveryReceiptResponseRecordedAtMin).max(getCodexSessionRecoveryReceiptResponseRecordedAtMax),
   "taskResumed": zod.literal(false),
   "effectsReconciled": zod.literal(false)
 })
@@ -243,7 +243,7 @@ export const getCodexTaskStatusResponseWorkersMax = 128;
 
 export const GetCodexTaskStatusResponse = zod.object({
   "state": zod.enum(['no_worker', 'unknown', 'unavailable', 'preflight_required']),
-  "sampledAt": zod.number().int().min(getCodexTaskStatusResponseSampledAtMin).max(getCodexTaskStatusResponseSampledAtMax),
+  "sampledAt": zod.int().min(getCodexTaskStatusResponseSampledAtMin).max(getCodexTaskStatusResponseSampledAtMax),
   "truncated": zod.boolean().describe('Some workers are omitted; absence from this list cannot establish fleet-wide unavailability'),
   "proofScope": zod.enum(['worker_configuration']),
   "requiresTaskPreflight": zod.literal(true),
@@ -251,9 +251,9 @@ export const GetCodexTaskStatusResponse = zod.object({
   "runtimeInstanceId": zod.string(),
   "role": zod.enum(['worker', 'combined']),
   "configurationState": zod.enum(['disabled', 'configuration_required', 'unsupported_platform', 'preflight_required', 'not_reported']),
-  "configurationAt": zod.number().int().min(getCodexTaskStatusResponseWorkersItemConfigurationAtMin).max(getCodexTaskStatusResponseWorkersItemConfigurationAtMax).describe('Startup configuration observation, not a successful native coding check'),
-  "heartbeatAt": zod.number().int().min(getCodexTaskStatusResponseWorkersItemHeartbeatAtMin).max(getCodexTaskStatusResponseWorkersItemHeartbeatAtMax),
-  "staleAt": zod.number().int().min(getCodexTaskStatusResponseWorkersItemStaleAtMin).max(getCodexTaskStatusResponseWorkersItemStaleAtMax).describe('This heartbeat observation must not be treated as fresh after this time')
+  "configurationAt": zod.int().min(getCodexTaskStatusResponseWorkersItemConfigurationAtMin).max(getCodexTaskStatusResponseWorkersItemConfigurationAtMax).describe('Startup configuration observation, not a successful native coding check'),
+  "heartbeatAt": zod.int().min(getCodexTaskStatusResponseWorkersItemHeartbeatAtMin).max(getCodexTaskStatusResponseWorkersItemHeartbeatAtMax),
+  "staleAt": zod.int().min(getCodexTaskStatusResponseWorkersItemStaleAtMin).max(getCodexTaskStatusResponseWorkersItemStaleAtMax).describe('This heartbeat observation must not be treated as fresh after this time')
 })).max(getCodexTaskStatusResponseWorkersMax)
 })
 
@@ -278,22 +278,22 @@ export const getChatGPTConnectionResponseRegistrationsMax = 64;
 
 export const GetChatGPTConnectionResponse = zod.object({
   "registrations": zod.array(zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "accountId": zod.string().max(getChatGPTConnectionResponseRegistrationsItemAccountIdMax),
   "email": zod.string().max(getChatGPTConnectionResponseRegistrationsItemEmailMax).optional(),
   "displayName": zod.string().max(getChatGPTConnectionResponseRegistrationsItemDisplayNameMax).optional(),
-  "revision": zod.number().int().min(1),
+  "revision": zod.int().min(1),
   "signedIn": zod.boolean(),
   "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
-  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds'),
+  "expiresAt": zod.int().nullable().describe('Access token expiry in Unix milliseconds'),
   "planPause": zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "code": zod.union([zod.literal('subscription_sharing_usage_limit_exceeded'),zod.literal('rate_limit_exceeded'),zod.literal(null)]).nullable(),
-  "pausedAt": zod.number().int().min(1).max(getChatGPTConnectionResponseRegistrationsItemPlanPausePausedAtMax),
-  "retryAt": zod.number().int().min(1).max(getChatGPTConnectionResponseRegistrationsItemPlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
+  "pausedAt": zod.int().min(1).max(getChatGPTConnectionResponseRegistrationsItemPlanPausePausedAtMax),
+  "retryAt": zod.int().min(1).max(getChatGPTConnectionResponseRegistrationsItemPlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
 }).optional()
 })).max(getChatGPTConnectionResponseRegistrationsMax),
-  "activeRegistrationId": zod.string().uuid().nullable()
+  "activeRegistrationId": zod.uuid().nullable()
 })
 
 
@@ -302,20 +302,20 @@ export const GetChatGPTConnectionResponse = zod.object({
  */
 export const BeginChatGPTSignInBody = zod.object({
   "callbackLocation": zod.enum(['same-computer']),
-  "registrationId": zod.string().uuid().optional(),
-  "retryAttemptId": zod.string().uuid().optional(),
+  "registrationId": zod.uuid().optional(),
+  "retryAttemptId": zod.uuid().optional(),
   "requestPlanPermission": zod.boolean().optional().describe('Explicitly request fresh plan consent for a selected saved account or retry; ordinary sign-in never forces consent')
 })
 
 export const BeginChatGPTSignInResponse = zod.object({
-  "attemptId": zod.string().uuid(),
+  "attemptId": zod.uuid(),
   "authorizeUrl": zod.string().describe('Official one-time authorization URL. May contain an ID-token hint; never log, persist or send to analytics.'),
-  "expiresAt": zod.number().int()
+  "expiresAt": zod.int()
 })
 
 
 export const GetChatGPTSignInParams = zod.object({
-  "attemptId": zod.coerce.string().uuid()
+  "attemptId": zod.uuid()
 })
 
 export const getChatGPTSignInResponseExpectedRevisionMin = 0;
@@ -334,24 +334,24 @@ export const getChatGPTSignInResponseProposedAccountPlanPauseRetryAtMax = 900719
 
 
 export const GetChatGPTSignInResponse = zod.object({
-  "attemptId": zod.string().uuid(),
+  "attemptId": zod.uuid(),
   "state": zod.enum(['pending', 'exchanging', 'review', 'confirming', 'connected', 'denied', 'cancelled', 'expired', 'failed']),
-  "expiresAt": zod.number().int(),
-  "expectedRevision": zod.number().int().min(getChatGPTSignInResponseExpectedRevisionMin).optional(),
+  "expiresAt": zod.int(),
+  "expectedRevision": zod.int().min(getChatGPTSignInResponseExpectedRevisionMin).optional(),
   "proposedAccount": zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "accountId": zod.string().max(getChatGPTSignInResponseProposedAccountAccountIdMax),
   "email": zod.string().max(getChatGPTSignInResponseProposedAccountEmailMax).optional(),
   "displayName": zod.string().max(getChatGPTSignInResponseProposedAccountDisplayNameMax).optional(),
-  "revision": zod.number().int().min(1),
+  "revision": zod.int().min(1),
   "signedIn": zod.boolean(),
   "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
-  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds'),
+  "expiresAt": zod.int().nullable().describe('Access token expiry in Unix milliseconds'),
   "planPause": zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "code": zod.union([zod.literal('subscription_sharing_usage_limit_exceeded'),zod.literal('rate_limit_exceeded'),zod.literal(null)]).nullable(),
-  "pausedAt": zod.number().int().min(1).max(getChatGPTSignInResponseProposedAccountPlanPausePausedAtMax),
-  "retryAt": zod.number().int().min(1).max(getChatGPTSignInResponseProposedAccountPlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
+  "pausedAt": zod.int().min(1).max(getChatGPTSignInResponseProposedAccountPlanPausePausedAtMax),
+  "retryAt": zod.int().min(1).max(getChatGPTSignInResponseProposedAccountPlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
 }).optional()
 }).optional(),
   "failureKind": zod.enum(['temporary', 'client_missing', 'client_mismatch', 'identity_invalid', 'token_invalid', 'invalid_grant', 'invalid_client', 'authorization_failed']).optional()
@@ -359,7 +359,7 @@ export const GetChatGPTSignInResponse = zod.object({
 
 
 export const CancelChatGPTSignInParams = zod.object({
-  "attemptId": zod.coerce.string().uuid()
+  "attemptId": zod.uuid()
 })
 
 export const CancelChatGPTSignInResponse = zod.void()
@@ -369,7 +369,7 @@ export const CancelChatGPTSignInResponse = zod.void()
  * @summary Save the validated candidate and explicitly select it; never starts a job
  */
 export const ConfirmChatGPTAccountParams = zod.object({
-  "attemptId": zod.coerce.string().uuid()
+  "attemptId": zod.uuid()
 })
 
 export const confirmChatGPTAccountBodyExpectedRevisionMin = 0;
@@ -378,7 +378,7 @@ export const confirmChatGPTAccountBodyExpectedRevisionMax = 9007199254740991;
 
 
 export const ConfirmChatGPTAccountBody = zod.object({
-  "expectedRevision": zod.number().int().min(confirmChatGPTAccountBodyExpectedRevisionMin).max(confirmChatGPTAccountBodyExpectedRevisionMax)
+  "expectedRevision": zod.int().min(confirmChatGPTAccountBodyExpectedRevisionMin).max(confirmChatGPTAccountBodyExpectedRevisionMax)
 })
 
 export const confirmChatGPTAccountResponseAccountIdMax = 512;
@@ -395,19 +395,19 @@ export const confirmChatGPTAccountResponsePlanPauseRetryAtMax = 9007199254740991
 
 
 export const ConfirmChatGPTAccountResponse = zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "accountId": zod.string().max(confirmChatGPTAccountResponseAccountIdMax),
   "email": zod.string().max(confirmChatGPTAccountResponseEmailMax).optional(),
   "displayName": zod.string().max(confirmChatGPTAccountResponseDisplayNameMax).optional(),
-  "revision": zod.number().int().min(1),
+  "revision": zod.int().min(1),
   "signedIn": zod.boolean(),
   "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
-  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds'),
+  "expiresAt": zod.int().nullable().describe('Access token expiry in Unix milliseconds'),
   "planPause": zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "code": zod.union([zod.literal('subscription_sharing_usage_limit_exceeded'),zod.literal('rate_limit_exceeded'),zod.literal(null)]).nullable(),
-  "pausedAt": zod.number().int().min(1).max(confirmChatGPTAccountResponsePlanPausePausedAtMax),
-  "retryAt": zod.number().int().min(1).max(confirmChatGPTAccountResponsePlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
+  "pausedAt": zod.int().min(1).max(confirmChatGPTAccountResponsePlanPausePausedAtMax),
+  "retryAt": zod.int().min(1).max(confirmChatGPTAccountResponsePlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
 }).optional()
 })
 
@@ -416,7 +416,7 @@ export const ConfirmChatGPTAccountResponse = zod.object({
  * @summary Select an existing signed-in account at its observed revision
  */
 export const SelectChatGPTAccountParams = zod.object({
-  "registrationId": zod.coerce.string().uuid()
+  "registrationId": zod.uuid()
 })
 
 export const selectChatGPTAccountBodyExpectedRevisionMin = 0;
@@ -425,7 +425,7 @@ export const selectChatGPTAccountBodyExpectedRevisionMax = 9007199254740991;
 
 
 export const SelectChatGPTAccountBody = zod.object({
-  "expectedRevision": zod.number().int().min(selectChatGPTAccountBodyExpectedRevisionMin).max(selectChatGPTAccountBodyExpectedRevisionMax)
+  "expectedRevision": zod.int().min(selectChatGPTAccountBodyExpectedRevisionMin).max(selectChatGPTAccountBodyExpectedRevisionMax)
 })
 
 export const selectChatGPTAccountResponseAccountIdMax = 512;
@@ -442,19 +442,19 @@ export const selectChatGPTAccountResponsePlanPauseRetryAtMax = 9007199254740991;
 
 
 export const SelectChatGPTAccountResponse = zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "accountId": zod.string().max(selectChatGPTAccountResponseAccountIdMax),
   "email": zod.string().max(selectChatGPTAccountResponseEmailMax).optional(),
   "displayName": zod.string().max(selectChatGPTAccountResponseDisplayNameMax).optional(),
-  "revision": zod.number().int().min(1),
+  "revision": zod.int().min(1),
   "signedIn": zod.boolean(),
   "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
-  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds'),
+  "expiresAt": zod.int().nullable().describe('Access token expiry in Unix milliseconds'),
   "planPause": zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "code": zod.union([zod.literal('subscription_sharing_usage_limit_exceeded'),zod.literal('rate_limit_exceeded'),zod.literal(null)]).nullable(),
-  "pausedAt": zod.number().int().min(1).max(selectChatGPTAccountResponsePlanPausePausedAtMax),
-  "retryAt": zod.number().int().min(1).max(selectChatGPTAccountResponsePlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
+  "pausedAt": zod.int().min(1).max(selectChatGPTAccountResponsePlanPausePausedAtMax),
+  "retryAt": zod.int().min(1).max(selectChatGPTAccountResponsePlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
 }).optional()
 })
 
@@ -463,7 +463,7 @@ export const SelectChatGPTAccountResponse = zod.object({
  * @summary Explicitly clear this observed quota pause; never starts a job or changes provider
  */
 export const RetryChatGPTPlanParams = zod.object({
-  "registrationId": zod.coerce.string().uuid()
+  "registrationId": zod.uuid()
 })
 
 export const retryChatGPTPlanBodyExpectedRevisionMin = 0;
@@ -472,8 +472,8 @@ export const retryChatGPTPlanBodyExpectedRevisionMax = 9007199254740991;
 
 
 export const RetryChatGPTPlanBody = zod.object({
-  "expectedRevision": zod.number().int().min(retryChatGPTPlanBodyExpectedRevisionMin).max(retryChatGPTPlanBodyExpectedRevisionMax),
-  "pauseId": zod.string().uuid()
+  "expectedRevision": zod.int().min(retryChatGPTPlanBodyExpectedRevisionMin).max(retryChatGPTPlanBodyExpectedRevisionMax),
+  "pauseId": zod.uuid()
 })
 
 export const retryChatGPTPlanResponseAccountIdMax = 512;
@@ -490,19 +490,19 @@ export const retryChatGPTPlanResponsePlanPauseRetryAtMax = 9007199254740991;
 
 
 export const RetryChatGPTPlanResponse = zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "accountId": zod.string().max(retryChatGPTPlanResponseAccountIdMax),
   "email": zod.string().max(retryChatGPTPlanResponseEmailMax).optional(),
   "displayName": zod.string().max(retryChatGPTPlanResponseDisplayNameMax).optional(),
-  "revision": zod.number().int().min(1),
+  "revision": zod.int().min(1),
   "signedIn": zod.boolean(),
   "canUsePlan": zod.boolean().describe('Granted permission only; does not imply a tested inference request or available quota'),
-  "expiresAt": zod.number().int().nullable().describe('Access token expiry in Unix milliseconds'),
+  "expiresAt": zod.int().nullable().describe('Access token expiry in Unix milliseconds'),
   "planPause": zod.object({
-  "id": zod.string().uuid(),
+  "id": zod.uuid(),
   "code": zod.union([zod.literal('subscription_sharing_usage_limit_exceeded'),zod.literal('rate_limit_exceeded'),zod.literal(null)]).nullable(),
-  "pausedAt": zod.number().int().min(1).max(retryChatGPTPlanResponsePlanPausePausedAtMax),
-  "retryAt": zod.number().int().min(1).max(retryChatGPTPlanResponsePlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
+  "pausedAt": zod.int().min(1).max(retryChatGPTPlanResponsePlanPausePausedAtMax),
+  "retryAt": zod.int().min(1).max(retryChatGPTPlanResponsePlanPauseRetryAtMax).nullable().describe('Actual upstream Retry-After in Unix milliseconds, or null when reset is unknown')
 }).optional()
 })
 
@@ -511,7 +511,7 @@ export const RetryChatGPTPlanResponse = zod.object({
  * @summary Stop renewable session, clear credentials and retain account mapping
  */
 export const SignOutChatGPTAccountParams = zod.object({
-  "registrationId": zod.coerce.string().uuid()
+  "registrationId": zod.uuid()
 })
 
 export const SignOutChatGPTAccountResponse = zod.object({
@@ -521,17 +521,17 @@ export const SignOutChatGPTAccountResponse = zod.object({
 
 
 export const ListSourceChangesResponseItem = zod.object({
-  "id": zod.string().uuid(),
-  "agentId": zod.number().int(),
+  "id": zod.uuid(),
+  "agentId": zod.int(),
   "sourcePath": zod.string(),
   "request": zod.string(),
   "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
-  "revision": zod.number().int(),
+  "revision": zod.int(),
   "baseCommit": zod.string(),
   "candidateCommit": zod.string().nullish(),
   "candidatePath": zod.string().nullish(),
   "appliedCommit": zod.string().nullish(),
-  "taskId": zod.number().int().nullish(),
+  "taskId": zod.int().nullish(),
   "error": zod.string().nullish(),
   "diff": zod.string().optional(),
   "status": zod.string().optional(),
@@ -541,7 +541,7 @@ export const ListSourceChangesResponseItem = zod.object({
   "check": zod.object({
   "command": zod.array(zod.string()),
   "commands": zod.array(zod.array(zod.string())).optional(),
-  "exitCode": zod.number().int().nullable(),
+  "exitCode": zod.int().nullable(),
   "output": zod.string(),
   "passed": zod.boolean()
 }).nullish()
@@ -557,24 +557,24 @@ export const prepareSourceChangeBodyRequestMax = 4000;
 
 
 export const PrepareSourceChangeBody = zod.object({
-  "id": zod.string().uuid(),
-  "agentId": zod.number().int().min(1),
+  "id": zod.uuid(),
+  "agentId": zod.int().min(1),
   "sourcePath": zod.string().min(1).max(prepareSourceChangeBodySourcePathMax),
   "request": zod.string().min(1).max(prepareSourceChangeBodyRequestMax)
 })
 
 export const PrepareSourceChangeResponse = zod.object({
-  "id": zod.string().uuid(),
-  "agentId": zod.number().int(),
+  "id": zod.uuid(),
+  "agentId": zod.int(),
   "sourcePath": zod.string(),
   "request": zod.string(),
   "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
-  "revision": zod.number().int(),
+  "revision": zod.int(),
   "baseCommit": zod.string(),
   "candidateCommit": zod.string().nullish(),
   "candidatePath": zod.string().nullish(),
   "appliedCommit": zod.string().nullish(),
-  "taskId": zod.number().int().nullish(),
+  "taskId": zod.int().nullish(),
   "error": zod.string().nullish(),
   "diff": zod.string().optional(),
   "status": zod.string().optional(),
@@ -584,7 +584,7 @@ export const PrepareSourceChangeResponse = zod.object({
   "check": zod.object({
   "command": zod.array(zod.string()),
   "commands": zod.array(zod.array(zod.string())).optional(),
-  "exitCode": zod.number().int().nullable(),
+  "exitCode": zod.int().nullable(),
   "output": zod.string(),
   "passed": zod.boolean()
 }).nullish()
@@ -592,21 +592,21 @@ export const PrepareSourceChangeResponse = zod.object({
 
 
 export const InspectSourceChangeParams = zod.object({
-  "id": zod.coerce.string().uuid()
+  "id": zod.uuid()
 })
 
 export const InspectSourceChangeResponse = zod.object({
-  "id": zod.string().uuid(),
-  "agentId": zod.number().int(),
+  "id": zod.uuid(),
+  "agentId": zod.int(),
   "sourcePath": zod.string(),
   "request": zod.string(),
   "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
-  "revision": zod.number().int(),
+  "revision": zod.int(),
   "baseCommit": zod.string(),
   "candidateCommit": zod.string().nullish(),
   "candidatePath": zod.string().nullish(),
   "appliedCommit": zod.string().nullish(),
-  "taskId": zod.number().int().nullish(),
+  "taskId": zod.int().nullish(),
   "error": zod.string().nullish(),
   "diff": zod.string().optional(),
   "status": zod.string().optional(),
@@ -616,7 +616,7 @@ export const InspectSourceChangeResponse = zod.object({
   "check": zod.object({
   "command": zod.array(zod.string()),
   "commands": zod.array(zod.array(zod.string())).optional(),
-  "exitCode": zod.number().int().nullable(),
+  "exitCode": zod.int().nullable(),
   "output": zod.string(),
   "passed": zod.boolean()
 }).nullish()
@@ -624,7 +624,7 @@ export const InspectSourceChangeResponse = zod.object({
 
 
 export const CheckSourceChangeParams = zod.object({
-  "id": zod.coerce.string().uuid()
+  "id": zod.uuid()
 })
 
 
@@ -637,22 +637,22 @@ export const checkSourceChangeBodyCommandTwoMax = 4;
 
 
 export const CheckSourceChangeBody = zod.object({
-  "expectedRevision": zod.number().int().min(1),
+  "expectedRevision": zod.int().min(1),
   "command": zod.union([zod.array(zod.string()).min(1).max(checkSourceChangeBodyCommandOneMax),zod.array(zod.array(zod.string()).min(1).max(checkSourceChangeBodyCommandTwoItemMax)).min(1).max(checkSourceChangeBodyCommandTwoMax)])
 })
 
 export const CheckSourceChangeResponse = zod.object({
-  "id": zod.string().uuid(),
-  "agentId": zod.number().int(),
+  "id": zod.uuid(),
+  "agentId": zod.int(),
   "sourcePath": zod.string(),
   "request": zod.string(),
   "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
-  "revision": zod.number().int(),
+  "revision": zod.int(),
   "baseCommit": zod.string(),
   "candidateCommit": zod.string().nullish(),
   "candidatePath": zod.string().nullish(),
   "appliedCommit": zod.string().nullish(),
-  "taskId": zod.number().int().nullish(),
+  "taskId": zod.int().nullish(),
   "error": zod.string().nullish(),
   "diff": zod.string().optional(),
   "status": zod.string().optional(),
@@ -662,7 +662,7 @@ export const CheckSourceChangeResponse = zod.object({
   "check": zod.object({
   "command": zod.array(zod.string()),
   "commands": zod.array(zod.array(zod.string())).optional(),
-  "exitCode": zod.number().int().nullable(),
+  "exitCode": zod.int().nullable(),
   "output": zod.string(),
   "passed": zod.boolean()
 }).nullish()
@@ -670,28 +670,28 @@ export const CheckSourceChangeResponse = zod.object({
 
 
 export const ApplySourceChangeParams = zod.object({
-  "id": zod.coerce.string().uuid()
+  "id": zod.uuid()
 })
 
 
 
 
 export const ApplySourceChangeBody = zod.object({
-  "expectedRevision": zod.number().int().min(1)
+  "expectedRevision": zod.int().min(1)
 })
 
 export const ApplySourceChangeResponse = zod.object({
-  "id": zod.string().uuid(),
-  "agentId": zod.number().int(),
+  "id": zod.uuid(),
+  "agentId": zod.int(),
   "sourcePath": zod.string(),
   "request": zod.string(),
   "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
-  "revision": zod.number().int(),
+  "revision": zod.int(),
   "baseCommit": zod.string(),
   "candidateCommit": zod.string().nullish(),
   "candidatePath": zod.string().nullish(),
   "appliedCommit": zod.string().nullish(),
-  "taskId": zod.number().int().nullish(),
+  "taskId": zod.int().nullish(),
   "error": zod.string().nullish(),
   "diff": zod.string().optional(),
   "status": zod.string().optional(),
@@ -701,7 +701,7 @@ export const ApplySourceChangeResponse = zod.object({
   "check": zod.object({
   "command": zod.array(zod.string()),
   "commands": zod.array(zod.array(zod.string())).optional(),
-  "exitCode": zod.number().int().nullable(),
+  "exitCode": zod.int().nullable(),
   "output": zod.string(),
   "passed": zod.boolean()
 }).nullish()
@@ -709,28 +709,28 @@ export const ApplySourceChangeResponse = zod.object({
 
 
 export const RollbackSourceChangeParams = zod.object({
-  "id": zod.coerce.string().uuid()
+  "id": zod.uuid()
 })
 
 
 
 
 export const RollbackSourceChangeBody = zod.object({
-  "expectedRevision": zod.number().int().min(1)
+  "expectedRevision": zod.int().min(1)
 })
 
 export const RollbackSourceChangeResponse = zod.object({
-  "id": zod.string().uuid(),
-  "agentId": zod.number().int(),
+  "id": zod.uuid(),
+  "agentId": zod.int(),
   "sourcePath": zod.string(),
   "request": zod.string(),
   "state": zod.enum(['preparing', 'draft', 'checking', 'verified', 'applying', 'applied', 'rolling_back', 'rolled_back', 'failed', 'unknown']),
-  "revision": zod.number().int(),
+  "revision": zod.int(),
   "baseCommit": zod.string(),
   "candidateCommit": zod.string().nullish(),
   "candidatePath": zod.string().nullish(),
   "appliedCommit": zod.string().nullish(),
-  "taskId": zod.number().int().nullish(),
+  "taskId": zod.int().nullish(),
   "error": zod.string().nullish(),
   "diff": zod.string().optional(),
   "status": zod.string().optional(),
@@ -740,7 +740,7 @@ export const RollbackSourceChangeResponse = zod.object({
   "check": zod.object({
   "command": zod.array(zod.string()),
   "commands": zod.array(zod.array(zod.string())).optional(),
-  "exitCode": zod.number().int().nullable(),
+  "exitCode": zod.int().nullable(),
   "output": zod.string(),
   "passed": zod.boolean()
 }).nullish()
@@ -801,7 +801,7 @@ export const ListPersonalCapabilitiesResponseItem = zod.object({
   "permissions": zod.array(zod.enum(['terminal'])).min(1).max(listPersonalCapabilitiesResponseManifestThreePermissionsMax)
 })]).describe('Versioned personal skill, bounded utility preset or operator-installed Node program. Maximum serialized size is 16000 characters. Programs declare terminal authority and execute through the exact approval-bound terminal path. No credential or arbitrary executable fields are accepted.'),
   "enabled": zod.boolean(),
-  "revision": zod.number().int().min(1),
+  "revision": zod.int().min(1),
   "updatedAt": zod.coerce.date()
 })
 export const ListPersonalCapabilitiesResponse = zod.array(ListPersonalCapabilitiesResponseItem)
@@ -861,7 +861,7 @@ export const SavePersonalCapabilityBody = zod.object({
   "permissions": zod.array(zod.enum(['terminal'])).min(1).max(savePersonalCapabilityBodyManifestThreePermissionsMax)
 })]).describe('Versioned personal skill, bounded utility preset or operator-installed Node program. Maximum serialized size is 16000 characters. Programs declare terminal authority and execute through the exact approval-bound terminal path. No credential or arbitrary executable fields are accepted.'),
   "enabled": zod.boolean(),
-  "expectedRevision": zod.number().int().min(savePersonalCapabilityBodyExpectedRevisionMin)
+  "expectedRevision": zod.int().min(savePersonalCapabilityBodyExpectedRevisionMin)
 })
 
 export const savePersonalCapabilityResponseManifestOneIdRegExp = new RegExp('^user-[a-z0-9][a-z0-9-]{0,59}$');
@@ -915,7 +915,7 @@ export const SavePersonalCapabilityResponse = zod.object({
   "permissions": zod.array(zod.enum(['terminal'])).min(1).max(savePersonalCapabilityResponseManifestThreePermissionsMax)
 })]).describe('Versioned personal skill, bounded utility preset or operator-installed Node program. Maximum serialized size is 16000 characters. Programs declare terminal authority and execute through the exact approval-bound terminal path. No credential or arbitrary executable fields are accepted.'),
   "enabled": zod.boolean(),
-  "revision": zod.number().int().min(1),
+  "revision": zod.int().min(1),
   "updatedAt": zod.coerce.date()
 })
 
@@ -988,7 +988,7 @@ export const ExportPersonalCapabilityResponse = zod.union([zod.object({
 export const GetCapabilityPacksResponse = zod.object({
   "id": zod.literal(1),
   "enabledPacks": zod.array(zod.enum(['data', 'documents', 'web', 'code', 'planning'])),
-  "revision": zod.number().int().min(1)
+  "revision": zod.int().min(1)
 })
 
 
@@ -1002,7 +1002,7 @@ export const updateCapabilityPacksBodyEnabledPacksMax = 5;
 
 export const UpdateCapabilityPacksBody = zod.object({
   "enabledPacks": zod.array(zod.enum(['data', 'documents', 'web', 'code', 'planning'])).max(updateCapabilityPacksBodyEnabledPacksMax),
-  "expectedRevision": zod.number().int().min(1)
+  "expectedRevision": zod.int().min(1)
 })
 
 
@@ -1011,7 +1011,7 @@ export const UpdateCapabilityPacksBody = zod.object({
 export const UpdateCapabilityPacksResponse = zod.object({
   "id": zod.literal(1),
   "enabledPacks": zod.array(zod.enum(['data', 'documents', 'web', 'code', 'planning'])),
-  "revision": zod.number().int().min(1)
+  "revision": zod.int().min(1)
 })
 
 
@@ -1026,7 +1026,7 @@ export const GetCapabilityCatalogQueryParams = zod.object({
 
 export const GetCapabilityCatalogResponse = zod.object({
   "locale": zod.enum(['tr', 'en', 'de', 'ru', 'zh-CN', 'zh-TW', 'ar']),
-  "version": zod.number().int(),
+  "version": zod.int(),
   "copy": zod.object({
   "title": zod.string(),
   "intro": zod.string(),
@@ -1058,7 +1058,7 @@ export const GetCapabilityCatalogResponse = zod.object({
 })),
   "skills": zod.array(zod.object({
   "id": zod.string(),
-  "version": zod.number().int(),
+  "version": zod.int(),
   "group": zod.enum(['research', 'engineering', 'data', 'content', 'operations']),
   "groupTitle": zod.string(),
   "title": zod.string(),
@@ -1224,7 +1224,7 @@ export const listWorkforceBlueprintsResponseHandoffsMax = 24;
 
 export const ListWorkforceBlueprintsResponseItem = zod.object({
   "key": zod.string().min(1).max(listWorkforceBlueprintsResponseKeyMax),
-  "version": zod.number().int().min(1),
+  "version": zod.int().min(1),
   "name": zod.string().min(1).max(listWorkforceBlueprintsResponseNameMax),
   "tagline": zod.string().min(1).max(listWorkforceBlueprintsResponseTaglineMax),
   "description": zod.string().min(1).max(listWorkforceBlueprintsResponseDescriptionMax),
@@ -1277,12 +1277,12 @@ export const installWorkforceBlueprintBodyCadenceSecondsMax = 604800;
 
 export const InstallWorkforceBlueprintBody = zod.object({
   "locale": zod.enum(['tr', 'en', 'de', 'ru', 'zh-CN', 'zh-TW', 'ar']).default(installWorkforceBlueprintBodyLocaleDefault).describe('Language used for installed names, roles and mission instructions.'),
-  "requestId": zod.string().uuid().optional().describe('Reuse this ID for retries of the same installation intent. A committed response is replayed without creating another team; a changed payload with the same ID is rejected.'),
-  "blueprintVersion": zod.number().int().min(1).optional().describe('Version shown in the preview. A different current version is rejected before installation.'),
-  "managerAgentId": zod.number().int().min(1),
+  "requestId": zod.uuid().optional().describe('Reuse this ID for retries of the same installation intent. A committed response is replayed without creating another team; a changed payload with the same ID is rejected.'),
+  "blueprintVersion": zod.int().min(1).optional().describe('Version shown in the preview. A different current version is rejected before installation.'),
+  "managerAgentId": zod.int().min(1),
   "outcome": zod.string().min(installWorkforceBlueprintBodyOutcomeMin).max(installWorkforceBlueprintBodyOutcomeMax).optional().describe('Optional first business outcome assigned to the installed workforce lead.'),
   "autonomyMode": zod.enum(['finite', 'continuous']).optional(),
-  "cadenceSeconds": zod.number().int().min(installWorkforceBlueprintBodyCadenceSecondsMin).max(installWorkforceBlueprintBodyCadenceSecondsMax).optional().describe('Valid only with an outcome and continuous autonomy mode.')
+  "cadenceSeconds": zod.int().min(installWorkforceBlueprintBodyCadenceSecondsMin).max(installWorkforceBlueprintBodyCadenceSecondsMax).optional().describe('Valid only with an outcome and continuous autonomy mode.')
 })
 
 
@@ -1316,7 +1316,7 @@ export const installWorkforceBlueprintResponseTaskOneCycleCountMin = 0;
 
 export const InstallWorkforceBlueprintResponse = zod.object({
   "blueprintKey": zod.string(),
-  "version": zod.number().int().min(1),
+  "version": zod.int().min(1),
   "agents": zod.array(zod.object({
   "configVersion": zod.string().regex(installWorkforceBlueprintResponseAgentsItemConfigVersionRegExp).optional().describe('Opaque editable-configuration snapshot returned by detail and mutation endpoints. Heartbeats do not change it.'),
   "isRootCeo": zod.boolean().optional().describe('Server-managed root authority marker; API callers cannot assign it.'),
@@ -1380,12 +1380,12 @@ export const InstallWorkforceBlueprintResponse = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(installWorkforceBlueprintResponseTaskOneModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(installWorkforceBlueprintResponseTaskOneModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(installWorkforceBlueprintResponseTaskOneCadenceSecondsMin).max(installWorkforceBlueprintResponseTaskOneCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(installWorkforceBlueprintResponseTaskOneCadenceSecondsMin).max(installWorkforceBlueprintResponseTaskOneCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(installWorkforceBlueprintResponseTaskOneRecoveryCountMin),
-  "cycleCount": zod.number().int().min(installWorkforceBlueprintResponseTaskOneCycleCountMin),
+  "recoveryCount": zod.int().min(installWorkforceBlueprintResponseTaskOneRecoveryCountMin),
+  "cycleCount": zod.int().min(installWorkforceBlueprintResponseTaskOneCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -1865,7 +1865,7 @@ export const sendAgentMessageBodyModelIdMax = 256;
 
 export const SendAgentMessageBody = zod.object({
   "content": zod.string().min(1).max(sendAgentMessageBodyContentMax),
-  "taskId": zod.number().int().min(1).optional().describe('Optional project task that scopes message history and tool execution for this turn. The task must be owned by the addressed active agent.\n'),
+  "taskId": zod.int().min(1).optional().describe('Optional project task that scopes message history and tool execution for this turn. The task must be owned by the addressed active agent.\n'),
   "modelMode": zod.enum(['auto', 'manual']).optional(),
   "modelId": zod.string().min(1).max(sendAgentMessageBodyModelIdMax).optional().describe('Optional per-message model override; wins over the agent\'s saved setting for this turn only. The UI offers the live catalog; safe vendor\/model OpenRouter ids remain forward-compatible, while malformed or Unicode-spoofed ids are rejected.\n')
 })
@@ -1940,12 +1940,12 @@ export const SendAgentMessageResponse = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(sendAgentMessageResponseCreatedTasksItemModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(sendAgentMessageResponseCreatedTasksItemModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(sendAgentMessageResponseCreatedTasksItemCadenceSecondsMin).max(sendAgentMessageResponseCreatedTasksItemCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(sendAgentMessageResponseCreatedTasksItemCadenceSecondsMin).max(sendAgentMessageResponseCreatedTasksItemCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(sendAgentMessageResponseCreatedTasksItemRecoveryCountMin),
-  "cycleCount": zod.number().int().min(sendAgentMessageResponseCreatedTasksItemCycleCountMin),
+  "recoveryCount": zod.int().min(sendAgentMessageResponseCreatedTasksItemRecoveryCountMin),
+  "cycleCount": zod.int().min(sendAgentMessageResponseCreatedTasksItemCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -2021,9 +2021,9 @@ export const sendAgentRequestBodyExpectedConfigRegExp = new RegExp('^[a-f0-9]{64
 
 
 export const SendAgentRequestBody = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "kind": zod.enum(['ask', 'delegate', 'continuous']),
-  "taskId": zod.number().int().min(1).max(sendAgentRequestBodyTaskIdMax).optional().describe('Optional existing project scope for ask only. Bound to the send identity; ownership is checked at admission. Omit for direct conversation.'),
+  "taskId": zod.int().min(1).max(sendAgentRequestBodyTaskIdMax).optional().describe('Optional existing project scope for ask only. Bound to the send identity; ownership is checked at admission. Omit for direct conversation.'),
   "locale": zod.enum(['tr', 'en', 'de', 'ru', 'zh-CN', 'zh-TW', 'ar']),
   "content": zod.string().min(1).max(sendAgentRequestBodyContentMax).describe('Nonblank text; delegate and continuous intents have an 8000 character maximum.'),
   "modelMode": zod.enum(['auto', 'manual']).optional(),
@@ -2080,9 +2080,9 @@ export const sendAgentRequestResponseCreatedAgentsItemAvatarVersionMax = 64;
 
 
 export const SendAgentRequestResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "agentId": zod.number().int().min(1),
-  "taskId": zod.number().int().min(1).max(sendAgentRequestResponseTaskIdMax).optional().describe('Original project conversation scope, retained even after the project is removed. Absent for direct conversation and project creation.'),
+  "requestId": zod.uuid(),
+  "agentId": zod.int().min(1),
+  "taskId": zod.int().min(1).max(sendAgentRequestResponseTaskIdMax).optional().describe('Original project conversation scope, retained even after the project is removed. Absent for direct conversation and project creation.'),
   "kind": zod.enum(['ask', 'delegate', 'continuous']),
   "deliveryState": zod.enum(['complete', 'unconfirmed', 'rejected']),
   "outcome": zod.enum(['unconfirmed', 'rejected', 'queued', 'reply', 'provider_error', 'empty_response', 'tool_limit', 'tool_outcome_unknown', 'tool_deferred', 'approval_review', 'round_limit']),
@@ -2132,12 +2132,12 @@ export const SendAgentRequestResponse = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(sendAgentRequestResponseTaskModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(sendAgentRequestResponseTaskModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(sendAgentRequestResponseTaskCadenceSecondsMin).max(sendAgentRequestResponseTaskCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(sendAgentRequestResponseTaskCadenceSecondsMin).max(sendAgentRequestResponseTaskCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(sendAgentRequestResponseTaskRecoveryCountMin),
-  "cycleCount": zod.number().int().min(sendAgentRequestResponseTaskCycleCountMin),
+  "recoveryCount": zod.int().min(sendAgentRequestResponseTaskRecoveryCountMin),
+  "cycleCount": zod.int().min(sendAgentRequestResponseTaskCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -2176,12 +2176,12 @@ export const SendAgentRequestResponse = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(sendAgentRequestResponseCreatedTasksItemModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(sendAgentRequestResponseCreatedTasksItemModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(sendAgentRequestResponseCreatedTasksItemCadenceSecondsMin).max(sendAgentRequestResponseCreatedTasksItemCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(sendAgentRequestResponseCreatedTasksItemCadenceSecondsMin).max(sendAgentRequestResponseCreatedTasksItemCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(sendAgentRequestResponseCreatedTasksItemRecoveryCountMin),
-  "cycleCount": zod.number().int().min(sendAgentRequestResponseCreatedTasksItemCycleCountMin),
+  "recoveryCount": zod.int().min(sendAgentRequestResponseCreatedTasksItemRecoveryCountMin),
+  "cycleCount": zod.int().min(sendAgentRequestResponseCreatedTasksItemCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -2244,7 +2244,7 @@ export const SendAgentRequestResponse = zod.object({
 
 export const GetAgentRequestParams = zod.object({
   "agentId": zod.coerce.number().int().min(1),
-  "requestId": zod.coerce.string().uuid()
+  "requestId": zod.uuid()
 })
 
 
@@ -2296,9 +2296,9 @@ export const getAgentRequestResponseCreatedAgentsItemAvatarVersionMax = 64;
 
 
 export const GetAgentRequestResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "agentId": zod.number().int().min(1),
-  "taskId": zod.number().int().min(1).max(getAgentRequestResponseTaskIdMax).optional().describe('Original project conversation scope, retained even after the project is removed. Absent for direct conversation and project creation.'),
+  "requestId": zod.uuid(),
+  "agentId": zod.int().min(1),
+  "taskId": zod.int().min(1).max(getAgentRequestResponseTaskIdMax).optional().describe('Original project conversation scope, retained even after the project is removed. Absent for direct conversation and project creation.'),
   "kind": zod.enum(['ask', 'delegate', 'continuous']),
   "deliveryState": zod.enum(['complete', 'unconfirmed', 'rejected']),
   "outcome": zod.enum(['unconfirmed', 'rejected', 'queued', 'reply', 'provider_error', 'empty_response', 'tool_limit', 'tool_outcome_unknown', 'tool_deferred', 'approval_review', 'round_limit']),
@@ -2348,12 +2348,12 @@ export const GetAgentRequestResponse = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(getAgentRequestResponseTaskModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(getAgentRequestResponseTaskModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(getAgentRequestResponseTaskCadenceSecondsMin).max(getAgentRequestResponseTaskCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(getAgentRequestResponseTaskCadenceSecondsMin).max(getAgentRequestResponseTaskCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(getAgentRequestResponseTaskRecoveryCountMin),
-  "cycleCount": zod.number().int().min(getAgentRequestResponseTaskCycleCountMin),
+  "recoveryCount": zod.int().min(getAgentRequestResponseTaskRecoveryCountMin),
+  "cycleCount": zod.int().min(getAgentRequestResponseTaskCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -2392,12 +2392,12 @@ export const GetAgentRequestResponse = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(getAgentRequestResponseCreatedTasksItemModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(getAgentRequestResponseCreatedTasksItemModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(getAgentRequestResponseCreatedTasksItemCadenceSecondsMin).max(getAgentRequestResponseCreatedTasksItemCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(getAgentRequestResponseCreatedTasksItemCadenceSecondsMin).max(getAgentRequestResponseCreatedTasksItemCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(getAgentRequestResponseCreatedTasksItemRecoveryCountMin),
-  "cycleCount": zod.number().int().min(getAgentRequestResponseCreatedTasksItemCycleCountMin),
+  "recoveryCount": zod.int().min(getAgentRequestResponseCreatedTasksItemRecoveryCountMin),
+  "cycleCount": zod.int().min(getAgentRequestResponseCreatedTasksItemCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -2464,7 +2464,7 @@ export const GetCompanyChannelResponse = zod.object({
   "id": zod.number(),
   "key": zod.string(),
   "name": zod.string(),
-  "activeAgentCount": zod.number().int().min(getCompanyChannelResponseActiveAgentCountMin),
+  "activeAgentCount": zod.int().min(getCompanyChannelResponseActiveAgentCountMin),
   "createdAt": zod.coerce.date()
 })
 
@@ -2477,8 +2477,8 @@ export const GetCompanyChannelResponse = zod.object({
 
 
 export const ListCompanyChannelMembersResponseItem = zod.object({
-  "channelId": zod.number().int().min(1),
-  "agentId": zod.number().int().min(1),
+  "channelId": zod.int().min(1),
+  "agentId": zod.int().min(1),
   "name": zod.string(),
   "role": zod.string(),
   "department": zod.string().nullable(),
@@ -2497,7 +2497,7 @@ export const ListCompanyChannelMembersResponse = zod.array(ListCompanyChannelMem
 
 
 export const AddCompanyChannelMemberBody = zod.object({
-  "agentId": zod.number().int().min(1)
+  "agentId": zod.int().min(1)
 })
 
 
@@ -2505,8 +2505,8 @@ export const AddCompanyChannelMemberBody = zod.object({
 
 
 export const AddCompanyChannelMemberResponse = zod.object({
-  "channelId": zod.number().int().min(1),
-  "agentId": zod.number().int().min(1),
+  "channelId": zod.int().min(1),
+  "agentId": zod.int().min(1),
   "name": zod.string(),
   "role": zod.string(),
   "department": zod.string().nullable(),
@@ -2573,11 +2573,11 @@ export const sendCompanyMessageBodyContentMax = 4000;
 
 
 export const SendCompanyMessageBody = zod.object({
-  "requestId": zod.string().uuid().optional().describe('Stable identity for one send intent. Replays recover the stored receipt without invoking agents again.'),
+  "requestId": zod.uuid().optional().describe('Stable identity for one send intent. Replays recover the stored receipt without invoking agents again.'),
   "locale": zod.enum(['tr', 'en', 'de', 'ru', 'zh-CN', 'zh-TW', 'ar']).optional().describe('Explicit response language for this send intent. Omission uses the workspace language.'),
   "content": zod.string().min(1).max(sendCompanyMessageBodyContentMax),
-  "participantAgentIds": zod.array(zod.number().int().min(1)).optional().describe('Backward-compatible alias for mentionedAgentIds.'),
-  "mentionedAgentIds": zod.array(zod.number().int().min(1)).optional().describe('Explicitly @mentioned active room members, in display order. Omit for ambient relevance routing.')
+  "participantAgentIds": zod.array(zod.int().min(1)).optional().describe('Backward-compatible alias for mentionedAgentIds.'),
+  "mentionedAgentIds": zod.array(zod.int().min(1)).optional().describe('Explicitly @mentioned active room members, in display order. Omit for ambient relevance routing.')
 })
 
 
@@ -2631,24 +2631,24 @@ export const SendCompanyMessageResponse = zod.object({
   "createdAt": zod.coerce.date()
 })),
   "skippedParticipants": zod.array(zod.object({
-  "agentId": zod.number().int().min(1),
+  "agentId": zod.int().min(1),
   "reason": zod.enum(['busy', 'unavailable', 'empty_response', 'model_error', 'not_relevant', 'not_mentioned', 'budget_guard'])
 })),
   "routing": zod.object({
   "mode": zod.enum(['mentions', 'relevance']),
-  "mentionedAgentIds": zod.array(zod.number().int().min(1)),
-  "evaluatedMemberCount": zod.number().int().min(sendCompanyMessageResponseRoutingEvaluatedMemberCountMin),
-  "attemptedAgentCount": zod.number().int().min(sendCompanyMessageResponseRoutingAttemptedAgentCountMin),
-  "responseCount": zod.number().int().min(sendCompanyMessageResponseRoutingResponseCountMin),
-  "maxResponseAttempts": zod.number().int().min(1),
-  "concurrency": zod.number().int().min(1),
-  "maxTokensPerResponse": zod.number().int().min(1),
-  "tokenBudget": zod.number().int().min(1),
+  "mentionedAgentIds": zod.array(zod.int().min(1)),
+  "evaluatedMemberCount": zod.int().min(sendCompanyMessageResponseRoutingEvaluatedMemberCountMin),
+  "attemptedAgentCount": zod.int().min(sendCompanyMessageResponseRoutingAttemptedAgentCountMin),
+  "responseCount": zod.int().min(sendCompanyMessageResponseRoutingResponseCountMin),
+  "maxResponseAttempts": zod.int().min(1),
+  "concurrency": zod.int().min(1),
+  "maxTokensPerResponse": zod.int().min(1),
+  "tokenBudget": zod.int().min(1),
   "decisions": zod.array(zod.object({
-  "agentId": zod.number().int().min(1),
+  "agentId": zod.int().min(1),
   "shouldAttempt": zod.boolean(),
   "reason": zod.enum(['mentioned', 'role_match', 'general_question', 'not_mentioned', 'not_relevant', 'budget_guard']),
-  "score": zod.number().int().min(sendCompanyMessageResponseRoutingDecisionsItemScoreMin)
+  "score": zod.int().min(sendCompanyMessageResponseRoutingDecisionsItemScoreMin)
 }))
 })
 })
@@ -2669,7 +2669,7 @@ export const getTaskCompletionToolsResponseToolsItemRegExp = new RegExp('^[a-zA-
 
 
 export const GetTaskCompletionToolsResponse = zod.object({
-  "ownerAgentId": zod.number().int().min(1),
+  "ownerAgentId": zod.int().min(1),
   "tools": zod.array(zod.string().regex(getTaskCompletionToolsResponseToolsItemRegExp))
 })
 
@@ -2694,8 +2694,8 @@ export const getTaskCompletionRequirementsResponseRequirementsMax = 8;
 
 export const GetTaskCompletionRequirementsResponse = zod.object({
   "source": zod.enum(['persisted_current_cycle']),
-  "taskId": zod.number().int().min(1),
-  "cycleNumber": zod.number().int().min(getTaskCompletionRequirementsResponseCycleNumberMin),
+  "taskId": zod.int().min(1),
+  "cycleNumber": zod.int().min(getTaskCompletionRequirementsResponseCycleNumberMin),
   "taskStatus": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled']),
   "observedAt": zod.coerce.date(),
   "requirements": zod.array(zod.object({
@@ -2773,12 +2773,12 @@ export const ListTasksResponseItem = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(listTasksResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(listTasksResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(listTasksResponseCadenceSecondsMin).max(listTasksResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(listTasksResponseCadenceSecondsMin).max(listTasksResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(listTasksResponseRecoveryCountMin),
-  "cycleCount": zod.number().int().min(listTasksResponseCycleCountMin),
+  "recoveryCount": zod.int().min(listTasksResponseRecoveryCountMin),
+  "cycleCount": zod.int().min(listTasksResponseCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -2820,7 +2820,7 @@ export const createTaskBodyCadenceSecondsMax = 604800;
 
 
 export const CreateTaskBody = zod.object({
-  "requestId": zod.string().uuid().regex(createTaskBodyRequestIdRegExp).optional().describe('Saved caller request identity; matching retries never create another project. Omission retains legacy creation without recovery.'),
+  "requestId": zod.uuid().regex(createTaskBodyRequestIdRegExp).optional().describe('Saved caller request identity; matching retries never create another project. Omission retains legacy creation without recovery.'),
   "title": zod.string().min(1).max(createTaskBodyTitleMax),
   "brief": zod.string().min(1).max(createTaskBodyBriefMax),
   "completionRequirements": zod.array(zod.object({
@@ -2835,7 +2835,7 @@ export const CreateTaskBody = zod.object({
   "priority": zod.enum(['low', 'normal', 'high', 'urgent']).optional(),
   "dueAt": zod.coerce.date().optional(),
   "autonomyMode": zod.enum(['finite', 'continuous']).optional(),
-  "cadenceSeconds": zod.number().int().min(createTaskBodyCadenceSecondsMin).max(createTaskBodyCadenceSecondsMax).optional()
+  "cadenceSeconds": zod.int().min(createTaskBodyCadenceSecondsMin).max(createTaskBodyCadenceSecondsMax).optional()
 })
 
 export const createTaskResponseCompletionRequirementsItemToolMax = 80;
@@ -2886,12 +2886,12 @@ export const CreateTaskResponse = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(createTaskResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(createTaskResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(createTaskResponseCadenceSecondsMin).max(createTaskResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(createTaskResponseCadenceSecondsMin).max(createTaskResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(createTaskResponseRecoveryCountMin),
-  "cycleCount": zod.number().int().min(createTaskResponseCycleCountMin),
+  "recoveryCount": zod.int().min(createTaskResponseRecoveryCountMin),
+  "cycleCount": zod.int().min(createTaskResponseCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -2913,7 +2913,7 @@ export const getTaskCreationRequestPathRequestIdRegExp = new RegExp('^[a-fA-F0-9
 
 
 export const GetTaskCreationRequestParams = zod.object({
-  "requestId": zod.coerce.string().uuid().regex(getTaskCreationRequestPathRequestIdRegExp)
+  "requestId": zod.uuid().regex(getTaskCreationRequestPathRequestIdRegExp)
 })
 
 export const getTaskCreationRequestResponseRequestIdRegExp = new RegExp('^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-8][a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$');
@@ -2922,9 +2922,9 @@ export const getTaskCreationRequestResponseTaskIdMax = 2147483647;
 
 
 export const GetTaskCreationRequestResponse = zod.object({
-  "requestId": zod.string().uuid().regex(getTaskCreationRequestResponseRequestIdRegExp).describe('Saved caller request identity; matching retries never create another project. Omission retains legacy creation without recovery.'),
+  "requestId": zod.uuid().regex(getTaskCreationRequestResponseRequestIdRegExp).describe('Saved caller request identity; matching retries never create another project. Omission retains legacy creation without recovery.'),
   "state": zod.enum(['created', 'rejected']),
-  "taskId": zod.number().int().min(1).max(getTaskCreationRequestResponseTaskIdMax).nullable(),
+  "taskId": zod.int().min(1).max(getTaskCreationRequestResponseTaskIdMax).nullable(),
   "failureCode": zod.enum(['EMERGENCY_STOP_ACTIVE', 'AGENT_UNAVAILABLE', 'RUNTIME_CAPACITY_EXCEEDED', 'EXECUTION_POLICY_DENIED']).nullable(),
   "createdAt": zod.coerce.date()
 })
@@ -2985,12 +2985,12 @@ export const GetTaskResponse = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(getTaskResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(getTaskResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(getTaskResponseCadenceSecondsMin).max(getTaskResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(getTaskResponseCadenceSecondsMin).max(getTaskResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(getTaskResponseRecoveryCountMin),
-  "cycleCount": zod.number().int().min(getTaskResponseCycleCountMin),
+  "recoveryCount": zod.int().min(getTaskResponseRecoveryCountMin),
+  "cycleCount": zod.int().min(getTaskResponseCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -3071,12 +3071,12 @@ export const ListSubtasksResponseItem = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(listSubtasksResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(listSubtasksResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(listSubtasksResponseCadenceSecondsMin).max(listSubtasksResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(listSubtasksResponseCadenceSecondsMin).max(listSubtasksResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(listSubtasksResponseRecoveryCountMin),
-  "cycleCount": zod.number().int().min(listSubtasksResponseCycleCountMin),
+  "recoveryCount": zod.int().min(listSubtasksResponseRecoveryCountMin),
+  "cycleCount": zod.int().min(listSubtasksResponseCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -3236,12 +3236,12 @@ export const CancelTaskResponse = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(cancelTaskResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(cancelTaskResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(cancelTaskResponseCadenceSecondsMin).max(cancelTaskResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(cancelTaskResponseCadenceSecondsMin).max(cancelTaskResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(cancelTaskResponseRecoveryCountMin),
-  "cycleCount": zod.number().int().min(cancelTaskResponseCycleCountMin),
+  "recoveryCount": zod.int().min(cancelTaskResponseRecoveryCountMin),
+  "cycleCount": zod.int().min(cancelTaskResponseCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -3270,7 +3270,7 @@ export const updateTaskAutonomyBodyCadenceSecondsMax = 604800;
 
 export const UpdateTaskAutonomyBody = zod.object({
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(updateTaskAutonomyBodyCadenceSecondsMin).max(updateTaskAutonomyBodyCadenceSecondsMax).optional()
+  "cadenceSeconds": zod.int().min(updateTaskAutonomyBodyCadenceSecondsMin).max(updateTaskAutonomyBodyCadenceSecondsMax).optional()
 })
 
 export const updateTaskAutonomyResponseCompletionRequirementsItemToolMax = 80;
@@ -3321,12 +3321,12 @@ export const UpdateTaskAutonomyResponse = zod.object({
   "executionModelId": zod.string().nullable().describe('User-owned model pin captured when the task becomes an unattended responsibility; null follows automatic routing.'),
   "lastModelId": zod.string().nullable().describe('Most recently attempted or successful runtime model route.'),
   "lastModelProvider": zod.string().nullable().describe('Provider for the most recently attempted or successful model route.'),
-  "modelFallbackCount": zod.number().int().min(updateTaskAutonomyResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
+  "modelFallbackCount": zod.int().min(updateTaskAutonomyResponseModelFallbackCountMin).describe('Durable count of fallback routes activated while executing this task.'),
   "autonomyMode": zod.enum(['finite', 'continuous']),
-  "cadenceSeconds": zod.number().int().min(updateTaskAutonomyResponseCadenceSecondsMin).max(updateTaskAutonomyResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
+  "cadenceSeconds": zod.int().min(updateTaskAutonomyResponseCadenceSecondsMin).max(updateTaskAutonomyResponseCadenceSecondsMax).nullable().describe('Delay between completed continuous work cycles.'),
   "lastHeartbeatAt": zod.coerce.date().nullable(),
-  "recoveryCount": zod.number().int().min(updateTaskAutonomyResponseRecoveryCountMin),
-  "cycleCount": zod.number().int().min(updateTaskAutonomyResponseCycleCountMin),
+  "recoveryCount": zod.int().min(updateTaskAutonomyResponseRecoveryCountMin),
+  "cycleCount": zod.int().min(updateTaskAutonomyResponseCycleCountMin),
   "lastCycleCompletedAt": zod.coerce.date().nullable(),
   "lastSteppedAt": zod.coerce.date().nullable(),
   "stepAttempts": zod.number(),
@@ -3354,15 +3354,15 @@ export const resumeTaskBodyAnswerMax = 1200;
 
 
 export const ResumeTaskBody = zod.object({
-  "requestId": zod.string().uuid(),
-  "questionId": zod.string().uuid(),
+  "requestId": zod.uuid(),
+  "questionId": zod.uuid(),
   "answer": zod.string().min(1).max(resumeTaskBodyAnswerMax)
 })
 
 export const ResumeTaskResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "taskId": zod.number().int(),
-  "questionId": zod.string().uuid(),
+  "requestId": zod.uuid(),
+  "taskId": zod.int(),
+  "questionId": zod.uuid(),
   "outcome": zod.enum(['accepted', 'rejected']),
   "reason": zod.enum(['task_changed', 'question_changed', 'owner_inactive', 'emergency_stop']).nullable(),
   "recordedAt": zod.coerce.date()
@@ -3384,8 +3384,8 @@ export const GetTaskBudgetResumeStatusParams = zod.object({
 
 
 export const GetTaskBudgetResumeStatusResponse = zod.object({
-  "taskId": zod.number().int().min(1),
-  "rootTaskId": zod.number().int().min(1).nullable(),
+  "taskId": zod.int().min(1),
+  "rootTaskId": zod.int().min(1).nullable(),
   "budgetPaused": zod.boolean()
 })
 
@@ -3405,8 +3405,8 @@ export const ResumeTaskBudgetParams = zod.object({
 
 
 export const ResumeTaskBudgetBody = zod.object({
-  "requestId": zod.string().uuid(),
-  "rootTaskId": zod.number().int().min(1)
+  "requestId": zod.uuid(),
+  "rootTaskId": zod.int().min(1)
 })
 
 
@@ -3423,14 +3423,14 @@ export const resumeTaskBudgetResponseStillPausedCountMax = 1000;
 
 
 export const ResumeTaskBudgetResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "taskId": zod.number().int().min(1),
-  "rootTaskId": zod.number().int().min(1),
+  "requestId": zod.uuid(),
+  "taskId": zod.int().min(1),
+  "rootTaskId": zod.int().min(1),
   "outcome": zod.enum(['accepted', 'rejected']),
   "reason": zod.enum(['emergency_stop', 'task_changed', 'family_invalid', 'family_too_large', 'allowance_exhausted', 'nothing_eligible']).nullable(),
-  "queuedTaskIds": zod.array(zod.number().int().min(1)).max(resumeTaskBudgetResponseQueuedTaskIdsMax),
-  "queuedCount": zod.number().int().min(resumeTaskBudgetResponseQueuedCountMin).max(resumeTaskBudgetResponseQueuedCountMax),
-  "stillPausedCount": zod.number().int().min(resumeTaskBudgetResponseStillPausedCountMin).max(resumeTaskBudgetResponseStillPausedCountMax),
+  "queuedTaskIds": zod.array(zod.int().min(1)).max(resumeTaskBudgetResponseQueuedTaskIdsMax),
+  "queuedCount": zod.int().min(resumeTaskBudgetResponseQueuedCountMin).max(resumeTaskBudgetResponseQueuedCountMax),
+  "stillPausedCount": zod.int().min(resumeTaskBudgetResponseStillPausedCountMin).max(resumeTaskBudgetResponseStillPausedCountMax),
   "recordedAt": zod.coerce.date()
 })
 
@@ -3443,7 +3443,7 @@ export const ResumeTaskBudgetResponse = zod.object({
 
 export const GetTaskBudgetResumeReceiptParams = zod.object({
   "taskId": zod.coerce.number().int().min(1),
-  "requestId": zod.coerce.string().uuid()
+  "requestId": zod.uuid()
 })
 
 
@@ -3460,14 +3460,14 @@ export const getTaskBudgetResumeReceiptResponseStillPausedCountMax = 1000;
 
 
 export const GetTaskBudgetResumeReceiptResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "taskId": zod.number().int().min(1),
-  "rootTaskId": zod.number().int().min(1),
+  "requestId": zod.uuid(),
+  "taskId": zod.int().min(1),
+  "rootTaskId": zod.int().min(1),
   "outcome": zod.enum(['accepted', 'rejected']),
   "reason": zod.enum(['emergency_stop', 'task_changed', 'family_invalid', 'family_too_large', 'allowance_exhausted', 'nothing_eligible']).nullable(),
-  "queuedTaskIds": zod.array(zod.number().int().min(1)).max(getTaskBudgetResumeReceiptResponseQueuedTaskIdsMax),
-  "queuedCount": zod.number().int().min(getTaskBudgetResumeReceiptResponseQueuedCountMin).max(getTaskBudgetResumeReceiptResponseQueuedCountMax),
-  "stillPausedCount": zod.number().int().min(getTaskBudgetResumeReceiptResponseStillPausedCountMin).max(getTaskBudgetResumeReceiptResponseStillPausedCountMax),
+  "queuedTaskIds": zod.array(zod.int().min(1)).max(getTaskBudgetResumeReceiptResponseQueuedTaskIdsMax),
+  "queuedCount": zod.int().min(getTaskBudgetResumeReceiptResponseQueuedCountMin).max(getTaskBudgetResumeReceiptResponseQueuedCountMax),
+  "stillPausedCount": zod.int().min(getTaskBudgetResumeReceiptResponseStillPausedCountMin).max(getTaskBudgetResumeReceiptResponseStillPausedCountMax),
   "recordedAt": zod.coerce.date()
 })
 
@@ -3487,9 +3487,9 @@ export const GetTaskResponseRetryScopeParams = zod.object({
 
 
 export const GetTaskResponseRetryScopeResponse = zod.object({
-  "taskId": zod.number().int().min(1),
+  "taskId": zod.int().min(1),
   "canRetry": zod.boolean(),
-  "blockedAttemptId": zod.string().uuid().nullable()
+  "blockedAttemptId": zod.uuid().nullable()
 })
 
 
@@ -3505,7 +3505,7 @@ export const RetryTaskResponseParams = zod.object({
 })
 
 export const RetryTaskResponseBody = zod.object({
-  "blockedAttemptId": zod.string().uuid(),
+  "blockedAttemptId": zod.uuid(),
   "acknowledge": zod.literal(true)
 })
 
@@ -3513,8 +3513,8 @@ export const RetryTaskResponseBody = zod.object({
 
 
 export const RetryTaskResponseResponse = zod.object({
-  "taskId": zod.number().int().min(1),
-  "blockedAttemptId": zod.string().uuid(),
+  "taskId": zod.int().min(1),
+  "blockedAttemptId": zod.uuid(),
   "outcome": zod.enum(['accepted']),
   "recordedAt": zod.coerce.date()
 })
@@ -3528,15 +3528,15 @@ export const RetryTaskResponseResponse = zod.object({
 
 export const GetTaskResponseRetryReceiptParams = zod.object({
   "taskId": zod.coerce.number().int().min(1),
-  "attemptId": zod.coerce.string().uuid()
+  "attemptId": zod.uuid()
 })
 
 
 
 
 export const GetTaskResponseRetryReceiptResponse = zod.object({
-  "taskId": zod.number().int().min(1),
-  "blockedAttemptId": zod.string().uuid(),
+  "taskId": zod.int().min(1),
+  "blockedAttemptId": zod.uuid(),
   "outcome": zod.enum(['accepted']),
   "recordedAt": zod.coerce.date()
 })
@@ -3553,10 +3553,10 @@ export const GetTaskQuestionParams = zod.object({
 })
 
 export const GetTaskQuestionResponse = zod.object({
-  "taskId": zod.number().int(),
-  "questionId": zod.string().uuid().nullable(),
+  "taskId": zod.int(),
+  "questionId": zod.uuid().nullable(),
   "question": zod.string().nullable(),
-  "ownerAgentId": zod.number().int().nullable(),
+  "ownerAgentId": zod.int().nullable(),
   "answerable": zod.boolean()
 })
 
@@ -3569,13 +3569,13 @@ export const GetTaskQuestionResponse = zod.object({
 
 export const GetTaskAnswerReceiptParams = zod.object({
   "taskId": zod.coerce.number().int().min(1),
-  "requestId": zod.coerce.string().uuid()
+  "requestId": zod.uuid()
 })
 
 export const GetTaskAnswerReceiptResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "taskId": zod.number().int(),
-  "questionId": zod.string().uuid(),
+  "requestId": zod.uuid(),
+  "taskId": zod.int(),
+  "questionId": zod.uuid(),
   "outcome": zod.enum(['accepted', 'rejected']),
   "reason": zod.enum(['task_changed', 'question_changed', 'owner_inactive', 'emergency_stop']).nullable(),
   "recordedAt": zod.coerce.date()
@@ -3590,7 +3590,7 @@ export const GetTaskAnswerReceiptResponse = zod.object({
 
 export const GetProjectMeetingCommandReceiptParams = zod.object({
   "projectId": zod.coerce.number().int().min(1).describe('Positive id of a root project task.'),
-  "requestId": zod.coerce.string().uuid()
+  "requestId": zod.uuid()
 })
 
 
@@ -3601,17 +3601,17 @@ export const GetProjectMeetingCommandReceiptParams = zod.object({
 
 
 export const GetProjectMeetingCommandReceiptResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "projectId": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1).nullable(),
+  "requestId": zod.uuid(),
+  "projectId": zod.int().min(1),
+  "meetingId": zod.int().min(1).nullable(),
   "kind": zod.enum(['create', 'update', 'transcript', 'decision', 'action', 'action-update', 'complete']),
   "httpStatus": zod.union([zod.literal(200),zod.literal(201),zod.literal(400),zod.literal(404),zod.literal(409)]),
   "response": zod.object({
-  "requestId": zod.string().uuid(),
-  "projectId": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1).nullable(),
+  "requestId": zod.uuid(),
+  "projectId": zod.int().min(1),
+  "meetingId": zod.int().min(1).nullable(),
   "kind": zod.enum(['create', 'update', 'transcript', 'decision', 'action', 'action-update', 'complete']),
-  "entityId": zod.number().int().min(1).nullable(),
+  "entityId": zod.int().min(1).nullable(),
   "ok": zod.boolean(),
   "code": zod.string().optional(),
   "error": zod.string().optional()
@@ -3656,8 +3656,8 @@ export const listProjectMeetingsResponseParticipantCountMin = 0;
 
 export const ListProjectMeetingsResponseItem = zod.object({
   "meeting": zod.object({
-  "id": zod.number().int().min(1),
-  "taskId": zod.number().int().min(1).describe('Owning root project task id.'),
+  "id": zod.int().min(1),
+  "taskId": zod.int().min(1).describe('Owning root project task id.'),
   "title": zod.string().min(1).max(listProjectMeetingsResponseMeetingTitleMax),
   "agenda": zod.string().max(listProjectMeetingsResponseMeetingAgendaMax).nullable(),
   "status": zod.enum(['draft', 'scheduled', 'in_progress', 'completed', 'cancelled']),
@@ -3668,7 +3668,7 @@ export const ListProjectMeetingsResponseItem = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }),
-  "participantCount": zod.number().int().min(listProjectMeetingsResponseParticipantCountMin)
+  "participantCount": zod.int().min(listProjectMeetingsResponseParticipantCountMin)
 })
 export const ListProjectMeetingsResponse = zod.array(ListProjectMeetingsResponseItem)
 
@@ -3692,10 +3692,10 @@ export const createProjectMeetingBodyAgendaMax = 12000;
 
 
 export const CreateProjectMeetingBody = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "title": zod.string().min(1).max(createProjectMeetingBodyTitleMax),
   "agenda": zod.string().max(createProjectMeetingBodyAgendaMax).nullish(),
-  "participantAgentIds": zod.array(zod.number().int().min(1)).optional().describe('Unlimited stored roster, bounded only by the HTTP body size.'),
+  "participantAgentIds": zod.array(zod.int().min(1)).optional().describe('Unlimited stored roster, bounded only by the HTTP body size.'),
   "scheduledFor": zod.coerce.date().nullish()
 })
 
@@ -3705,11 +3705,11 @@ export const CreateProjectMeetingBody = zod.object({
 
 
 export const CreateProjectMeetingResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "projectId": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1).nullable(),
+  "requestId": zod.uuid(),
+  "projectId": zod.int().min(1),
+  "meetingId": zod.int().min(1).nullable(),
   "kind": zod.enum(['create', 'update', 'transcript', 'decision', 'action', 'action-update', 'complete']),
-  "entityId": zod.number().int().min(1).nullable(),
+  "entityId": zod.int().min(1).nullable(),
   "ok": zod.boolean(),
   "code": zod.string().optional(),
   "error": zod.string().optional()
@@ -3762,8 +3762,8 @@ export const getProjectMeetingResponseActionItemsItemDetailsMax = 12000;
 
 export const GetProjectMeetingResponse = zod.object({
   "meeting": zod.object({
-  "id": zod.number().int().min(1),
-  "taskId": zod.number().int().min(1).describe('Owning root project task id.'),
+  "id": zod.int().min(1),
+  "taskId": zod.int().min(1).describe('Owning root project task id.'),
   "title": zod.string().min(1).max(getProjectMeetingResponseMeetingTitleMax),
   "agenda": zod.string().max(getProjectMeetingResponseMeetingAgendaMax).nullable(),
   "status": zod.enum(['draft', 'scheduled', 'in_progress', 'completed', 'cancelled']),
@@ -3775,8 +3775,8 @@ export const GetProjectMeetingResponse = zod.object({
   "updatedAt": zod.coerce.date()
 }),
   "participants": zod.array(zod.object({
-  "meetingId": zod.number().int().min(1),
-  "agentId": zod.number().int().min(1),
+  "meetingId": zod.int().min(1),
+  "agentId": zod.int().min(1),
   "addedAt": zod.coerce.date(),
   "name": zod.string(),
   "role": zod.string(),
@@ -3784,12 +3784,12 @@ export const GetProjectMeetingResponse = zod.object({
   "isActive": zod.boolean()
 })).describe('Normalized roster with no application-level item ceiling.'),
   "transcript": zod.array(zod.object({
-  "id": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1),
+  "id": zod.int().min(1),
+  "meetingId": zod.int().min(1),
   "speakerType": zod.enum(['founder', 'agent']),
-  "speakerAgentId": zod.number().int().min(1).nullable(),
+  "speakerAgentId": zod.int().min(1).nullable(),
   "content": zod.string().min(1).max(getProjectMeetingResponseTranscriptItemContentMax),
-  "replyToTranscriptId": zod.number().int().min(1).nullable(),
+  "replyToTranscriptId": zod.int().min(1).nullable(),
   "occurredAt": zod.coerce.date(),
   "createdAt": zod.coerce.date(),
   "speakerName": zod.string().nullable(),
@@ -3797,21 +3797,21 @@ export const GetProjectMeetingResponse = zod.object({
   "speakerAvatarColor": zod.string().nullable()
 })),
   "decisions": zod.array(zod.object({
-  "id": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1),
+  "id": zod.int().min(1),
+  "meetingId": zod.int().min(1),
   "content": zod.string().min(1).max(getProjectMeetingResponseDecisionsItemContentMax),
   "rationale": zod.string().max(getProjectMeetingResponseDecisionsItemRationaleMax).nullable(),
-  "ownerAgentId": zod.number().int().min(1).nullable(),
+  "ownerAgentId": zod.int().min(1).nullable(),
   "createdAt": zod.coerce.date(),
   "ownerName": zod.string().nullable(),
   "ownerRole": zod.string().nullable()
 })),
   "actionItems": zod.array(zod.object({
-  "id": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1),
+  "id": zod.int().min(1),
+  "meetingId": zod.int().min(1),
   "title": zod.string().min(1).max(getProjectMeetingResponseActionItemsItemTitleMax),
   "details": zod.string().max(getProjectMeetingResponseActionItemsItemDetailsMax).nullable(),
-  "ownerAgentId": zod.number().int().min(1).nullable(),
+  "ownerAgentId": zod.int().min(1).nullable(),
   "status": zod.enum(['open', 'in_progress', 'done', 'cancelled']),
   "dueAt": zod.coerce.date().nullable(),
   "completedAt": zod.coerce.date().nullable(),
@@ -3846,12 +3846,12 @@ export const updateProjectMeetingBodySummaryMax = 30000;
 
 
 export const UpdateProjectMeetingBody = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "title": zod.string().min(1).max(updateProjectMeetingBodyTitleMax).optional(),
   "agenda": zod.string().max(updateProjectMeetingBodyAgendaMax).nullish(),
   "status": zod.enum(['draft', 'scheduled', 'cancelled']).optional().describe('Generic edits cannot bypass the start or complete command invariants.'),
   "summary": zod.string().max(updateProjectMeetingBodySummaryMax).nullish(),
-  "participantAgentIds": zod.array(zod.number().int().min(1)).optional(),
+  "participantAgentIds": zod.array(zod.int().min(1)).optional(),
   "scheduledFor": zod.coerce.date().nullish()
 })
 
@@ -3861,11 +3861,11 @@ export const UpdateProjectMeetingBody = zod.object({
 
 
 export const UpdateProjectMeetingResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "projectId": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1).nullable(),
+  "requestId": zod.uuid(),
+  "projectId": zod.int().min(1),
+  "meetingId": zod.int().min(1).nullable(),
   "kind": zod.enum(['create', 'update', 'transcript', 'decision', 'action', 'action-update', 'complete']),
-  "entityId": zod.number().int().min(1).nullable(),
+  "entityId": zod.int().min(1).nullable(),
   "ok": zod.boolean(),
   "code": zod.string().optional(),
   "error": zod.string().optional()
@@ -3882,15 +3882,15 @@ export const UpdateProjectMeetingResponse = zod.object({
 export const GetProjectMeetingTurnReceiptParams = zod.object({
   "projectId": zod.coerce.number().int().min(1).describe('Positive id of a root project task.'),
   "meetingId": zod.coerce.number().int().min(1).describe('Positive meeting id, always resolved together with projectId.'),
-  "requestId": zod.coerce.string().uuid()
+  "requestId": zod.uuid()
 })
 
 export const GetProjectMeetingTurnReceiptResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "projectId": zod.number().int(),
-  "meetingId": zod.number().int(),
+  "requestId": zod.uuid(),
+  "projectId": zod.int(),
+  "meetingId": zod.int(),
   "state": zod.enum(['running', 'complete', 'unconfirmed']),
-  "httpStatus": zod.number().int().nullable(),
+  "httpStatus": zod.int().nullable(),
   "response": zod.record(zod.string(), zod.unknown()).nullable().describe('Immutable recorded HTTP response; complete means the round finished, not that every participant succeeded.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -3920,10 +3920,10 @@ export const startProjectMeetingBodyMaxTokensPerResponseMax = 600;
 
 
 export const StartProjectMeetingBody = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "prompt": zod.string().min(1).max(startProjectMeetingBodyPromptMax).optional(),
-  "participantAgentIds": zod.array(zod.number().int().min(1)).optional().describe('Optional ordered subset of the durable meeting roster.'),
-  "maxTokensPerResponse": zod.number().int().min(startProjectMeetingBodyMaxTokensPerResponseMin).max(startProjectMeetingBodyMaxTokensPerResponseMax).optional()
+  "participantAgentIds": zod.array(zod.int().min(1)).optional().describe('Optional ordered subset of the durable meeting roster.'),
+  "maxTokensPerResponse": zod.int().min(startProjectMeetingBodyMaxTokensPerResponseMin).max(startProjectMeetingBodyMaxTokensPerResponseMax).optional()
 })
 
 
@@ -3972,10 +3972,10 @@ export const startProjectMeetingResponseExecutionMaxTokensPerResponseMax = 600;
 
 
 export const StartProjectMeetingResponse = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "meeting": zod.object({
-  "id": zod.number().int().min(1),
-  "taskId": zod.number().int().min(1).describe('Owning root project task id.'),
+  "id": zod.int().min(1),
+  "taskId": zod.int().min(1).describe('Owning root project task id.'),
   "title": zod.string().min(1).max(startProjectMeetingResponseMeetingTitleMax),
   "agenda": zod.string().max(startProjectMeetingResponseMeetingAgendaMax).nullable(),
   "status": zod.enum(['draft', 'scheduled', 'in_progress', 'completed', 'cancelled']),
@@ -3987,8 +3987,8 @@ export const StartProjectMeetingResponse = zod.object({
   "updatedAt": zod.coerce.date()
 }),
   "participants": zod.array(zod.object({
-  "meetingId": zod.number().int().min(1),
-  "agentId": zod.number().int().min(1),
+  "meetingId": zod.int().min(1),
+  "agentId": zod.int().min(1),
   "addedAt": zod.coerce.date(),
   "name": zod.string(),
   "role": zod.string(),
@@ -3996,12 +3996,12 @@ export const StartProjectMeetingResponse = zod.object({
   "isActive": zod.boolean()
 })),
   "transcript": zod.array(zod.object({
-  "id": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1),
+  "id": zod.int().min(1),
+  "meetingId": zod.int().min(1),
   "speakerType": zod.enum(['founder', 'agent']),
-  "speakerAgentId": zod.number().int().min(1).nullable(),
+  "speakerAgentId": zod.int().min(1).nullable(),
   "content": zod.string().min(1).max(startProjectMeetingResponseTranscriptItemContentMax),
-  "replyToTranscriptId": zod.number().int().min(1).nullable(),
+  "replyToTranscriptId": zod.int().min(1).nullable(),
   "occurredAt": zod.coerce.date(),
   "createdAt": zod.coerce.date(),
   "speakerName": zod.string().nullable(),
@@ -4009,21 +4009,21 @@ export const StartProjectMeetingResponse = zod.object({
   "speakerAvatarColor": zod.string().nullable()
 })),
   "decisions": zod.array(zod.object({
-  "id": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1),
+  "id": zod.int().min(1),
+  "meetingId": zod.int().min(1),
   "content": zod.string().min(1).max(startProjectMeetingResponseDecisionsItemContentMax),
   "rationale": zod.string().max(startProjectMeetingResponseDecisionsItemRationaleMax).nullable(),
-  "ownerAgentId": zod.number().int().min(1).nullable(),
+  "ownerAgentId": zod.int().min(1).nullable(),
   "createdAt": zod.coerce.date(),
   "ownerName": zod.string().nullable(),
   "ownerRole": zod.string().nullable()
 })),
   "actionItems": zod.array(zod.object({
-  "id": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1),
+  "id": zod.int().min(1),
+  "meetingId": zod.int().min(1),
   "title": zod.string().min(1).max(startProjectMeetingResponseActionItemsItemTitleMax),
   "details": zod.string().max(startProjectMeetingResponseActionItemsItemDetailsMax).nullable(),
-  "ownerAgentId": zod.number().int().min(1).nullable(),
+  "ownerAgentId": zod.int().min(1).nullable(),
   "status": zod.enum(['open', 'in_progress', 'done', 'cancelled']),
   "dueAt": zod.coerce.date().nullable(),
   "completedAt": zod.coerce.date().nullable(),
@@ -4033,15 +4033,15 @@ export const StartProjectMeetingResponse = zod.object({
   "ownerRole": zod.string().nullable()
 })),
   "execution": zod.object({
-  "requestedParticipantCount": zod.number().int().min(startProjectMeetingResponseExecutionRequestedParticipantCountMin),
-  "attemptedParticipantCount": zod.number().int().min(startProjectMeetingResponseExecutionAttemptedParticipantCountMin),
-  "maxRespondersPerStart": zod.number().int().min(1).max(startProjectMeetingResponseExecutionMaxRespondersPerStartMax),
-  "maxConcurrentMeetingStarts": zod.number().int().min(1).max(startProjectMeetingResponseExecutionMaxConcurrentMeetingStartsMax),
-  "maxTokensPerResponse": zod.number().int().min(startProjectMeetingResponseExecutionMaxTokensPerResponseMin).max(startProjectMeetingResponseExecutionMaxTokensPerResponseMax)
+  "requestedParticipantCount": zod.int().min(startProjectMeetingResponseExecutionRequestedParticipantCountMin),
+  "attemptedParticipantCount": zod.int().min(startProjectMeetingResponseExecutionAttemptedParticipantCountMin),
+  "maxRespondersPerStart": zod.int().min(1).max(startProjectMeetingResponseExecutionMaxRespondersPerStartMax),
+  "maxConcurrentMeetingStarts": zod.int().min(1).max(startProjectMeetingResponseExecutionMaxConcurrentMeetingStartsMax),
+  "maxTokensPerResponse": zod.int().min(startProjectMeetingResponseExecutionMaxTokensPerResponseMin).max(startProjectMeetingResponseExecutionMaxTokensPerResponseMax)
 }),
-  "agentTranscriptIds": zod.array(zod.number().int().min(1)),
+  "agentTranscriptIds": zod.array(zod.int().min(1)),
   "skippedParticipants": zod.array(zod.object({
-  "agentId": zod.number().int().min(1),
+  "agentId": zod.int().min(1),
   "reason": zod.enum(['busy', 'unavailable', 'empty_response', 'model_error', 'provider_unavailable', 'budget_guard'])
 }))
 })
@@ -4079,17 +4079,17 @@ export const completeProjectMeetingBodyActionItemsMax = 200;
 
 
 export const CompleteProjectMeetingBody = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "summary": zod.string().min(1).max(completeProjectMeetingBodySummaryMax),
   "decisions": zod.array(zod.object({
   "content": zod.string().min(1).max(completeProjectMeetingBodyDecisionsItemContentMax),
   "rationale": zod.string().max(completeProjectMeetingBodyDecisionsItemRationaleMax).nullish(),
-  "ownerAgentId": zod.number().int().min(1).nullish()
+  "ownerAgentId": zod.int().min(1).nullish()
 })).max(completeProjectMeetingBodyDecisionsMax).optional(),
   "actionItems": zod.array(zod.object({
   "title": zod.string().min(1).max(completeProjectMeetingBodyActionItemsItemTitleMax),
   "details": zod.string().max(completeProjectMeetingBodyActionItemsItemDetailsMax).nullish(),
-  "ownerAgentId": zod.number().int().min(1).nullish(),
+  "ownerAgentId": zod.int().min(1).nullish(),
   "dueAt": zod.coerce.date().nullish()
 })).max(completeProjectMeetingBodyActionItemsMax).optional()
 })
@@ -4100,11 +4100,11 @@ export const CompleteProjectMeetingBody = zod.object({
 
 
 export const CompleteProjectMeetingResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "projectId": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1).nullable(),
+  "requestId": zod.uuid(),
+  "projectId": zod.int().min(1),
+  "meetingId": zod.int().min(1).nullable(),
   "kind": zod.enum(['create', 'update', 'transcript', 'decision', 'action', 'action-update', 'complete']),
-  "entityId": zod.number().int().min(1).nullable(),
+  "entityId": zod.int().min(1).nullable(),
   "ok": zod.boolean(),
   "code": zod.string().optional(),
   "error": zod.string().optional()
@@ -4131,10 +4131,10 @@ export const appendProjectMeetingTranscriptBodyContentMax = 12000;
 
 
 export const AppendProjectMeetingTranscriptBody = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "speakerType": zod.enum(['founder']).default(appendProjectMeetingTranscriptBodySpeakerTypeDefault),
   "content": zod.string().min(1).max(appendProjectMeetingTranscriptBodyContentMax),
-  "replyToTranscriptId": zod.number().int().min(1).nullish(),
+  "replyToTranscriptId": zod.int().min(1).nullish(),
   "occurredAt": zod.coerce.date().nullish()
 })
 
@@ -4144,11 +4144,11 @@ export const AppendProjectMeetingTranscriptBody = zod.object({
 
 
 export const AppendProjectMeetingTranscriptResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "projectId": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1).nullable(),
+  "requestId": zod.uuid(),
+  "projectId": zod.int().min(1),
+  "meetingId": zod.int().min(1).nullable(),
   "kind": zod.enum(['create', 'update', 'transcript', 'decision', 'action', 'action-update', 'complete']),
-  "entityId": zod.number().int().min(1).nullable(),
+  "entityId": zod.int().min(1).nullable(),
   "ok": zod.boolean(),
   "code": zod.string().optional(),
   "error": zod.string().optional()
@@ -4175,10 +4175,10 @@ export const createProjectMeetingDecisionBodyRationaleMax = 12000;
 
 
 export const CreateProjectMeetingDecisionBody = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "content": zod.string().min(1).max(createProjectMeetingDecisionBodyContentMax),
   "rationale": zod.string().max(createProjectMeetingDecisionBodyRationaleMax).nullish(),
-  "ownerAgentId": zod.number().int().min(1).nullish()
+  "ownerAgentId": zod.int().min(1).nullish()
 })
 
 
@@ -4187,11 +4187,11 @@ export const CreateProjectMeetingDecisionBody = zod.object({
 
 
 export const CreateProjectMeetingDecisionResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "projectId": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1).nullable(),
+  "requestId": zod.uuid(),
+  "projectId": zod.int().min(1),
+  "meetingId": zod.int().min(1).nullable(),
   "kind": zod.enum(['create', 'update', 'transcript', 'decision', 'action', 'action-update', 'complete']),
-  "entityId": zod.number().int().min(1).nullable(),
+  "entityId": zod.int().min(1).nullable(),
   "ok": zod.boolean(),
   "code": zod.string().optional(),
   "error": zod.string().optional()
@@ -4218,10 +4218,10 @@ export const createProjectMeetingActionItemBodyDetailsMax = 12000;
 
 
 export const CreateProjectMeetingActionItemBody = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "title": zod.string().min(1).max(createProjectMeetingActionItemBodyTitleMax),
   "details": zod.string().max(createProjectMeetingActionItemBodyDetailsMax).nullish(),
-  "ownerAgentId": zod.number().int().min(1).nullish(),
+  "ownerAgentId": zod.int().min(1).nullish(),
   "dueAt": zod.coerce.date().nullish()
 })
 
@@ -4231,11 +4231,11 @@ export const CreateProjectMeetingActionItemBody = zod.object({
 
 
 export const CreateProjectMeetingActionItemResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "projectId": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1).nullable(),
+  "requestId": zod.uuid(),
+  "projectId": zod.int().min(1),
+  "meetingId": zod.int().min(1).nullable(),
   "kind": zod.enum(['create', 'update', 'transcript', 'decision', 'action', 'action-update', 'complete']),
-  "entityId": zod.number().int().min(1).nullable(),
+  "entityId": zod.int().min(1).nullable(),
   "ok": zod.boolean(),
   "code": zod.string().optional(),
   "error": zod.string().optional()
@@ -4264,10 +4264,10 @@ export const updateProjectMeetingActionItemBodyDetailsMax = 12000;
 
 
 export const UpdateProjectMeetingActionItemBody = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "title": zod.string().min(1).max(updateProjectMeetingActionItemBodyTitleMax).optional(),
   "details": zod.string().max(updateProjectMeetingActionItemBodyDetailsMax).nullish(),
-  "ownerAgentId": zod.number().int().min(1).nullish(),
+  "ownerAgentId": zod.int().min(1).nullish(),
   "status": zod.enum(['open', 'in_progress', 'done', 'cancelled']).optional(),
   "dueAt": zod.coerce.date().nullish()
 })
@@ -4278,11 +4278,11 @@ export const UpdateProjectMeetingActionItemBody = zod.object({
 
 
 export const UpdateProjectMeetingActionItemResponse = zod.object({
-  "requestId": zod.string().uuid(),
-  "projectId": zod.number().int().min(1),
-  "meetingId": zod.number().int().min(1).nullable(),
+  "requestId": zod.uuid(),
+  "projectId": zod.int().min(1),
+  "meetingId": zod.int().min(1).nullable(),
   "kind": zod.enum(['create', 'update', 'transcript', 'decision', 'action', 'action-update', 'complete']),
-  "entityId": zod.number().int().min(1).nullable(),
+  "entityId": zod.int().min(1).nullable(),
   "ok": zod.boolean(),
   "code": zod.string().optional(),
   "error": zod.string().optional()
@@ -4362,7 +4362,7 @@ export const ListApprovalsResponseItem = zod.object({
   "resultReview": zod.object({
   "kind": zod.enum(['task_result']),
   "proposalHash": zod.string().regex(listApprovalsResponseResultReviewProposalHashRegExp).nullable(),
-  "cycleNumber": zod.number().int().min(listApprovalsResponseResultReviewCycleNumberMin).nullable(),
+  "cycleNumber": zod.int().min(listApprovalsResponseResultReviewCycleNumberMin).nullable(),
   "available": zod.boolean()
 }).optional()
 })
@@ -4397,9 +4397,9 @@ export const getTaskResultReviewResponseRequirementsMax = 8;
 
 
 export const GetTaskResultReviewResponse = zod.object({
-  "approvalId": zod.number().int().min(1),
-  "taskId": zod.number().int().min(1),
-  "cycleNumber": zod.number().int().min(getTaskResultReviewResponseCycleNumberMin),
+  "approvalId": zod.int().min(1),
+  "taskId": zod.int().min(1),
+  "cycleNumber": zod.int().min(getTaskResultReviewResponseCycleNumberMin),
   "proposalHash": zod.string().regex(getTaskResultReviewResponseProposalHashRegExp),
   "resultSummary": zod.string().min(1).max(getTaskResultReviewResponseResultSummaryMax),
   "resultFormat": zod.object({
@@ -4476,7 +4476,7 @@ export const ResolveApprovalResponse = zod.object({
   "resultReview": zod.object({
   "kind": zod.enum(['task_result']),
   "proposalHash": zod.string().regex(resolveApprovalResponseResultReviewProposalHashRegExp).nullable(),
-  "cycleNumber": zod.number().int().min(resolveApprovalResponseResultReviewCycleNumberMin).nullable(),
+  "cycleNumber": zod.int().min(resolveApprovalResponseResultReviewCycleNumberMin).nullable(),
   "available": zod.boolean()
 }).optional()
 })
@@ -4503,8 +4503,8 @@ export const GetOrgSummaryResponse = zod.object({
   "estimatedCostTodayUsd": zod.number(),
   "usageEventsToday": zod.number(),
   "costReportedEventsToday": zod.number(),
-  "tokenReportedEventsToday": zod.number().int().min(getOrgSummaryResponseTokenReportedEventsTodayMin).optional(),
-  "tokenUnreportedEventsToday": zod.number().int().min(getOrgSummaryResponseTokenUnreportedEventsTodayMin).optional(),
+  "tokenReportedEventsToday": zod.int().min(getOrgSummaryResponseTokenReportedEventsTodayMin).optional(),
+  "tokenUnreportedEventsToday": zod.int().min(getOrgSummaryResponseTokenUnreportedEventsTodayMin).optional(),
   "tokenUsageCoverageToday": zod.enum(['no_usage', 'complete', 'partial', 'unknown']).optional().describe('Token totals are lower bounds unless every call has reported usage.')
 })
 
@@ -4559,7 +4559,7 @@ export const getLocalModelPreparationResponsePreparationResultDigestRegExp = new
 
 
 export const GetLocalModelPreparationResponse = zod.object({
-  "revision": zod.number().int().min(getLocalModelPreparationResponseRevisionMin).max(getLocalModelPreparationResponseRevisionMax),
+  "revision": zod.int().min(getLocalModelPreparationResponseRevisionMin).max(getLocalModelPreparationResponseRevisionMax),
   "recipe": zod.object({
   "id": zod.enum(['qwen35-2b']),
   "model": zod.enum(['qwen3.5:2b-q4_K_M']),
@@ -4579,13 +4579,13 @@ export const GetLocalModelPreparationResponse = zod.object({
   "digest": zod.string().regex(getLocalModelPreparationResponseAvailabilityDigestRegExp).nullable()
 }),
   "preparation": zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "modelId": zod.enum(['qwen35-2b']),
-  "providerRevision": zod.number().int().min(getLocalModelPreparationResponsePreparationProviderRevisionMin).max(getLocalModelPreparationResponsePreparationProviderRevisionMax),
+  "providerRevision": zod.int().min(getLocalModelPreparationResponsePreparationProviderRevisionMin).max(getLocalModelPreparationResponsePreparationProviderRevisionMax),
   "state": zod.enum(['requested', 'downloading', 'verifying', 'stopping', 'ready', 'interrupted', 'failed']),
   "phase": zod.enum(['preparing', 'downloading', 'checking', 'downloaded']),
-  "observedCompletedBytes": zod.number().int().min(getLocalModelPreparationResponsePreparationObservedCompletedBytesMin).max(getLocalModelPreparationResponsePreparationObservedCompletedBytesMax),
-  "observedTotalBytes": zod.number().int().min(getLocalModelPreparationResponsePreparationObservedTotalBytesMin).max(getLocalModelPreparationResponsePreparationObservedTotalBytesMax),
+  "observedCompletedBytes": zod.int().min(getLocalModelPreparationResponsePreparationObservedCompletedBytesMin).max(getLocalModelPreparationResponsePreparationObservedCompletedBytesMax),
+  "observedTotalBytes": zod.int().min(getLocalModelPreparationResponsePreparationObservedTotalBytesMin).max(getLocalModelPreparationResponsePreparationObservedTotalBytesMax),
   "progressReset": zod.boolean(),
   "failureCode": zod.enum(['INTERRUPTED', 'CONFIG_CHANGED', 'SERVER_UNAVAILABLE', 'RUNTIME_UPDATE_REQUIRED', 'MODEL_UNVERIFIED', 'DISPATCH_FAILED', 'DEADLINE_EXCEEDED', 'INVALID_PROGRESS', 'FRAME_TOO_LARGE', 'TOO_MANY_LAYERS', 'MODEL_TOO_LARGE', 'UPSTREAM_ERROR', 'INCOMPLETE_PROGRESS', 'STREAM_FAILED']).nullable(),
   "resultModelId": zod.enum(['ollama:qwen3.5:2b-q4_K_M']).nullable(),
@@ -4606,8 +4606,8 @@ export const startLocalModelPreparationBodyExpectedRevisionMax = 900719925474099
 
 
 export const StartLocalModelPreparationBody = zod.object({
-  "requestId": zod.string().uuid(),
-  "expectedRevision": zod.number().int().min(startLocalModelPreparationBodyExpectedRevisionMin).max(startLocalModelPreparationBodyExpectedRevisionMax),
+  "requestId": zod.uuid(),
+  "expectedRevision": zod.int().min(startLocalModelPreparationBodyExpectedRevisionMin).max(startLocalModelPreparationBodyExpectedRevisionMax),
   "modelId": zod.enum(['qwen35-2b'])
 })
 
@@ -4624,13 +4624,13 @@ export const startLocalModelPreparationResponseResultDigestRegExp = new RegExp('
 
 
 export const StartLocalModelPreparationResponse = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "modelId": zod.enum(['qwen35-2b']),
-  "providerRevision": zod.number().int().min(startLocalModelPreparationResponseProviderRevisionMin).max(startLocalModelPreparationResponseProviderRevisionMax),
+  "providerRevision": zod.int().min(startLocalModelPreparationResponseProviderRevisionMin).max(startLocalModelPreparationResponseProviderRevisionMax),
   "state": zod.enum(['requested', 'downloading', 'verifying', 'stopping', 'ready', 'interrupted', 'failed']),
   "phase": zod.enum(['preparing', 'downloading', 'checking', 'downloaded']),
-  "observedCompletedBytes": zod.number().int().min(startLocalModelPreparationResponseObservedCompletedBytesMin).max(startLocalModelPreparationResponseObservedCompletedBytesMax),
-  "observedTotalBytes": zod.number().int().min(startLocalModelPreparationResponseObservedTotalBytesMin).max(startLocalModelPreparationResponseObservedTotalBytesMax),
+  "observedCompletedBytes": zod.int().min(startLocalModelPreparationResponseObservedCompletedBytesMin).max(startLocalModelPreparationResponseObservedCompletedBytesMax),
+  "observedTotalBytes": zod.int().min(startLocalModelPreparationResponseObservedTotalBytesMin).max(startLocalModelPreparationResponseObservedTotalBytesMax),
   "progressReset": zod.boolean(),
   "failureCode": zod.enum(['INTERRUPTED', 'CONFIG_CHANGED', 'SERVER_UNAVAILABLE', 'RUNTIME_UPDATE_REQUIRED', 'MODEL_UNVERIFIED', 'DISPATCH_FAILED', 'DEADLINE_EXCEEDED', 'INVALID_PROGRESS', 'FRAME_TOO_LARGE', 'TOO_MANY_LAYERS', 'MODEL_TOO_LARGE', 'UPSTREAM_ERROR', 'INCOMPLETE_PROGRESS', 'STREAM_FAILED']).nullable(),
   "resultModelId": zod.enum(['ollama:qwen3.5:2b-q4_K_M']).nullable(),
@@ -4645,7 +4645,7 @@ export const StartLocalModelPreparationResponse = zod.object({
  * @summary Reconcile a known preparation without resending a download
  */
 export const GetLocalModelPreparationReceiptParams = zod.object({
-  "requestId": zod.coerce.string().uuid()
+  "requestId": zod.uuid()
 })
 
 export const getLocalModelPreparationReceiptResponseProviderRevisionMin = 0;
@@ -4661,13 +4661,13 @@ export const getLocalModelPreparationReceiptResponseResultDigestRegExp = new Reg
 
 
 export const GetLocalModelPreparationReceiptResponse = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "modelId": zod.enum(['qwen35-2b']),
-  "providerRevision": zod.number().int().min(getLocalModelPreparationReceiptResponseProviderRevisionMin).max(getLocalModelPreparationReceiptResponseProviderRevisionMax),
+  "providerRevision": zod.int().min(getLocalModelPreparationReceiptResponseProviderRevisionMin).max(getLocalModelPreparationReceiptResponseProviderRevisionMax),
   "state": zod.enum(['requested', 'downloading', 'verifying', 'stopping', 'ready', 'interrupted', 'failed']),
   "phase": zod.enum(['preparing', 'downloading', 'checking', 'downloaded']),
-  "observedCompletedBytes": zod.number().int().min(getLocalModelPreparationReceiptResponseObservedCompletedBytesMin).max(getLocalModelPreparationReceiptResponseObservedCompletedBytesMax),
-  "observedTotalBytes": zod.number().int().min(getLocalModelPreparationReceiptResponseObservedTotalBytesMin).max(getLocalModelPreparationReceiptResponseObservedTotalBytesMax),
+  "observedCompletedBytes": zod.int().min(getLocalModelPreparationReceiptResponseObservedCompletedBytesMin).max(getLocalModelPreparationReceiptResponseObservedCompletedBytesMax),
+  "observedTotalBytes": zod.int().min(getLocalModelPreparationReceiptResponseObservedTotalBytesMin).max(getLocalModelPreparationReceiptResponseObservedTotalBytesMax),
   "progressReset": zod.boolean(),
   "failureCode": zod.enum(['INTERRUPTED', 'CONFIG_CHANGED', 'SERVER_UNAVAILABLE', 'RUNTIME_UPDATE_REQUIRED', 'MODEL_UNVERIFIED', 'DISPATCH_FAILED', 'DEADLINE_EXCEEDED', 'INVALID_PROGRESS', 'FRAME_TOO_LARGE', 'TOO_MANY_LAYERS', 'MODEL_TOO_LARGE', 'UPSTREAM_ERROR', 'INCOMPLETE_PROGRESS', 'STREAM_FAILED']).nullable(),
   "resultModelId": zod.enum(['ollama:qwen3.5:2b-q4_K_M']).nullable(),
@@ -4682,7 +4682,7 @@ export const GetLocalModelPreparationReceiptResponse = zod.object({
  * @summary Stop this application's download request without deleting shared model files
  */
 export const StopLocalModelPreparationParams = zod.object({
-  "requestId": zod.coerce.string().uuid()
+  "requestId": zod.uuid()
 })
 
 export const stopLocalModelPreparationResponseProviderRevisionMin = 0;
@@ -4698,13 +4698,13 @@ export const stopLocalModelPreparationResponseResultDigestRegExp = new RegExp('^
 
 
 export const StopLocalModelPreparationResponse = zod.object({
-  "requestId": zod.string().uuid(),
+  "requestId": zod.uuid(),
   "modelId": zod.enum(['qwen35-2b']),
-  "providerRevision": zod.number().int().min(stopLocalModelPreparationResponseProviderRevisionMin).max(stopLocalModelPreparationResponseProviderRevisionMax),
+  "providerRevision": zod.int().min(stopLocalModelPreparationResponseProviderRevisionMin).max(stopLocalModelPreparationResponseProviderRevisionMax),
   "state": zod.enum(['requested', 'downloading', 'verifying', 'stopping', 'ready', 'interrupted', 'failed']),
   "phase": zod.enum(['preparing', 'downloading', 'checking', 'downloaded']),
-  "observedCompletedBytes": zod.number().int().min(stopLocalModelPreparationResponseObservedCompletedBytesMin).max(stopLocalModelPreparationResponseObservedCompletedBytesMax),
-  "observedTotalBytes": zod.number().int().min(stopLocalModelPreparationResponseObservedTotalBytesMin).max(stopLocalModelPreparationResponseObservedTotalBytesMax),
+  "observedCompletedBytes": zod.int().min(stopLocalModelPreparationResponseObservedCompletedBytesMin).max(stopLocalModelPreparationResponseObservedCompletedBytesMax),
+  "observedTotalBytes": zod.int().min(stopLocalModelPreparationResponseObservedTotalBytesMin).max(stopLocalModelPreparationResponseObservedTotalBytesMax),
   "progressReset": zod.boolean(),
   "failureCode": zod.enum(['INTERRUPTED', 'CONFIG_CHANGED', 'SERVER_UNAVAILABLE', 'RUNTIME_UPDATE_REQUIRED', 'MODEL_UNVERIFIED', 'DISPATCH_FAILED', 'DEADLINE_EXCEEDED', 'INVALID_PROGRESS', 'FRAME_TOO_LARGE', 'TOO_MANY_LAYERS', 'MODEL_TOO_LARGE', 'UPSTREAM_ERROR', 'INCOMPLETE_PROGRESS', 'STREAM_FAILED']).nullable(),
   "resultModelId": zod.enum(['ollama:qwen3.5:2b-q4_K_M']).nullable(),
@@ -4751,14 +4751,14 @@ export const getLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionRegExp 
 
 
 export const GetLlmSettingsResponse = zod.object({
-  "revision": zod.number().int().min(getLlmSettingsResponseRevisionMin).describe('Version of stored provider credentials; server environment changes are managed separately.'),
+  "revision": zod.int().min(getLlmSettingsResponseRevisionMin).describe('Version of stored provider credentials; server environment changes are managed separately.'),
   "storage": zod.enum(['database', 'local-file']),
   "openrouter": zod.object({
   "keySource": zod.enum(['runtime', 'environment', 'none']),
   "configured": zod.boolean(),
   "hasKeyInEnv": zod.boolean(),
   "keyPreview": zod.string().max(getLlmSettingsResponseOpenrouterKeyPreviewMax).nullable(),
-  "baseUrl": zod.string().url().max(getLlmSettingsResponseOpenrouterBaseUrlMax)
+  "baseUrl": zod.url().max(getLlmSettingsResponseOpenrouterBaseUrlMax)
 }),
   "openai": zod.object({
   "keySource": zod.enum(['runtime', 'environment', 'none']),
@@ -4773,20 +4773,20 @@ export const GetLlmSettingsResponse = zod.object({
   "cloudEnabled": zod.boolean().optional().describe('Explicit consent for this exact private server origin. Missing on older servers; absence never grants cloud permission.'),
   "serverVersion": zod.string().max(getLlmSettingsResponseOllamaServerVersionMax).nullish(),
   "localEnforcementSupported": zod.boolean().optional().describe('Whether the reported stable server version enforces local selectors. Missing or false cannot prove local execution.'),
-  "localModelCount": zod.number().int().min(getLlmSettingsResponseOllamaLocalModelCountMin).optional(),
-  "cloudModelCount": zod.number().int().min(getLlmSettingsResponseOllamaCloudModelCountMin).optional(),
-  "unknownModelCount": zod.number().int().min(getLlmSettingsResponseOllamaUnknownModelCountMin).optional(),
-  "baseUrl": zod.string().url().max(getLlmSettingsResponseOllamaBaseUrlMax).nullable(),
+  "localModelCount": zod.int().min(getLlmSettingsResponseOllamaLocalModelCountMin).optional(),
+  "cloudModelCount": zod.int().min(getLlmSettingsResponseOllamaCloudModelCountMin).optional(),
+  "unknownModelCount": zod.int().min(getLlmSettingsResponseOllamaUnknownModelCountMin).optional(),
+  "baseUrl": zod.url().max(getLlmSettingsResponseOllamaBaseUrlMax).nullable(),
   "hasAddressInEnv": zod.boolean(),
   "addressSource": zod.enum(['runtime', 'environment', 'none']),
-  "modelCount": zod.number().int().min(getLlmSettingsResponseOllamaModelCountMin),
-  "toolModelCount": zod.number().int().min(getLlmSettingsResponseOllamaToolModelCountMin),
-  "catalogSyncedAt": zod.number().int().min(getLlmSettingsResponseOllamaCatalogSyncedAtMin).nullable(),
+  "modelCount": zod.int().min(getLlmSettingsResponseOllamaModelCountMin),
+  "toolModelCount": zod.int().min(getLlmSettingsResponseOllamaToolModelCountMin),
+  "catalogSyncedAt": zod.int().min(getLlmSettingsResponseOllamaCatalogSyncedAtMin).nullable(),
   "error": zod.union([zod.literal('unreachable'),zod.literal('invalid_private_endpoint'),zod.literal(null)]).nullable()
 }),
   "replitFleet": zod.object({
   "configured": zod.boolean(),
-  "baseUrl": zod.string().url().max(getLlmSettingsResponseReplitFleetBaseUrlMax).nullable()
+  "baseUrl": zod.url().max(getLlmSettingsResponseReplitFleetBaseUrlMax).nullable()
 }),
   "catalog": zod.object({
   "providers": zod.array(zod.object({
@@ -4826,7 +4826,7 @@ export const updateLlmSettingsBodyOllamaBaseUrlMax = 2048;
 
 
 export const UpdateLlmSettingsBody = zod.object({
-  "expectedRevision": zod.number().int().min(updateLlmSettingsBodyExpectedRevisionMin).max(updateLlmSettingsBodyExpectedRevisionMax).optional().describe('The exact stored-credential revision reviewed by the operator. Legacy callers may omit it.'),
+  "expectedRevision": zod.int().min(updateLlmSettingsBodyExpectedRevisionMin).max(updateLlmSettingsBodyExpectedRevisionMax).optional().describe('The exact stored-credential revision reviewed by the operator. Legacy callers may omit it.'),
   "openrouterApiKey": zod.string().max(updateLlmSettingsBodyOpenrouterApiKeyMax).nullish(),
   "openaiApiKey": zod.string().max(updateLlmSettingsBodyOpenaiApiKeyMax).nullish(),
   "ollamaBaseUrl": zod.string().max(updateLlmSettingsBodyOllamaBaseUrlMax).nullish().describe('Private or loopback local-model address reached by the installed server. Null restores environment configuration. Discovery does not send inference.'),
@@ -4841,7 +4841,7 @@ export const updateLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionRegE
 
 
 export const UpdateLlmSettingsResponse = zod.object({
-  "revision": zod.number().int().min(1),
+  "revision": zod.int().min(1),
   "ok": zod.literal(true),
   "configured": zod.boolean(),
   "configuredProviders": zod.array(zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt'])),
@@ -4874,7 +4874,7 @@ export const UpdateLlmSettingsResponse = zod.object({
 
 
 export const GetExecutionPolicyResponse = zod.object({
-  "id": zod.number().int(),
+  "id": zod.int(),
   "mode": zod.enum(['read_only', 'approval', 'full_access', 'custom']),
   "custom": zod.union([zod.object({
   "files": zod.boolean(),
@@ -4883,7 +4883,7 @@ export const GetExecutionPolicyResponse = zod.object({
   "delegation": zod.boolean(),
   "sudo": zod.boolean()
 }),zod.null()]),
-  "revision": zod.number().int().min(1),
+  "revision": zod.int().min(1),
   "updatedAt": zod.coerce.date()
 })
 
@@ -4896,7 +4896,7 @@ export const GetExecutionPolicyResponse = zod.object({
 
 export const UpdateExecutionPolicyBody = zod.object({
   "mode": zod.enum(['read_only', 'approval', 'full_access', 'custom']),
-  "expectedRevision": zod.number().int().min(1),
+  "expectedRevision": zod.int().min(1),
   "custom": zod.object({
   "files": zod.boolean(),
   "terminal": zod.boolean(),
@@ -4910,7 +4910,7 @@ export const UpdateExecutionPolicyBody = zod.object({
 
 
 export const UpdateExecutionPolicyResponse = zod.object({
-  "id": zod.number().int(),
+  "id": zod.int(),
   "mode": zod.enum(['read_only', 'approval', 'full_access', 'custom']),
   "custom": zod.union([zod.object({
   "files": zod.boolean(),
@@ -4919,7 +4919,7 @@ export const UpdateExecutionPolicyResponse = zod.object({
   "delegation": zod.boolean(),
   "sudo": zod.boolean()
 }),zod.null()]),
-  "revision": zod.number().int().min(1),
+  "revision": zod.int().min(1),
   "updatedAt": zod.coerce.date()
 })
 
@@ -4956,7 +4956,7 @@ export const testLlmConnectionBodyModelMax = 256;
 
 
 export const TestLlmConnectionBody = zod.object({
-  "expectedRevision": zod.number().int().min(testLlmConnectionBodyExpectedRevisionMin).max(testLlmConnectionBodyExpectedRevisionMax).optional(),
+  "expectedRevision": zod.int().min(testLlmConnectionBodyExpectedRevisionMin).max(testLlmConnectionBodyExpectedRevisionMax).optional(),
   "model": zod.string().min(1).max(testLlmConnectionBodyModelMax)
 })
 
@@ -4971,12 +4971,12 @@ export const testLlmConnectionResponseLatencyMsMin = 0;
 
 
 export const TestLlmConnectionResponse = zod.object({
-  "revision": zod.number().int().min(testLlmConnectionResponseRevisionMin),
+  "revision": zod.int().min(testLlmConnectionResponseRevisionMin),
   "ok": zod.literal(true),
   "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
   "model": zod.string().min(1).max(testLlmConnectionResponseModelMax),
   "sample": zod.string().max(testLlmConnectionResponseSampleMax).describe('Retained for compatibility; returned empty to avoid echoing upstream content.'),
-  "latencyMs": zod.number().int().min(testLlmConnectionResponseLatencyMsMin)
+  "latencyMs": zod.int().min(testLlmConnectionResponseLatencyMsMin)
 })
 
 
@@ -5102,7 +5102,7 @@ export const GetOperationsOverviewResponse = zod.object({
   "window": zod.object({
   "startAt": zod.coerce.date(),
   "endAt": zod.coerce.date(),
-  "hours": zod.number().int().min(1).max(getOperationsOverviewResponseWindowHoursMax),
+  "hours": zod.int().min(1).max(getOperationsOverviewResponseWindowHoursMax),
   "timezone": zod.enum(['UTC'])
 }),
   "runtime": zod.object({
@@ -5112,35 +5112,35 @@ export const GetOperationsOverviewResponse = zod.object({
   "durable": zod.boolean(),
   "multiProcessCapable": zod.boolean(),
   "emergencyStopEnabled": zod.boolean(),
-  "healthyWorkerCount": zod.number().int().min(getOperationsOverviewResponseRuntimeHealthyWorkerCountMin),
-  "staleWorkerCount": zod.number().int().min(getOperationsOverviewResponseRuntimeStaleWorkerCountMin),
-  "schedulerTickAgeMs": zod.number().int().min(getOperationsOverviewResponseRuntimeSchedulerTickAgeMsMin).nullable(),
+  "healthyWorkerCount": zod.int().min(getOperationsOverviewResponseRuntimeHealthyWorkerCountMin),
+  "staleWorkerCount": zod.int().min(getOperationsOverviewResponseRuntimeStaleWorkerCountMin),
+  "schedulerTickAgeMs": zod.int().min(getOperationsOverviewResponseRuntimeSchedulerTickAgeMsMin).nullable(),
   "lastSampleAt": zod.coerce.date().nullable()
 }),
   "queue": zod.object({
-  "dueDepth": zod.number().int().min(getOperationsOverviewResponseQueueDueDepthMin),
-  "oldestDueAgeMs": zod.number().int().min(getOperationsOverviewResponseQueueOldestDueAgeMsMin).nullable(),
+  "dueDepth": zod.int().min(getOperationsOverviewResponseQueueDueDepthMin),
+  "oldestDueAgeMs": zod.int().min(getOperationsOverviewResponseQueueOldestDueAgeMsMin).nullable(),
   "nextWakeAt": zod.coerce.date().nullable()
 }),
   "tasks": zod.object({
-  "active": zod.number().int().min(getOperationsOverviewResponseTasksActiveMin),
-  "sleeping": zod.number().int().min(getOperationsOverviewResponseTasksSleepingMin),
-  "recovering": zod.number().int().min(getOperationsOverviewResponseTasksRecoveringMin),
-  "blocked": zod.number().int().min(getOperationsOverviewResponseTasksBlockedMin),
-  "awaitingApproval": zod.number().int().min(getOperationsOverviewResponseTasksAwaitingApprovalMin)
+  "active": zod.int().min(getOperationsOverviewResponseTasksActiveMin),
+  "sleeping": zod.int().min(getOperationsOverviewResponseTasksSleepingMin),
+  "recovering": zod.int().min(getOperationsOverviewResponseTasksRecoveringMin),
+  "blocked": zod.int().min(getOperationsOverviewResponseTasksBlockedMin),
+  "awaitingApproval": zod.int().min(getOperationsOverviewResponseTasksAwaitingApprovalMin)
 }),
   "operations": zod.object({
-  "reserved": zod.number().int().min(getOperationsOverviewResponseOperationsReservedMin),
-  "running": zod.number().int().min(getOperationsOverviewResponseOperationsRunningMin),
-  "unresolvedUnknown": zod.number().int().min(getOperationsOverviewResponseOperationsUnresolvedUnknownMin)
+  "reserved": zod.int().min(getOperationsOverviewResponseOperationsReservedMin),
+  "running": zod.int().min(getOperationsOverviewResponseOperationsRunningMin),
+  "unresolvedUnknown": zod.int().min(getOperationsOverviewResponseOperationsUnresolvedUnknownMin)
 }),
   "usage": zod.object({
-  "taskTokens": zod.number().int().min(getOperationsOverviewResponseUsageTaskTokensMin),
+  "taskTokens": zod.int().min(getOperationsOverviewResponseUsageTaskTokensMin),
   "reportedCostUsd": zod.number().min(getOperationsOverviewResponseUsageReportedCostUsdMin),
-  "usageEvents": zod.number().int().min(getOperationsOverviewResponseUsageUsageEventsMin),
-  "costReportedEvents": zod.number().int().min(getOperationsOverviewResponseUsageCostReportedEventsMin),
-  "tokenReportedEvents": zod.number().int().min(getOperationsOverviewResponseUsageTokenReportedEventsMin).optional(),
-  "tokenUnreportedEvents": zod.number().int().min(getOperationsOverviewResponseUsageTokenUnreportedEventsMin).optional(),
+  "usageEvents": zod.int().min(getOperationsOverviewResponseUsageUsageEventsMin),
+  "costReportedEvents": zod.int().min(getOperationsOverviewResponseUsageCostReportedEventsMin),
+  "tokenReportedEvents": zod.int().min(getOperationsOverviewResponseUsageTokenReportedEventsMin).optional(),
+  "tokenUnreportedEvents": zod.int().min(getOperationsOverviewResponseUsageTokenUnreportedEventsMin).optional(),
   "tokenUsageCoverage": zod.enum(['no_usage', 'complete', 'partial', 'unknown']).optional().describe('Token totals are lower bounds unless every call has reported usage.'),
   "providerMetricsCoverage": zod.enum(['partial', 'complete'])
 }),
@@ -5149,23 +5149,23 @@ export const GetOperationsOverviewResponse = zod.object({
   "sampledAt": zod.coerce.date().nullable(),
   "runtimeTruthState": zod.union([zod.enum(['live', 'degraded', 'stale', 'offline', 'emergency_stopped', 'local_demo']),zod.null()]),
   "providerMetricsCoverage": zod.enum(['partial', 'complete']),
-  "healthyWorkerCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemHealthyWorkerCountMin),
-  "staleWorkerCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemStaleWorkerCountMin),
-  "schedulerTickAgeMs": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemSchedulerTickAgeMsMin).nullable(),
-  "dueQueueDepth": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemDueQueueDepthMin),
-  "oldestDueAgeMs": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemOldestDueAgeMsMin).nullable(),
-  "activeTaskCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemActiveTaskCountMin),
-  "sleepingTaskCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemSleepingTaskCountMin),
-  "recoveringTaskCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemRecoveringTaskCountMin),
-  "blockedTaskCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemBlockedTaskCountMin),
-  "approvalWaitingTaskCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemApprovalWaitingTaskCountMin),
-  "providerSuccessCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemProviderSuccessCountMin),
-  "providerErrorCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemProviderErrorCountMin),
-  "providerP50LatencyMs": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemProviderP50LatencyMsMin).nullable(),
-  "providerP95LatencyMs": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemProviderP95LatencyMsMin).nullable(),
-  "recoveryCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemRecoveryCountMin),
-  "lostLeaseCount": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemLostLeaseCountMin),
-  "taskTokens": zod.number().int().min(getOperationsOverviewResponseFleetHealthSamplesItemTaskTokensMin),
+  "healthyWorkerCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemHealthyWorkerCountMin),
+  "staleWorkerCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemStaleWorkerCountMin),
+  "schedulerTickAgeMs": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemSchedulerTickAgeMsMin).nullable(),
+  "dueQueueDepth": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemDueQueueDepthMin),
+  "oldestDueAgeMs": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemOldestDueAgeMsMin).nullable(),
+  "activeTaskCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemActiveTaskCountMin),
+  "sleepingTaskCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemSleepingTaskCountMin),
+  "recoveringTaskCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemRecoveringTaskCountMin),
+  "blockedTaskCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemBlockedTaskCountMin),
+  "approvalWaitingTaskCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemApprovalWaitingTaskCountMin),
+  "providerSuccessCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemProviderSuccessCountMin),
+  "providerErrorCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemProviderErrorCountMin),
+  "providerP50LatencyMs": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemProviderP50LatencyMsMin).nullable(),
+  "providerP95LatencyMs": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemProviderP95LatencyMsMin).nullable(),
+  "recoveryCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemRecoveryCountMin),
+  "lostLeaseCount": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemLostLeaseCountMin),
+  "taskTokens": zod.int().min(getOperationsOverviewResponseFleetHealthSamplesItemTaskTokensMin),
   "reportedCostUsd": zod.number().min(getOperationsOverviewResponseFleetHealthSamplesItemReportedCostUsdMin)
 })).max(getOperationsOverviewResponseFleetHealthSamplesMax),
   "truncation": zod.object({
@@ -5210,9 +5210,9 @@ export const ListRuntimeInstancesResponse = zod.object({
   "schedulerEnabled": zod.boolean(),
   "startedAt": zod.coerce.date(),
   "lastHeartbeatAt": zod.coerce.date(),
-  "heartbeatAgeMs": zod.number().int().min(listRuntimeInstancesResponseInstancesItemHeartbeatAgeMsMin),
+  "heartbeatAgeMs": zod.int().min(listRuntimeInstancesResponseInstancesItemHeartbeatAgeMsMin),
   "lastSchedulerTickAt": zod.coerce.date().nullable(),
-  "schedulerTickAgeMs": zod.number().int().min(listRuntimeInstancesResponseInstancesItemSchedulerTickAgeMsMin).nullable(),
+  "schedulerTickAgeMs": zod.int().min(listRuntimeInstancesResponseInstancesItemSchedulerTickAgeMsMin).nullable(),
   "drainingAt": zod.coerce.date().nullable(),
   "stoppedAt": zod.coerce.date().nullable()
 })).max(listRuntimeInstancesResponseInstancesMax),
@@ -5355,11 +5355,11 @@ export const GetProjectOperationsResponse = zod.object({
   "window": zod.object({
   "startAt": zod.coerce.date(),
   "endAt": zod.coerce.date(),
-  "hours": zod.number().int().min(1).max(getProjectOperationsResponseWindowHoursMax),
+  "hours": zod.int().min(1).max(getProjectOperationsResponseWindowHoursMax),
   "timezone": zod.enum(['UTC'])
 }),
   "rootTask": zod.object({
-  "id": zod.number().int().min(1),
+  "id": zod.int().min(1),
   "title": zod.string(),
   "status": zod.enum(['pending', 'planning', 'in_progress', 'awaiting_approval', 'blocked', 'completed', 'failed', 'cancelled'])
 }),
@@ -5370,25 +5370,25 @@ export const GetProjectOperationsResponse = zod.object({
   "durable": zod.boolean(),
   "multiProcessCapable": zod.boolean(),
   "emergencyStopEnabled": zod.boolean(),
-  "healthyWorkerCount": zod.number().int().min(getProjectOperationsResponseRuntimeHealthyWorkerCountMin),
-  "staleWorkerCount": zod.number().int().min(getProjectOperationsResponseRuntimeStaleWorkerCountMin),
-  "schedulerTickAgeMs": zod.number().int().min(getProjectOperationsResponseRuntimeSchedulerTickAgeMsMin).nullable(),
+  "healthyWorkerCount": zod.int().min(getProjectOperationsResponseRuntimeHealthyWorkerCountMin),
+  "staleWorkerCount": zod.int().min(getProjectOperationsResponseRuntimeStaleWorkerCountMin),
+  "schedulerTickAgeMs": zod.int().min(getProjectOperationsResponseRuntimeSchedulerTickAgeMsMin).nullable(),
   "lastSampleAt": zod.coerce.date().nullable()
 }),
   "queue": zod.object({
-  "dueDepth": zod.number().int().min(getProjectOperationsResponseQueueDueDepthMin),
-  "oldestDueAgeMs": zod.number().int().min(getProjectOperationsResponseQueueOldestDueAgeMsMin).nullable(),
+  "dueDepth": zod.int().min(getProjectOperationsResponseQueueDueDepthMin),
+  "oldestDueAgeMs": zod.int().min(getProjectOperationsResponseQueueOldestDueAgeMsMin).nullable(),
   "nextWakeAt": zod.coerce.date().nullable()
 }),
   "taskCounts": zod.object({
-  "active": zod.number().int().min(getProjectOperationsResponseTaskCountsActiveMin),
-  "sleeping": zod.number().int().min(getProjectOperationsResponseTaskCountsSleepingMin),
-  "recovering": zod.number().int().min(getProjectOperationsResponseTaskCountsRecoveringMin),
-  "blocked": zod.number().int().min(getProjectOperationsResponseTaskCountsBlockedMin),
-  "awaitingApproval": zod.number().int().min(getProjectOperationsResponseTaskCountsAwaitingApprovalMin)
+  "active": zod.int().min(getProjectOperationsResponseTaskCountsActiveMin),
+  "sleeping": zod.int().min(getProjectOperationsResponseTaskCountsSleepingMin),
+  "recovering": zod.int().min(getProjectOperationsResponseTaskCountsRecoveringMin),
+  "blocked": zod.int().min(getProjectOperationsResponseTaskCountsBlockedMin),
+  "awaitingApproval": zod.int().min(getProjectOperationsResponseTaskCountsAwaitingApprovalMin)
 }),
   "members": zod.array(zod.object({
-  "agentId": zod.number().int().min(1),
+  "agentId": zod.int().min(1),
   "name": zod.string(),
   "role": zod.string(),
   "avatar": zod.object({
@@ -5405,12 +5405,12 @@ export const GetProjectOperationsResponse = zod.object({
   "attempts": zod.array(zod.object({
   "id": zod.string(),
   "operationKey": zod.string().regex(getProjectOperationsResponseAttemptsItemOperationKeyRegExp).describe('Server-owned canonical operation identity used to audit duplicate irreversible effects.'),
-  "taskId": zod.number().int().min(1),
-  "agentId": zod.number().int().min(1),
+  "taskId": zod.int().min(1),
+  "agentId": zod.int().min(1),
   "workerInstanceId": zod.string(),
   "logicalExecutionId": zod.string(),
-  "attemptNumber": zod.number().int().min(1),
-  "cycleNumber": zod.number().int().min(getProjectOperationsResponseAttemptsItemCycleNumberMin),
+  "attemptNumber": zod.int().min(1),
+  "cycleNumber": zod.int().min(getProjectOperationsResponseAttemptsItemCycleNumberMin),
   "state": zod.enum(['claimed', 'running', 'succeeded', 'retrying', 'blocked', 'lost']),
   "startedAt": zod.coerce.date(),
   "lastHeartbeatAt": zod.coerce.date(),
@@ -5419,15 +5419,15 @@ export const GetProjectOperationsResponse = zod.object({
   "modelId": zod.string().nullable(),
   "failureKind": zod.string().nullable(),
   "recoveryOfAttemptId": zod.string().nullable(),
-  "promptTokens": zod.number().int().min(getProjectOperationsResponseAttemptsItemPromptTokensMin),
-  "completionTokens": zod.number().int().min(getProjectOperationsResponseAttemptsItemCompletionTokensMin),
-  "totalTokens": zod.number().int().min(getProjectOperationsResponseAttemptsItemTotalTokensMin),
+  "promptTokens": zod.int().min(getProjectOperationsResponseAttemptsItemPromptTokensMin),
+  "completionTokens": zod.int().min(getProjectOperationsResponseAttemptsItemCompletionTokensMin),
+  "totalTokens": zod.int().min(getProjectOperationsResponseAttemptsItemTotalTokensMin),
   "reportedCostUsd": zod.number().min(getProjectOperationsResponseAttemptsItemReportedCostUsdMin).nullable()
 })).max(getProjectOperationsResponseAttemptsMax),
   "receipts": zod.array(zod.object({
   "id": zod.string(),
-  "taskId": zod.number().int().min(1).nullable(),
-  "agentId": zod.number().int().min(1),
+  "taskId": zod.int().min(1).nullable(),
+  "agentId": zod.int().min(1),
   "originAttemptId": zod.string().nullable(),
   "executionKind": zod.enum(['task_step', 'approved_action', 'chat_turn']),
   "sideEffectClass": zod.enum(['read_only', 'transactional', 'idempotent', 'at_most_once', 'approval_at_most_once']),
@@ -5459,8 +5459,8 @@ export const GetProjectOperationsResponse = zod.object({
   "kind": zod.string(),
   "severity": zod.enum(['info', 'warning', 'critical']),
   "occurredAt": zod.coerce.date(),
-  "taskId": zod.number().int().min(1).nullable(),
-  "agentId": zod.number().int().min(1).nullable(),
+  "taskId": zod.int().min(1).nullable(),
+  "agentId": zod.int().min(1).nullable(),
   "attemptId": zod.string().nullable(),
   "receiptId": zod.string().nullable()
 })).max(getProjectOperationsResponseIncidentsMax),
@@ -5469,18 +5469,18 @@ export const GetProjectOperationsResponse = zod.object({
   "kind": zod.string(),
   "severity": zod.enum(['info', 'warning', 'critical']),
   "occurredAt": zod.coerce.date(),
-  "taskId": zod.number().int().min(1).nullable(),
-  "agentId": zod.number().int().min(1).nullable(),
+  "taskId": zod.int().min(1).nullable(),
+  "agentId": zod.int().min(1).nullable(),
   "attemptId": zod.string().nullable(),
   "receiptId": zod.string().nullable()
 })).max(getProjectOperationsResponseMilestonesMax),
   "usage": zod.object({
-  "taskTokens": zod.number().int().min(getProjectOperationsResponseUsageTaskTokensMin),
+  "taskTokens": zod.int().min(getProjectOperationsResponseUsageTaskTokensMin),
   "reportedCostUsd": zod.number().min(getProjectOperationsResponseUsageReportedCostUsdMin),
-  "usageEvents": zod.number().int().min(getProjectOperationsResponseUsageUsageEventsMin),
-  "costReportedEvents": zod.number().int().min(getProjectOperationsResponseUsageCostReportedEventsMin),
-  "tokenReportedEvents": zod.number().int().min(getProjectOperationsResponseUsageTokenReportedEventsMin).optional(),
-  "tokenUnreportedEvents": zod.number().int().min(getProjectOperationsResponseUsageTokenUnreportedEventsMin).optional(),
+  "usageEvents": zod.int().min(getProjectOperationsResponseUsageUsageEventsMin),
+  "costReportedEvents": zod.int().min(getProjectOperationsResponseUsageCostReportedEventsMin),
+  "tokenReportedEvents": zod.int().min(getProjectOperationsResponseUsageTokenReportedEventsMin).optional(),
+  "tokenUnreportedEvents": zod.int().min(getProjectOperationsResponseUsageTokenUnreportedEventsMin).optional(),
   "tokenUsageCoverage": zod.enum(['no_usage', 'complete', 'partial', 'unknown']).optional().describe('Token totals are lower bounds unless every call has reported usage.'),
   "providerMetricsCoverage": zod.enum(['partial', 'complete'])
 }),
@@ -5489,23 +5489,23 @@ export const GetProjectOperationsResponse = zod.object({
   "sampledAt": zod.coerce.date().nullable(),
   "runtimeTruthState": zod.union([zod.enum(['live', 'degraded', 'stale', 'offline', 'emergency_stopped', 'local_demo']),zod.null()]),
   "providerMetricsCoverage": zod.enum(['partial', 'complete']),
-  "healthyWorkerCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemHealthyWorkerCountMin),
-  "staleWorkerCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemStaleWorkerCountMin),
-  "schedulerTickAgeMs": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemSchedulerTickAgeMsMin).nullable(),
-  "dueQueueDepth": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemDueQueueDepthMin),
-  "oldestDueAgeMs": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemOldestDueAgeMsMin).nullable(),
-  "activeTaskCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemActiveTaskCountMin),
-  "sleepingTaskCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemSleepingTaskCountMin),
-  "recoveringTaskCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemRecoveringTaskCountMin),
-  "blockedTaskCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemBlockedTaskCountMin),
-  "approvalWaitingTaskCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemApprovalWaitingTaskCountMin),
-  "providerSuccessCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemProviderSuccessCountMin),
-  "providerErrorCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemProviderErrorCountMin),
-  "providerP50LatencyMs": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemProviderP50LatencyMsMin).nullable(),
-  "providerP95LatencyMs": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemProviderP95LatencyMsMin).nullable(),
-  "recoveryCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemRecoveryCountMin),
-  "lostLeaseCount": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemLostLeaseCountMin),
-  "taskTokens": zod.number().int().min(getProjectOperationsResponseFleetHealthSamplesItemTaskTokensMin),
+  "healthyWorkerCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemHealthyWorkerCountMin),
+  "staleWorkerCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemStaleWorkerCountMin),
+  "schedulerTickAgeMs": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemSchedulerTickAgeMsMin).nullable(),
+  "dueQueueDepth": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemDueQueueDepthMin),
+  "oldestDueAgeMs": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemOldestDueAgeMsMin).nullable(),
+  "activeTaskCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemActiveTaskCountMin),
+  "sleepingTaskCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemSleepingTaskCountMin),
+  "recoveringTaskCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemRecoveringTaskCountMin),
+  "blockedTaskCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemBlockedTaskCountMin),
+  "approvalWaitingTaskCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemApprovalWaitingTaskCountMin),
+  "providerSuccessCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemProviderSuccessCountMin),
+  "providerErrorCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemProviderErrorCountMin),
+  "providerP50LatencyMs": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemProviderP50LatencyMsMin).nullable(),
+  "providerP95LatencyMs": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemProviderP95LatencyMsMin).nullable(),
+  "recoveryCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemRecoveryCountMin),
+  "lostLeaseCount": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemLostLeaseCountMin),
+  "taskTokens": zod.int().min(getProjectOperationsResponseFleetHealthSamplesItemTaskTokensMin),
   "reportedCostUsd": zod.number().min(getProjectOperationsResponseFleetHealthSamplesItemReportedCostUsdMin)
 })).max(getProjectOperationsResponseFleetHealthSamplesMax).describe('Fleet-wide samples; they are not project-attributed.'),
   "limits": zod.object({
@@ -5555,11 +5555,11 @@ export const getProjectOperationReceiptResponseAuditOneActorIdMax = 256;
 
 
 export const GetProjectOperationReceiptResponse = zod.object({
-  "projectId": zod.number().int().min(1),
+  "projectId": zod.int().min(1),
   "receipt": zod.object({
   "id": zod.string(),
-  "taskId": zod.number().int().min(1).nullable(),
-  "agentId": zod.number().int().min(1),
+  "taskId": zod.int().min(1).nullable(),
+  "agentId": zod.int().min(1),
   "originAttemptId": zod.string().nullable(),
   "executionKind": zod.enum(['task_step', 'approved_action', 'chat_turn']),
   "sideEffectClass": zod.enum(['read_only', 'transactional', 'idempotent', 'at_most_once', 'approval_at_most_once']),
@@ -5613,7 +5613,7 @@ export const getOpsControlResponseBlockedScopesMax = 4;
 export const GetOpsControlResponse = zod.object({
   "emergencyStopEnabled": zod.boolean(),
   "reason": zod.string().max(getOpsControlResponseReasonMax).nullable(),
-  "version": zod.number().int().min(1),
+  "version": zod.int().min(1),
   "updatedBy": zod.string().min(1).max(getOpsControlResponseUpdatedByMax),
   "updatedAt": zod.coerce.date(),
   "blockedScopes": zod.array(zod.enum(['agent_chat', 'task_scheduler', 'agent_tools', 'approved_actions'])).min(getOpsControlResponseBlockedScopesMin).max(getOpsControlResponseBlockedScopesMax)
@@ -5657,14 +5657,14 @@ export const updateOpsControlResponseTerminatedAgentProcessesMin = 0;
 export const UpdateOpsControlResponse = zod.object({
   "emergencyStopEnabled": zod.boolean(),
   "reason": zod.string().max(updateOpsControlResponseReasonMax).nullable(),
-  "version": zod.number().int().min(1),
+  "version": zod.int().min(1),
   "updatedBy": zod.string().min(1).max(updateOpsControlResponseUpdatedByMax),
   "updatedAt": zod.coerce.date(),
   "blockedScopes": zod.array(zod.enum(['agent_chat', 'task_scheduler', 'agent_tools', 'approved_actions'])).min(updateOpsControlResponseBlockedScopesMin).max(updateOpsControlResponseBlockedScopesMax),
   "changed": zod.boolean(),
-  "releasedTaskLeases": zod.number().int().min(updateOpsControlResponseReleasedTaskLeasesMin),
-  "releasedAgentLeases": zod.number().int().min(updateOpsControlResponseReleasedAgentLeasesMin),
-  "terminatedAgentProcesses": zod.number().int().min(updateOpsControlResponseTerminatedAgentProcessesMin),
+  "releasedTaskLeases": zod.int().min(updateOpsControlResponseReleasedTaskLeasesMin),
+  "releasedAgentLeases": zod.int().min(updateOpsControlResponseReleasedAgentLeasesMin),
+  "terminatedAgentProcesses": zod.int().min(updateOpsControlResponseTerminatedAgentProcessesMin),
   "closedBrowserSessions": zod.boolean()
 })
 
@@ -5756,7 +5756,7 @@ export const ListVmFilesResponse = zod.object({
 })),
   "total": zod.number().describe('Number of returned entries, not the complete directory population.'),
   "truncated": zod.boolean().optional().describe('True when the 2000-entry enumeration limit excluded further entries. Missing on older servers; absence must not be treated as a complete listing.'),
-  "skipped": zod.number().int().min(listVmFilesResponseSkippedMin).optional().describe('Examined entries omitted because they were links, special files, raced or could not be read. Missing on older servers.')
+  "skipped": zod.int().min(listVmFilesResponseSkippedMin).optional().describe('Examined entries omitted because they were links, special files, raced or could not be read. Missing on older servers.')
 })
 
 
@@ -5846,12 +5846,12 @@ export const previewVmDeletionResponseEntriesMax = 1000;
 export const PreviewVmDeletionResponse = zod.object({
   "path": zod.string(),
   "version": zod.string().regex(previewVmDeletionResponseVersionRegExp),
-  "entryCount": zod.number().int().min(1).max(previewVmDeletionResponseEntryCountMax),
-  "totalBytes": zod.number().int().min(previewVmDeletionResponseTotalBytesMin).max(previewVmDeletionResponseTotalBytesMax),
+  "entryCount": zod.int().min(1).max(previewVmDeletionResponseEntryCountMax),
+  "totalBytes": zod.int().min(previewVmDeletionResponseTotalBytesMin).max(previewVmDeletionResponseTotalBytesMax),
   "entries": zod.array(zod.object({
   "path": zod.string().min(1).max(previewVmDeletionResponseEntriesItemPathMax),
   "type": zod.enum(['file', 'directory']),
-  "sizeBytes": zod.number().int().min(previewVmDeletionResponseEntriesItemSizeBytesMin)
+  "sizeBytes": zod.int().min(previewVmDeletionResponseEntriesItemSizeBytesMin)
 })).min(1).max(previewVmDeletionResponseEntriesMax)
 })
 
@@ -5907,7 +5907,7 @@ export const getOperatorRequestResponseTerminalDurationMsMin = 0;
 
 export const GetOperatorRequestResponse = zod.object({
   "requestId": zod.string().max(getOperatorRequestResponseRequestIdMax).regex(getOperatorRequestResponseRequestIdRegExp),
-  "agentId": zod.number().int().min(1).max(getOperatorRequestResponseAgentIdMax),
+  "agentId": zod.int().min(1).max(getOperatorRequestResponseAgentIdMax),
   "kind": zod.enum(['terminal_sandbox', 'terminal_host', 'browser_take_over', 'browser_navigate', 'browser_input', 'browser_release', 'browser_close']),
   "state": zod.enum(['reserved', 'dispatched', 'complete', 'not_dispatched', 'unknown']),
   "createdAt": zod.coerce.date(),
@@ -5917,8 +5917,8 @@ export const GetOperatorRequestResponse = zod.object({
   "failureCode": zod.union([zod.literal('execution_blocked'),zod.literal('authority_unavailable'),zod.literal('invalid_session'),zod.literal('transport_unavailable'),zod.literal('execution_error'),zod.literal('deadline_expired'),zod.literal('server_interrupted'),zod.literal(null)]).nullable(),
   "terminal": zod.object({
   "ok": zod.boolean(),
-  "exitCode": zod.number().int().nullable(),
-  "durationMs": zod.number().int().min(getOperatorRequestResponseTerminalDurationMsMin)
+  "exitCode": zod.int().nullable(),
+  "durationMs": zod.int().min(getOperatorRequestResponseTerminalDurationMsMin)
 }).nullable(),
   "resultAvailability": zod.enum(['available', 'unavailable', 'not_recorded', 'not_applicable']),
   "result": zod.union([zod.object({
@@ -5968,7 +5968,7 @@ export const execVmCommandResponseReceiptTerminalDurationMsMin = 0;
 export const ExecVmCommandResponse = zod.object({
   "receipt": zod.object({
   "requestId": zod.string().max(execVmCommandResponseReceiptRequestIdMax).regex(execVmCommandResponseReceiptRequestIdRegExp),
-  "agentId": zod.number().int().min(1).max(execVmCommandResponseReceiptAgentIdMax),
+  "agentId": zod.int().min(1).max(execVmCommandResponseReceiptAgentIdMax),
   "kind": zod.enum(['terminal_sandbox', 'terminal_host', 'browser_take_over', 'browser_navigate', 'browser_input', 'browser_release', 'browser_close']),
   "state": zod.enum(['reserved', 'dispatched', 'complete', 'not_dispatched', 'unknown']),
   "createdAt": zod.coerce.date(),
@@ -5978,8 +5978,8 @@ export const ExecVmCommandResponse = zod.object({
   "failureCode": zod.union([zod.literal('execution_blocked'),zod.literal('authority_unavailable'),zod.literal('invalid_session'),zod.literal('transport_unavailable'),zod.literal('execution_error'),zod.literal('deadline_expired'),zod.literal('server_interrupted'),zod.literal(null)]).nullable(),
   "terminal": zod.object({
   "ok": zod.boolean(),
-  "exitCode": zod.number().int().nullable(),
-  "durationMs": zod.number().int().min(execVmCommandResponseReceiptTerminalDurationMsMin)
+  "exitCode": zod.int().nullable(),
+  "durationMs": zod.int().min(execVmCommandResponseReceiptTerminalDurationMsMin)
 }).nullable(),
   "resultAvailability": zod.enum(['available', 'unavailable', 'not_recorded', 'not_applicable']),
   "result": zod.union([zod.object({
@@ -6096,7 +6096,7 @@ export const updateBrowserControlResponseResultOneLeaseIdRegExp = new RegExp('^[
 export const UpdateBrowserControlResponse = zod.object({
   "receipt": zod.union([zod.object({
   "requestId": zod.string().max(updateBrowserControlResponseReceiptOneRequestIdMax).regex(updateBrowserControlResponseReceiptOneRequestIdRegExp),
-  "agentId": zod.number().int().min(1).max(updateBrowserControlResponseReceiptOneAgentIdMax),
+  "agentId": zod.int().min(1).max(updateBrowserControlResponseReceiptOneAgentIdMax),
   "kind": zod.enum(['terminal_sandbox', 'terminal_host', 'browser_take_over', 'browser_navigate', 'browser_input', 'browser_release', 'browser_close']),
   "state": zod.enum(['reserved', 'dispatched', 'complete', 'not_dispatched', 'unknown']),
   "createdAt": zod.coerce.date(),
@@ -6106,8 +6106,8 @@ export const UpdateBrowserControlResponse = zod.object({
   "failureCode": zod.union([zod.literal('execution_blocked'),zod.literal('authority_unavailable'),zod.literal('invalid_session'),zod.literal('transport_unavailable'),zod.literal('execution_error'),zod.literal('deadline_expired'),zod.literal('server_interrupted'),zod.literal(null)]).nullable(),
   "terminal": zod.object({
   "ok": zod.boolean(),
-  "exitCode": zod.number().int().nullable(),
-  "durationMs": zod.number().int().min(updateBrowserControlResponseReceiptOneTerminalDurationMsMin)
+  "exitCode": zod.int().nullable(),
+  "durationMs": zod.int().min(updateBrowserControlResponseReceiptOneTerminalDurationMsMin)
 }).nullable(),
   "resultAvailability": zod.enum(['available', 'unavailable', 'not_recorded', 'not_applicable']),
   "result": zod.union([zod.object({
@@ -6171,7 +6171,7 @@ export const navigateBrowserResponseResultOneControlLeaseIdRegExp = new RegExp('
 export const NavigateBrowserResponse = zod.object({
   "receipt": zod.object({
   "requestId": zod.string().max(navigateBrowserResponseReceiptRequestIdMax).regex(navigateBrowserResponseReceiptRequestIdRegExp),
-  "agentId": zod.number().int().min(1).max(navigateBrowserResponseReceiptAgentIdMax),
+  "agentId": zod.int().min(1).max(navigateBrowserResponseReceiptAgentIdMax),
   "kind": zod.enum(['terminal_sandbox', 'terminal_host', 'browser_take_over', 'browser_navigate', 'browser_input', 'browser_release', 'browser_close']),
   "state": zod.enum(['reserved', 'dispatched', 'complete', 'not_dispatched', 'unknown']),
   "createdAt": zod.coerce.date(),
@@ -6181,8 +6181,8 @@ export const NavigateBrowserResponse = zod.object({
   "failureCode": zod.union([zod.literal('execution_blocked'),zod.literal('authority_unavailable'),zod.literal('invalid_session'),zod.literal('transport_unavailable'),zod.literal('execution_error'),zod.literal('deadline_expired'),zod.literal('server_interrupted'),zod.literal(null)]).nullable(),
   "terminal": zod.object({
   "ok": zod.boolean(),
-  "exitCode": zod.number().int().nullable(),
-  "durationMs": zod.number().int().min(navigateBrowserResponseReceiptTerminalDurationMsMin)
+  "exitCode": zod.int().nullable(),
+  "durationMs": zod.int().min(navigateBrowserResponseReceiptTerminalDurationMsMin)
 }).nullable(),
   "resultAvailability": zod.enum(['available', 'unavailable', 'not_recorded', 'not_applicable']),
   "result": zod.union([zod.object({
@@ -6280,7 +6280,7 @@ export const sendBrowserInputResponseReceiptTerminalDurationMsMin = 0;
 export const SendBrowserInputResponse = zod.object({
   "receipt": zod.object({
   "requestId": zod.string().max(sendBrowserInputResponseReceiptRequestIdMax).regex(sendBrowserInputResponseReceiptRequestIdRegExp),
-  "agentId": zod.number().int().min(1).max(sendBrowserInputResponseReceiptAgentIdMax),
+  "agentId": zod.int().min(1).max(sendBrowserInputResponseReceiptAgentIdMax),
   "kind": zod.enum(['terminal_sandbox', 'terminal_host', 'browser_take_over', 'browser_navigate', 'browser_input', 'browser_release', 'browser_close']),
   "state": zod.enum(['reserved', 'dispatched', 'complete', 'not_dispatched', 'unknown']),
   "createdAt": zod.coerce.date(),
@@ -6290,8 +6290,8 @@ export const SendBrowserInputResponse = zod.object({
   "failureCode": zod.union([zod.literal('execution_blocked'),zod.literal('authority_unavailable'),zod.literal('invalid_session'),zod.literal('transport_unavailable'),zod.literal('execution_error'),zod.literal('deadline_expired'),zod.literal('server_interrupted'),zod.literal(null)]).nullable(),
   "terminal": zod.object({
   "ok": zod.boolean(),
-  "exitCode": zod.number().int().nullable(),
-  "durationMs": zod.number().int().min(sendBrowserInputResponseReceiptTerminalDurationMsMin)
+  "exitCode": zod.int().nullable(),
+  "durationMs": zod.int().min(sendBrowserInputResponseReceiptTerminalDurationMsMin)
 }).nullable(),
   "resultAvailability": zod.enum(['available', 'unavailable', 'not_recorded', 'not_applicable']),
   "result": zod.union([zod.object({
@@ -6342,7 +6342,7 @@ export const closeBrowserSessionResponseReceiptTerminalDurationMsMin = 0;
 export const CloseBrowserSessionResponse = zod.object({
   "receipt": zod.object({
   "requestId": zod.string().max(closeBrowserSessionResponseReceiptRequestIdMax).regex(closeBrowserSessionResponseReceiptRequestIdRegExp),
-  "agentId": zod.number().int().min(1).max(closeBrowserSessionResponseReceiptAgentIdMax),
+  "agentId": zod.int().min(1).max(closeBrowserSessionResponseReceiptAgentIdMax),
   "kind": zod.enum(['terminal_sandbox', 'terminal_host', 'browser_take_over', 'browser_navigate', 'browser_input', 'browser_release', 'browser_close']),
   "state": zod.enum(['reserved', 'dispatched', 'complete', 'not_dispatched', 'unknown']),
   "createdAt": zod.coerce.date(),
@@ -6352,8 +6352,8 @@ export const CloseBrowserSessionResponse = zod.object({
   "failureCode": zod.union([zod.literal('execution_blocked'),zod.literal('authority_unavailable'),zod.literal('invalid_session'),zod.literal('transport_unavailable'),zod.literal('execution_error'),zod.literal('deadline_expired'),zod.literal('server_interrupted'),zod.literal(null)]).nullable(),
   "terminal": zod.object({
   "ok": zod.boolean(),
-  "exitCode": zod.number().int().nullable(),
-  "durationMs": zod.number().int().min(closeBrowserSessionResponseReceiptTerminalDurationMsMin)
+  "exitCode": zod.int().nullable(),
+  "durationMs": zod.int().min(closeBrowserSessionResponseReceiptTerminalDurationMsMin)
 }).nullable(),
   "resultAvailability": zod.enum(['available', 'unavailable', 'not_recorded', 'not_applicable']),
   "result": zod.union([zod.object({

@@ -7,7 +7,7 @@ import {
 } from "./task-result-format-bundle-budget";
 import { createHash } from "node:crypto";
 const text =
-  'const fmt=nullable(strict({kind:literal("table"),columns:array(string().check(max(80))).check(min(2),max(8))}));const draft=strict({version:literal(1),title:string(),resultFormat:optional(fmt)});function input(e){return e.title.length>0||e.resultFormat!=null}const unrelated="KEEP";';
+  'const fmt=nullable(strict({kind:literal("table"),columns:array(string().check(refine(h=>h.length<=80))).check(min(2),max(8))}));const draft=strict({version:literal(1),title:string(),resultFormat:optional(fmt)});function input(e){return e.title.length>0||e.resultFormat!=null}const unrelated="KEEP";';
 const asset = (contents: string) => ({
   fileName: "index-fixture.js",
   contents: Buffer.from(contents),
@@ -26,7 +26,10 @@ test("layout draft credit retains unrelated code and removes only its exact new 
 });
 test("changed format shape, duplicate input fragments or missing saved-field bindings earn no byte credit", () => {
   for (const changed of [
-    text.replace("max(80)", "max(81)"),
+    text.replace("h.length<=80", "h.length<=81"),
+    text.replace("h.length<=80", "other.length<=80"),
+    text.replace("h.length<=80", "h.length<80"),
+    text.replace("refine(h=>h.length<=80)", "max(80)"),
     text.replace('"table"', '"anything"'),
     text.replace("columns:array", "permissions:array"),
     text.replace("optional(fmt)", "optional(other)"),

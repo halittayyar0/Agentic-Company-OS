@@ -1,3 +1,4 @@
+import { safeInteger, stringChoices } from "./schema-primitives";
 import * as z from "zod/v4-mini";
 import type {
   TaskInput,
@@ -24,8 +25,8 @@ const inputSchema = z.strictObject({
   requestId: uuid,
   title: z.string().check(z.minLength(1), z.maxLength(300)),
   brief: z.string().check(z.minLength(1), z.maxLength(8000)),
-  priority: z.enum(["low", "normal", "high", "urgent"]),
-  autonomyMode: z.enum(["finite", "continuous"]),
+  priority: stringChoices(["low", "normal", "high", "urgent"]),
+  autonomyMode: stringChoices(["finite", "continuous"]),
   cadenceSeconds: z.optional(z.literal([900, 3600, 21600, 86400, 604800])),
   completionRequirements: z.optional(completionRequirementsSchema),
   resultFormat: z.optional(resultFormatInputSchema),
@@ -123,10 +124,8 @@ const failure = z.literal([
 ]);
 const receiptSchema = z.strictObject({
   requestId: uuid,
-  state: z.enum(["created", "rejected"]),
-  taskId: z.nullable(
-    z.number().check(z.int(), z.minimum(1), z.maximum(2147483647)),
-  ),
+  state: stringChoices(["created", "rejected"]),
+  taskId: z.nullable(safeInteger.check(z.minimum(1), z.maximum(2147483647))),
   failureCode: z.nullable(failure),
   createdAt: z.string().check(z.iso.datetime({ offset: true })),
 });

@@ -8,7 +8,7 @@ import { getCodexTaskCopy } from "../codex-task-copy";
 import type { WorkspaceLocale } from "../workspace-locale";
 import type { RuntimeTransaction } from "./runtime-emergency-stop";
 
-type ToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
+type ToolDef = OpenAI.Chat.Completions.ChatCompletionFunctionTool;
 
 const createSubAgentTool: ToolDef = {
   type: "function",

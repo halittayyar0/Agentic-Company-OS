@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/lib/form-resolver";
 import * as z from "zod/v4-mini";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -300,7 +300,7 @@ function FileExplorerContent({
     }
   }
   const createForm = useForm<{ path: string }>({
-    resolver: zodResolver(
+    resolver: formResolver(
       z.object({
         path: z
           .string()
@@ -315,7 +315,7 @@ function FileExplorerContent({
     values: { path: session.newPath },
   });
   const editForm = useForm<{ content: string }>({
-    resolver: zodResolver(
+    resolver: formResolver(
       z.object({
         content: z.string().check(z.refine(editableFileText, c.contentInvalid)),
       }),
@@ -921,7 +921,7 @@ function Consent({
   const id = useId();
   const form = useForm<{ confirmed: boolean }>({
     defaultValues: { confirmed: false },
-    resolver: zodResolver(
+    resolver: formResolver(
       z.object({ confirmed: z.boolean().check(z.refine(Boolean, label)) }),
     ),
   });

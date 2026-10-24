@@ -18,7 +18,7 @@ import {
   useId,
 } from "react";
 import { useForm, useController } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/lib/form-resolver";
 import * as z from "zod/v4-mini";
 import { ValidatedForm } from "@/components/ui/validated-form";
 import {
@@ -638,7 +638,7 @@ function MeetingWorkspace({
     agenda: string;
     participantIds: number[];
   }>({
-    resolver: zodResolver(createSchema),
+    resolver: formResolver(createSchema),
     values: { title, agenda, participantIds },
     resetOptions: { keepErrors: true, keepTouched: true },
     mode: "onTouched",
@@ -1680,7 +1680,7 @@ function RecordComposer({
     [c, locale, limit, ownerOptions],
   );
   const form = useForm<{ text: string; ownerId: number | null }>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     values: { text: value, ownerId: ownerId ?? null },
     resetOptions: { keepErrors: true, keepTouched: true },
     mode: "onTouched",

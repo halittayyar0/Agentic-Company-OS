@@ -33,7 +33,7 @@ export interface SyntheticToolExecutorOptions {
 
 // Only the dedicated endurance runner adds this schema. The production
 // catalog and dispatcher deliberately do not expose this database fixture.
-export const syntheticFixtureTool: OpenAI.Chat.Completions.ChatCompletionTool =
+export const syntheticFixtureTool: OpenAI.Chat.Completions.ChatCompletionFunctionTool =
   {
     type: "function",
     function: {

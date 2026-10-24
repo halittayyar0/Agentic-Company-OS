@@ -398,7 +398,7 @@ test("tool definitions are reduced before the model call", () => {
     "vm_write_file",
     "delegate_task",
     "request_approval",
-  ].map((name): OpenAI.Chat.Completions.ChatCompletionTool => ({
+  ].map((name): OpenAI.Chat.Completions.ChatCompletionFunctionTool => ({
     type: "function",
     function: { name, parameters: { type: "object" } },
   }));

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import {
   db,
   agentsTable,
@@ -83,6 +84,21 @@ export function createApprovalsRouter(
   dependencies: ApprovalDecisionDependencies = {},
 ): IRouter {
   const router: IRouter = Router();
+  // Protect credential checks and approval queries even when this router is
+  // mounted independently. Never let an untrusted forwarding header choose
+  // the bucket. Production retains the earlier, broader API/login limits.
+  router.use(
+    "/approvals",
+    rateLimit({
+      windowMs: 60_000,
+      limit: 300,
+      keyGenerator: (req) =>
+        ipKeyGenerator(req.socket.remoteAddress ?? "unknown"),
+      standardHeaders: "draft-6",
+      legacyHeaders: false,
+      message: { error: "Too many requests" },
+    }),
+  );
   const resultReviewAuth =
     dependencies.resultReviewAuth ??
     createOperatorAuth(readOperatorAuthOptions());

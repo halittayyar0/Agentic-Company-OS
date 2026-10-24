@@ -48,7 +48,9 @@ export function resultFormatDraftControl(asset: BundleAsset) {
   assert.match(
     initializer.getText(source),
     new RegExp(
-      `^${id}\\(${id}\\(\\{kind:${id}\\("table"\\),columns:${id}\\(${id}\\(\\)\\.check\\(${id}\\(80\\)\\)\\)\\.check\\(${id}\\(2\\),${id}\\(8\\)\\)\\}\\)\\)$`,
+      // Zod 4's generic maxLength counts code points. Credit only the exact
+      // persisted UTF-16 predicate, including its bound parameter identity.
+      `^${id}\\(${id}\\(\\{kind:${id}\\("table"\\),columns:${id}\\(${id}\\(\\)\\.check\\(${id}\\((?<heading>${id})=>\\k<heading>\\.length<=80\\)\\)\\)\\.check\\(${id}\\(2\\),${id}\\(8\\)\\)\\}\\)\\)$`,
       "u",
     ),
     "Draft format shape changed",

@@ -482,7 +482,7 @@ export function resolveModelProvider(modelId: string): ModelProvider | null {
 export interface UnifiedChatCompletionParams {
   model: string;
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-  tools?: OpenAI.Chat.Completions.ChatCompletionTool[];
+  tools?: OpenAI.Chat.Completions.ChatCompletionFunctionTool[];
   maxTokens?: number;
   /** Local Ollama thinking models only. Tool workflows default to none to keep
    * reasoning from consuming the output budget before an action is produced. */

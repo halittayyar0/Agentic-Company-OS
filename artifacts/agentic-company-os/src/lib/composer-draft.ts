@@ -1,3 +1,4 @@
+import { stringChoices } from "./schema-primitives";
 import * as z from "zod/v4-mini";
 import { completionRequirementsSchema } from "./completion-requirements-input";
 import { resultFormatDraftSchema } from "./task-result-format-draft";
@@ -6,15 +7,15 @@ const homeSchema = z.strictObject({
   version: z.literal(1),
   kind: z.literal("home"),
   prompt: z.string().check(z.maxLength(7000)),
-  mode: z.enum(["team", "engineer", "research", "compare"]),
+  mode: stringChoices(["team", "engineer", "research", "compare"]),
 });
 export const projectDraftSchema = z.strictObject({
   version: z.literal(1),
   kind: z.literal("project"),
   title: z.string().check(z.maxLength(300)),
   brief: z.string().check(z.maxLength(8000)),
-  priority: z.enum(["low", "normal", "high", "urgent"]),
-  autonomyMode: z.enum(["finite", "continuous"]),
+  priority: stringChoices(["low", "normal", "high", "urgent"]),
+  autonomyMode: stringChoices(["finite", "continuous"]),
   cadenceSeconds: z.literal([900, 3600, 21600, 86400, 604800]),
   completionRequirements: z.optional(completionRequirementsSchema),
   resultFormat: z.optional(resultFormatDraftSchema),

@@ -1,9 +1,11 @@
+import { safeInteger, stringChoices } from "./schema-primitives";
 import * as z from "zod/v4-mini";
 import type { CodexSessionRecoveryReceipt } from "@workspace/api-client-react";
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
-const revision = z
-  .number()
-  .check(z.int(), z.minimum(1), z.maximum(Number.MAX_SAFE_INTEGER));
+const revision = safeInteger.check(
+  z.minimum(1),
+  z.maximum(Number.MAX_SAFE_INTEGER),
+);
 const uuid = z
   .string()
   .check(
@@ -13,7 +15,7 @@ const uuid = z
   );
 const intentSchema = z.strictObject({
   version: z.literal(1),
-  taskId: z.number().check(z.int(), z.minimum(1), z.maximum(2147483647)),
+  taskId: safeInteger.check(z.minimum(1), z.maximum(2147483647)),
   requestId: uuid,
   expectedRevision: revision,
 });
@@ -72,11 +74,11 @@ export function clearCodingRecoveryIntent(
 }
 const receiptSchema = z.strictObject({
   requestId: uuid,
-  taskId: z.number().check(z.int(), z.minimum(1), z.maximum(2147483647)),
+  taskId: safeInteger.check(z.minimum(1), z.maximum(2147483647)),
   expectedRevision: revision,
-  outcome: z.enum(["accepted", "rejected"]),
+  outcome: stringChoices(["accepted", "rejected"]),
   reason: z.nullable(
-    z.enum([
+    stringChoices([
       "task_missing",
       "session_missing",
       "revision_changed",
@@ -89,9 +91,10 @@ const receiptSchema = z.strictObject({
     ]),
   ),
   revision: z.nullable(revision),
-  recordedAt: z
-    .number()
-    .check(z.int(), z.minimum(0), z.maximum(Number.MAX_SAFE_INTEGER)),
+  recordedAt: safeInteger.check(
+    z.minimum(0),
+    z.maximum(Number.MAX_SAFE_INTEGER),
+  ),
   taskResumed: z.literal(false),
   effectsReconciled: z.literal(false),
 });

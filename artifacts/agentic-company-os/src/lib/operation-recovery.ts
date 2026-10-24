@@ -1,3 +1,4 @@
+import { safeInteger, stringChoices } from "./schema-primitives";
 import * as z from "zod/v4-mini";
 
 export type OperationStore = Pick<
@@ -10,7 +11,7 @@ export class OperationRecoveryError extends Error {
     super(code);
   }
 }
-const id = z.number().check(z.int(), z.minimum(1), z.maximum(2147483647));
+const id = safeInteger.check(z.minimum(1), z.maximum(2147483647));
 const uuid = z
   .string()
   .check(
@@ -25,13 +26,13 @@ const receiptId = z.string().check(
   z.maxLength(256),
   z.refine((s) => s === s.trim() && operationNoteBytes(s) <= 256),
 );
-const decision = z.enum(["confirmed_applied", "confirmed_not_applied"]);
+const decision = stringChoices(["confirmed_applied", "confirmed_not_applied"]);
 const draftSchema = z.strictObject({
   version: z.literal(1),
   draftId: uuid,
   projectId: id,
   receiptId,
-  decision: z.enum(["", "confirmed_applied", "confirmed_not_applied"]),
+  decision: stringChoices(["", "confirmed_applied", "confirmed_not_applied"]),
   note: z.string().check(z.maxLength(2000)),
 });
 const intentSchema = z.strictObject({

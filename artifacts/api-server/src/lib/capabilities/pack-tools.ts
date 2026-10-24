@@ -97,7 +97,7 @@ const descriptions: Record<PackToolName, string> = {
   compare_page_text:
     "Compare supplied page text after normalizing whitespace; return changed state, word counts and bounded positional line differences. Does not fetch URLs.",
 };
-export const packToolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] =
+export const packToolDefinitions: OpenAI.Chat.Completions.ChatCompletionFunctionTool[] =
   PACK_TOOL_NAMES.map((name) => ({
     type: "function",
     function: {

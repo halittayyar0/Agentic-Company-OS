@@ -133,6 +133,13 @@ export default defineConfig({
             return "index";
           if (moduleId.endsWith("/src/lib/completion-review-view.ts"))
             return "completion-review-view";
+          // Keep shared browser predicates with their existing validation runtime.
+          // This avoids another request and preserves application entry exports.
+          if (
+            moduleId.endsWith("/src/lib/schema-primitives.ts") ||
+            moduleId.endsWith("/src/lib/form-resolver.ts")
+          )
+            return "vendor-core";
           // Recovery controls also use the pure studio formatter. Sharing
           // this tiny owner avoids importing the entire project view for it.
           if (moduleId.endsWith("/src/lib/project-studio-copy.ts"))

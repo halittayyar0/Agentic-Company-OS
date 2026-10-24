@@ -6,7 +6,9 @@ export const resultFormatDraftSchema = z.nullable(
   z.strictObject({
     kind: z.literal("table"),
     columns: z
-      .array(z.string().check(z.maxLength(80)))
+      // Persisted headings use UTF-16 units, matching the server parser.
+      // Zod 4's maxLength counts Unicode code points instead.
+      .array(z.string().check(z.refine((heading) => heading.length <= 80)))
       .check(z.minLength(2), z.maxLength(8)),
   }),
 );

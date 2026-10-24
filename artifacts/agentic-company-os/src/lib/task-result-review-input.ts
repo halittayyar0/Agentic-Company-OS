@@ -1,3 +1,4 @@
+import { safeInteger, stringChoices } from "./schema-primitives";
 import * as z from "zod/v4-mini";
 import type {
   ApprovalRequest,
@@ -5,8 +6,8 @@ import type {
 } from "@workspace/api-client-react";
 import { resultFormatInputSchema } from "./task-result-format-input";
 import { parseResultTable } from "./task-result-table";
-const positive = z.number().check(z.int(), z.minimum(1));
-const cycle = z.number().check(z.int(), z.minimum(0));
+const positive = safeInteger.check(z.minimum(1));
+const cycle = safeInteger.check(z.minimum(0));
 const digest = z.string().check(z.regex(/^[a-f0-9]{64}$/u));
 const schema = z.strictObject({
   approvalId: positive,
@@ -15,7 +16,7 @@ const schema = z.strictObject({
   proposalHash: digest,
   resultSummary: z.string().check(z.minLength(1), z.maxLength(65536)),
   resultFormat: resultFormatInputSchema,
-  judgeReasonCode: z.enum([
+  judgeReasonCode: stringChoices([
     "source_mismatch",
     "missing_required_action",
     "unauthorized_action",

@@ -39,7 +39,7 @@ export const extensionRunSchema = z
 export const extensionListSchema = z
   .object({ offset: z.number().int().min(0).max(100).optional() })
   .strict();
-export const capabilityToolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] =
+export const capabilityToolDefinitions: OpenAI.Chat.Completions.ChatCompletionFunctionTool[] =
   [
     {
       type: "function",

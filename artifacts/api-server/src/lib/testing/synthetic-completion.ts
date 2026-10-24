@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type OpenAI from "openai";
 import type { createChatCompletion } from "@workspace/ai-server";
 import {
   buildSyntheticFixtureArguments,
@@ -10,6 +11,27 @@ import {
 } from "./synthetic-fault-plan";
 
 export const SYNTHETIC_FIXTURE_TOOL_NAME = "synthetic_fixture_write";
+
+// This owned fixture emits only function calls. Real provider completions keep
+// the SDK's full incoming union and must pass the existing envelope validator.
+type SyntheticCompletionResult = {
+  provider: "ollama";
+  completion: Omit<OpenAI.Chat.Completions.ChatCompletion, "choices"> & {
+    choices: Array<
+      Omit<OpenAI.Chat.Completions.ChatCompletion.Choice, "message"> & {
+        message: Omit<
+          OpenAI.Chat.Completions.ChatCompletionMessage,
+          "tool_calls"
+        > & {
+          tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall[];
+        };
+      }
+    >;
+  };
+};
+type SyntheticCreateCompletion = (
+  params: Parameters<typeof createChatCompletion>[0],
+) => Promise<SyntheticCompletionResult>;
 
 export interface SyntheticDelegation {
   agentId: number;
@@ -83,7 +105,7 @@ async function waitForSyntheticTimeout(
 function deterministicCompletion(
   options: SyntheticCompletionOptions,
   model: string,
-): Awaited<ReturnType<typeof createChatCompletion>> {
+): SyntheticCompletionResult {
   const fixture = buildSyntheticFixtureArguments(options);
   const digest = fixture.operationKey.slice("synthetic:v1:".length);
   const promptTokens = 24 + (Number.parseInt(digest.slice(0, 2), 16) % 17);
@@ -160,7 +182,7 @@ function delegationCompletion(
   options: SyntheticCompletionOptions,
   model: string,
   messages: readonly unknown[],
-): Awaited<ReturnType<typeof createChatCompletion>> | null {
+): SyntheticCompletionResult | null {
   const alreadyDelegated = delegatedAgentIds(messages);
   const pending = [...(options.delegations ?? [])]
     .filter(
@@ -226,7 +248,7 @@ function delegationCompletion(
 function malformedCompletion(
   options: SyntheticCompletionOptions,
   model: string,
-): Awaited<ReturnType<typeof createChatCompletion>> {
+): SyntheticCompletionResult {
   const digest = createHash("sha256")
     .update(
       `${options.seed}:${options.identity.taskId}:${options.identity.attemptNumber}:${options.identity.step}`,
@@ -247,9 +269,9 @@ function malformedCompletion(
 }
 
 function withAdvertisedTools(
-  result: Awaited<ReturnType<typeof createChatCompletion>>,
+  result: SyntheticCompletionResult,
   tools: Parameters<typeof createChatCompletion>[0]["tools"],
-): Awaited<ReturnType<typeof createChatCompletion>> {
+): SyntheticCompletionResult {
   const advertised = new Set((tools ?? []).map((tool) => tool.function.name));
   const missing = [
     ...new Set(
@@ -300,7 +322,7 @@ function withAdvertisedTools(
 
 export function createSyntheticCompletion(
   options: SyntheticCompletionOptions,
-): typeof createChatCompletion {
+): SyntheticCreateCompletion {
   let selectedFault: Readonly<SyntheticFaultPlanEntry> | undefined;
   return async (params) => {
     const resolvedFault = options.faultSource
