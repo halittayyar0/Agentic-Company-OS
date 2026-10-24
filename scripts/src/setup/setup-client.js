@@ -54,7 +54,7 @@
         "This operating system is unsupported. Use Windows, macOS, or Linux.",
       unsupported_architecture:
         "This processor is unsupported. Use x64 or ARM64.",
-      node_24_required: "Node.js 24 is required for direct installation.",
+      node_24_required: "Use Node.js 24.22.1 or a newer 24.x release.",
       docker_unavailable:
         "Docker is missing. Install Docker Desktop or Docker Engine.",
       docker_engine_unavailable:
@@ -74,7 +74,7 @@
         "Bu işletim sistemi desteklenmiyor. Windows, macOS veya Linux kullan.",
       unsupported_architecture:
         "Bu işlemci desteklenmiyor. x64 veya ARM64 kullan.",
-      node_24_required: "Doğrudan kurulum için Node.js 24 gerekli.",
+      node_24_required: "Node.js 24.22.1 veya daha yeni bir 24.x sürümü kur.",
       docker_unavailable:
         "Docker bulunamadı. Docker Desktop veya Docker Engine kur.",
       docker_engine_unavailable:
@@ -95,7 +95,7 @@
       unsupported_architecture:
         "Dieser Prozessor wird nicht unterstützt. Nutze x64 oder ARM64.",
       node_24_required:
-        "Für die direkte Installation ist Node.js 24 erforderlich.",
+        "Installiere Node.js 24.22.1 oder eine neuere 24.x-Version.",
       docker_unavailable:
         "Docker fehlt. Installiere Docker Desktop oder Docker Engine.",
       docker_engine_unavailable:
@@ -115,7 +115,8 @@
         "Эта система не поддерживается. Используйте Windows, macOS или Linux.",
       unsupported_architecture:
         "Этот процессор не поддерживается. Используйте x64 или ARM64.",
-      node_24_required: "Для прямой установки нужен Node.js 24.",
+      node_24_required:
+        "Установите Node.js 24.22.1 или более новую версию 24.x.",
       docker_unavailable:
         "Docker не найден. Установите Docker Desktop или Docker Engine.",
       docker_engine_unavailable:
@@ -134,7 +135,7 @@
       unsupported_platform:
         "不支持此操作系统。请使用 Windows、macOS 或 Linux。",
       unsupported_architecture: "不支持此处理器。请使用 x64 或 ARM64。",
-      node_24_required: "直接安装需要 Node.js 24。",
+      node_24_required: "请安装 Node.js 24.22.1 或更新的 24.x 版本。",
       docker_unavailable:
         "未找到 Docker。请安装 Docker Desktop 或 Docker Engine。",
       docker_engine_unavailable:
@@ -152,7 +153,7 @@
       unsupported_platform:
         "不支援此作業系統。請使用 Windows、macOS 或 Linux。",
       unsupported_architecture: "不支援此處理器。請使用 x64 或 ARM64。",
-      node_24_required: "直接安裝需要 Node.js 24。",
+      node_24_required: "請安裝 Node.js 24.22.1 或更新的 24.x 版本。",
       docker_unavailable:
         "找不到 Docker。請安裝 Docker Desktop 或 Docker Engine。",
       docker_engine_unavailable:
@@ -170,7 +171,8 @@
       unsupported_platform:
         "نظام التشغيل هذا غير مدعوم. استخدم Windows أو macOS أو Linux.",
       unsupported_architecture: "هذا المعالج غير مدعوم. استخدم x64 أو ARM64.",
-      node_24_required: "يتطلب التثبيت المباشر Node.js 24.",
+      node_24_required:
+        "ثبّت \u2066Node.js 24.22.1\u2069 أو إصدارًا أحدث من سلسلة \u206624.x\u2069.",
       docker_unavailable:
         "لم يُعثر على Docker. ثبّت Docker Desktop أو Docker Engine.",
       docker_engine_unavailable:

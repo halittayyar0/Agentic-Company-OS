@@ -219,6 +219,8 @@ try {
     (await run(node(), ["--version"])).stdout.trim(),
     `v${manifest.nodeVersion}`,
   );
+  await run(node(), [path.join(source, "scripts/test-runtime-security.mjs")]);
+  proof.nodeDnsSecurityRegression = true;
   // Use the shipped launcher for its read-only check with no developer tools on PATH.
   const checked =
     process.platform === "win32"
@@ -389,6 +391,31 @@ try {
     "on",
   ]);
   proof.durableDatabaseAndPrivateModules = true;
+  const copyRegression = path.join(owned, "runtime-copy-security.sql");
+  await writeFile(
+    copyRegression,
+    await readFile(path.join(source, "scripts/runtime-copy-security.sql")),
+    { flag: "wx" },
+  );
+  const copyResult = await run(
+    postgres("psql"),
+    [
+      ...connectionArgs,
+      "-d",
+      "postgres",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=0",
+      "-f",
+      copyRegression,
+    ],
+    { PGPASSWORD: decodeURIComponent(dbUrl.password) },
+  );
+  assert.match(copyResult.stderr, /runtime_security_missing/u);
+  assert.match(copyResult.stdout, /^runtime-security-sentinel=0\r?$/mu);
+  assert.doesNotMatch(copyResult.stdout, /^runtime-security-sentinel=[1-9]/mu);
+  proof.postgresCopySecurityRegression = true;
   proof.backup = await proveDatabaseBackup({
     database: "postgres",
     dumpPath: path.join(owned, "first-job.dump"),

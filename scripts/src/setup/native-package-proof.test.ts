@@ -3,6 +3,67 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { publicNativeSetupState } from "./native-package-proof";
 
+test("Windows installation CI uses the reviewed PostgreSQL security release", async () => {
+  const ci = await readFile(
+    new URL("../../../.github/workflows/ci.yml", import.meta.url),
+    "utf8",
+  );
+  assert.deepEqual(
+    [
+      ...ci.matchAll(
+        /https:\/\/get\.enterprisedb\.com\/postgresql\/postgresql-(\d+\.\d+)-1-windows-x64-binaries\.zip/gu,
+      ),
+    ].map((match) => match[1]),
+    ["17.11", "17.11"],
+  );
+});
+
+test("new native packages admit patched runtimes while rejecting previously valid old pins", async () => {
+  const { nodeArchiveDownloadUrl, postgresSourceDownloadUrl } = await import(
+    new URL("../../native-runtime-download.mjs", import.meta.url).href
+  );
+  const pins = JSON.parse(
+    await readFile(
+      new URL("../../../deploy/native-runtimes.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.equal(pins.postgres.version, "17.11");
+  assert.equal(postgresSourceDownloadUrl(pins.postgres), pins.postgres.url);
+  assert.throws(() =>
+    postgresSourceDownloadUrl({
+      ...pins.postgres,
+      version: "17.10",
+      url: "https://ftp.postgresql.org/pub/source/v17.10/postgresql-17.10.tar.bz2",
+    }),
+  );
+  for (const url of [
+    pins.postgres.url + "?unreviewed",
+    "https://example.invalid/source.tar.bz2",
+  ]) {
+    assert.throws(() => postgresSourceDownloadUrl({ ...pins.postgres, url }));
+  }
+  assert.deepEqual(Object.keys(pins.targets).sort(), [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm64",
+    "linux-x64",
+    "win32-x64",
+  ]);
+  for (const [target, value] of Object.entries(pins.targets)) {
+    const pin = (value as { node: { version: string; url: string } }).node;
+    assert.equal(pin.version, "24.22.1");
+    assert.equal(nodeArchiveDownloadUrl(target, pin), pin.url);
+    assert.throws(() =>
+      nodeArchiveDownloadUrl(target, {
+        ...pin,
+        version: "24.21.0",
+        url: pin.url.replaceAll("24.22.1", "24.21.0"),
+      }),
+    );
+  }
+});
+
 test("native runtime downloads accept only the reviewed target URL, never arbitrary pin-file data", async () => {
   const { nodeArchiveDownloadUrl } = await import(
     new URL("../../native-runtime-download.mjs", import.meta.url).href

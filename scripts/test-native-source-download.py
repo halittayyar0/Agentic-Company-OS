@@ -22,6 +22,17 @@ class Response(io.BytesIO):
 
 
 class DownloadTests(unittest.TestCase):
+    def test_postgres_build_admission_rejects_old_pins_and_changed_destinations(self):
+        valid = {"version": "17.11", "url": "https://ftp.postgresql.org/pub/source/v17.11/postgresql-17.11.tar.bz2"}
+        builder.validate_postgres_pin(valid)
+        for pin in [
+            {"version": "17.10", "url": "https://ftp.postgresql.org/pub/source/v17.10/postgresql-17.10.tar.bz2"},
+            {**valid, "url": valid["url"] + "?unreviewed"},
+            {**valid, "url": "https://example.invalid/postgresql-17.11.tar.bz2"},
+        ]:
+            with self.subTest(pin=pin), self.assertRaisesRegex(RuntimeError, "reviewed PostgreSQL"):
+                builder.validate_postgres_pin(pin)
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

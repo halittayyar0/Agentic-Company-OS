@@ -8,7 +8,7 @@ test("setup check explains missing container prerequisites without publishing pr
     const state = await detectInstallCapabilities({
       platform,
       arch: "x64",
-      nodeVersion: "v24.21.0",
+      nodeVersion: "v24.22.1",
       run: async () => {
         throw Error("private-secret /private/home");
       },
@@ -49,7 +49,7 @@ test("optional coding and phone absence never blocks an ordinary ready installat
   const report = setupCheckReport({
     platform: "linux",
     architecture: "arm64",
-    nodeVersion: "v24.21.0",
+    nodeVersion: "v24.22.1",
     postgresClientVersion: null,
     composeVersion: "2.40.0",
     native: { ready: false, issues: ["native_source_required"] },

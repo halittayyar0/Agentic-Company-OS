@@ -10,7 +10,7 @@ Contributor and runtime context for the local-first command center that operates
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate React hooks and Zod validators from OpenAPI.
 - `pnpm --filter @workspace/db run migrate` — apply the checked-in migration chain. Use `push` only for disposable schema exploration, never as the release path.
 
-Use Node.js 24 and the exact pnpm version declared in `package.json`. Local development can boot with process-lifetime PGlite; production, remote access, durability, and multiple replicas require PostgreSQL. An LLM provider is optional for boot but required for agent turns.
+Use Node.js 24.22.1 or newer 24.x and the exact pnpm version declared in `package.json`. Local development can boot with process-lifetime PGlite; production, remote access, durability, and multiple replicas require PostgreSQL. An LLM provider is optional for boot but required for agent turns.
 
 ## Stack and repository map
 

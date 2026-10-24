@@ -405,16 +405,16 @@ jobs:
       - name: Download and verify portable PostgreSQL 17
         shell: pwsh
         run: |
-          $archive = Join-Path $env:RUNNER_TEMP "postgresql-17.10-1-windows-x64-binaries.zip"
-          $postgresRoot = Join-Path $env:RUNNER_TEMP "postgresql-17.10-1-windows-x64-binaries"
+          $archive = Join-Path $env:RUNNER_TEMP "postgresql-17.11-1-windows-x64-binaries.zip"
+          $postgresRoot = Join-Path $env:RUNNER_TEMP "postgresql-17.11-1-windows-x64-binaries"
           Invoke-WebRequest `
-            -Uri "https://get.enterprisedb.com/postgresql/postgresql-17.10-1-windows-x64-binaries.zip" `
+            -Uri "https://get.enterprisedb.com/postgresql/postgresql-17.11-1-windows-x64-binaries.zip" `
             -OutFile $archive
           $actualSize = (Get-Item -LiteralPath $archive).Length
-          if ($actualSize -ne 333925750) {
+          if ($actualSize -ne 340719294) {
             throw "Portable PostgreSQL archive size mismatch"
           }
-          $expected = "f9aafca58e7026a1ef2caeee711acf761671e57904d430adc85f468374f5a821"
+          $expected = "6eabdf00d2893713b75db4336a23c3fdf505f056e217ec6e2e95d901750cfea3"
           $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($actual -ne $expected) {
             throw "Portable PostgreSQL SHA256 mismatch"
@@ -422,8 +422,8 @@ jobs:
           Expand-Archive -LiteralPath $archive -DestinationPath $postgresRoot
           $postgresExecutable = Join-Path $postgresRoot "pgsql\bin\postgres.exe"
           $version = & $postgresExecutable --version
-          if ($LASTEXITCODE -ne 0 -or $version -notmatch "PostgreSQL\) 17\.[0-9]+") {
-            throw "Portable PostgreSQL is not a supported 17.x toolchain"
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch "PostgreSQL\) 17\.11$") {
+            throw "Portable PostgreSQL is not the reviewed 17.11 toolchain"
           }
           "ENDURANCE_POSTGRES_ROOT=$postgresRoot" >> $env:GITHUB_ENV
 
@@ -514,16 +514,16 @@ jobs:
       - name: Download and verify portable PostgreSQL 17
         shell: pwsh
         run: |
-          $archive = Join-Path $env:RUNNER_TEMP "postgresql-17.10-1-windows-x64-binaries.zip"
-          $postgresRoot = Join-Path $env:RUNNER_TEMP "postgresql-17.10-1-windows-x64-binaries"
+          $archive = Join-Path $env:RUNNER_TEMP "postgresql-17.11-1-windows-x64-binaries.zip"
+          $postgresRoot = Join-Path $env:RUNNER_TEMP "postgresql-17.11-1-windows-x64-binaries"
           Invoke-WebRequest `
-            -Uri "https://get.enterprisedb.com/postgresql/postgresql-17.10-1-windows-x64-binaries.zip" `
+            -Uri "https://get.enterprisedb.com/postgresql/postgresql-17.11-1-windows-x64-binaries.zip" `
             -OutFile $archive
           $actualSize = (Get-Item -LiteralPath $archive).Length
-          if ($actualSize -ne 333925750) {
+          if ($actualSize -ne 340719294) {
             throw "Portable PostgreSQL archive size mismatch"
           }
-          $expected = "f9aafca58e7026a1ef2caeee711acf761671e57904d430adc85f468374f5a821"
+          $expected = "6eabdf00d2893713b75db4336a23c3fdf505f056e217ec6e2e95d901750cfea3"
           $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($actual -ne $expected) {
             throw "Portable PostgreSQL SHA256 mismatch"
@@ -531,8 +531,8 @@ jobs:
           Expand-Archive -LiteralPath $archive -DestinationPath $postgresRoot
           $postgresExecutable = Join-Path $postgresRoot "pgsql\bin\postgres.exe"
           $version = & $postgresExecutable --version
-          if ($LASTEXITCODE -ne 0 -or $version -notmatch "PostgreSQL\) 17\.[0-9]+") {
-            throw "Portable PostgreSQL is not a supported 17.x toolchain"
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch "PostgreSQL\) 17\.11$") {
+            throw "Portable PostgreSQL is not the reviewed 17.11 toolchain"
           }
           "ENDURANCE_POSTGRES_ROOT=$postgresRoot" >> $env:GITHUB_ENV
 
@@ -940,7 +940,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 24.21.0
+          node-version: 24.22.1
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - name: Install frozen dependencies

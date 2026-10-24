@@ -5,7 +5,7 @@ working tree or from a directory that contains operator runtime data.
 
 ## 1. Prepare the candidate
 
-- Use Node 24 and the pnpm version pinned in `package.json`.
+- Use Node 24.22.1 or newer 24.x and the pnpm version pinned in `package.json`.
 - Confirm `.env`, `data/`, `agent-sandboxes/`, `.conversation/`, `.secrets/`,
   logs, screenshots containing private work, and local database files are not
   tracked.

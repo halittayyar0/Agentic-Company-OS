@@ -8,7 +8,7 @@ being mistaken for evidence about the candidate you intend to publish.
 
 ## Requirements
 
-- Node 24, the pinned pnpm version and installed repository dependencies.
+- Node 24.22.1 or newer 24.x, the pinned pnpm version and installed repository dependencies.
 - GitHub CLI (`gh`) authenticated with read access to the repository, Actions,
   branch protection and code-scanning results. The command does not start login.
 - A reviewed, clean candidate with completed original CI and platform workflows.

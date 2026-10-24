@@ -30,6 +30,12 @@ endif
 # Define arguments for default targets"""
 
 
+def validate_postgres_pin(spec):
+    if (spec.get("version") != "17.11" or
+            spec.get("url") != "https://ftp.postgresql.org/pub/source/v17.11/postgresql-17.11.tar.bz2"):
+        raise RuntimeError("Build requires the reviewed PostgreSQL security release")
+
+
 def checked_download(spec, cache):
     destination = cache / spec["url"].rsplit("/", 1)[1]
     downloaded = False
@@ -217,12 +223,13 @@ def main():
     parser.add_argument("--cache", default=str(ROOT / ".tmp/self-contained-inputs"))
     parser.add_argument("--jobs", type=int, default=min(os.cpu_count() or 2, 4))
     args = parser.parse_args()
+    pins = json.loads((ROOT / "deploy/native-runtimes.json").read_text())
+    validate_postgres_pin(pins["postgres"])
     work = Path(args.out).absolute()
     work.mkdir(parents=True, exist_ok=False)
     (work / ".agentic-native-build").write_text("Owned release build directory\n")
     cache = Path(args.cache).absolute()
     cache.mkdir(parents=True, exist_ok=True)
-    pins = json.loads((ROOT / "deploy/native-runtimes.json").read_text())
     env = dict(os.environ)
     is_windows = sys.platform == "win32"
     if is_windows:

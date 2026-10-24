@@ -133,7 +133,7 @@ keep provider-side spend limits as well as these recorded-usage controls.
 
 ## Installation choices
 
-The portable setup bundle requires Node.js 24 and a running Docker engine. It pulls
+The portable setup bundle requires Node.js 24.22.1 or newer 24.x and a running Docker engine. It pulls
 the release image by immutable digest and opens the same seven-language local
 wizard as the source installation. Keep the extracted directory to resume.
 Native installation remains available from source with Node, pnpm and PostgreSQL.
