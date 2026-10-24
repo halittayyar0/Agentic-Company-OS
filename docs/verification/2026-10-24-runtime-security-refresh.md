@@ -25,4 +25,6 @@ The new official Node `24.22.1-bookworm-slim` index is `55fb5f5a527ea2c5c4a95f96
 
 ## Acceptance still required
 
+Local type checking, application builds, production/all-dependency audits, production license policy, bundle ceilings, formatting, workflow YAML parsing and secret scanning passed. The final changed-path run passed 28/28; release producer/source-log/CLI regressions passed 55/55. Independent whole-branch review found no Critical or Important code issue. Its two setup-guidance corrections were applied. The reviewed source census increases by four to 3,093 cases per platform, preserving the exact skip lists and all UI expectations; actual complete-suite results remain pending.
+
 Complete source tests, formatting, builds, security checks, original new-PR and actual-main platform checks, all five final native archives with both harmless runtime regressions, real useful work, upgrade from the published v0.5.7 installation, restart/backup, immutable image publication and anonymous public readback remain required. None is inferred from the old runtime's passing evidence. No paid model, new personal authentication, user database, secret disclosure or additional inference agent is part of this change.

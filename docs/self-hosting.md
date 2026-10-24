@@ -48,7 +48,7 @@ Native packages from v0.5.6 offer a guided same-platform update from the public 
 
 **Advanced alternative: separate Docker distribution.** The requirements below apply to the container setup ZIP, not the native archives above.
 
-Install Node.js 24.22.1 or newer 24.x.22.1 or newer 24.x and start a Docker Linux engine with Compose v2. Extract the setup ZIP from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest), then run `START.cmd` (Windows) or `sh START.command` (macOS/Linux). Open the printed private link. The wizard pulls a pinned image and provisions PostgreSQL; Git, pnpm and a local source build are unnecessary. Keep both the extracted bundle and the private installation directory to resume. Advanced container budget overrides belong in the installation directory’s `compose.env`; see [efficient work](efficient-work.md).
+Install Node.js 24.22.1 or newer 24.x and start a Docker Linux engine with Compose v2. Extract the setup ZIP from [Releases](https://github.com/halittayyar0/Agentic-Company-OS/releases/latest), then run `START.cmd` (Windows) or `sh START.command` (macOS/Linux). Open the printed private link. The wizard pulls a pinned image and provisions PostgreSQL; Git, pnpm and a local source build are unnecessary. Keep both the extracted bundle and the private installation directory to resume. Advanced container budget overrides belong in the installation directory’s `compose.env`; see [efficient work](efficient-work.md).
 
 The wizard checks the selected installation mode and names missing local requirements. It distinguishes Docker missing from an installed but stopped engine, Windows containers, and missing Compose v2. Follow the indicated step and choose **Check again** without losing your choices. The guide opens in a separate tab so the private setup session stays open. This check does not test provider credentials or guarantee the later installation; the reviewed plan rechecks prerequisites before it runs.
 
@@ -122,8 +122,8 @@ guides and can explicitly download a starter model to the saved private server
 with Ollama 0.40.3 or later. Allow about 2 GB plus temporary space on that server;
 see [first-model preparation and recovery](./local-models.md#get-your-first-local-model).
 
-- 64-bit host supported by Node.js 24.22.1 or newer 24.x.22.1 or newer 24.x and the repository's native dependencies
-- Node.js 24.22.1 or newer 24.x.22.1 or newer 24.x
+- 64-bit host supported by Node.js 24.22.1 or newer 24.x and the repository's native dependencies
+- Node.js 24.22.1 or newer 24.x
 - Corepack and the pnpm version pinned in the root `package.json` `packageManager` field
 - Chrome, Edge, or compatible Chromium if agent browser features are used
 - PostgreSQL for durable state
@@ -136,7 +136,7 @@ Process/browser execution should run inside a disposable container or VM if enab
 
 ### Guided installation (Windows, Linux and macOS)
 
-After installing Node 24.22.1 or newer 24.x.22.1 or newer 24.x and the pinned pnpm version, clone this repository and run these commands from its directory in PowerShell or a POSIX terminal:
+After installing Node 24.22.1 or newer 24.x and the pinned pnpm version, clone this repository and run these commands from its directory in PowerShell or a POSIX terminal:
 
 ```text
 pnpm install --frozen-lockfile

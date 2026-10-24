@@ -201,6 +201,26 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
   );
   assert.match(ui, /workers: 2,/u);
   assert.match(ui, /retries: 0,/u);
+  const census = JSON.parse(
+    readFileSync(
+      new URL("../../release-expectations.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  let sourceStages = 0;
+  for (const stage of Object.values(census) as {
+    source?: { tests: number; passed: number; skippedCases: string[] };
+  }[]) {
+    if (!stage.source) continue;
+    sourceStages++;
+    assert.equal(
+      stage.source.tests,
+      3093,
+      "reviewed census includes the four runtime-security regression cases",
+    );
+    assert.equal(stage.source.passed, 3093 - stage.source.skippedCases.length);
+  }
+  assert.equal(sourceStages, 4);
   assert.equal(
     JSON.parse(
       readFileSync(
