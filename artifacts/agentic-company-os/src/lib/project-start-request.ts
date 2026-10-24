@@ -1,3 +1,4 @@
+import { safeInteger, stringChoices } from "./schema-primitives";
 import * as z from "zod/v4-mini";
 import type {
   TaskInput,
@@ -5,6 +6,7 @@ import type {
 } from "@workspace/api-client-react";
 import type { ComposerDraft } from "./composer-draft";
 import { projectDraftSchema } from "./composer-draft";
+import { resultFormatInputSchema } from "./task-result-format-input";
 import {
   completionRequirementsSchema,
   canonicalCompletionRequirements,
@@ -23,10 +25,11 @@ const inputSchema = z.strictObject({
   requestId: uuid,
   title: z.string().check(z.minLength(1), z.maxLength(300)),
   brief: z.string().check(z.minLength(1), z.maxLength(8000)),
-  priority: z.enum(["low", "normal", "high", "urgent"]),
-  autonomyMode: z.enum(["finite", "continuous"]),
+  priority: stringChoices(["low", "normal", "high", "urgent"]),
+  autonomyMode: stringChoices(["finite", "continuous"]),
   cadenceSeconds: z.optional(z.literal([900, 3600, 21600, 86400, 604800])),
   completionRequirements: z.optional(completionRequirementsSchema),
+  resultFormat: z.optional(resultFormatInputSchema),
 });
 const requestSchema = z.strictObject({
   version: z.literal(1),
@@ -52,6 +55,7 @@ function inputFor(draft: ProjectDraft, requestId: string): TaskInput {
           ),
         }
       : {}),
+    ...(draft.resultFormat ? { resultFormat: draft.resultFormat } : {}),
   };
 }
 const same = (a: unknown, b: unknown) =>
@@ -120,10 +124,8 @@ const failure = z.literal([
 ]);
 const receiptSchema = z.strictObject({
   requestId: uuid,
-  state: z.enum(["created", "rejected"]),
-  taskId: z.nullable(
-    z.number().check(z.int(), z.minimum(1), z.maximum(2147483647)),
-  ),
+  state: stringChoices(["created", "rejected"]),
+  taskId: z.nullable(safeInteger.check(z.minimum(1), z.maximum(2147483647))),
   failureCode: z.nullable(failure),
   createdAt: z.string().check(z.iso.datetime({ offset: true })),
 });

@@ -87,7 +87,9 @@ test("completion requirement migration preserves existing tasks and creation rec
       )
     ).rows;
     for (const entry of journal.entries.filter(
-      (entry: { idx: number }) => entry.idx >= 45,
+      // This regression isolates migration 45. Later upgrade tests apply its
+      // result before checking the additional schema and data preservation.
+      (entry: { idx: number }) => entry.idx === 45,
     )) {
       await client.exec(await read(entry.tag + ".sql"));
     }

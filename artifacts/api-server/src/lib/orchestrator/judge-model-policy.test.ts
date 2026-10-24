@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { configureOpenRouter } from "@workspace/ai-server";
+import {
+  configureOllama,
+  configureOpenRouter,
+  refreshOllamaCatalog,
+} from "@workspace/ai-server";
 import { resolveJudgeExecutionModelBoundary } from "./execute-tool";
 import { selectJudgeModelPlan } from "./judge";
 
@@ -107,4 +111,64 @@ test("paid chat and agent selections do not pin the economy judge", () => {
     }),
     null,
   );
+});
+
+test("explicit local task, turn and manual-agent boundaries survive judging", () => {
+  const localModelId = "ollama:local-tools:8b";
+  for (const source of ["task", "turn", "agent"] as const) {
+    assert.equal(
+      resolveJudgeExecutionModelBoundary({
+        taskExecutionModelId: source === "task" ? localModelId : null,
+        turnModelId: source === "turn" ? localModelId : null,
+        agentModelMode: "manual",
+        agentModelId: source === "agent" ? localModelId : "gpt-5.6-sol",
+      }),
+      localModelId,
+      source,
+    );
+  }
+  assert.equal(
+    resolveJudgeExecutionModelBoundary({
+      taskExecutionModelId: null,
+      turnModelId: null,
+      agentModelMode: "auto",
+      agentModelId: localModelId,
+    }),
+    null,
+    "a stale automatic-agent model is not user authority",
+  );
+});
+
+test("a local completion judge never falls back to configured cloud providers", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input, init) => {
+    const request = input instanceof Request ? input : new Request(input, init);
+    assert.equal(new URL(request.url).origin, "http://127.0.0.1:11434");
+    return Response.json(
+      new URL(request.url).pathname === "/api/tags"
+        ? { models: [{ model: "local-tools:8b", name: "local-tools:8b" }] }
+        : {
+            capabilities: ["completion", "tools"],
+            details: { parameter_size: "8B" },
+          },
+    );
+  }) as typeof fetch;
+  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
+  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  configureOpenRouter({ apiKey: "test-openrouter-key" });
+  configureOllama({ baseUrl: "http://127.0.0.1:11434" });
+  try {
+    await refreshOllamaCatalog(true);
+    const plan = selectJudgeModelPlan({
+      agent: { depth: 1 },
+      taskExecutionModelId: "ollama:local-tools:8b",
+    });
+    assert.equal(plan.primary.modelId, "ollama:local-tools:8b");
+    assert.equal(plan.primary.source, "task_pin");
+    assert.ok(plan.routes.every((route) => route.provider === "ollama"));
+  } finally {
+    globalThis.fetch = originalFetch;
+    configureOllama({ baseUrl: null });
+    configureOpenRouter({ apiKey: null });
+  }
 });

@@ -31,6 +31,28 @@ const request: ApprovalRequest = {
     preview: "printf 'original command'",
   },
 };
+
+test("operator result reviews can never use generic approval even with missing metadata", () => {
+  assert.equal(
+    hasReviewableScope({
+      ...request,
+      scope: { ...request.scope!, toolName: "operator_confirm_task_result" },
+    }),
+    false,
+  );
+  assert.equal(
+    hasReviewableScope({
+      ...request,
+      resultReview: {
+        kind: "task_result",
+        proposalHash: null,
+        cycleNumber: null,
+        available: false,
+      },
+    }),
+    false,
+  );
+});
 test("review fails closed for malformed or expired scoped permissions", () => {
   const expiry = Date.parse(request.expiresAt!);
   assert.equal(approvalExpired(request, expiry - 1), false);

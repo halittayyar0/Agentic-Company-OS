@@ -7,5 +7,5 @@ export default {
   deliveryExportProject: "Проект {id}: {title}",
   deliveryExportStatus: "Текущий статус: {status}",
   deliveryExportNotice:
-    "Сводка сохранена агентом. Скачивание файла не подтверждает правильность работы.",
+    "Сохранённый результат задачи. Скачивание файла не подтверждает выполнение работы.",
 } satisfies DeliveryDownloadCopy;

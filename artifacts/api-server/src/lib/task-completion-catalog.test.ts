@@ -3,7 +3,9 @@ import test from "node:test";
 import type OpenAI from "openai";
 import { eligibleCompletionToolNames } from "./task-completion-catalog";
 
-const tool = (name: string): OpenAI.Chat.Completions.ChatCompletionTool => ({
+const tool = (
+  name: string,
+): OpenAI.Chat.Completions.ChatCompletionFunctionTool => ({
   type: "function",
   function: {
     name,

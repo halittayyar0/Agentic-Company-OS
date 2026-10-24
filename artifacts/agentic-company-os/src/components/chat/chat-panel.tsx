@@ -2,7 +2,7 @@ import { LanguagePackStatus } from "../i18n/language-pack-status";
 import { ActivitySummary } from "@/components/activity-summary";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/lib/form-resolver";
 import * as z from "zod/v4-mini";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -151,7 +151,7 @@ function Conversation({
   const [reviewOpen, setReviewOpen] = useState(false);
   const composeForm = useForm({
     values: { content: draft },
-    resolver: zodResolver(
+    resolver: formResolver(
       z.object({
         content: z.string().check(
           z.refine((value) => Boolean(value.trim()), c.required),
@@ -163,7 +163,7 @@ function Conversation({
   const composeField = composeForm.register("content");
   const reviewForm = useForm({
     defaultValues: { acknowledged: false },
-    resolver: zodResolver(
+    resolver: formResolver(
       z.object({
         acknowledged: z
           .boolean()

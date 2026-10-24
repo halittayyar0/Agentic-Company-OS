@@ -27,17 +27,30 @@ export function ProjectDeliveryDownload({
     staleTime: Infinity,
     retry: false,
   });
+  const operatorCopy = useQuery({
+    queryKey: ["task-result-review-copy", locale],
+    queryFn: async () =>
+      (await import("@/lib/task-result-review-copy")).loadTaskResultReviewCopy(
+        locale,
+      ),
+    enabled: project.completionAuthority === "operator",
+    staleTime: Infinity,
+    retry: false,
+  });
   const [failedSnapshot, setFailedSnapshot] = useState<{
     id: number;
     summary: string;
   } | null>(null);
   const summary = project.resultSummary?.trim();
   if (!summary) return null;
-  if (!copy.data)
+  if (
+    !copy.data ||
+    (project.completionAuthority === "operator" && !operatorCopy.data)
+  )
     return (
       <LanguagePackStatus
         as="div"
-        error={copy.isError}
+        error={copy.isError || operatorCopy.isError}
         className="min-w-0 max-w-full text-sm [overflow-wrap:anywhere]"
         buttonClassName="mt-2 min-h-11"
       />
@@ -53,7 +66,11 @@ export function ProjectDeliveryDownload({
     try {
       const file = projectDeliveryExport(
         project,
-        { ...context, ...copy.data },
+        {
+          ...context,
+          ...copy.data,
+          operatorProvenance: operatorCopy.data?.provenanceHelp,
+        },
         taskStatusLabel(project.status, locale),
       );
       if (!file) throw new Error("delivery_export_unavailable");

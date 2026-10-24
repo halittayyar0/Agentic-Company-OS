@@ -335,3 +335,29 @@ are recorded in `docs/frontend-ux-2026-09-04.md`; global baseline work does not
 claim these legacy workflows have migrated.
 
 These exact file/line fingerprints predate the 2026-09-26 layout and typography sweep; rerun and review the premium audit before using them as current release evidence.
+
+Result-format controls (2026-10-23) use the existing card/control tokens and a
+plain-text default. Table headings are explicit operator data, never proof of
+factual correctness. On narrow screens, heading inputs and removal controls
+stack with full-width touch targets; keep this readable at 320px and 200% text,
+including Arabic RTL. The saved layout is read-only and uses the same language
+pack as creation. A failed language load blocks submission while retaining the
+draft; no background inference, permissions change or automatic start follows
+from choosing a layout.
+
+Accepted table deliveries use semantic column headers, isolated text cells and
+a focusable horizontal scroll region on small screens. Keep untrusted HTML as
+text and preserve the conservative Markdown path for other results.
+
+Operator result review follows the same inbox layout but has a distinct meaning:
+the operator confirms an exact proposed result after a model rejection. Never
+frame this as permission to execute a command, or expose the internal server
+tool marker as a user decision. Show the proposed output, the app-authored reason,
+expiry and current required-operation evidence only after explicit opening and
+credential authentication. Confirmation needs a fresh acknowledgement; an
+uncertain decision freezes both choices until a successful refresh.
+
+Keep operator confirmation visibly separate from model acceptance in delivery,
+activity and download copy. Legacy unknown provenance uses neutral wording.
+Reuse the semantic table and narrow-screen scroll behavior; all seven language
+packs, 44px actions, RTL and 200% text remain part of this workflow's contract.

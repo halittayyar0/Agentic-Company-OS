@@ -8,7 +8,7 @@ import { getCodexTaskCopy } from "../codex-task-copy";
 import type { WorkspaceLocale } from "../workspace-locale";
 import type { RuntimeTransaction } from "./runtime-emergency-stop";
 
-type ToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
+type ToolDef = OpenAI.Chat.Completions.ChatCompletionFunctionTool;
 
 const createSubAgentTool: ToolDef = {
   type: "function",
@@ -59,6 +59,23 @@ const delegateTaskTool: ToolDef = {
         priority: {
           type: "string",
           enum: ["low", "normal", "high", "urgent"],
+        },
+        resultFormat: {
+          type: "object",
+          description:
+            "Optional output layout for this child only. Does not inherit the parent layout or grant permissions. Omit for free text.",
+          properties: {
+            kind: { type: "string", enum: ["table"] },
+            columns: {
+              type: "array",
+              minItems: 2,
+              maxItems: 8,
+              uniqueItems: true,
+              items: { type: "string", minLength: 1, maxLength: 80 },
+            },
+          },
+          required: ["kind", "columns"],
+          additionalProperties: false,
         },
         autonomyMode: {
           type: "string",

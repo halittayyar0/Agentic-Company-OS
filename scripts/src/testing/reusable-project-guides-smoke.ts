@@ -9,6 +9,7 @@ import { chromium, expect } from "@playwright/test";
 import { runNativeInstallSmoke } from "../setup/native-install-smoke";
 import { createControlledArithmeticPeer } from "./controlled-arithmetic-peer";
 import { expectNativePageValue } from "./native-page-readiness";
+import { resultFormatDurabilityProof } from "./task-result-format-durability";
 
 // Real owned installation; the only simulated component is the model HTTP peer.
 if (process.env.ACOS_REUSABLE_GUIDES_SMOKE !== "1")
@@ -62,7 +63,7 @@ const results: unknown[] = [];
 let ownedBaseUrl: string | undefined;
 let evidenceDirectory: string | undefined;
 try {
-  evidenceDirectory = await runNativeInstallSmoke(postgresBin, pnpmPath, {
+  const acceptance: NonNullable<Parameters<typeof runNativeInstallSmoke>[2]> = {
     kind: "offline-guided",
     run: async ({ baseUrl, operatorToken, directory }) => {
       ownedBaseUrl = baseUrl;
@@ -101,7 +102,14 @@ try {
       };
       assert.equal((await fetch(baseUrl + "/api/tasks")).status, 401);
       const initialAgents = await request<unknown[]>("/agents");
-      assert.equal((await request<unknown[]>("/tasks")).length, 0);
+      const retainedLayouts =
+        await request<Record<string, unknown>[]>("/tasks");
+      assert.equal(retainedLayouts.length, 2);
+      assert.ok(
+        retainedLayouts.every(
+          (task) => task.status === "cancelled" && task.resultFormat != null,
+        ),
+      );
       const settings = await request("/settings/llm");
       await request("/settings/llm", "PUT", {
         expectedRevision: settings.revision,
@@ -335,7 +343,10 @@ try {
             const prepare = panel
               .getByRole("listitem")
               .filter({ hasText: title })
-              .getByRole("button", { name: reuse.prepareProject, exact: true });
+              .getByRole("button", {
+                name: reuse.prepareProject,
+                exact: true,
+              });
             await prepare.click();
             await expect(page).toHaveURL(/\/projects\/new$/u);
             await expectNativePageValue(
@@ -434,7 +445,13 @@ try {
         await browser.close();
       }
     },
-  });
+  };
+  evidenceDirectory = await runNativeInstallSmoke(
+    postgresBin,
+    pnpmPath,
+    acceptance,
+    resultFormatDurabilityProof(),
+  );
 } finally {
   await peer.close();
 }

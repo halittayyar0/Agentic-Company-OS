@@ -215,6 +215,10 @@ export const toolZhCN: ToolCopy = {
   teamTaskLost: "已阻止：任务已停止或执行权限已丢失。",
   teamChildUnresolved:
     "已阻止：子任务 taskId={id} 仍处于 {status} 状态；请先处理该子任务的结果，或将其取消。",
+  teamResultFormatMismatch:
+    "结果未被接受。请按要求的列返回表格：\n{header}\n{separator}\n添加实际数据行。表格后的说明前须留一空行。格式检查通过不代表事实准确。",
+  teamResultFormatUnavailable: "无法验证保存的结果格式。任务仍未完成。",
+  teamResultFormatRejectedActivity: "结果不符合保存的表格格式，因此未被接受。",
   teamCompletionRequirementsMissing:
     "任务无法完成：本轮尚无 {tools} 的有效成功记录。请在现有权限内执行所需操作；结果仍需审核。",
   teamCompletionRejected:
@@ -302,6 +306,12 @@ export const toolZhCN: ToolCopy = {
   previewLink: "链接：{url}",
   previewForm: "表单提交目标：{url}",
   judgeMissingReason: "审核未返回理由。",
+  judgeSourceSatisfied:
+    "本地来源审核认为已满足请求范围；这不代表外部事实经过独立核实。",
+  judgeSourceMismatch: "拟议结果与已读取的来源不符。请比较来源与请求的输出。",
+  judgeSourceMissingAction: "任务明确要求的操作缺乏充分的执行证据。",
+  judgeSourceUnauthorized: "拟议操作超出了任务授权范围。",
+  judgeSourceInsufficient: "现有来源和执行证据不足以支持完成声明。",
   judgeSudoReason:
     "sudo 提议被归类为 {verdict}；完整命令仅在本地人工批准界面中显示。",
   judgeReview: "审核（{purpose}）：{verdict}",
@@ -377,6 +387,8 @@ export const toolZhCN: ToolCopy = {
   taskToolFallbackInstruction:
     "上一个模型已两次未能使用工具协议。保留相同上下文，并通过一个完全符合允许的工具参数结构的具体步骤继续。",
   operationCompleted: "操作已完成：{tool}。",
+  toolSchemaRecovered:
+    "本次请求未提供 {tool}，因此未执行。已为下一次请求加载该已授权工具的模式；请按模式要求的参数重新调用。权限未改变。",
   toolSchemaUnavailable:
     "本次请求未提供 {tool}，因此未执行。请使用已提供的工具，或先通过 load_tools 加载列表中的可选工具，再在下一次请求中调用。权限未改变。",
   modelFailure: "{reason}（{source}）",

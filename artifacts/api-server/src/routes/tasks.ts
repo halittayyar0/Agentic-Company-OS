@@ -32,6 +32,10 @@ import {
   type CompletionRequirement,
 } from "@workspace/db/completion-requirements";
 import {
+  parseTaskResultFormat,
+  type TaskResultFormat,
+} from "@workspace/db/task-result-format";
+import {
   ListTasksResponse,
   CreateTaskBody,
   CreateTaskResponse,
@@ -253,6 +257,16 @@ router.get("/tasks", async (req, res): Promise<void> => {
 });
 
 router.post("/tasks", async (req, res): Promise<void> => {
+  let resultFormat: TaskResultFormat | null;
+  try {
+    resultFormat = parseTaskResultFormat(req.body?.resultFormat);
+  } catch {
+    res.status(400).json({
+      code: "TASK_RESULT_FORMAT_INVALID",
+      error: "Result format must be a supported table layout.",
+    });
+    return;
+  }
   let completionRequirements: CompletionRequirement[];
   try {
     // Validate the raw object before generated coercion can strip extra keys.
@@ -275,6 +289,7 @@ router.post("/tasks", async (req, res): Promise<void> => {
     ...parsed.data,
     title: parsed.data.title.trim(),
     completionRequirements,
+    resultFormat,
   };
   if (input.title.length === 0 || input.brief.trim().length === 0) {
     res.status(400).json({ error: "Task title and brief cannot be blank." });
@@ -642,6 +657,7 @@ router.post("/tasks/:taskId/cancel", async (req, res): Promise<void> => {
             decisionNote: "Task cancelled by user",
             resolvedAt,
             actionPayload: null,
+            completionProposal: null,
             scope: redactApprovalCapabilityScope(approval.scope, "CANCELLED"),
           })
           .where(

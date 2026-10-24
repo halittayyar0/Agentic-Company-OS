@@ -269,7 +269,13 @@ export async function verifyRequiredProducers(
       await capture(job, workflow, definition.checkout);
     }
     for (const [workflow, names] of [
-      [".github/workflows/ci.yml", ["Native installation Windows"]],
+      [
+        ".github/workflows/ci.yml",
+        [
+          "Native installation Windows",
+          "Local model preparation through native PostgreSQL and seven-language UI",
+        ],
+      ],
       [
         ".github/workflows/platforms.yml",
         [
@@ -294,23 +300,33 @@ export async function verifyRequiredProducers(
         const job = record(await api(`actions/jobs/${matches[0]!.id}`));
         assert.equal(job.id, matches[0]!.id);
         verifyOriginalJob(job, name, original.id, sha);
-        if (name === "Native installation Windows") {
-          for (const required of [
-            "Prove native installation resume and binary backup restoration",
-            "Prove seven-language first-job connection through real API and workers",
-            "Prove seven-language reusable work through real API and workers",
-          ]) {
-            const steps = (job.steps as unknown[])
-              .map(record)
-              .filter((step) => step.name === required);
-            assert.equal(
-              steps.length,
-              1,
-              `Missing or duplicate Windows installation step: ${required}`,
-            );
-            assert.equal(steps[0]!.status, "completed");
-            assert.equal(steps[0]!.conclusion, "success");
-          }
+        const requiredSteps =
+          name === "Native installation Windows"
+            ? [
+                "Prove native installation resume and binary backup restoration",
+                "Prove seven-language first-job connection through real API and workers",
+                "Prove seven-language reusable work through real API and workers",
+              ]
+            : name ===
+                "Local model preparation through native PostgreSQL and seven-language UI"
+              ? [
+                  "Prove local model preparation and interrupted recovery in seven languages",
+                  "Preserve model preparation evidence",
+                  "Prove seven-language reusable work through real API and workers",
+                  "Preserve owned reusable-guide evidence",
+                ]
+              : [];
+        for (const required of requiredSteps) {
+          const steps = (job.steps as unknown[])
+            .map(record)
+            .filter((step) => step.name === required);
+          assert.equal(
+            steps.length,
+            1,
+            `Missing or duplicate ${name} step: ${required}`,
+          );
+          assert.equal(steps[0]!.status, "completed");
+          assert.equal(steps[0]!.conclusion, "success");
         }
         await capture(job, workflow, "Check out repository");
       }

@@ -1,7 +1,8 @@
+import { safeInteger, stringChoices } from "./schema-primitives";
 import * as z from "zod/v4-mini";
 import { completionRequirementsSchema } from "./completion-requirements-input";
 
-const id = z.number().check(z.int(), z.minimum(1), z.maximum(2147483647));
+const id = safeInteger.check(z.minimum(1), z.maximum(2147483647));
 const tool = z.string().check(
   z.regex(/^[a-zA-Z][a-zA-Z0-9_]{0,79}$/u),
   z.refine(
@@ -21,8 +22,8 @@ const catalog = z.strictObject({
 const snapshot = z.strictObject({
   source: z.literal("persisted_current_cycle"),
   taskId: id,
-  cycleNumber: z.number().check(z.int(), z.minimum(0)),
-  taskStatus: z.enum([
+  cycleNumber: safeInteger.check(z.minimum(0)),
+  taskStatus: stringChoices([
     "pending",
     "planning",
     "in_progress",

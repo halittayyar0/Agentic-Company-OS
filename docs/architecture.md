@@ -260,6 +260,12 @@ Every task step has a durable physical attempt identity. Tool calls reserve a de
 
 Completion reports and approval requests are reviewed by a low-cost model. Verdicts (`pass`, `warn`, `block`) are stored as activity events. The judge uses the same bounded, cost-compatible model route plan as task execution; malformed JSON or invalid verdicts can move to a permitted fallback, but completion still fails closed after all routes are exhausted. Approval review failure becomes a visible warning, but the requested action still waits behind the independent human decision and any applicable scoped runtime gate. The judge sees selected text and remains an oversight layer, not proof that an action is safe.
 
+Explicit Ollama task, message and manual-agent selections are also oversight
+boundaries. They retain the selected Ollama route and never add a cloud-provider
+fallback. Explicit `:free` selections retain their free-only boundary; paid cloud
+execution selections continue to use the independent economy reviewer. This
+routing rule does not add file contents to the metadata-only completion snapshot.
+
 ## Model routing
 
 Runtime selection order is:
@@ -364,6 +370,15 @@ review retains this same metadata. It is execution context for a model-dependent
 review, not an artifact correctness certificate or a replacement for terminal
 ownership fences. See [completion review](./completion-review.md).
 
+An explicitly local Ollama task can additionally supply a private prompt-only
+selection of complete small files read during the same `stepTask` invocation.
+`LocalSourceReview` owns this bounded memory; successful original read receipts
+bind the captured bytes before use. The selection is not part of
+`CompletionEvidence` or any saved result envelope and disappears on return or
+restart. Exact model/origin/configuration authority is checked again at accounted
+dispatch, with no review fallback. Enum-only reason codes keep model quotations
+out of public review reasoning. See the source bounds and limits in the linked guide.
+
 Tool exposure depends on the agent permission object and whether a task is active:
 
 | Capability                                      | Runtime gate                                                       |
@@ -423,6 +438,31 @@ The approval endpoint takes the runtime-control lock before the agent, approval 
 The inbox keeps an open host review tied to a fingerprint of its visible request, owner, scope and expiry. A changed request or elapsed deadline disables submission. A failed decision keeps the operator's draft and requires an explicit successful refresh before retry; the UI does not automatically repeat an uncertain approval. Draft notes survive refreshes and pagination within the mounted inbox, but are not persisted through page reload or tab closure. Scoped requests without a valid preview, hash or expiry cannot be approved in this UI. Closed capability previews are hidden, and consumption is labeled separately from success.
 
 The decision-time regression test advances an injected clock after the transaction's lock calls. It proves the timestamp is sampled at the correct point in this path; it does not replace a native PostgreSQL lock-wait or replica test.
+
+Task result review is a separate authority boundary. A genuine private-source
+completion rejection can create one bounded, expiring
+`approval_requests.completion_proposal` with
+`scope.toolName=operator_confirm_task_result`; its `action_payload` is always
+null. The marker is server-only, excluded from model approval tools, automatic
+policy approval, executable workers and historical-approved task resumption.
+The current step atomically pauses, persists the proposal and finalizes its
+completion-call receipt as `status=awaiting_approval`. Replaying that successful
+receipt means suspended, not completed.
+
+Reading the exact output and resolving this review require configured operator
+credential authentication even if the ordinary development API is open.
+Confirmation requires `confirmTaskResult=true` and the exact canonical proposal
+digest. Inside the ordinary runtime-control → agent → approval → task locks,
+the server rechecks task/owner configuration, cycle, original source receipt
+bindings and blocked review event, required successful operations and current
+tool availability, result layout, settled children, and absence of active leases
+or attempts. It consumes the proposal and saves the result in one transaction.
+`tasks.completion_authority=operator` labels the last saved result; automatic
+completion writes `agent` and legacy null remains unknown. Recurring work
+advances once and schedules from confirmation time. Original judge rejection is
+never rewritten to pass, and confirmation executes no external action or
+inference. Rejection, expiry, cancellation and deactivation purge the pending
+proposal, while older backups retain their snapshots.
 
 ## Scaling boundaries
 

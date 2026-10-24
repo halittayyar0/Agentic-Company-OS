@@ -148,7 +148,7 @@ const copy: ProjectStudioCopy = {
   tokenUsageHelp: "此任務用量含審核及已回報用量的失敗呼叫，不含未回報用量。",
   model: "記錄的模型",
   unknownModel: "未記錄模型",
-  deliveryHelp: "這是代理儲存的交付摘要。可在「{tab}」分頁查看驗證紀錄。",
+  deliveryHelp: "這是已儲存的交付摘要。可在「{tab}」分頁查看驗證紀錄。",
   reviewDelivery: "查看證據",
   cycleDeliveryNote: "這是最近儲存的交付結果。定期任務的目前狀態顯示於上方。",
   deliverySummary: "交付摘要",

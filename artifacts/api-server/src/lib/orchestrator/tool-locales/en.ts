@@ -250,6 +250,12 @@ export const toolEn: ToolCopy = {
     "BLOCKED: child task taskId={id} is still {status}; resolve its outcome or cancel it first.",
   teamCompletionRejected:
     "Review rejected this completion: {reason} Align the task with the original instruction before trying again.",
+  teamResultFormatMismatch:
+    "Result not accepted. Return a table with the requested columns:\n{header}\n{separator}\nAdd the actual data rows. Leave a blank line before any explanation after the table. Passing the format check does not prove factual accuracy.",
+  teamResultFormatUnavailable:
+    "The saved result format could not be verified. The task remains open.",
+  teamResultFormatRejectedActivity:
+    "The result was not accepted because it did not match the saved table layout.",
   teamCompletionRequirementsMissing:
     "The task cannot complete: this cycle has no valid success record for {tools}. Run the required operations within your existing permissions; the result still requires review.",
   teamCyclePrepared:
@@ -350,6 +356,16 @@ export const toolEn: ToolCopy = {
   previewLink: "Link: {url}",
   previewForm: "Form target: {url}",
   judgeMissingReason: "The review returned no reasoning.",
+  judgeSourceSatisfied:
+    "The local source review found the requested scope satisfied; this is not independent verification of external facts.",
+  judgeSourceMismatch:
+    "The proposed result conflicts with the read source. Compare the source with the requested output.",
+  judgeSourceMissingAction:
+    "An explicitly required action lacks sufficient execution evidence.",
+  judgeSourceUnauthorized:
+    "The proposed action exceeds the task's authorized scope.",
+  judgeSourceInsufficient:
+    "The available source and execution evidence do not sufficiently support the completion claim.",
   judgeSudoReason:
     "The sudo proposal was classified as {verdict}; the exact command is shown only in the local human approval.",
   judgeReview: "Review ({purpose}): {verdict}",
@@ -439,6 +455,8 @@ export const toolEn: ToolCopy = {
   taskToolFallbackInstruction:
     "The previous model failed to use the tool protocol twice. Keep the same context and continue with one concrete step that exactly matches an allowed tool schema.",
   operationCompleted: "Operation completed: {tool}.",
+  toolSchemaRecovered:
+    "{tool} was not offered in this request and was not executed. Its authorized schema is loaded for the next request; call it again with arguments matching that schema. Permissions are unchanged.",
   toolSchemaUnavailable:
     "{tool} was not offered in this request and was not executed. Use an offered tool, or load an indexed optional tool with load_tools and call it in the next request. Permissions are unchanged.",
   modelFailure: "{reason} ({source})",

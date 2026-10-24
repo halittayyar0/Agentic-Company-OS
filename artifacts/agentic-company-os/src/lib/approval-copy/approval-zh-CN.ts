@@ -1,5 +1,6 @@
 import type { ApprovalCopy } from "../approval-copy";
 export default {
+  reviewResult: "审核拟议结果",
   emptyPage: "此页没有请求",
   closedPreview: "已结束的授权不显示命令预览。",
   eyebrow: "人工控制",

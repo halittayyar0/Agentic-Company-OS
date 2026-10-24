@@ -24,6 +24,7 @@ export function prepareProjectText(
     acosSkillDraft: {
       title: project.title,
       brief: project.brief,
+      resultFormat: project.resultFormat,
       ...(project.completionRequirements !== undefined
         ? { completionRequirements: project.completionRequirements }
         : {}),

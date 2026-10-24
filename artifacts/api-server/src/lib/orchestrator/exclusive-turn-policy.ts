@@ -3,7 +3,7 @@ import type { WorkspaceLocale } from "../workspace-locale";
 import { getToolCopy, toolMessage } from "./tool-localization";
 import { terminalMessage } from "../vm/terminal-localization";
 
-type ToolDef = OpenAI.Chat.Completions.ChatCompletionTool;
+type ToolDef = OpenAI.Chat.Completions.ChatCompletionFunctionTool;
 
 export type ExclusiveToolFamily =
   "browser" | "terminal" | "files" | "sudo_approval";

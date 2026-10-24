@@ -2,6 +2,75 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createTaskToolCatalog } from "./task-tool-catalog";
 
+test("rejected authorized proposals recover original schemas without dropping selected tools", () => {
+  const authorized = [
+    "calculate",
+    "complete_task",
+    "vm_read_file",
+    "log_note",
+  ].map((name) => ({
+    type: "function" as const,
+    function: {
+      name,
+      description: `Original schema for ${name}`,
+      parameters: {
+        type: "object",
+        properties: { path: { type: "string" } },
+        required: ["path"],
+        additionalProperties: false,
+      },
+    },
+  }));
+  const catalog = createTaskToolCatalog(authorized);
+  catalog.load('{"names":["log_note"]}');
+  assert.equal(catalog.recover("vm_read_file"), true);
+  assert.deepEqual(
+    catalog.tools.map((tool) => tool.function.name),
+    ["calculate", "complete_task", "log_note", "vm_read_file", "load_tools"],
+  );
+  assert.strictEqual(catalog.tools[3], authorized[2]);
+  assert.equal(catalog.recover("vm_read_file"), true);
+  assert.equal(catalog.tools.length, 5);
+  catalog.load('{"names":["log_note"]}');
+  assert.ok(
+    !catalog.tools.some((tool) => tool.function.name === "vm_read_file"),
+  );
+});
+
+test("schema recovery cannot expose unknown tools or grow beyond eight optional schemas", () => {
+  const catalog = createTaskToolCatalog(
+    Array.from({ length: 9 }, (_, index) => ({
+      type: "function" as const,
+      function: { name: `optional_${index}`, parameters: { type: "object" } },
+    })),
+  );
+  for (let index = 0; index < 8; index++)
+    assert.equal(catalog.recover(`optional_${index}`), true);
+  const before = catalog.tools;
+  for (const name of [
+    "optional_8",
+    "not_authorized",
+    " optional_0",
+    "load_tools",
+  ])
+    assert.equal(catalog.recover(name), false);
+  assert.deepEqual(catalog.tools, before);
+  assert.equal(catalog.recover("optional_0"), true);
+});
+
+test("core schemas are never added or reclassified by optional recovery", () => {
+  const catalog = createTaskToolCatalog([
+    {
+      type: "function",
+      function: { name: "calculate", parameters: { type: "object" } },
+    },
+  ]);
+  const before = catalog.tools;
+  assert.equal(catalog.recover("calculate"), false);
+  assert.equal(catalog.recover("complete_task"), false);
+  assert.deepEqual(catalog.tools, before);
+});
+
 test("initial task envelope defers guidance and approval schemas without losing authority or parameters", () => {
   const deferredNames = [
     "list_skills",

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getGetProjectOperationsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm, useController } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/lib/form-resolver";
 import { CircleAlert, Loader2, ShieldCheck } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 import { ControlPlaneError } from "../../lib/auth";
@@ -118,7 +118,7 @@ export function ReceiptReconciliationDialog({
     [c, t, number],
   );
   const form = useForm<ReconciliationFormValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: { decision: "", note: "" },
     mode: "onTouched",
   });

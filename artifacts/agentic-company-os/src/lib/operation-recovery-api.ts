@@ -1,3 +1,4 @@
+import { stringChoices } from "./schema-primitives";
 import * as z from "zod/v4-mini";
 import { controlPlaneFetch } from "./auth";
 import {
@@ -8,7 +9,7 @@ import {
   type OperationStore,
 } from "./operation-recovery";
 
-const decision = z.enum(["confirmed_applied", "confirmed_not_applied"]);
+const decision = stringChoices(["confirmed_applied", "confirmed_not_applied"]);
 const timestamp = z
   .string()
   .check(z.refine((s) => Number.isFinite(Date.parse(s))));
@@ -27,7 +28,13 @@ const reviewSchema = z.object({
   projectId: z.number(),
   receipt: z.object({
     id: z.string(),
-    state: z.enum(["reserved", "running", "succeeded", "failed", "unknown"]),
+    state: stringChoices([
+      "reserved",
+      "running",
+      "succeeded",
+      "failed",
+      "unknown",
+    ]),
     reconciliation: z.object({
       eligible: z.boolean(),
       decision: z.nullable(decision),

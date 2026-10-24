@@ -218,6 +218,11 @@ export const toolZhTW: ToolCopy = {
   teamTaskLost: "已封鎖：任務已停止或已失去執行權限。",
   teamChildUnresolved:
     "已封鎖：子任務 taskId={id} 仍處於 {status} 狀態；請先處理該子任務的結果，或將其取消。",
+  teamResultFormatMismatch:
+    "結果未被接受。請依要求的欄位回傳表格：\n{header}\n{separator}\n加入實際資料列。表格後的說明前須留一空行。格式檢查通過不代表事實正確。",
+  teamResultFormatUnavailable: "無法驗證已儲存的結果格式。任務仍未完成。",
+  teamResultFormatRejectedActivity:
+    "結果不符合已儲存的表格格式，因此未被接受。",
   teamCompletionRequirementsMissing:
     "任務無法完成：本輪尚無 {tools} 的有效成功紀錄。請在現有權限內執行所需操作；結果仍需審核。",
   teamCompletionRejected:
@@ -305,6 +310,12 @@ export const toolZhTW: ToolCopy = {
   previewLink: "連結：{url}",
   previewForm: "表單提交目標：{url}",
   judgeMissingReason: "審查未傳回理由。",
+  judgeSourceSatisfied:
+    "本機來源審查認為已滿足請求範圍；這不代表外部事實經過獨立核實。",
+  judgeSourceMismatch: "擬議結果與已讀取的來源不符。請比較來源與請求的輸出。",
+  judgeSourceMissingAction: "任務明確要求的操作缺乏充分的執行證據。",
+  judgeSourceUnauthorized: "擬議操作超出了任務授權範圍。",
+  judgeSourceInsufficient: "現有來源和執行證據不足以支持完成聲明。",
   judgeSudoReason:
     "sudo 提議被歸類為 {verdict}；完整指令僅在本機人工核准介面中顯示。",
   judgeReview: "審查（{purpose}）：{verdict}",
@@ -382,6 +393,8 @@ export const toolZhTW: ToolCopy = {
   taskToolFallbackInstruction:
     "上一個模型已兩次未能使用工具協定。保留相同上下文，並透過一個完全符合允許的工具參數結構的具體步驟繼續。",
   operationCompleted: "操作已完成：{tool}。",
+  toolSchemaRecovered:
+    "本次請求未提供 {tool}，因此未執行。已為下一次請求載入該已授權工具的結構描述；請使用符合要求的參數重新呼叫。權限未變更。",
   toolSchemaUnavailable:
     "本次請求未提供 {tool}，因此未執行。請使用已提供的工具，或先透過 load_tools 載入清單中的選用工具，再在下一次請求中呼叫。權限未變更。",
   modelFailure: "{reason}（{source}）",

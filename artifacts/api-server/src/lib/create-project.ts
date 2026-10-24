@@ -16,6 +16,10 @@ import {
   parseCompletionRequirements,
   type CompletionRequirement,
 } from "@workspace/db/completion-requirements";
+import {
+  parseTaskResultFormat,
+  type TaskResultFormat,
+} from "@workspace/db/task-result-format";
 import { eligibleCompletionToolNames } from "./task-completion-catalog";
 import { getToolsForAgent } from "./orchestrator/tools";
 
@@ -50,6 +54,7 @@ export interface ProjectCreationInput {
   cadenceSeconds?: number;
   dueAt?: Date | null;
   completionRequirements?: CompletionRequirement[];
+  resultFormat?: TaskResultFormat | null;
 }
 /** Caller owns the transaction so a request receipt can commit with the project. */
 export async function createProjectWithinTransaction(
@@ -86,6 +91,7 @@ export async function createProjectWithinTransaction(
   const completionRequirements = parseCompletionRequirements(
     input.completionRequirements,
   );
+  const resultFormat = parseTaskResultFormat(input.resultFormat);
   if (completionRequirements.length) {
     const available = new Set(
       eligibleCompletionToolNames(
@@ -102,6 +108,7 @@ export async function createProjectWithinTransaction(
       title: input.title,
       brief: input.brief,
       completionRequirements,
+      resultFormat,
       status: "pending",
       priority: input.priority ?? "normal",
       ownerAgentId: owner.id,

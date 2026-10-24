@@ -1,5 +1,6 @@
 import type { ApprovalCopy } from "../approval-copy";
 export default {
+  reviewResult: "Ergebnisvorschlag prüfen",
   emptyPage: "Keine Anfragen auf dieser Seite",
   closedPreview:
     "Bei abgeschlossenen Berechtigungen wird die Befehlsvorschau ausgeblendet.",

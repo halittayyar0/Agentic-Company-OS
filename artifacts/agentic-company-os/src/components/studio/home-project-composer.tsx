@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/lib/form-resolver";
 import * as z from "zod/v4-mini";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -94,7 +94,7 @@ export function HomeProjectComposer({
     [copy],
   );
   const form = useForm<Values>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: { prompt: draft.value.prompt },
   });
   const prompt = form.watch("prompt");

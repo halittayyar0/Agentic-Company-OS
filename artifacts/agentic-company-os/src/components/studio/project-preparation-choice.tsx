@@ -45,6 +45,9 @@ export default function ProjectPreparationChoice({
         priority: "normal",
         autonomyMode: "finite",
         cadenceSeconds: 3600,
+        ...(incoming.resultFormat
+          ? { resultFormat: incoming.resultFormat }
+          : {}),
         ...(incoming.completionRequirements?.length
           ? { completionRequirements: incoming.completionRequirements }
           : {}),

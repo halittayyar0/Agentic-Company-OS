@@ -10,7 +10,7 @@ import { createSyntheticFaultPlan } from "./synthetic-fault-plan";
 
 const seed = 240901;
 const identity = { taskId: 42, attemptNumber: 1, step: 0 };
-const authorized: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+const authorized: OpenAI.Chat.Completions.ChatCompletionFunctionTool[] = [
   "calculate",
   "complete_task",
   "delegate_task",

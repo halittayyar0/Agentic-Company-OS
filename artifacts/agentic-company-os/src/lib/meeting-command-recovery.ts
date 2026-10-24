@@ -1,3 +1,4 @@
+import { safeInteger, stringChoices } from "./schema-primitives";
 import * as z from "zod/v4-mini";
 import type {
   ProjectMeetingInput,
@@ -52,7 +53,7 @@ const positive = (value: unknown): value is number =>
   value <= 2147483647;
 const uuid =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const id = z.number().check(z.int(), z.minimum(1), z.maximum(2147483647));
+const id = safeInteger.check(z.minimum(1), z.maximum(2147483647));
 const text = (max: number) => z.string().check(z.maxLength(max));
 const required = (max: number) =>
   text(max).check(z.refine((value) => value.trim().length > 0));
@@ -92,7 +93,7 @@ const inputs = {
       participantAgentIds: participantIds,
       scheduledFor: timestamp,
       summary: optionalText(30000),
-      status: z.optional(z.enum(["draft", "scheduled", "cancelled"])),
+      status: z.optional(stringChoices(["draft", "scheduled", "cancelled"])),
     })
     .check(changes),
   transcript: z.strictObject({
@@ -107,7 +108,9 @@ const inputs = {
     .strictObject({
       ...action,
       title: z.optional(action.title),
-      status: z.optional(z.enum(["open", "in_progress", "done", "cancelled"])),
+      status: z.optional(
+        stringChoices(["open", "in_progress", "done", "cancelled"]),
+      ),
     })
     .check(changes),
   complete: z.strictObject({

@@ -5,7 +5,33 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.9] - 2026-10-23
+
+### Added
+
+- Optional saved table layouts for task results, with ordered headings,
+  completion-time validation and accessible narrow-screen delivery in all seven
+  application languages.
+- Explicit operator review for locally sourced results rejected by the model.
+  Credential-authenticated operators can confirm the exact proposal for one task
+  or recurring cycle. The result records operator authority and preserves the
+  original model rejection; confirmation executes no external action or model
+  call. Required operations, ownership and result gates still apply.
+
+### Fixed
+
+- After rejecting an optional tool that was not offered, load its already
+  authorized schema for the next model request. The rejected call still does not
+  execute; permissions, same-response boundaries and schema limits remain intact.
+  Recovery feedback and the operator audit explain this in all seven languages.
+- Preserve explicit local model selections during oversight and give local
+  completion review bounded original-file observations without retaining those
+  private observations in task records or backups.
+
 ## [0.5.8] - 2026-10-23
+
+This version was not publicly released: its original main-platform qualification
+was cancelled before acceptance. Its changes are carried forward into 0.5.9.
 
 ### Added
 

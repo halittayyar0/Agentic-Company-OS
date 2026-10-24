@@ -79,7 +79,16 @@ import { avatarColorFor } from "./avatar-color";
 import { runJudge, type JudgeReviewRecord, type JudgeVerdict } from "./judge";
 import { loadCompletionEvidence } from "./completion-evidence";
 import { prepareCalculationEvidence } from "./calculation-evidence";
+import type { LocalSourceReview } from "./local-source-review";
 import { loadCompletionRequirementResults } from "./completion-requirements";
+import { checkTaskResultFormat } from "../task-result-format";
+import { parseTaskResultFormat } from "@workspace/db/task-result-format";
+import { type TaskCompletionProposal } from "@workspace/db/task-result-review";
+import { withAgentConfigVersion } from "../agent-config-version";
+import {
+  completionProposalContextHash,
+  readCompletionProposal,
+} from "../task-result-review-proposal";
 import {
   VmError,
   localizedVmErrorMessage,
@@ -186,8 +195,10 @@ export interface ToolRuntimeContext {
   assertTaskLease?: (action?: string) => Promise<void>;
   /** Unique to one outer model loop; prevents stale cross-run verification. */
   computerLoopId?: string;
-  /** Effective chat-turn model, used only to preserve an explicit free spend boundary. */
+  /** Effective turn model; explicit local/free oversight boundaries survive. */
   turnModelId?: string;
+  /** Private, bounded source observations owned only by this task-step invocation. */
+  localSourceReview?: LocalSourceReview;
   /** Server-derived, per-chat-turn allowlist for explicit only/sadece requests. */
   exclusiveTurnPolicy?: ExclusiveTurnPolicy;
   /** Server-owned logical/physical identity for durable operation receipts. */
@@ -256,6 +267,12 @@ export interface DurableLifecycleOperationFinalization {
 
 export type DurableTaskLifecycleIntent =
   | {
+      kind: "result_review";
+      proposal: TaskCompletionProposal;
+      expiresAt: Date;
+      operationFinalization: DurableLifecycleOperationFinalization;
+    }
+  | {
       kind: "complete";
       resultSummary: string;
       continuous: boolean;
@@ -317,13 +334,17 @@ export function resolveJudgeExecutionModelBoundary(input: {
   if (taskModelId) return taskModelId;
 
   const turnModelId = input.turnModelId?.trim();
-  if (turnModelId && /:free$/iu.test(turnModelId)) return turnModelId;
+  if (
+    turnModelId &&
+    (turnModelId.startsWith("ollama:") || /:free$/iu.test(turnModelId))
+  )
+    return turnModelId;
 
   const agentModelId = input.agentModelId?.trim();
   if (
     input.agentModelMode === "manual" &&
     agentModelId &&
-    /:free$/iu.test(agentModelId)
+    (agentModelId.startsWith("ollama:") || /:free$/iu.test(agentModelId))
   ) {
     return agentModelId;
   }
@@ -562,11 +583,16 @@ async function withTaskMutationFence<T>(
 
 function persistJudgeReview(
   ctx: ToolRuntimeContext,
-): ((review: JudgeReviewRecord) => Promise<void>) | undefined {
+): ((review: JudgeReviewRecord) => Promise<number>) | undefined {
   if (!ctx.taskId || ctx.preapprovedAction) return undefined;
   return async (review) => {
-    await withTaskMutationFence(ctx, async (tx) => {
-      await tx.insert(activityEventsTable).values(review);
+    return withTaskMutationFence(ctx, async (tx) => {
+      const [saved] = await tx
+        .insert(activityEventsTable)
+        .values(review)
+        .returning({ id: activityEventsTable.id });
+      if (!saved) throw new Error("Judge event was not persisted");
+      return saved.id;
     });
   };
 }
@@ -1547,6 +1573,9 @@ function normalizeDurableDispatchArgs(
           args.cadenceSeconds === undefined
             ? null
             : invalidFiniteNumberMarker(args.cadenceSeconds),
+        ...(args.resultFormat == null
+          ? {}
+          : { resultFormat: parseTaskResultFormat(args.resultFormat) }),
       };
     }
     case "update_task_progress":
@@ -1941,6 +1970,11 @@ async function runDurableReadOnlyTool(
       resultData: calculation ? { calculation } : null,
       now: new Date(),
     });
+    if (toolName === "vm_read_file")
+      ctx.localSourceReview?.confirmRead(
+        ctx.operationIdentity.callSlot,
+        receipt,
+      );
     return { ...result, receiptId: receipt.id };
   } catch (error) {
     try {
@@ -1969,6 +2003,8 @@ async function runDurableReadOnlyTool(
       throw error;
     }
   } finally {
+    if (toolName === "vm_read_file")
+      ctx.localSourceReview?.discardRead(ctx.operationIdentity.callSlot);
     ctx.detachOperationInvocation?.(claimed.invocation.id);
   }
 }
@@ -2069,7 +2105,10 @@ async function lifecycleOperationDispositionResult(
     return {
       ...replayed,
       taskLifecycleEffect:
-        toolName === "complete_task" ? "completed" : "suspended",
+        toolName === "complete_task" &&
+        operation.receipt.resultData?.status !== "awaiting_approval"
+          ? "completed"
+          : "suspended",
     };
   }
   return unavailableNormalizedOperationResult(
@@ -2976,6 +3015,7 @@ export async function finalizeSucceededApprovedActionReceipt(input: {
                 progressPercent: 100,
                 completedAt: now,
                 resultSummary: summary,
+                completionAuthority: null,
               }
           : {}),
       })
@@ -4998,6 +5038,13 @@ async function vmReadFile(
       "info",
       finished,
     );
+    if (ctx.operationIdentity?.executionKind === "task_step")
+      await ctx.localSourceReview?.stageRead(
+        ctx.operationIdentity.callSlot,
+        ctx.turnModelId,
+        args,
+        file,
+      );
     return empty(
       formatComputerStep(
         finished,
@@ -6616,6 +6663,7 @@ async function delegateTask(
   }
   const cadenceSeconds =
     autonomyMode === "continuous" ? (cadenceValue ?? 60) : null;
+  const resultFormat = parseTaskResultFormat(args.resultFormat);
 
   let task;
   try {
@@ -6656,6 +6704,7 @@ async function delegateTask(
             priority,
             autonomyMode,
             cadenceSeconds,
+            resultFormat,
             ownerAgentId: target.id,
             assignedByAgentId: ctx.agent.id,
             createdByUser: false,
@@ -6858,6 +6907,44 @@ async function completeTask(
     );
   }
 
+  const formatCheck = checkTaskResultFormat(task.resultFormat, resultSummary);
+  if (
+    formatCheck.status !== "not_requested" &&
+    formatCheck.status !== "satisfied"
+  ) {
+    const format =
+      formatCheck.status === "invalid_contract"
+        ? null
+        : parseTaskResultFormat(task.resultFormat);
+    const headings =
+      format?.columns.map((column) =>
+        column.replaceAll("\\", "\\\\").replaceAll("|", "\\|"),
+      ) ?? [];
+    const content = format
+      ? text("teamResultFormatMismatch", {
+          header: "| " + headings.join(" | ") + " |",
+          separator: "| " + headings.map(() => "---").join(" | ") + " |",
+        })
+      : copy.teamResultFormatUnavailable;
+    // A rejected layout must not reserve completion or spend a review call.
+    // The audit is fenced by the same live task ownership as other task writes.
+    await withTaskMutationFence(ctx, async (tx) => {
+      await tx.insert(activityEventsTable).values({
+        agentId: ctx.agent.id,
+        taskId: ctx.taskId,
+        type: "note",
+        severity: "warning",
+        summary: copy.teamResultFormatRejectedActivity,
+        detail: {
+          runtimeEvent: "task_result_format_rejected",
+          formatStatus: formatCheck.status,
+          columnCount: format?.columns.length ?? 0,
+        },
+      });
+    });
+    return empty(content, "rejected");
+  }
+
   const lifecycleReservation = isDurableTaskContext(ctx)
     ? await reserveDurableLifecycleOperation(ctx, "complete_task", {
         resultSummary: resultSummary.trim(),
@@ -6878,6 +6965,15 @@ async function completeTask(
     ctx = { ...ctx, locale };
   }
 
+  const judgeExecutionModelId = resolveJudgeExecutionModelBoundary({
+    taskExecutionModelId: task.executionModelId,
+    turnModelId: ctx.turnModelId,
+    agentModelMode: ctx.agent.modelMode,
+    agentModelId: ctx.agent.modelId,
+  });
+  const privateLocalSources = ctx.localSourceReview?.forJudge(
+    judgeExecutionModelId,
+  );
   const judgeResult = await runJudge({
     locale,
     agent: ctx.agent,
@@ -6886,12 +6982,8 @@ async function completeTask(
     originalBrief: task.brief,
     actionSummary: resultSummary,
     completionEvidence: await loadCompletionEvidence(task),
-    taskExecutionModelId: resolveJudgeExecutionModelBoundary({
-      taskExecutionModelId: task.executionModelId,
-      turnModelId: ctx.turnModelId,
-      agentModelMode: ctx.agent.modelMode,
-      agentModelId: ctx.agent.modelId,
-    }),
+    taskExecutionModelId: judgeExecutionModelId,
+    privateLocalSources,
     beforeAttempt: () => heartbeatJudgeTaskLease(ctx),
     persistReview: persistJudgeReview(ctx),
   });
@@ -6902,6 +6994,66 @@ async function completeTask(
   if (judgeResult.unavailable)
     throw judgeResult.providerFailure ?? new Error(judgeResult.reasoning);
   if (judgeResult.verdict === "block") {
+    if (
+      isDurableTaskContext(ctx) &&
+      privateLocalSources &&
+      judgeResult.privateReview &&
+      lifecycleReservation?.disposition === "reserved"
+    ) {
+      const proposal = readCompletionProposal({
+        schemaVersion: 1,
+        taskId: task.id,
+        ownerAgentId: ctx.agent.id,
+        ownerConfigVersion: withAgentConfigVersion(ctx.agent).configVersion,
+        cycleNumber: task.cycleCount,
+        cycleStartedAt: (
+          task.lastCycleCompletedAt ?? task.createdAt
+        ).toISOString(),
+        originAttemptId: ctx.runtimeAttemptId,
+        judgeReviewId: judgeResult.privateReview.id,
+        judgeReasonCode: judgeResult.privateReview.reasonCode,
+        contextHash: completionProposalContextHash(
+          task,
+          withAgentConfigVersion(ctx.agent),
+        ),
+        resultSummary: resultSummary.trim(),
+        resultSummaryHash: createHash("sha256")
+          .update(resultSummary.trim(), "utf8")
+          .digest("hex"),
+        sourceReceipts: privateLocalSources.documents.map((document) => ({
+          receiptId: document.receiptId,
+          argumentHash: canonicalArgumentHash({ path: document.requestedPath }),
+          fileSha256: document.sha256,
+          byteCount: document.byteCount,
+        })),
+      });
+      if (proposal) {
+        const claimed = await claimDurableLifecycleOperation(
+          ctx,
+          lifecycleReservation,
+        );
+        if (claimed.disposition !== "prepared")
+          return lifecycleOperationDispositionResult(
+            "complete_task",
+            claimed,
+            locale,
+          );
+        return {
+          content: text("teamCompletionRejected", {
+            reason: judgeResult.reasoning,
+          }),
+          createdTasks: [],
+          createdAgents: [],
+          toolOutcome: "succeeded",
+          durableTaskLifecycleIntent: {
+            kind: "result_review",
+            proposal,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60_000),
+            operationFinalization: claimed.finalization,
+          },
+        };
+      }
+    }
     return empty(
       text("teamCompletionRejected", { reason: judgeResult.reasoning }),
       "rejected",
@@ -6975,6 +7127,7 @@ async function completeTask(
         status: continuous ? "in_progress" : "completed",
         progressPercent: continuous ? 0 : 100,
         resultSummary,
+        completionAuthority: "agent",
         completedAt: continuous ? null : cycleCompletedAt,
         nextAttemptAt: nextRunAt,
         consecutiveFailures: 0,

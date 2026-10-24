@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
-import { measureCompletionRequirementsBundle } from "./completion-requirements-bundle-budget";
+import {
+  measureCompletionRequirementsBundle,
+  resultFormatChoiceControl,
+} from "./completion-requirements-bundle-budget";
 import { measureComposerDraftBundle } from "./composer-draft-bundle-budget";
 import type { BundleAsset } from "./bundle-source-map";
 
@@ -47,6 +50,45 @@ const status =
 const asset = (fileName: string, text: string): BundleAsset => ({
   fileName,
   contents: Buffer.from(text),
+});
+test("layout integration removes only its new bindings and retains neighboring legacy declarations and guards", () => {
+  const logic = asset(choiceName, "new logic"),
+    view = asset(viewName, "new view");
+  const layout = chooser
+    .replaceAll("completionRequirements", "resultFormat")
+    .replaceAll("??[]", "??null");
+  for (const text of [
+    layout,
+    layout.replace(
+      "const [blocked,setBlocked]=R.useState(!0);",
+      "const before=1,[blocked,setBlocked]=R.useState(!0),after=2;",
+    ),
+    layout
+      .replace("const choice=", "const before=1,choice=")
+      .replace(";function form()", ",after=2;function form()"),
+  ]) {
+    const result = resultFormatChoiceControl(
+      asset("new-layout.js", text),
+      logic,
+      view,
+    );
+    assert.ok(!result.contents.includes("resultFormat"));
+    assert.ok(result.contents.includes("condition||other"));
+    assert.ok(
+      result.contents.includes('const legacy="new-project-en cadenceSeconds"'),
+    );
+    if (text.includes("before=1")) {
+      assert.ok(result.contents.includes("before=1"));
+      assert.ok(result.contents.includes("after=2"));
+    }
+  }
+  for (const changed of [
+    layout.replace("resultFormat:t", "resultFormat:other"),
+    layout.replace("condition||blocked||other", "condition||other"),
+  ])
+    assert.throws(() =>
+      resultFormatChoiceControl(asset("new-layout.js", changed), logic, view),
+    );
 });
 function fixture() {
   const assets: BundleAsset[] = [];
@@ -141,6 +183,43 @@ test("condition transfer credits only source-owned lazy logic, one selected lang
   );
   assert.ok(oldDraft.entryRaw <= 3000);
   assert.ok(oldDraft.integrationRaw <= 1200);
+});
+
+test("an explicit result-format draft field stays in the older budget control and earns no condition credit", () => {
+  const initial = fixture(),
+    baseline = measureCompletionRequirementsBundle(
+      initial.assets,
+      initial.manifest,
+    );
+  const formatted = mutate(fixture(), "index-fixture.js", (s) =>
+    s.replace(
+      "completionRequirements:optional(requirements)",
+      "completionRequirements:optional(requirements),resultFormat:optional(format)",
+    ),
+  );
+  const measured = measureCompletionRequirementsBundle(
+    formatted.assets,
+    formatted.manifest,
+  );
+  const control = measured.controls.find(
+    (a) => a.fileName === "index-fixture.js",
+  )!;
+  assert.ok(control.contents.includes("resultFormat:optional(format)"));
+  assert.equal(measured.integrationRaw, baseline.integrationRaw);
+  for (const field of ["permissions", "formatBypass"]) {
+    const unexpected = mutate(fixture(), "index-fixture.js", (s) =>
+      s.replace(
+        "completionRequirements:optional(requirements)",
+        `completionRequirements:optional(requirements),${field}:optional(format)`,
+      ),
+    );
+    assert.throws(() =>
+      measureCompletionRequirementsBundle(
+        unexpected.assets,
+        unexpected.manifest,
+      ),
+    );
+  }
 });
 test("unrelated entry and project growth keeps its original independent limits and earns no condition credit", () => {
   const initial = fixture(),

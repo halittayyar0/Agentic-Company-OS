@@ -9,6 +9,7 @@ import type { TaskAutonomyMode } from './taskAutonomyMode';
 import type { TaskCompletionRequirements } from './taskCompletionRequirements';
 import type { TaskCreationRequestId } from './taskCreationRequestId';
 import type { TaskPriority } from './taskPriority';
+import type { TaskResultFormat } from './taskResultFormat';
 
 export interface TaskInput {
   requestId?: TaskCreationRequestId;
@@ -23,6 +24,7 @@ export interface TaskInput {
      */
   brief: string;
   completionRequirements?: TaskCompletionRequirements;
+  resultFormat?: TaskResultFormat | null;
   /** Optional backwards-compatible coordinator override; every active agent still joins the project. */
   ownerAgentId?: number;
   priority?: TaskPriority;

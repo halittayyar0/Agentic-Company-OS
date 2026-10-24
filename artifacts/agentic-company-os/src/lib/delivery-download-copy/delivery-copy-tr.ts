@@ -7,5 +7,5 @@ export default {
   deliveryExportProject: "Proje {id}: {title}",
   deliveryExportStatus: "Güncel durum: {status}",
   deliveryExportNotice:
-    "Ajanın kaydettiği özet. Bu dosyayı indirmek çalışmayı doğrulamaz.",
+    "Kaydedilmiş görev sonucu. Bu dosyayı indirmek işin doğrulandığı anlamına gelmez.",
 } satisfies DeliveryDownloadCopy;

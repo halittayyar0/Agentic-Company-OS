@@ -104,7 +104,10 @@ async function context(locale: WorkspaceLocale = "en", canBrowse = true) {
   return { agent, locale, taskId: null } as ToolRuntimeContext;
 }
 
-function refFor(text: string, label: string) {
+// A locator identifies an accessibility label; this helper returns only the
+// numeric snapshot reference, never the value of a sensitive input.
+function refFor(text: string, locator: { ariaLabel: string }) {
+  const label = locator.ariaLabel;
   const line = text
     .split("\n")
     .find((value) => value.includes(label) && value.includes("[ref="));
@@ -170,7 +173,9 @@ test("real browser tools localize snapshot, scroll, wait, screenshot and approva
     const clicked = await executeTool(
       ctx,
       "browser_click",
-      JSON.stringify({ ref: refFor(snapshot.content, "Approval button") }),
+      JSON.stringify({
+        ref: refFor(snapshot.content, { ariaLabel: "Approval button" }),
+      }),
     );
     assert.equal(clicked.toolOutcome, "rejected");
     assert.ok(
@@ -187,7 +192,7 @@ test("real browser tools localize snapshot, scroll, wait, screenshot and approva
       ctx,
       "browser_type",
       JSON.stringify({
-        ref: refFor(fresh.content, "Plain input"),
+        ref: refFor(fresh.content, { ariaLabel: "Plain input" }),
         text: "  原文 {args} $&  ",
       }),
     );
@@ -353,7 +358,7 @@ test("all seven browser languages preserve source, capture locale and enforce ap
         ctx,
         "browser_type",
         JSON.stringify({
-          ref: refFor(snapshot.content, "Plain input"),
+          ref: refFor(snapshot.content, { ariaLabel: "Plain input" }),
           text: originalText,
         }),
       );
@@ -367,7 +372,7 @@ test("all seven browser languages preserve source, capture locale and enforce ap
         ctx,
         "browser_type",
         JSON.stringify({
-          ref: refFor(snapshot.content, "Password"),
+          ref: refFor(snapshot.content, { ariaLabel: "Password" }),
           text: "never",
         }),
       );
@@ -376,7 +381,9 @@ test("all seven browser languages preserve source, capture locale and enforce ap
       const click = await executeTool(
         ctx,
         "browser_click",
-        JSON.stringify({ ref: refFor(snapshot.content, "Approval button") }),
+        JSON.stringify({
+          ref: refFor(snapshot.content, { ariaLabel: "Approval button" }),
+        }),
       );
       assert.equal(click.toolOutcome, "rejected");
       assert.ok(click.content.includes("request_approval"));
@@ -384,7 +391,9 @@ test("all seven browser languages preserve source, capture locale and enforce ap
       const navigation = await executeTool(
         ctx,
         "browser_click",
-        JSON.stringify({ ref: refFor(fresh.content, "Safe link") }),
+        JSON.stringify({
+          ref: refFor(fresh.content, { ariaLabel: "Safe link" }),
+        }),
       );
       assert.equal(navigation.toolOutcome, "succeeded");
       assert.ok(navigation.content.includes(copy.browserClicked));

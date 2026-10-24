@@ -75,6 +75,99 @@ async function fixture(t: TestContext) {
   return { input, send, request, agent: agent! };
 }
 
+test("selected table layout survives creation, readback and exact retry without granting permissions", async (t) => {
+  const { input, send, request, agent } = await fixture(t);
+  const resultFormat = { kind: "table", columns: ["Owner", "Action", "Due"] };
+  const accepted = await send({ ...input, resultFormat });
+  assert.equal(accepted.response.status, 201);
+  assert.deepEqual(accepted.data.resultFormat, resultFormat);
+  const [stored] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, Number(accepted.data.id)));
+  assert.deepEqual(stored.resultFormat, resultFormat);
+  const readback = await request(`/tasks/${accepted.data.id}`);
+  assert.equal(readback.status, 200);
+  assert.deepEqual(
+    ((await readback.json()) as Record<string, unknown>).resultFormat,
+    resultFormat,
+  );
+  const replay = await send({
+    ...input,
+    resultFormat: { columns: [...resultFormat.columns], kind: "table" },
+  });
+  assert.equal(replay.response.status, 200);
+  assert.equal(replay.data.id, accepted.data.id);
+  for (const changed of [
+    undefined,
+    null,
+    { kind: "table", columns: ["Action", "Owner", "Due"] },
+  ]) {
+    const conflict = await send({ ...input, resultFormat: changed });
+    assert.equal(conflict.response.status, 409);
+    assert.equal(conflict.data.code, "TASK_CREATION_REQUEST_CONFLICT");
+  }
+  assert.equal(
+    (
+      await db
+        .select()
+        .from(tasksTable)
+        .where(eq(tasksTable.title, input.title))
+    ).length,
+    1,
+  );
+  const [after] = await db
+    .select()
+    .from(agentsTable)
+    .where(eq(agentsTable.id, agent.id));
+  assert.deepEqual(after.permissions, agent.permissions);
+});
+
+test("invalid result layouts are rejected before any project or recovery receipt is admitted", async (t) => {
+  const { input, send } = await fixture(t);
+  for (const resultFormat of [
+    {},
+    "table",
+    { kind: "text", columns: ["A", "B"] },
+    { kind: "table", columns: ["Owner", "Owner"] },
+    { kind: "table", columns: ["Owner", " Action"] },
+    { kind: "table", columns: ["Owner", "\ud800"] },
+    { kind: "table", columns: ["Owner", "Action"], permissions: true },
+  ]) {
+    const rejected = await send({ ...input, resultFormat });
+    assert.equal(rejected.response.status, 400);
+    assert.equal(rejected.data.code, "TASK_RESULT_FORMAT_INVALID");
+  }
+  assert.equal(
+    (
+      await db
+        .select()
+        .from(tasksTable)
+        .where(eq(tasksTable.title, input.title))
+    ).length,
+    0,
+  );
+  const accepted = await send({
+    ...input,
+    resultFormat: { kind: "table", columns: ["Owner", "Action"] },
+  });
+  assert.equal(
+    accepted.response.status,
+    201,
+    "invalid raw layouts do not consume an unrelated start identity",
+  );
+});
+
+test("legacy plain API requests and explicit null replay the same saved task", async (t) => {
+  const { input, send } = await fixture(t);
+  const accepted = await send();
+  assert.equal(accepted.response.status, 201);
+  assert.equal(accepted.data.resultFormat, null);
+  const replay = await send({ ...input, resultFormat: null });
+  assert.equal(replay.response.status, 200);
+  assert.equal(replay.data.id, accepted.data.id);
+});
+
 test("completion choices expose only permitted operation names without granting capabilities or executing work", async (t) => {
   const { agent, request } = await fixture(t);
   const permissions = {

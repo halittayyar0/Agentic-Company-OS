@@ -645,6 +645,7 @@ router.patch("/agents/:agentId", async (req, res): Promise<void> => {
                 decisionNote: "Agent deactivated by user",
                 resolvedAt,
                 actionPayload: null,
+                completionProposal: null,
                 scope: redactApprovalCapabilityScope(
                   approval.scope,
                   "AGENT_DEACTIVATED",

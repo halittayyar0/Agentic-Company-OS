@@ -8,7 +8,11 @@ import {
   dbReady,
   usageEventsTable,
 } from "@workspace/db";
-import { configureOllama, refreshOllamaCatalog } from "@workspace/ai-server";
+import {
+  configureOllama,
+  configureOpenRouter,
+  refreshOllamaCatalog,
+} from "@workspace/ai-server";
 import { ownedOllamaPeer } from "../../../../../lib/ai-server/src/testing/ollama-boundary-peer";
 import { runJudge } from "./judge";
 
@@ -76,6 +80,49 @@ async function fixture(
 }
 
 for (const purpose of ["completion", "approval"] as const) {
+  for (const valid of [true, false]) {
+    test(`${purpose} explicit local review stays local with cloud configured, valid=${valid}`, async (t) => {
+      const { peer, agent } = await fixture(
+        t,
+        valid ? { verdict: "pass", reasoning: "Owned local review." } : {},
+      );
+      configureOpenRouter({ apiKey: "test-openrouter-key" });
+      t.after(() => configureOpenRouter({ apiKey: null }));
+      const routes: string[] = [];
+      const review = await runJudge({
+        agent,
+        taskId: null,
+        purpose,
+        locale: "en",
+        originalBrief: "Owned fixture",
+        actionSummary: "Owned fixture",
+        taskExecutionModelId: "ollama:owned:latest",
+        beforeAttempt: async (route) => {
+          assert.equal(
+            route.provider,
+            "ollama",
+            "no cloud request may dispatch",
+          );
+          assert.equal(route.modelId, "ollama:owned:latest");
+          routes.push(route.modelId);
+        },
+      });
+      assert.equal(peer.completions().length, 1);
+      assert.ok(routes.length >= 1);
+      assert.equal(
+        review.verdict,
+        valid ? "pass" : purpose === "completion" ? "block" : "warn",
+      );
+      assert.equal(review.unavailable === true, !valid);
+      const receipts = await db
+        .select()
+        .from(usageEventsTable)
+        .where(eq(usageEventsTable.agentId, agent.id));
+      assert.equal(receipts.length, 1);
+      assert.equal(receipts[0]!.totalTokens, 2);
+    });
+  }
+
   test(`${purpose} truncated review cannot certify even a valid PASS object`, async (t) => {
     const { peer, agent } = await fixture(
       t,
@@ -193,6 +240,15 @@ for (const purpose of ["completion", "approval"] as const) {
     assert.equal(review.reasoning.trim(), "An advisory issue remains.");
     assert.equal(peer.completions().length, 1);
     const body = peer.completions()[0]!.body;
+    const systemPolicy = (
+      body.messages as Array<{ role: string; content: string }>
+    ).find((message) => message.role === "system")!.content;
+    assert.equal(
+      systemPolicy.includes(
+        "pre-commit review of an actual complete_task request",
+      ),
+      purpose === "completion",
+    );
     assert.equal(body.reasoning_effort, undefined);
     assert.equal(body.temperature, 0);
     assert.deepEqual(body.response_format, expectedLocalReviewFormat);

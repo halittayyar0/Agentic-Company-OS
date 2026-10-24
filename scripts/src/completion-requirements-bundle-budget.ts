@@ -192,21 +192,22 @@ function entryControl(asset: BundleAsset) {
       field.initializer.arguments[0].getText(source) === name(schema.name),
   );
   assert.ok(ts.isObjectLiteralExpression(field.parent));
-  assert.deepEqual(
-    field.parent.properties.map((p) =>
-      ts.isPropertyAssignment(p) ? name(p.name) : "",
-    ),
-    [
-      "version",
-      "kind",
-      "title",
-      "brief",
-      "priority",
-      "autonomyMode",
-      "cadenceSeconds",
-      "completionRequirements",
-    ],
+  const draftFields = field.parent.properties.map((p) =>
+    ts.isPropertyAssignment(p) ? name(p.name) : "",
   );
+  assert.deepEqual(draftFields, [
+    "version",
+    "kind",
+    "title",
+    "brief",
+    "priority",
+    "autonomyMode",
+    "cadenceSeconds",
+    "completionRequirements",
+    // Retain this separately selected layout in the older control below.
+    // It receives no operation-condition byte credit or increased ceiling.
+    ...(draftFields.includes("resultFormat") ? ["resultFormat"] : []),
+  ]);
   assert.equal(text[field.getStart(source) - 1], ",");
   parts.push({
     start: field.getStart(source) - 1,
@@ -240,7 +241,7 @@ function routeControl(
   asset: BundleAsset,
   logic: BundleAsset,
   view: BundleAsset,
-  kind: "choice" | "panel",
+  kind: "choice" | "panel" | "layout" | "layout-panel",
 ) {
   const source = parse(asset),
     text = asset.contents.toString("utf8"),
@@ -265,21 +266,53 @@ function routeControl(
   assert.ok(lazy, "Unknown condition lazy declaration");
   const react = escape(lazy[1]),
     binding = escape(name(declaration.name));
-  parts.push({
-    start: declaration.initializer.getStart(source),
-    end: declaration.initializer.end,
-    replacement: "null",
-  });
+  if (kind === "layout" || kind === "layout-panel") {
+    assert.ok(ts.isVariableDeclarationList(declaration.parent));
+    if (declaration.parent.declarations.length === 1) {
+      assert.ok(ts.isVariableStatement(declaration.parent.parent));
+      parts.push({
+        start: declaration.parent.parent.getStart(source),
+        end: declaration.parent.parent.end,
+        replacement: "",
+      });
+    } else if (text[declaration.getStart(source) - 1] === ",") {
+      parts.push({
+        start: declaration.getStart(source) - 1,
+        end: declaration.end,
+        replacement: "",
+      });
+    } else {
+      assert.equal(text[declaration.end], ",");
+      parts.push({
+        start: declaration.getStart(source),
+        end: declaration.end + 1,
+        replacement: "",
+      });
+    }
+  } else
+    parts.push({
+      start: declaration.initializer.getStart(source),
+      end: declaration.initializer.end,
+      replacement: "null",
+    });
+  const property =
+    kind === "layout" ? "resultFormat" : "completionRequirements";
+  const defaultValue = kind === "layout" ? "null" : String.raw`\[\]`;
   const pattern =
-    kind === "choice"
+    kind === "choice" || kind === "layout"
       ? new RegExp(
-          String.raw`(?<jsx>${identifier})\.jsx\(${react}\.Suspense,\{fallback:null,children:\k<jsx>\.jsx\(${binding},\{value:(?<draft>${identifier})\.value\.completionRequirements\?\?\[\],onChange:(?<next>${identifier})=>\k<draft>\.change\(\{\.\.\.\k<draft>\.current\.current,completionRequirements:\k<next>\}\),onBlockedChange:(?<setter>${identifier}),onReload:\(\)=>\{\k<draft>\.change\(\k<draft>\.current\.current\)&&window\.location\.reload\(\)\}\}\)\}\)`,
+          String.raw`(?<jsx>${identifier})\.jsx\(${react}\.Suspense,\{fallback:null,children:\k<jsx>\.jsx\(${binding},\{value:(?<draft>${identifier})\.value\.${property}\?\?${defaultValue},onChange:(?<next>${identifier})=>\k<draft>\.change\(\{\.\.\.\k<draft>\.current\.current,${property}:\k<next>\}\),onBlockedChange:(?<setter>${identifier}),onReload:\(\)=>\{\k<draft>\.change\(\k<draft>\.current\.current\)&&window\.location\.reload\(\)\}\}\)\}\)`,
           "gu",
         )
-      : new RegExp(
-          String.raw`!!(?<task>${identifier})\.completionRequirements\?\.length&&(?<jsx>${identifier})\.jsx\(${identifier},\{resetKey:(?<taskId>${identifier}),children:\k<jsx>\.jsx\(${react}\.Suspense,\{fallback:null,children:\k<jsx>\.jsx\(${binding},\{taskId:\k<taskId>,requirements:\k<task>\.completionRequirements\},\k<taskId>\)\}\)\}\)`,
-          "gu",
-        );
+      : kind === "layout-panel"
+        ? new RegExp(
+            String.raw`(?<task>${identifier})\.resultFormat&&(?<jsx>${identifier})\.jsx\(${identifier},\{resetKey:(?<taskId>${identifier}),children:\k<jsx>\.jsx\(${react}\.Suspense,\{fallback:null,children:\k<jsx>\.jsx\(${binding},\{value:\k<task>\.resultFormat,onReload:\(\)=>window\.location\.reload\(\)\}\)\}\)\}\)`,
+            "gu",
+          )
+        : new RegExp(
+            String.raw`!!(?<task>${identifier})\.completionRequirements\?\.length&&(?<jsx>${identifier})\.jsx\(${identifier},\{resetKey:(?<taskId>${identifier}),children:\k<jsx>\.jsx\(${react}\.Suspense,\{fallback:null,children:\k<jsx>\.jsx\(${binding},\{taskId:\k<taskId>,requirements:\k<task>\.completionRequirements\},\k<taskId>\)\}\)\}\)`,
+            "gu",
+          );
   const mount = only(
     [...text.matchAll(pattern)],
     "Unknown condition reader mount",
@@ -289,7 +322,7 @@ function routeControl(
     end: mount.index + mount[0].length,
     replacement: "null",
   });
-  if (kind === "choice") {
+  if (kind === "choice" || kind === "layout") {
     const enclosing = all(source, ts.isFunctionDeclaration)
       .filter(
         (f) =>
@@ -319,11 +352,37 @@ function routeControl(
       3,
       "Unexpected condition state use",
     );
-    parts.push({
-      start: state.initializer.getStart(source),
-      end: state.initializer.end,
-      replacement: "null",
-    });
+    if (kind === "layout") {
+      // This state binding is wholly new. Remove exactly its declaration;
+      // preserve adjacent pre-existing declarations in the same minified list.
+      assert.ok(ts.isVariableDeclarationList(state.parent));
+      if (state.parent.declarations.length === 1) {
+        assert.ok(ts.isVariableStatement(state.parent.parent));
+        parts.push({
+          start: state.parent.parent.getStart(source),
+          end: state.parent.parent.end,
+          replacement: "",
+        });
+      } else if (text[state.getStart(source) - 1] === ",") {
+        parts.push({
+          start: state.getStart(source) - 1,
+          end: state.end,
+          replacement: "",
+        });
+      } else {
+        assert.equal(text[state.end], ",");
+        parts.push({
+          start: state.getStart(source),
+          end: state.end + 1,
+          replacement: "",
+        });
+      }
+    } else
+      parts.push({
+        start: state.initializer.getStart(source),
+        end: state.initializer.end,
+        replacement: "null",
+      });
     const guards = [
       ...body.matchAll(
         new RegExp(String.raw`\|\|${escape(blocked)}(?=\|\||[,;)])`, "gu"),
@@ -353,6 +412,15 @@ function routeControl(
     "Condition reader wiring exceeds its independent cap",
   );
   return result;
+}
+
+export function resultFormatChoiceControl(
+  asset: BundleAsset,
+  logic: BundleAsset,
+  view: BundleAsset,
+  panel = false,
+) {
+  return routeControl(asset, logic, view, panel ? "layout-panel" : "layout");
 }
 
 export function measureCompletionRequirementsBundle(

@@ -9,6 +9,8 @@ import type { ApprovalDecisionInputDecision } from './approvalDecisionInputDecis
 import type { ApprovalDecisionInputLocale } from './approvalDecisionInputLocale';
 
 export interface ApprovalDecisionInput {
+  /** Required true with the exact expectedArgsHash when confirming a proposed task result. Never inferred from ordinary approval. */
+  confirmTaskResult?: boolean;
   /**
      * Optional reviewed scope digest. Null asserts an unscoped request. A changed scope is rejected while the decision locks are held.
      * @minLength 64

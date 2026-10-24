@@ -700,6 +700,11 @@ for (const locale of WORKSPACE_LOCALES) {
             .filter((m) => m.role === "tool")
             .map((m) => String(m.content)),
         );
+        if (calls === 2)
+          assert.ok(
+            params.tools?.some((tool) => tool.function.name === "log_note"),
+            "first rejection must expose the authorized schema on the next request",
+          );
         const tools =
           calls === 1
             ? [
@@ -708,20 +713,18 @@ for (const locale of WORKSPACE_LOCALES) {
                   : []),
                 call("log_note", { summary: "must not run yet" }),
               ]
-            : calls === 2 && scenario === "not_loaded"
-              ? [call("load_tools", { names: ["log_note"] })]
-              : calls === (scenario === "not_loaded" ? 3 : 2)
-                ? [
-                    call("log_note", { summary: "reviewed note" }),
-                    call("complete_task", {
-                      resultSummary: "Controlled result",
-                    }),
-                  ]
-                : [
-                    call("complete_task", {
-                      resultSummary: "Controlled result",
-                    }),
-                  ];
+            : calls === 2
+              ? [
+                  call("log_note", { summary: "reviewed note" }),
+                  call("complete_task", {
+                    resultSummary: "Controlled result",
+                  }),
+                ]
+              : [
+                  call("complete_task", {
+                    resultSummary: "Controlled result",
+                  }),
+                ];
         return {
           provider: "replit",
           completion: {
@@ -778,7 +781,7 @@ for (const locale of WORKSPACE_LOCALES) {
         runTool,
         selectModelPlan: plan,
       });
-      const allowedRound = scenario === "not_loaded" ? 3 : 2;
+      const allowedRound = 2;
       assert.deepEqual(executions, [
         { name: "log_note", round: allowedRound },
         { name: "complete_task", round: allowedRound },
@@ -804,10 +807,11 @@ for (const locale of WORKSPACE_LOCALES) {
       assert.equal(blocked.length, 1);
       assert.equal(blocked[0].detail?.guard, "model_request_tool_schema");
       assert.equal(blocked[0].detail?.blockedTool, "log_note");
+      assert.equal(blocked[0].detail?.schemaRecoveredForNextRequest, true);
       assert.deepEqual(blocked[0].detail?.advertisedTools, envelopes[0]);
       assert.equal(
         blocked[0].summary,
-        toolMessage(locale, "toolSchemaUnavailable", { tool: "log_note" }),
+        toolMessage(locale, "toolSchemaRecovered", { tool: "log_note" }),
       );
       assert.ok(
         corrections.some((content) => content.includes(blocked[0].summary)),

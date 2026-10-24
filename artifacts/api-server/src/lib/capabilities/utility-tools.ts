@@ -61,7 +61,7 @@ const descriptions: Record<UtilityName, string> = {
   hash_text:
     "Compute a SHA-256 fingerprint of exact supplied UTF-8 text. This is a checksum, not encryption, a signature or proof of origin.",
 };
-export const utilityToolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] =
+export const utilityToolDefinitions: OpenAI.Chat.Completions.ChatCompletionFunctionTool[] =
   UTILITY_NAMES.map((name) => ({
     type: "function",
     function: {

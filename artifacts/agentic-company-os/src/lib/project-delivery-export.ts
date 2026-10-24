@@ -2,12 +2,15 @@ import type { Task } from "@workspace/api-client-react";
 import type { ProjectStudioCopy } from "./project-studio-copy";
 import type { DeliveryDownloadCopy } from "./delivery-download-copy";
 
-type Delivery = Pick<Task, "id" | "title" | "resultSummary" | "autonomyMode">;
+type Delivery = Pick<
+  Task,
+  "id" | "title" | "resultSummary" | "autonomyMode" | "completionAuthority"
+>;
 type ExportCopy = Pick<
   ProjectStudioCopy,
   "deliverySummary" | "cycleDeliveryNote"
 > &
-  DeliveryDownloadCopy;
+  DeliveryDownloadCopy & { operatorProvenance?: string };
 const studioText = (text: string, values: Record<string, string | number>) =>
   text.replace(/\{(\w+)\}/g, (match, key: string) =>
     String(values[key] ?? match),
@@ -19,7 +22,13 @@ export function projectDeliveryExport(
   status: string,
 ): { filename: string; text: string } | null {
   const summary = project.resultSummary?.trim();
-  if (!summary || !Number.isSafeInteger(project.id) || project.id <= 0)
+  if (
+    !summary ||
+    !Number.isSafeInteger(project.id) ||
+    project.id <= 0 ||
+    (project.completionAuthority === "operator" &&
+      !c.operatorProvenance?.trim())
+  )
     return null;
   return {
     filename: `project-${project.id}-summary.txt`,
@@ -31,7 +40,9 @@ export function projectDeliveryExport(
       }),
       studioText(c.deliveryExportStatus, { status }),
       "",
-      c.deliveryExportNotice,
+      project.completionAuthority === "operator"
+        ? c.operatorProvenance!
+        : c.deliveryExportNotice,
       ...(project.autonomyMode === "continuous" ? [c.cycleDeliveryNote] : []),
       "",
       summary,

@@ -241,6 +241,12 @@ export const toolAr: ToolCopy = {
   teamTaskLost: "محظور: أُوقفت المهمة أو فُقدت صلاحية تنفيذها.",
   teamChildUnresolved:
     "محظور: لا تزال المهمة الفرعية المرتبطة taskId={id} في حالة {status}؛ احسم نتيجتها أو ألغها أولًا.",
+  teamResultFormatMismatch:
+    "لم تُقبل النتيجة. أعد جدولاً بالأعمدة المطلوبة:\n{header}\n{separator}\nأضف صفوف البيانات الفعلية. اترك سطراً فارغاً قبل أي شرح بعد الجدول. اجتياز فحص التنسيق لا يثبت دقة المعلومات.",
+  teamResultFormatUnavailable:
+    "تعذّر التحقق من تنسيق النتيجة المحفوظ. تبقى المهمة مفتوحة.",
+  teamResultFormatRejectedActivity:
+    "لم تُقبل النتيجة لأنها لا تطابق تنسيق الجدول المحفوظ.",
   teamCompletionRequirementsMissing:
     "لا يمكن إكمال المهمة: لا توجد في هذه الدورة سجلات نجاح صالحة للأدوات {tools}. نفّذ العمليات المطلوبة ضمن صلاحياتك الحالية؛ وستظل النتيجة بحاجة إلى مراجعة.",
   teamCompletionRejected:
@@ -335,6 +341,14 @@ export const toolAr: ToolCopy = {
   previewLink: "الرابط: {url}",
   previewForm: "وجهة النموذج: {url}",
   judgeMissingReason: "لم تُرجع المراجعة مبررًا.",
+  judgeSourceSatisfied:
+    "وجدت مراجعة المصدر المحلية أن النطاق المطلوب مستوفى؛ وهذا ليس تحققًا مستقلاً من الحقائق الخارجية.",
+  judgeSourceMismatch:
+    "تتعارض النتيجة المقترحة مع المصدر المقروء. قارن المصدر بالمخرجات المطلوبة.",
+  judgeSourceMissingAction: "لا تتوفر أدلة تنفيذ كافية لإجراء مطلوب صراحةً.",
+  judgeSourceUnauthorized: "يتجاوز الإجراء المقترح النطاق المصرح به للمهمة.",
+  judgeSourceInsufficient:
+    "لا تكفي المصادر وأدلة التنفيذ المتاحة لدعم ادعاء إكمال المهمة.",
   judgeSudoReason:
     "صُنّف اقتراح sudo بأنه {verdict}؛ ولا يُعرض الأمر المحدد إلا ضمن الموافقة البشرية المحلية.",
   judgeReview: "المراجعة ({purpose}): {verdict}",
@@ -421,6 +435,8 @@ export const toolAr: ToolCopy = {
   taskToolFallbackInstruction:
     "أخفق النموذج السابق مرتين في استخدام بروتوكول الأدوات. حافظ على السياق نفسه وتابع بخطوة محددة واحدة تطابق تمامًا مخطط أداة مسموح بها.",
   operationCompleted: "اكتملت العملية: {tool}.",
+  toolSchemaRecovered:
+    "لم تُقدّم {tool} في هذا الطلب ولم تُنفّذ. حُمّل مخطط الأداة المصرّح بها للطلب التالي؛ أعد استدعاءها بمعاملات تطابق المخطط. لم تتغير الصلاحيات.",
   toolSchemaUnavailable:
     "لم تُقدّم {tool} في هذا الطلب ولم تُنفّذ. استخدم أداة متاحة، أو حمّل أداة اختيارية من القائمة باستخدام load_tools ثم استدعها في الطلب التالي. لم تتغير الصلاحيات.",
   modelFailure: "{reason} ({source})",

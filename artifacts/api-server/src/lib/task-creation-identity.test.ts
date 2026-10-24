@@ -25,6 +25,74 @@ const oldDigest = (input: TaskCreationIdentityInput) =>
     .digest("hex");
 const calculate = { kind: "tool_succeeded", tool: "calculate" } as const;
 
+test("plain result formats preserve existing v1 and v2 request identities", () => {
+  const plain = { title: "Formatted", brief: "Read notes", ownerAgentId: 7 };
+  const required = {
+    ...plain,
+    completionRequirements: [
+      { kind: "tool_succeeded", tool: "vm_read_file" } as const,
+    ],
+  };
+  assert.equal(
+    taskCreationInputDigest({ ...plain, resultFormat: null }),
+    oldDigest(plain),
+  );
+  for (const resultFormat of [undefined, null])
+    assert.equal(
+      taskCreationInputDigest({ ...required, resultFormat }),
+      "e410eed954aa88faeb73512dbf382c537489879717e4d9d83482aedde864293a",
+    );
+});
+
+test("changing table columns or their order cannot replay another result contract", () => {
+  const input = { title: "Formatted", brief: "Read notes" };
+  const resultFormat = {
+    kind: "table" as const,
+    columns: ["Owner", "Action", "Due"],
+  };
+  const digest = taskCreationInputDigest({ ...input, resultFormat });
+  assert.notEqual(digest, taskCreationInputDigest(input));
+  assert.notEqual(
+    digest,
+    taskCreationInputDigest({
+      ...input,
+      resultFormat: { ...resultFormat, columns: ["Action", "Owner", "Due"] },
+    }),
+  );
+  assert.notEqual(
+    digest,
+    taskCreationInputDigest({
+      ...input,
+      resultFormat: { ...resultFormat, columns: ["Owner", "Action", "Date"] },
+    }),
+  );
+  assert.equal(
+    digest,
+    taskCreationInputDigest({
+      ...input,
+      resultFormat: { columns: ["Owner", "Action", "Due"], kind: "table" },
+    }),
+  );
+});
+
+test("malformed layouts cannot receive a task recovery identity", () => {
+  for (const value of [
+    {},
+    { kind: "table", columns: [] },
+    { kind: "table", columns: ["Owner", "Owner"] },
+  ])
+    assert.throws(
+      () =>
+        taskCreationInputDigest({
+          title: "Invalid",
+          brief: "Read",
+          resultFormat:
+            value as unknown as TaskCreationIdentityInput["resultFormat"],
+        }),
+      /task_result_format_invalid/,
+    );
+});
+
 test("omitted or empty requirements preserve all existing creation recovery digests", () => {
   const inputs: TaskCreationIdentityInput[] = [
     { title: "  Legacy task  ", brief: "\nPreserve exact input\n" },

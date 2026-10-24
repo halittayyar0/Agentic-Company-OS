@@ -1,5 +1,6 @@
 import type { ApprovalCopy } from "../approval-copy";
 export default {
+  reviewResult: "Review proposed result",
   emptyPage: "No requests on this page",
   closedPreview: "Command previews are hidden for closed permissions.",
   eyebrow: "Human control",

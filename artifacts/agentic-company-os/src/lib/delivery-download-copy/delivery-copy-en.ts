@@ -7,5 +7,5 @@ export default {
   deliveryExportProject: "Project {id}: {title}",
   deliveryExportStatus: "Current status: {status}",
   deliveryExportNotice:
-    "Saved by the agent. Downloading this file does not verify the work.",
+    "Saved task result. Downloading this file does not verify the work.",
 } satisfies DeliveryDownloadCopy;

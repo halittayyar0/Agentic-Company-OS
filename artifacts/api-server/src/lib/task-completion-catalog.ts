@@ -2,7 +2,7 @@ import type OpenAI from "openai";
 import { parseCompletionRequirements } from "@workspace/db/completion-requirements";
 
 export function eligibleCompletionToolNames(
-  tools: readonly OpenAI.Chat.Completions.ChatCompletionTool[],
+  tools: readonly OpenAI.Chat.Completions.ChatCompletionFunctionTool[],
 ): string[] {
   const occurrences = new Map<string, number>();
   for (const tool of tools) {

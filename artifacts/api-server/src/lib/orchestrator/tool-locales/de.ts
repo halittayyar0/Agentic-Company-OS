@@ -280,6 +280,12 @@ export const toolDe: ToolCopy = {
     "BLOCKIERT: Die Aufgabe wurde gestoppt oder die Ausführungsberechtigung ging verloren.",
   teamChildUnresolved:
     "BLOCKIERT: Die Unteraufgabe taskId={id} hat weiterhin den Status {status}; kläre zuerst ihr Ergebnis oder brich sie ab.",
+  teamResultFormatMismatch:
+    "Ergebnis nicht akzeptiert. Gib eine Tabelle mit den verlangten Spalten zurück:\n{header}\n{separator}\nFüge die tatsächlichen Datenzeilen hinzu. Lass vor Erläuterungen nach der Tabelle eine Leerzeile. Die Formatprüfung bestätigt keine sachliche Richtigkeit.",
+  teamResultFormatUnavailable:
+    "Das gespeicherte Ergebnisformat konnte nicht geprüft werden. Die Aufgabe bleibt offen.",
+  teamResultFormatRejectedActivity:
+    "Das Ergebnis wurde abgelehnt, weil es nicht dem gespeicherten Tabellenformat entsprach.",
   teamCompletionRequirementsMissing:
     "Die Aufgabe kann nicht abgeschlossen werden: In diesem Zyklus fehlt ein gültiger Erfolgsnachweis für {tools}. Führe die erforderlichen Vorgänge mit deinen bestehenden Berechtigungen aus; das Ergebnis muss weiterhin geprüft werden.",
   teamCompletionRejected:
@@ -391,6 +397,16 @@ export const toolDe: ToolCopy = {
   previewLink: "Link: {url}",
   previewForm: "Formularziel: {url}",
   judgeMissingReason: "Die Prüfung hat keine Begründung zurückgegeben.",
+  judgeSourceSatisfied:
+    "Die lokale Quellenprüfung bewertet den angeforderten Umfang als erfüllt; externe Fakten wurden nicht unabhängig bestätigt.",
+  judgeSourceMismatch:
+    "Das vorgeschlagene Ergebnis widerspricht der gelesenen Quelle. Vergleichen Sie Quelle und angeforderte Ausgabe.",
+  judgeSourceMissingAction:
+    "Für eine ausdrücklich verlangte Aktion fehlen ausreichende Ausführungsnachweise.",
+  judgeSourceUnauthorized:
+    "Die vorgeschlagene Aktion überschreitet den genehmigten Aufgabenumfang.",
+  judgeSourceInsufficient:
+    "Die verfügbaren Quellen und Ausführungsnachweise reichen für die Abschlussbehauptung nicht aus.",
   judgeSudoReason:
     "Der sudo-Vorschlag wurde als {verdict} eingestuft; der exakte Befehl wird nur bei der lokalen Genehmigung durch einen Menschen angezeigt.",
   judgeReview: "Prüfung ({purpose}): {verdict}",
@@ -482,6 +498,8 @@ export const toolDe: ToolCopy = {
   taskToolFallbackInstruction:
     "Das vorherige Modell konnte das Werkzeugprotokoll zweimal nicht verwenden. Behalte den Kontext bei und fahre mit einem konkreten Schritt fort, der genau einem zulässigen Werkzeugschema entspricht.",
   operationCompleted: "Vorgang abgeschlossen: {tool}.",
+  toolSchemaRecovered:
+    "{tool} wurde in dieser Anfrage nicht angeboten und nicht ausgeführt. Das bereits erlaubte Werkzeugschema ist für die nächste Anfrage geladen; rufe es mit passenden Argumenten erneut auf. Berechtigungen bleiben unverändert.",
   toolSchemaUnavailable:
     "{tool} wurde nicht angeboten und nicht ausgeführt. Nutze angebotene Werkzeuge oder lade ein gelistetes optionales Werkzeug mit load_tools für die nächste Anfrage. Berechtigungen bleiben unverändert.",
   modelFailure: "{reason} ({source})",

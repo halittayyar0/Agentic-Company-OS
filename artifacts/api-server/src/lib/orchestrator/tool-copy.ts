@@ -213,6 +213,12 @@ export const toolTr = {
     "ENGELLENDİ: bağlı alt görev taskId={id} halen {status}; önce alt görev sonucunu çöz veya iptal et.",
   teamCompletionRejected:
     "Denetim bu tamamlanmayı reddetti: {reason} Lütfen görevi orijinal talimatla uyumlu hale getirip tekrar dene.",
+  teamResultFormatMismatch:
+    "Sonuç kabul edilmedi. İstenen sütunlarla bir tablo döndür:\n{header}\n{separator}\nGerçek veri satırlarını ekle. Tablodan sonraki açıklamadan önce boş satır bırak. Biçim kontrolü bilgilerin doğruluğunu kanıtlamaz.",
+  teamResultFormatUnavailable:
+    "Kaydedilmiş sonuç biçimi doğrulanamadı. Görev açık kalıyor.",
+  teamResultFormatRejectedActivity:
+    "Sonuç, kaydedilmiş tablo biçimine uymadığı için kabul edilmedi.",
   teamCompletionRequirementsMissing:
     "Görev tamamlanamaz: bu döngüde {tools} için geçerli başarı kaydı yok. Gerekli işlemleri mevcut yetkilerinle yürüt; sonuç ayrıca denetlenecek.",
   teamCyclePrepared:
@@ -311,6 +317,16 @@ export const toolTr = {
   previewLink: "Bağlantı: {url}",
   previewForm: "Form hedefi: {url}",
   judgeMissingReason: "Denetim gerekçe döndürmedi.",
+  judgeSourceSatisfied:
+    "Yerel kaynak incelemesi istenen kapsamı yeterli buldu; bu, dış dünyadaki olguların bağımsız doğrulaması değildir.",
+  judgeSourceMismatch:
+    "Önerilen sonuç, okunan kaynakla uyuşmuyor. Kaynağı ve istenen çıktıyı karşılaştırın.",
+  judgeSourceMissingAction:
+    "Görevde açıkça istenen bir işlem için yeterli yürütme kanıtı yok.",
+  judgeSourceUnauthorized:
+    "Önerilen işlem, görevin izin verdiği kapsamı aşıyor.",
+  judgeSourceInsufficient:
+    "Mevcut kaynak ve yürütme kanıtı, tamamlama iddiasını desteklemeye yetmiyor.",
   judgeSudoReason:
     "Sudo önerisi {verdict} olarak sınıflandırıldı; tam komut yalnızca yerel insan onayında gösterilir.",
   judgeReview: "Denetim ({purpose}): {verdict}",
@@ -400,6 +416,8 @@ export const toolTr = {
   taskToolFallbackInstruction:
     "Önceki model araç protokolünü iki kez kullanamadı. Aynı bağlamı koru; izinli araç şemasına tam uyan tek bir somut adımla devam et.",
   operationCompleted: "İşlem tamamlandı: {tool}.",
+  toolSchemaRecovered:
+    "{tool} bu istekte sunulmadığı için çalıştırılmadı. Yetkili araç şeması sonraki istek için yüklendi; şemaya uygun argümanlarla yeniden çağır. İzinler değişmedi.",
   toolSchemaUnavailable:
     "{tool} bu istekte sunulmadığı için çalıştırılmadı. Sunulan bir aracı kullan veya dizindeki ek aracı load_tools ile yükleyip sonraki istekte çağır. İzinler değişmedi.",
   modelFailure: "{reason} ({source})",

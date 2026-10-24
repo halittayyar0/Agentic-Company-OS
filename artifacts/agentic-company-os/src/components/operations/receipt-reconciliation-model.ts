@@ -1,3 +1,4 @@
+import { stringChoices } from "../../lib/schema-primitives";
 import * as z from "zod/v4-mini";
 import type { OperationsCopy } from "../../lib/operations-copy";
 import { operationNoteBytes } from "../../lib/operation-recovery";
@@ -8,11 +9,13 @@ export type ReconciliationFormValues = {
 };
 export function createReceiptReconciliationSchema(copy: OperationsCopy) {
   return z.object({
-    decision: z
-      .enum(["", "confirmed_applied", "confirmed_not_applied"])
-      .check(
-        z.refine((value) => value !== "", { error: copy.decisionRequired }),
-      ),
+    decision: stringChoices([
+      "",
+      "confirmed_applied",
+      "confirmed_not_applied",
+    ]).check(
+      z.refine((value) => value !== "", { error: copy.decisionRequired }),
+    ),
     note: z.string().check(
       z.trim(),
       z.minLength(1, copy.noteRequired),

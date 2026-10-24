@@ -1,5 +1,6 @@
 import type { ApprovalCopy } from "../approval-copy";
 export default {
+  reviewResult: "مراجعة النتيجة المقترحة",
   emptyPage: "لا توجد طلبات في هذه الصفحة",
   closedPreview: "تُخفى معاينة الأمر للأذونات المغلقة.",
   eyebrow: "تحكّم بشري",

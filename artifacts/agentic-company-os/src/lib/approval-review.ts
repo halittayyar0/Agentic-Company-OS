@@ -11,6 +11,7 @@ export function approvalExpired(
 }
 
 export function hasReviewableScope(approval: ApprovalRequest): boolean {
+  if (isTaskResultReview(approval)) return false;
   if (!approval.scope) return true;
   return Boolean(
     approval.scope.toolName.trim() &&
@@ -20,6 +21,14 @@ export function hasReviewableScope(approval: ApprovalRequest): boolean {
     Number.isFinite(new Date(approval.expiresAt).getTime()) &&
     (approval.scope.toolName !== "vm_run_sudo_command" ||
       approval.scope.target?.trim()),
+  );
+}
+
+/** The server marker never falls back to generic action approval. */
+export function isTaskResultReview(approval: ApprovalRequest): boolean {
+  return (
+    approval.scope?.toolName === "operator_confirm_task_result" ||
+    approval.resultReview !== undefined
   );
 }
 
@@ -39,6 +48,7 @@ export function approvalReviewFingerprint(approval: ApprovalRequest): string {
     approval.scope?.argsHash,
     approval.scope?.target,
     approval.scope?.preview,
+    approval.resultReview,
   ]);
 }
 

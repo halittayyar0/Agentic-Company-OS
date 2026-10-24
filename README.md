@@ -146,6 +146,8 @@ explain the limits.
 
 For work that must use a particular tool, choose optional **completion conditions** before starting. The server requires a recorded success for each selected operation in the current cycle, without granting permissions or adding a review call. The project shows missing success and unavailable capabilities in your chosen language. [Choose conditions and understand their limits →](./docs/completion-review.md#choose-completion-conditions)
 
+For a structured result, choose **Result format → Table** and enter the column headings. The server rejects a malformed table before asking the model judge or completing a cycle. This checks layout only; facts still need review. Draft recovery, exact retries and reused projects preserve the selection. [Choose a result format →](./docs/completion-review.md#choose-a-result-format)
+
 **You control model costs.** Cloud providers bill your own account; local models use your hardware. Explicit free or local selections do not silently fall back to paid models. Reported usage limits can overshoot by an in-flight request, and missing cost remains unknown. Use provider-side limits for a billing ceiling.
 
 [Routing, delegation and budget settings →](./docs/efficient-work.md)

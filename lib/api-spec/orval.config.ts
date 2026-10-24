@@ -64,10 +64,9 @@ export default defineConfig({
       prettier: true,
       override: {
         zod: {
-          // The workspace intentionally ships Zod 3. Pin code generation to
-          // its fluent validators (for example `z.string().uuid()`) instead
-          // of relying on package auto-detection from the api-spec package.
-          version: 3,
+          // Match the patched workspace runtime explicitly instead of relying
+          // on package auto-detection from the api-spec package.
+          version: 4,
           coerce: {
             query: ["boolean", "number", "string"],
             param: ["boolean", "number", "string"],

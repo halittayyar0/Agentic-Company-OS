@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/lib/form-resolver";
 import * as z from "zod/v4-mini";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -107,7 +107,7 @@ export function BlockedTaskResume({
   const form = useForm({
     defaultValues: { answer: initial.draft?.answer ?? "" },
     mode: "onTouched",
-    resolver: zodResolver(
+    resolver: formResolver(
       z.object({
         answer: z.string().check(
           z.refine((v) => Boolean(v.trim()), c.answerRequired),

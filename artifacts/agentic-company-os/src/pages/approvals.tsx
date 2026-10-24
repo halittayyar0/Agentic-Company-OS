@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -37,8 +37,14 @@ import {
   hasReviewableScope,
   approvalReviewFingerprint,
   approvalErrorCopy,
+  isTaskResultReview,
 } from "@/lib/approval-review";
 import { cn } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/error-boundary";
+
+const OperatorResultReview = lazy(
+  () => import("@/components/tasks/operator-result-review"),
+);
 
 const PAGE_SIZE = 20;
 const statuses: ApprovalStatus[] = ["pending", "approved", "rejected"];
@@ -92,6 +98,8 @@ function ApprovalInbox({
   const [failure, setFailure] = useState<keyof ApprovalCopy | null>(null);
   const [result, setResult] = useState<"approved" | "rejected" | null>(null);
   const [needsRefresh, setNeedsRefresh] = useState(false);
+  const [openedReview, setOpenedReview] = useState<number | null>(null);
+  const [reviewMessage, setReviewMessage] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
   const busy = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -148,7 +156,7 @@ function ApprovalInbox({
     decision: "approved" | "rejected",
     enteredDigest?: string,
   ) {
-    if (busy.current || blocked) return;
+    if (busy.current || blocked || isTaskResultReview(approval)) return;
     const live = requests.data?.find((request) => request.id === approval.id);
     if (
       !live ||
@@ -244,6 +252,11 @@ function ApprovalInbox({
           {c.description}
         </p>
       </header>
+      {reviewMessage && (
+        <p role="status" className="rounded-xl border bg-card p-4">
+          {reviewMessage}
+        </p>
+      )}
       {result && (
         <section role="status" className="rounded-xl border bg-card p-4">
           <h2 className="font-semibold">
@@ -337,6 +350,7 @@ function ApprovalInbox({
                 (candidate) => candidate.id === approval.agentId,
               );
               const host = approval.scope?.toolName === "vm_run_sudo_command";
+              const resultReview = isTaskResultReview(approval);
               const expired = approvalExpired(approval, now);
               const invalidScope = !hasReviewableScope(approval);
               const amount =
@@ -391,7 +405,7 @@ function ApprovalInbox({
                         {c.hostDetails}
                       </p>
                     </div>
-                  ) : (
+                  ) : !resultReview ? (
                     <div className="mt-4">
                       <p className="whitespace-pre-wrap text-sm leading-6">
                         <bdi>{approval.description}</bdi>
@@ -400,19 +414,20 @@ function ApprovalInbox({
                         {c.source}
                       </p>
                     </div>
-                  )}
-                  {approval.scope ? (
-                    <ScopeDetails
-                      approval={approval}
-                      copy={c}
-                      locale={locale}
-                      now={now}
-                    />
-                  ) : (
-                    <p className="mt-4 rounded-lg border p-3 text-xs leading-5 text-muted-foreground">
-                      {c.unscoped}
-                    </p>
-                  )}
+                  ) : null}
+                  {!resultReview &&
+                    (approval.scope ? (
+                      <ScopeDetails
+                        approval={approval}
+                        copy={c}
+                        locale={locale}
+                        now={now}
+                      />
+                    ) : (
+                      <p className="mt-4 rounded-lg border p-3 text-xs leading-5 text-muted-foreground">
+                        {c.unscoped}
+                      </p>
+                    ))}
                   {amount !== null && Number.isFinite(amount) && amount > 0 && (
                     <p className="mt-4 text-lg font-semibold">
                       <bdi>
@@ -450,7 +465,61 @@ function ApprovalInbox({
                       </p>
                     </div>
                   )}
-                  {approval.status === "pending" && (
+                  {resultReview &&
+                    approval.status === "pending" &&
+                    (openedReview === approval.id ? (
+                      <ErrorBoundary resetKey={approval.id}>
+                        <Suspense fallback={<p role="status">{c.loading}</p>}>
+                          <OperatorResultReview
+                            approval={approval}
+                            approvalFingerprint={approvalReviewFingerprint(
+                              approval,
+                            )}
+                            blocked={blocked}
+                            onBusyChange={setResolving}
+                            onRefresh={refresh}
+                            onClose={() => setOpenedReview(null)}
+                            closeLabel={c.cancel}
+                            resolve={(data) =>
+                              mutation.mutateAsync({
+                                approvalId: approval.id,
+                                data,
+                              })
+                            }
+                            onResolved={async (message) => {
+                              setReviewMessage(message);
+                              await Promise.all([
+                                client.invalidateQueries({
+                                  queryKey: getListApprovalsQueryKey(),
+                                }),
+                                client.invalidateQueries({
+                                  queryKey: getGetOrgSummaryQueryKey(),
+                                }),
+                                client.invalidateQueries({
+                                  queryKey: getListTasksQueryKey(),
+                                }),
+                                client.invalidateQueries({
+                                  queryKey: getGetTaskQueryKey(approval.taskId),
+                                }),
+                              ]);
+                            }}
+                          />
+                        </Suspense>
+                      </ErrorBoundary>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="mt-4 h-auto min-h-11 max-w-full whitespace-normal"
+                        disabled={blocked}
+                        onClick={() => {
+                          setOpenedReview(approval.id);
+                          setReviewMessage(null);
+                        }}
+                      >
+                        {c.reviewResult}
+                      </Button>
+                    ))}
+                  {!resultReview && approval.status === "pending" && (
                     <div className="mt-4 space-y-3 border-t pt-4">
                       {invalidScope && (
                         <p className="text-sm leading-6 text-destructive">

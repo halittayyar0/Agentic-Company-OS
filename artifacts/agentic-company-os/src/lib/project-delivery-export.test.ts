@@ -3,6 +3,26 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { projectDeliveryExport } from "./project-delivery-export";
 import { loadProjectStudioCopy as loadStudioCopy } from "./project-studio-copy";
+import { loadTaskResultReviewCopy } from "./task-result-review-copy";
+
+test("operator-confirmed exports require and retain explicit human provenance", async () => {
+  const c = await loadProjectStudioCopy("en"),
+    review = await loadTaskResultReviewCopy("en");
+  const project = {
+    id: 42,
+    title: "Held report",
+    resultSummary: "Exact confirmed result",
+    autonomyMode: "finite" as const,
+    completionAuthority: "operator" as const,
+  };
+  assert.equal(projectDeliveryExport(project, c, "Completed"), null);
+  const file = projectDeliveryExport(
+    project,
+    { ...c, operatorProvenance: review.provenanceHelp },
+    "Completed",
+  );
+  assert.ok(file?.text.includes(review.provenanceHelp));
+});
 
 test("delivery files contain the visible report, not unrelated task data or a title-based path", async () => {
   const c = await loadProjectStudioCopy("en");

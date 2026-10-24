@@ -170,7 +170,7 @@ const copy: ProjectStudioCopy = {
   model: "Kaydedilen model",
   unknownModel: "Model kaydı yok",
   deliveryHelp:
-    "Bu, ajanın kaydettiği teslim özetidir. Doğrulama kayıtlarını {tab} sekmesinden inceleyebilirsin.",
+    "Bu, kaydedilen teslim özetidir. Doğrulama kayıtlarını {tab} sekmesinden inceleyebilirsin.",
   reviewDelivery: "Kanıtları incele",
   cycleDeliveryNote:
     "Bu, kaydedilmiş son teslimatı gösterir. Düzenli sorumluluğun güncel durumu yukarıda gösterilir.",

@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/lib/form-resolver";
 import * as z from "zod/v4-mini";
 import { Globe2 } from "lucide-react";
 import { OperatorRecovery } from "@/components/computer/operator-recovery";
@@ -96,7 +96,7 @@ function BrowserWorkbenchContent({
   const [zoom, setZoom] = useState(false);
   const address = useForm({
     defaultValues: { address: h.local.address },
-    resolver: zodResolver(
+    resolver: formResolver(
       z.object({
         address: z
           .string()
@@ -106,7 +106,7 @@ function BrowserWorkbenchContent({
   });
   const text = useForm({
     defaultValues: { text: h.local.text },
-    resolver: zodResolver(
+    resolver: formResolver(
       z.object({
         text: z.string().check(z.refine(validBrowserText, c.textInvalid)),
       }),
@@ -114,7 +114,7 @@ function BrowserWorkbenchContent({
   });
   const review = useForm({
     defaultValues: { checked: false },
-    resolver: zodResolver(
+    resolver: formResolver(
       z.object({
         checked: z.boolean().check(z.refine((v) => v, c.reviewRequired)),
       }),

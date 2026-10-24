@@ -1,5 +1,10 @@
 import { measureDeliveryDownloadBundle } from "./delivery-download-bundle-budget";
 import {
+  measureResultReviewApi,
+  measureResultReviewIntegration,
+  measureTaskResultReviewBundle,
+} from "./task-result-review-bundle-budget";
+import {
   measureOllamaPrivacyBundle,
   OLLAMA_PRIVACY_SOURCES,
 } from "./ollama-privacy-bundle-budget";
@@ -20,6 +25,12 @@ import { measureInferenceAccountingBundle } from "./inference-accounting-bundle-
 import { measureResponseRetryRepairBundle } from "./response-retry-repair-bundle-budget";
 import { measureProjectStartRecoveryBundle } from "./project-start-recovery-bundle-budget";
 import { measureReusableWorkBundle } from "./reusable-work-bundle-budget";
+import {
+  measureResultFormatDraft,
+  measureResultFormatChoice,
+  measureResultFormatAssets,
+  measureResultTableDelivery,
+} from "./task-result-format-bundle-budget";
 import {
   assertNoExcludedBundleModules,
   resolveExclusiveBundleAssets,
@@ -286,6 +297,123 @@ const completionConditions = measureCompletionRequirementsBundle(
 const conditionControls = new Map(
   completionConditions.controls.map((control) => [control.fileName, control]),
 );
+const formatDraft = measureResultFormatDraft(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
+  completionConditions.controls,
+);
+const draftControls = new Map(conditionControls);
+const formatChoice = measureResultFormatChoice(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
+  completionConditions.controls,
+);
+const priorChoiceControl = conditionControls.get(formatChoice.fileName)!;
+draftControls.set(formatChoice.fileName, {
+  ...formatChoice,
+  raw: priorChoiceControl.raw + formatChoice.raw,
+  gzip: priorChoiceControl.gzip + formatChoice.gzip,
+});
+const priorDraftControl = conditionControls.get(formatDraft.fileName)!;
+draftControls.set(formatDraft.fileName, {
+  ...formatDraft,
+  raw: priorDraftControl.raw + formatDraft.raw,
+  gzip: priorDraftControl.gzip + formatDraft.gzip,
+});
+const formatPanel = measureResultFormatChoice(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
+  completionConditions.controls,
+  true,
+);
+const priorPanelControl = conditionControls.get(formatPanel.fileName)!;
+draftControls.set(formatPanel.fileName, {
+  ...formatPanel,
+  raw: priorPanelControl.raw + formatPanel.raw,
+  gzip: priorPanelControl.gzip + formatPanel.gzip,
+});
+const formatDelivery = measureResultTableDelivery(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
+);
+const resultFormat = measureResultFormatAssets(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
+  [formatDraft, formatChoice, formatPanel, formatDelivery],
+);
+const resultReviewAssets = codeAssets.map((asset) => ({
+  fileName: asset.fileName,
+  contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+}));
+const resultReviewManifest = JSON.parse(
+  readFileSync(
+    resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+    "utf8",
+  ),
+);
+const resultReviewApi = measureResultReviewApi(
+  resultReviewAssets,
+  resultReviewManifest,
+  [...draftControls.values()],
+);
+const priorReviewApiControl = draftControls.get(resultReviewApi.fileName)!;
+draftControls.set(resultReviewApi.fileName, {
+  ...resultReviewApi,
+  raw: priorReviewApiControl.raw + resultReviewApi.raw,
+  gzip: priorReviewApiControl.gzip + resultReviewApi.gzip,
+});
+const resultReviewIntegration = measureResultReviewIntegration(
+  resultReviewAssets,
+  resultReviewManifest,
+);
+const resultReview = measureTaskResultReviewBundle(
+  resultReviewAssets,
+  resultReviewManifest,
+  {
+    raw: resultReviewApi.raw + resultReviewIntegration.raw,
+    gzip: resultReviewApi.gzip + resultReviewIntegration.gzip,
+  },
+);
 const composerScope = resolveComposerDraftScope(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
@@ -305,7 +433,7 @@ const composerDraft = measureComposerDraftBundle(
       projectStartRecovery.packs.find(
         (pack) => pack.fileName === asset.fileName,
       )?.contents ??
-      conditionControls.get(asset.fileName)?.contents ??
+      draftControls.get(asset.fileName)?.contents ??
       readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
   composerScope.route,
@@ -455,7 +583,7 @@ const inferenceAccounting = measureInferenceAccountingBundle(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
     contents:
-      conditionControls.get(asset.fileName)?.contents ??
+      draftControls.get(asset.fileName)?.contents ??
       reusableWork.routes.find((route) => route.fileName === asset.fileName)
         ?.contents ??
       readFileSync(resolve(outputDirectory, asset.fileName)),
@@ -1072,12 +1200,12 @@ for (const surface of keeperSurfaces) {
   );
   const accountedRaw =
     matches[0].rawBytes -
-    (conditionControls.get(matches[0].fileName)?.raw ?? 0) -
+    (draftControls.get(matches[0].fileName)?.raw ?? 0) -
     (isEntry ? composerDraft.entryRaw : 0) -
     (accountingRoute?.raw ?? 0);
   const accountedGzip =
     matches[0].gzipBytes -
-    (conditionControls.get(matches[0].fileName)?.gzip ?? 0) -
+    (draftControls.get(matches[0].fileName)?.gzip ?? 0) -
     (isEntry ? composerDraft.entryGzip : 0) -
     (accountingRoute?.gzip ?? 0);
   keeperLiveRawBytes += Math.max(0, accountedRaw - surface.raw);
@@ -1106,6 +1234,8 @@ if (
   totalCodeGzipBytes -
     deliveryDownload.gzip -
     completionConditions.gzip -
+    resultFormat.globalGzip -
+    resultReview.globalGzip -
     reusableWork.globalGzip -
     projectStartRecovery.globalGzip -
     inferenceAccounting.gzip -
@@ -1128,7 +1258,7 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
@@ -1136,6 +1266,8 @@ if (
   totalCodeRawBytes -
     deliveryDownload.raw -
     completionConditions.raw -
+    resultFormat.globalRaw -
+    resultReview.globalRaw -
     reusableWork.globalRaw -
     projectStartRecovery.globalRaw -
     inferenceAccounting.raw -
@@ -1152,7 +1284,7 @@ if (
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `raw code after bounded feature accounting (${totalCodeRawBytes - deliveryDownload.raw - completionConditions.raw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - localPreparation.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - deliveryDownload.raw - completionConditions.raw - resultFormat.globalRaw - resultReview.globalRaw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - localPreparation.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
@@ -1160,6 +1292,8 @@ if (
   totalCodeGzipBytes -
     deliveryDownload.gzip -
     completionConditions.gzip -
+    resultFormat.globalGzip -
+    resultReview.globalGzip -
     reusableWork.globalGzip -
     projectStartRecovery.globalGzip -
     inferenceAccounting.gzip -
@@ -1176,7 +1310,7 @@ if (
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `gzip code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -1376,4 +1510,12 @@ console.log(
 
 console.log(
   `Local model preparation: ${localPreparation.raw} raw / ${localPreparation.gzip} gzip bytes (12 KiB / 4 KiB exclusive cap); seven packs ${localPreparation.allLocaleRaw} raw / ${localPreparation.allLocaleGzip} gzip (32 KiB / 16 KiB disk cap). Existing ceilings unchanged.`,
+);
+
+console.log(
+  `Explicit result format: ${resultFormat.raw} raw / ${resultFormat.gzip} gzip selected (9800 / 4300 cap); ${resultFormat.globalRaw} raw / ${resultFormat.globalGzip} gzip including all seven packs (13500 / 7200 cap). Only new source-owned assets and exact integration fragments; original ceilings unchanged.`,
+);
+
+console.log(
+  `Operator result review: ${resultReview.raw} raw / ${resultReview.gzip} gzip selected; ${resultReview.globalRaw} raw / ${resultReview.globalGzip} gzip with seven packs. Only new source-owned chunks and exact new integration fragments; original ceilings unchanged.`,
 );
