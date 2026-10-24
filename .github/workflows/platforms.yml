@@ -111,7 +111,7 @@ jobs:
           pnpm test:ollama:native "$RUNNER_TEMP/ollama-v0.18.0-darwin.tgz" "$RUNNER_TEMP/ollama-local-boundary.json"
       - name: Preserve released Ollama boundary receipt
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ollama-local-boundary-${{ matrix.platform }}
           path: ${{ runner.temp }}/ollama-local-boundary.json
@@ -147,7 +147,7 @@ jobs:
         run: pnpm exec playwright test --config playwright.config.ts tests/ui/language-setup.spec.ts tests/ui/skills-library.spec.ts --workers 1
       - name: Preserve native installation and guided first-job evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: native-macos-${{ matrix.platform }}-installation-evidence
           path: |
