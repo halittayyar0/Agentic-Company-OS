@@ -16,6 +16,10 @@ import { reserveLoopbackPorts } from "../../scripts/src/endurance/native-postgre
 import { sha256ExactFile } from "../../scripts/src/endurance/native-runtime-provenance";
 import { createOllamaSmokeEnvironment } from "../../scripts/src/ollama-local-boundary-smoke";
 import { createPrivateModelRelay } from "./model-relay.mjs";
+import {
+  createResourceProbeTrace,
+  probeWindowsResources,
+} from "./resource-probe.mjs";
 
 const execute = promisify(execFile);
 export const releaseModel = "qwen3.5:2b-q4_K_M";
@@ -34,6 +38,7 @@ export interface ModelPreparationTrace {
   pullCompleted: boolean;
   modelCleanupVerified: boolean | null;
   registryEntriesVerified: number;
+  resourceProbe: ReturnType<typeof createResourceProbeTrace>;
   hostAdmission: {
     freeVirtualKiB: number | null;
     cFreeBytes: number | null;
@@ -50,6 +55,7 @@ export function newModelPreparationTrace(): ModelPreparationTrace {
     pullRequests: 0,
     pullCompleted: false,
     registryEntriesVerified: 0,
+    resourceProbe: createResourceProbeTrace(),
     hostAdmission: null,
     modelCleanupVerified: null,
   };
@@ -73,42 +79,12 @@ export async function requireReleaseHostMargins(
   fixtureRoot: string,
   trace?: ModelPreparationTrace,
 ) {
-  assert.equal(process.platform, "win32");
-  assert.equal(process.arch, "x64");
-  const drive = path.parse(fixtureRoot).root.slice(0, 1).toUpperCase();
-  assert.match(drive, /^[A-Z]$/u);
-  const powershell = path.join(
-    process.env.SystemRoot!,
-    "System32/WindowsPowerShell/v1.0/powershell.exe",
-  );
-  const command =
-    "@{freeVirtualKiB=[long](Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory;cFreeBytes=[long](Get-Volume -DriveLetter C).SizeRemaining;fixtureFreeBytes=[long](Get-Volume -DriveLetter " +
-    drive +
-    ").SizeRemaining}|ConvertTo-Json -Compress";
-  const value = JSON.parse(
-    (
-      await execute(
-        powershell,
-        ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
-        {
-          windowsHide: true,
-          encoding: "utf8",
-          timeout: 15000,
-          maxBuffer: 65536,
-        },
-      )
-    ).stdout,
-  );
-  if (trace) recordHostAdmission(trace, value);
-  for (const field of ["freeVirtualKiB", "cFreeBytes", "fixtureFreeBytes"])
-    assert.ok(Number.isSafeInteger(value[field]) && value[field] > 0);
-  assert.ok(
-    value.freeVirtualKiB >= 6291456 &&
-      value.cFreeBytes >= 2147483648 &&
-      value.fixtureFreeBytes >= 8589934592,
-    "original_test_host_resource_margins_required",
-  );
-  return value;
+  const probe = trace?.resourceProbe ?? createResourceProbeTrace();
+  try {
+    return await probeWindowsResources(fixtureRoot, probe);
+  } finally {
+    if (trace) recordHostAdmission(trace, probe);
+  }
 }
 
 /** Executed only inside the verified ordinary disposable CI-user fixture. */
