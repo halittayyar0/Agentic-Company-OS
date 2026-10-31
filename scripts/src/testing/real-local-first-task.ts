@@ -22,6 +22,7 @@ import { sha256ExactFile } from "../endurance/native-runtime-provenance";
 import { createOllamaSmokeEnvironment } from "../ollama-local-boundary-smoke";
 import { runNativeInstallSmoke } from "../setup/native-install-smoke";
 import { waitForNativePageReady } from "./native-page-readiness";
+import { captureRealTaskDelivery } from "./real-local-first-task-viewport";
 import {
   verifyRealFirstTask,
   type ModelCapture,
@@ -177,6 +178,7 @@ async function main() {
     width: number;
     height: number;
     overflow: boolean;
+    deliveryVisible: boolean;
     file: string;
     sha256: string;
   }[] = [];
@@ -510,20 +512,16 @@ async function main() {
           });
           stage = "completed_task_viewports";
           await page.reload();
-          await expect(page.locator("body")).toContainText("73");
           for (const width of [320, 1024]) {
-            await page.setViewportSize({ width, height: 844 });
-            const overflow = await page.evaluate<boolean>(
-              "document.documentElement.scrollWidth > window.innerWidth",
-            );
-            assert.equal(overflow, false, "completed_task_horizontal_overflow");
+            const { image, overflow, deliveryVisible } =
+              await captureRealTaskDelivery(page, width);
             const name = "completed-task-" + width + ".png";
-            const image = await page.screenshot({ fullPage: true });
             await writeFile(path.join(publicRoot, name), image, { flag: "wx" });
             screenshots.push({
               width,
               height: 844,
               overflow,
+              deliveryVisible,
               file: name,
               sha256: hash(image),
             });
@@ -618,7 +616,7 @@ async function main() {
     // Raw requests, database credentials and runtime logs remain private. This
     // literal projection is the only machine-readable artifact uploaded by CI.
     const receipt = {
-      schema: "agentic-company-os/genuine-first-task@1",
+      schema: "agentic-company-os/genuine-first-task@2",
       sourceCommit,
       sourceTree,
       platform: process.platform,

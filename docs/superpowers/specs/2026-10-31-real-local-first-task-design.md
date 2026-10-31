@@ -24,8 +24,12 @@ per-inference deadline. Never retry an uncertain task or inference.
 
 The result must include actual commit/tree, one model download, positive settled
 usage, exact arithmetic tool evidence, one completed task with agent authority,
-zero fallbacks and unchanged agent count. Capture the completed task at 320 and
-1024 pixels. Always stop the owned processes. A failed cleanup fails acceptance.
+zero fallbacks and unchanged agent count. Capture the actual saved delivery
+result in the visible viewport at 320 and 1024 pixels. The number in the original
+brief cannot satisfy this assertion. Scroll the existing delivery section inside
+the application's real scroll container and capture the viewport; a full-page
+image does not scroll desktop containers. Always stop the owned processes. A
+failed cleanup fails acceptance.
 
 Upload only a deliberately constructed public receipt and synthetic screenshots;
 never upload a raw home, database, model, token, request, response or process log.

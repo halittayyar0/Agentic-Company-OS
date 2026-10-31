@@ -33,6 +33,9 @@ Ollama 0.40.3, PostgreSQL 17.11, standard GitHub Windows runner.
 - [x] Implement the typed proof validator with no provider calls or file writes.
 - [x] Run focused tests RED then GREEN; update all source census totals by four
       and the existing release-expectation assertion without changing skips.
+- [x] Add one real-browser regression for the visible delivery result. Observe
+      failure against the old broad body assertion and success with explicit
+      delivery scrolling. Increase source totals by one more; preserve skips.
 
 ## Task 2: Genuine native driver and repeatable workflow
 
@@ -41,6 +44,8 @@ Ollama 0.40.3, PostgreSQL 17.11, standard GitHub Windows runner.
 - [x] Verify full archive hashes before extraction or execution; verify registry
       manifest and every newly downloaded model blob after execution.
 - [ ] Capture actual completed-task widths and always prove process cleanup.
+      The first backend case passed, but its desktop image missed the delivery;
+      receipt schema 2 requires the actual result fully in the captured viewport.
 - [x] Run focused tests, types, production build, format and security checks.
 - [ ] Review the complete change, commit as Halit Tayyar without coauthor
       trailers, push and open a PR with the exact validation and limitations.
