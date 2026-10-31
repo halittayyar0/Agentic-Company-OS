@@ -202,6 +202,22 @@ export function deriveOrdinaryWindowsWrapper(text) {
     "parent_requires_actual_effective_access_verification",
   );
   replace(
+    "    $result.failureDiagnostics = @(Get-CiExceptionDiagnostics $_.Exception)",
+    [
+      "    $result.failureDiagnostics = @(Get-CiExceptionDiagnostics $_.Exception)",
+      "    if ('NativeReleaseReadonlyAcl' -as [type]) {",
+      "        $result.failureAcl = [ordered]@{",
+      "            operation = [NativeReleaseReadonlyAcl]::LastOperation",
+      "            objectKind = [NativeReleaseReadonlyAcl]::LastObjectKind",
+      "            controlRootIndex = [NativeReleaseReadonlyAcl]::LastRootIndex",
+      "            journalEntries = [NativeReleaseReadonlyAcl]::JournalEntries",
+      "            verifyOnlyAncestors = [NativeReleaseReadonlyAcl]::VerifyOnlyAncestors",
+      "        }",
+      "    }",
+    ].join("\n"),
+    "closed_operation_and_object_category_without_paths_or_sid",
+  );
+  replace(
     "18 * 60 * 1000",
     "170 * 60 * 1000",
     "reserve_outer_time_for_two_unchanged_finite_model_cases_and_upgrade",

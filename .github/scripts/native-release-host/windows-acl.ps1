@@ -14,6 +14,10 @@ using System.ComponentModel;
 
 public static class NativeReleaseReadonlyAcl {
     public static int JournalEntries { get; private set; }
+    public static int VerifyOnlyAncestors { get; private set; }
+    public static string LastOperation { get; private set; }
+    public static string LastObjectKind { get; private set; }
+    public static int LastRootIndex { get; private set; }
     const uint Mutation = 0x000d0156; // data/append/EA/attributes/delete-child/delete/DACL/owner
     const uint AncestorMutation = 0x000d0040; // delete-child/delete/DACL/owner
     const int MaxEntries = 400000;
@@ -41,6 +45,9 @@ public static class NativeReleaseReadonlyAcl {
         // OPEN_REPARSE_POINT opens the link object's own ACL, never its target.
         IntPtr handle=CreateFile(Long(file),0x00020000,7,IntPtr.Zero,3,0x02200000,IntPtr.Zero);
         if(handle==new IntPtr(-1))throw new Win32Exception(Marshal.GetLastWin32Error());
+        try{return SecurityFromHandle(handle,directory);}finally{CloseHandle(handle);}
+    }
+    static FileSystemSecurity SecurityFromHandle(IntPtr handle,bool directory) {
         IntPtr owner,group,dacl,sacl,descriptor=IntPtr.Zero;
         try {
             uint error=GetSecurityInfo(handle,1,7,out owner,out group,out dacl,out sacl,out descriptor);if(error!=0)throw new Win32Exception((int)error);
@@ -48,13 +55,24 @@ public static class NativeReleaseReadonlyAcl {
             var bytes=new byte[length];Marshal.Copy(descriptor,bytes,0,(int)length);
             FileSystemSecurity security=directory ? (FileSystemSecurity)new DirectorySecurity() : new FileSecurity();
             security.SetSecurityDescriptorBinaryForm(bytes,AccessControlSections.Access|AccessControlSections.Owner|AccessControlSections.Group);return security;
-        }finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);CloseHandle(handle);}
+        }finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
     }
     static void Set(string file,bool directory,FileSystemSecurity security) {
-        IntPtr handle=CreateFile(Long(file),0x00040000,7,IntPtr.Zero,3,0x02200000,IntPtr.Zero);
+        IntPtr handle=CreateFile(Long(file),0x00060000,7,IntPtr.Zero,3,0x02200000,IntPtr.Zero);
         if(handle==new IntPtr(-1))throw new Win32Exception(Marshal.GetLastWin32Error());
+        try{SetHandle(handle,security);}finally{CloseHandle(handle);}
+    }
+    static void SetHandle(IntPtr handle,FileSystemSecurity security) {
         var bytes=Bytes(security);var pin=GCHandle.Alloc(bytes,GCHandleType.Pinned);
-        try {bool present,defaulted;IntPtr dacl;if(!GetSecurityDescriptorDacl(pin.AddrOfPinnedObject(),out present,out dacl,out defaulted)||!present)throw new InvalidOperationException("control_dacl_required");uint error=SetSecurityInfo(handle,1,4|(security.AreAccessRulesProtected?0x80000000u:0x20000000u),IntPtr.Zero,IntPtr.Zero,dacl,IntPtr.Zero);if(error!=0)throw new Win32Exception((int)error);}finally{pin.Free();CloseHandle(handle);}
+        try {bool present,defaulted;IntPtr dacl;if(!GetSecurityDescriptorDacl(pin.AddrOfPinnedObject(),out present,out dacl,out defaulted)||!present)throw new InvalidOperationException("control_dacl_required");uint error=SetSecurityInfo(handle,1,4|(security.AreAccessRulesProtected?0x80000000u:0x20000000u),IntPtr.Zero,IntPtr.Zero,dacl,IntPtr.Zero);if(error!=0)throw new Win32Exception((int)error);}finally{pin.Free();}
+    }
+    // Kernel write-open is authoritative; a DACL-only AccessCheck does not prove
+    // that Windows will open the actual object with READ_CONTROL|WRITE_DAC.
+    // The same handle is used to read, journal and set the original object.
+    public static bool MutateOne(bool ancestorOnly,Func<IntPtr> open,Action<IntPtr> journalAndSet,Action<IntPtr> close) {
+        IntPtr handle;LastOperation="write_open";
+        try{handle=open();}catch(Win32Exception error){if(ancestorOnly&&error.NativeErrorCode==5){VerifyOnlyAncestors++;LastOperation="verify_only_ancestor";return false;}throw;}
+        try{journalAndSet(handle);return true;}finally{close(handle);}
     }
     static byte[] Bytes(FileSystemSecurity security) {return security.GetSecurityDescriptorBinaryForm();}
     static uint Granted(byte[] descriptor) {
@@ -98,25 +116,27 @@ public static class NativeReleaseReadonlyAcl {
         return controls.OrderBy(x=>x.Key.Length).ThenBy(x=>x.Key,StringComparer.OrdinalIgnoreCase).ToList();
     }
     public static int Protect(string[] roots,string sid,string backup) {
+        LastOperation="inventory";
         var inventory=Inventory(roots);var identity=new SecurityIdentifier(sid);
-        JournalEntries=0;
+        JournalEntries=0;VerifyOnlyAncestors=0;
         using(var stream=new FileStream(backup,FileMode.CreateNew,FileAccess.Write,FileShare.Read))using(var writer=new BinaryWriter(stream)) {
             writer.Write("native-readonly-acl@1");writer.Flush();
             foreach(var item in inventory) {
-                var directory=(File.GetAttributes(Long(item.Key))&FileAttributes.Directory)!=0;
-                var acl=Security(item.Key,directory);var original=Bytes(acl);
-                // System ancestors (e.g. TrustedInstaller-owned Program Files)
-                // often already deny ordinary mutation and aren't admin-writable.
-                // Never take ownership or enable restore privilege. Leave those
-                // alone; the REAL ordinary-token Verify still checks them all.
-                if(item.Value==AncestorMutation&&(Granted(original)&0x00040000)==0)continue;
-                writer.Write(item.Key);writer.Write(directory);writer.Write(original.Length);writer.Write(original);writer.Flush();stream.Flush(true);
-                JournalEntries++;
-                // Explicit on EVERY object: an inherited deny can lose to an
-                // explicit group allow on a descendant. Preserve all other SIDs.
-                acl.AddAccessRule(new FileSystemAccessRule(identity,FileSystemRights.ReadAndExecute,AccessControlType.Allow));
-                acl.AddAccessRule(new FileSystemAccessRule(identity,(FileSystemRights)item.Value,AccessControlType.Deny));
-                Set(item.Key,directory,acl);
+                var attributes=File.GetAttributes(Long(item.Key));var directory=(attributes&FileAttributes.Directory)!=0;
+                bool ancestor=item.Value==AncestorMutation;
+                LastObjectKind=ancestor?"ancestor":((attributes&FileAttributes.ReparsePoint)!=0?"link":(directory?"directory":"file"));
+                LastRootIndex=ancestor?-1:Array.FindIndex(roots,root=>Within(item.Key,Full(root)));
+                MutateOne(ancestor,()=>{
+                    IntPtr handle=CreateFile(Long(item.Key),0x00060000,7,IntPtr.Zero,3,0x02200000,IntPtr.Zero);
+                    if(handle==new IntPtr(-1))throw new Win32Exception(Marshal.GetLastWin32Error());return handle;
+                },handle=>{
+                    LastOperation="read_security";var acl=SecurityFromHandle(handle,directory);var original=Bytes(acl);
+                    LastOperation="journal";writer.Write(item.Key);writer.Write(directory);writer.Write(original.Length);writer.Write(original);writer.Flush();stream.Flush(true);JournalEntries++;
+                    // Explicit on links AND targets; preserve all other SIDs.
+                    acl.AddAccessRule(new FileSystemAccessRule(identity,FileSystemRights.ReadAndExecute,AccessControlType.Allow));
+                    acl.AddAccessRule(new FileSystemAccessRule(identity,(FileSystemRights)item.Value,AccessControlType.Deny));
+                    LastOperation="set_security";SetHandle(handle,acl);
+                },handle=>{CloseHandle(handle);});
             }
         }
         return inventory.Count;
