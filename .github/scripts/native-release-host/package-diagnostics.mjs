@@ -50,6 +50,7 @@ const statuses = [
   "paused",
 ];
 const codes = [
+  "ERR_UNSUPPORTED_ESM_URL_SCHEME",
   "ERR_MODULE_NOT_FOUND",
   "MODULE_NOT_FOUND",
   "ERR_UNKNOWN_FILE_EXTENSION",

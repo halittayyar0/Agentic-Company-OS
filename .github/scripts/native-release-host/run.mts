@@ -42,6 +42,7 @@ import { observeOwnedFirstTask } from "../../scripts/src/testing/real-local-firs
 import { verifyRealFirstTask } from "../../scripts/src/testing/real-local-first-task-proof";
 import { executeBoundedCommand } from "../../scripts/src/endurance/process-supervisor";
 import { collectPackageAttempt } from "./package-diagnostics.mjs";
+import { ownedTsxLoader } from "./tsx-loader.mjs";
 
 const execute = promisify(execFile),
   directory = path.dirname(fileURLToPath(import.meta.url));
@@ -119,7 +120,7 @@ async function runPackageDriver(name: "fresh" | "baseline", archive: string) {
   const evidence = path.join(privateRoot, name + "-package-private.json");
   const args = [
     "--import",
-    path.join(context.applicationRoot, "node_modules/tsx/dist/loader.mjs"),
+    ownedTsxLoader(context.applicationRoot),
     path.join(directory, name + "-package-driver.mts"),
     "--archive",
     archive,
