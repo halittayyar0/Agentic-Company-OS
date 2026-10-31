@@ -1,75 +1,118 @@
-name: Genuine local first task
+name: External native genuine release proof
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - .github/workflows/real-local-first-task.yml
-      - .github/scripts/prepare-real-local-first-task.ps1
-      - scripts/src/testing/real-local-first-task*.ts
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/real-local-first-task.yml
-      - .github/scripts/prepare-real-local-first-task.ps1
-      - scripts/src/testing/real-local-first-task*.ts
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
-  genuine_first_task:
-    name: Genuine cold local model and first task Windows
+  native_release:
+    name: Actual main package fresh and GUI upgrade with local model
     if: github.event.repository.private == false
     runs-on: windows-2025
-    timeout-minutes: 120
+    timeout-minutes: 240
+    defaults:
+      run:
+        shell: pwsh
     env:
-      CI: true
+      CI: "true"
       AGENT_BROWSER_CHANNEL: chromium
-      ACOS_REAL_LOCAL_FIRST_TASK: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
     steps:
-      - name: Check out exact source
+      - name: Check out exact external proof driver
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: ${{ github.sha }}
+          path: driver
+          persist-credentials: false
+      - name: Check out frozen application main N
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: 5bf1403a9d1134c2d0ee4bb0676eede6022f6e78
+          path: application
           persist-credentials: false
       - name: Install pinned pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
+          version: 10.17.1
           run_install: false
-      - name: Set up Node.js
+      - name: Set up pinned proof Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24.22.1
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install frozen dependencies and browser
+          cache-dependency-path: application/pnpm-lock.yaml
+      - name: Bind separate source roots and isolated browser location
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $app = Join-Path $env:GITHUB_WORKSPACE 'application'
+          $driver = Join-Path $env:GITHUB_WORKSPACE 'driver'
+          $browser = Join-Path $env:RUNNER_TEMP 'native-release-browsers'
+          $python = (Get-Command python.exe -CommandType Application | Select-Object -First 1).Source
+          & $python -c 'import sys; assert sys.version_info >= (3,12)'
+          if ($LASTEXITCODE -ne 0) { throw 'supported_host_python_required' }
+          "ACOS_APPLICATION_ROOT=$app" >> $env:GITHUB_ENV
+          "ACOS_DRIVER_ROOT=$driver" >> $env:GITHUB_ENV
+          "PLAYWRIGHT_BROWSERS_PATH=$browser" >> $env:GITHUB_ENV
+          "PYTHON=$python" >> $env:GITHUB_ENV
+          $copy = Join-Path $app '.tmp/native-release-host'
+          $null = New-Item -ItemType Directory -Path $copy
+          Get-ChildItem -LiteralPath (Join-Path $driver '.github/scripts/native-release-host') -File | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $copy }
+      - name: Install frozen driver dependencies and Chromium
+        working-directory: application
         run: |
           pnpm install --frozen-lockfile
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($LASTEXITCODE -ne 0) { throw 'frozen_dependencies_failed' }
           pnpm exec playwright install chromium
-      - name: Check types and build exact application
-        run: pnpm run build
-      - name: Prepare byte-pinned runtime inputs
-        run: ./.github/scripts/prepare-real-local-first-task.ps1 -Destination (Join-Path $env:RUNNER_TEMP 'real-first-task-inputs')
-      - name: Download into an empty model store and complete a genuine first task
-        # The installer has its own 15-minute build allowance, followed by
-        # 20-minute transfer and 15-minute task limits. Reserve additional time
-        # for real backup/restart, blob hashing and owned-process cleanup.
-        timeout-minutes: 70
+          if ($LASTEXITCODE -ne 0) { throw 'chromium_install_failed' }
+      - name: Check copied driver and regression tests before admission
+        working-directory: application
         run: |
-          $inputs = Join-Path $env:RUNNER_TEMP 'real-first-task-inputs'
-          $public = Join-Path $env:RUNNER_TEMP 'real-local-first-task-public'
-          pnpm test:first-task:native --runtime (Join-Path $inputs 'ollama') --postgres (Join-Path $inputs 'postgres/pgsql/bin') --public $public
-      - name: Preserve safe synthetic first-task evidence
+          pnpm exec tsc --noEmit --strict --allowImportingTsExtensions --module preserve --moduleResolution bundler --target ES2024 --typeRoots ./scripts/node_modules/@types --types node --skipLibCheck --allowJs .tmp/native-release-host/prepare.mts .tmp/native-release-host/runtime.mts .tmp/native-release-host/package-session.mts .tmp/native-release-host/run.mts
+          if ($LASTEXITCODE -ne 0) { throw 'external_driver_types_failed' }
+          node --import ./node_modules/tsx/dist/loader.mjs --test --test-concurrency=1 .tmp/native-release-host/guard.test.mjs .tmp/native-release-host/derive.test.mjs .tmp/native-release-host/model-relay.test.mjs .tmp/native-release-host/windows-wrapper.test.mjs .tmp/native-release-host/windows-acl.test.mjs .tmp/native-release-host/copy.test.mjs .tmp/native-release-host/package-session.test.mts
+          if ($LASTEXITCODE -ne 0) { throw 'external_driver_regressions_failed' }
+          & $env:PYTHON -B .tmp/native-release-host/archive_inputs_test.py
+          if ($LASTEXITCODE -ne 0) { throw 'archive_input_regressions_failed' }
+      - name: Verify original main producer and byte-pinned public inputs
+        timeout-minutes: 31
+        working-directory: application
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --import ./node_modules/tsx/dist/loader.mjs .tmp/native-release-host/prepare.mts
+          if ($LASTEXITCODE -ne 0) { throw 'release_input_admission_failed' }
+          $context = Get-Content -LiteralPath ((Get-Content -LiteralPath '.tmp/native-release-host/private-context-path.txt' -Raw).Trim()) -Raw | ConvertFrom-Json
+          $native = Get-Content -LiteralPath (Join-Path $context.ownedRoot 'native-input.json') -Raw | ConvertFrom-Json
+          "ACOS_RELEASE_INPUT_ROOT=$($context.ownedRoot)" >> $env:GITHUB_ENV
+          "NATIVE_PACKAGE_ARCHIVE=$($native.archive)" >> $env:GITHUB_ENV
+          "NATIVE_PACKAGE_EVIDENCE=$(Join-Path $context.publicOutputRoot 'receipt.json')" >> $env:GITHUB_ENV
+      - name: Prove read-only controls, ordinary install, GUI upgrade and genuine new task
+        # Child170: model25 + fresh40 + baseline25 + GUI30 + newtask15
+        # + both readbacks20 + final/cleanup15. Parent gets30m for ACL/cleanup.
+        # Actual model limits remain transfer20m, task15m and call240s.
+        timeout-minutes: 200
+        working-directory: application
+        run: |
+          & (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe') -NoLogo -NoProfile -NonInteractive -File .tmp/native-release-host/ordinary-native-host.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'ordinary_native_release_proof_failed' }
+      - name: Preserve only explicit closed synthetic public evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: genuine-local-first-task-windows
-          path: ${{ runner.temp }}/real-local-first-task-public
+          name: genuine-native-release-windows
+          path: |
+            ${{ runner.temp }}/native-release-host-public/receipt.json
+            ${{ runner.temp }}/native-release-host-public/receipt.json.windows-fixture.json
+            ${{ runner.temp }}/native-release-host-public/fresh-320.png
+            ${{ runner.temp }}/native-release-host-public/fresh-1024.png
+            ${{ runner.temp }}/native-release-host-public/upgraded-320.png
+            ${{ runner.temp }}/native-release-host-public/upgraded-1024.png
           if-no-files-found: warn
           retention-days: 7

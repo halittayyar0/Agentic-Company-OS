@@ -1,0 +1,19 @@
+{
+  "id": 41226931443,
+  "event": "pull_request",
+  "run_attempt": 1,
+  "status": "completed",
+  "conclusion": "success",
+  "head_sha": "55ad039688a8d1b238be300171bc6fffc4eb4f95",
+  "head_branch": "codex/real-local-first-task-ci",
+  "path": ".github/workflows/native-packages.yml",
+  "repository": {
+    "id": 1392532090,
+    "full_name": "halittayyar0/Agentic-Company-OS",
+    "private": false
+  },
+  "head_repository": {
+    "id": 1392532090,
+    "full_name": "halittayyar0/Agentic-Company-OS"
+  }
+}
