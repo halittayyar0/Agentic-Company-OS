@@ -24,6 +24,10 @@ import { runNativeInstallSmoke } from "../setup/native-install-smoke";
 import { waitForNativePageReady } from "./native-page-readiness";
 import { captureRealTaskDelivery } from "./real-local-first-task-viewport";
 import {
+  observeOwnedFirstTask,
+  type TaskReadSummary,
+} from "./real-local-first-task-observer";
+import {
   verifyRealFirstTask,
   type ModelCapture,
 } from "./real-local-first-task-proof";
@@ -190,6 +194,13 @@ async function main() {
     relayFailures = 0;
   let verified: ReturnType<typeof verifyRealFirstTask> | undefined;
   let modelDigest: string | undefined, registryEntries: number | undefined;
+  const taskObservation: TaskReadSummary = {
+    attempts: 0,
+    transientFailures: 0,
+    lastFailure: null,
+    lastTaskAt: null,
+  };
+  let failureCode: string | null = null;
   let nativeDirectory: string | undefined;
   let task: Task | undefined;
   const startedAt = new Date().toISOString();
@@ -359,6 +370,7 @@ async function main() {
     nativeDirectory = await runNativeInstallSmoke(postgres, pnpm, {
       kind: "local-model",
       run: async ({ baseUrl, operatorToken, directory }) => {
+        nativeDirectory = directory;
         const request = async <T>(route: string): Promise<T> => {
           const result = await fetch(baseUrl + "/api" + route, {
             headers: { authorization: "Bearer " + operatorToken },
@@ -472,16 +484,21 @@ async function main() {
           await expect(page).toHaveURL(/\/projects\/\d+$/u, { timeout: 15000 });
           const id = Number(new URL(page.url()).pathname.split("/").at(-1));
           const taskDeadline = Date.now() + 15 * 60000;
-          while (Date.now() < taskDeadline) {
-            task = await request<Task>("/tasks/" + id);
-            if (task.status === "completed") break;
-            assert.ok(
-              !["failed", "blocked", "cancelled"].includes(task.status),
-              "first_task_stopped_without_retry",
-            );
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
-          assert.ok(task);
+          task = await observeOwnedFirstTask<Task>({
+            baseUrl,
+            operatorToken,
+            taskId: id,
+            deadline: taskDeadline,
+            summary: taskObservation,
+            onTask: (value) => {
+              task = value;
+            },
+          });
+          assert.equal(
+            task.status,
+            "completed",
+            "first_task_stopped_without_retry",
+          );
           const captures: ModelCapture[] = [];
           for (const call of calls) {
             assert.ok(
@@ -594,7 +611,14 @@ async function main() {
     assert.equal(git("status", "--porcelain"), "");
     accepted = true;
     stage = "complete";
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    failureCode =
+      /^(?:task_observation_(?:deadline|transient_limit)|terminal_task_observation_http_\d{3}|invalid_task_observation_(?:json|state)|unexpected_task_observation_error)$/u.test(
+        message,
+      )
+        ? message
+        : "proof_step_failed";
     process.exitCode = 1;
     console.error("Genuine first-task proof failed at fixed stage: " + stage);
   } finally {
@@ -616,7 +640,7 @@ async function main() {
     // Raw requests, database credentials and runtime logs remain private. This
     // literal projection is the only machine-readable artifact uploaded by CI.
     const receipt = {
-      schema: "agentic-company-os/genuine-first-task@2",
+      schema: "agentic-company-os/genuine-first-task@3",
       sourceCommit,
       sourceTree,
       platform: process.platform,
@@ -626,6 +650,8 @@ async function main() {
       accepted,
       cleanupVerified,
       failureStage: accepted ? null : stage,
+      failureCode: accepted ? null : failureCode,
+      taskObservation,
       runtimeVersion: "0.40.3",
       postgresVersion: "17.11",
       model,

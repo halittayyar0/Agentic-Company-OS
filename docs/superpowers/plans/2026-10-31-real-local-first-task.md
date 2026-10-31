@@ -36,6 +36,10 @@ Ollama 0.40.3, PostgreSQL 17.11, standard GitHub Windows runner.
 - [x] Add one real-browser regression for the visible delivery result. Observe
       failure against the old broad body assertion and success with explicit
       delivery scrolling. Increase source totals by one more; preserve skips.
+- [x] Add four deterministic read-observation tests: same-task GET recovery,
+      immediate refusal of auth/malformed/terminal work, and unchanged absolute
+      deadline with at most three transient failures. Increase source totals by
+      four more; never alter task/model deadlines or replay work.
 
 ## Task 2: Genuine native driver and repeatable workflow
 
@@ -45,7 +49,8 @@ Ollama 0.40.3, PostgreSQL 17.11, standard GitHub Windows runner.
       manifest and every newly downloaded model blob after execution.
 - [ ] Capture actual completed-task widths and always prove process cleanup.
       The first backend case passed, but its desktop image missed the delivery;
-      receipt schema 2 requires the actual result fully in the captured viewport.
+      receipt schema 3 requires the actual result fully in the captured viewport
+      and records bounded read failures separately from actual task state.
 - [x] Run focused tests, types, production build, format and security checks.
 - [ ] Review the complete change, commit as Halit Tayyar without coauthor
       trailers, push and open a PR with the exact validation and limitations.

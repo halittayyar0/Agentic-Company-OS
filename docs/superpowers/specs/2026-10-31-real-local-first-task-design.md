@@ -22,6 +22,14 @@ every downloaded blob against the anonymous registry manifest. Keep the original
 12-call cap, 20-minute transfer deadline, 15-minute task deadline and four-minute
 per-inference deadline. Never retry an uncertain task or inference.
 
+A failed read of that same admitted task is a separate observation outcome. Keep
+the original absolute task deadline and 15-second read cap; allow at most three
+transient GET failures, honor bounded numeric Retry-After, and record fixed HTTP,
+timeout or network diagnostics. Authentication, malformed data and real terminal
+task state stop observation. Never resend a task, inference or permission decision.
+The public receipt records these observations without response bodies or exception
+text; a cached task snapshot is timestamped rather than represented as final state.
+
 The result must include actual commit/tree, one model download, positive settled
 usage, exact arithmetic tool evidence, one completed task with agent authority,
 zero fallbacks and unchanged agent count. Capture the actual saved delivery

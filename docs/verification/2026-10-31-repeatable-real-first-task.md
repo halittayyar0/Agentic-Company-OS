@@ -20,7 +20,8 @@ passing. They reject spoofed or unbound calculation text, missing usage, mismatc
 accounting, operator completion, extra work, cloud selectors, unrelated tools,
 incomplete calls and changed source. The existing 26 release-producer tests passed
 before changes. A subsequent real-browser viewport regression increases the new
-tests to five and the source census to 3,098; no skip, deadline or existing
+tests to five. Four subsequent read-observation tests bring the source census to
+3,102; no skip, deadline or existing
 acceptance assertion is removed.
 
 The first local build exposed an unrelated global pnpm 9 executable inside a
@@ -65,9 +66,37 @@ visible viewport at both widths. The browser regression fails against the old
 body-only behavior and passes against the corrected helper; all 31 focused tests
 pass. No model was replayed in that regression.
 
-The corrected source still needs a new original genuine job and matching-source
+The next original
+[job 124606524263](https://github.com/halittayyar0/Agentic-Company-OS/actions/runs/41224769479/job/124606524263)
+failed before viewport capture on source `e105189c1c5d5eeb66c338cffeb8d0c90b92d632`.
+Its native acceptance callback failed at 17:34:48 UTC; the first model response
+returned HTTP 200 at 17:34:51, followed by a second inference dispatch during
+cleanup. The receipt retains the last observed task as in progress with no
+completion authority. This is not evidence of a terminal task failure or a
+90-second task timeout. Code path and timing isolate an API-read observation
+exception; its exact old HTTP/transport/parse cause was not recorded and remains
+unconfirmed. Original artifact SHA-256 is
+`86376ee7ec432686eb3af514aa16f02cc25875db5b2f2a5f8fd20556e04473e3`.
+
+Receipt schema 3 separates this observation boundary: only GET the same admitted
+task; allow at most three classified transient read failures, preserve the
+absolute 15-minute task deadline and 15-second per-read cap, and honor numeric
+Retry-After. Auth failures, malformed data and blocked/failed/cancelled tasks are
+not retried. No task, inference or approval is dispatched by the observer. Its
+public diagnostics contain status/timing/classification and the cached task's
+observation time, never raw exception text, credentials or response bodies. The
+four deterministic observation tests and all 35 focused tests pass; full
+typecheck passes. Independent review added a real mid-body connection-loss
+regression and a long numeric Retry-After deadline regression; both failed
+before their fixes and passed after. Body transport errors now remain distinct
+from malformed JSON, and long backoffs expire at the original deadline without
+an early extra GET. This handles a premature observer abort; it does not claim to
+repair the unconfirmed underlying API-read cause. Original failures remain
+recorded and were not rerun.
+
+The latest source still needs an original genuine job and matching-source
 platform/security/UI producers. No new merge or release is claimed. Windows
-viewport screenshots are not physical-device or Safari acceptance;
-`verified24h` remains false.
+viewport screenshots are not physical-device or Safari acceptance; `verified24h`
+remains false.
 Forced cancellation or host loss can prevent a final receipt; missing or failed
 cleanup evidence must never be interpreted as acceptance or retried model work.

@@ -275,6 +275,11 @@ journey on a standard Windows runner. It checks the calculator's numeric result,
 agent completion, recorded token usage, model blob identity, cleanup and the
 completed task at 320 and 1024 pixels. It never supplies a personal model profile
 or paid provider key, and it does not retry a stopped or uncertain task.
+If a read-only status observation has a transient failure, the same admitted task
+can be read again within its original deadline. This never resends model work;
+the receipt records bounded observation failures and timestamps its last task
+snapshot. Persistent reads, authentication failures and malformed responses fail
+the proof.
 
 Run it explicitly for a release from the Actions workflow page, or with an
 already configured GitHub CLI:
