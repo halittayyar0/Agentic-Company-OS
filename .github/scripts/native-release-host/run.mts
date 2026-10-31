@@ -21,7 +21,11 @@ import {
   verifyNewTaskSet,
 } from "./guard.mjs";
 import { verifyDriverCopy } from "./copy.mjs";
-import { startOwnedReleaseModel, releaseModel } from "./runtime.mts";
+import {
+  startOwnedReleaseModel,
+  releaseModel,
+  newModelPreparationTrace,
+} from "./runtime.mts";
 import {
   PackageSession,
   hash,
@@ -58,6 +62,7 @@ let fresh: any = null,
 const privateRoot = process.env.ACOS_PRIVATE_EXECUTION_ROOT!,
   output = process.env.ACOS_PUBLIC_OUTPUT_ROOT!;
 const allSecrets: string[] = [];
+const modelPreparation = newModelPreparationTrace();
 const git = async (root: string, ...args: string[]) =>
   (
     await execute(process.env.ACOS_GIT_EXECUTABLE!, ["-C", root, ...args], {
@@ -548,7 +553,11 @@ try {
   );
   stage = "owned_model";
   console.log(JSON.stringify({ phase: stage }));
-  model = await startOwnedReleaseModel(context.ownedRoot, privateRoot);
+  model = await startOwnedReleaseModel(
+    context.ownedRoot,
+    privateRoot,
+    modelPreparation,
+  );
   stage = "fresh_package";
   console.log(JSON.stringify({ phase: stage }));
   model.relay.beginCase("fresh");
@@ -709,6 +718,11 @@ try {
   } catch {
     okay = false;
   }
+  if (
+    modelPreparation.daemonCreated &&
+    modelPreparation.modelCleanupVerified !== true
+  )
+    okay = false;
   cleanupVerified = okay;
   if (!okay) accepted = false;
   const receipt = {
@@ -744,6 +758,18 @@ try {
           registryEntries: model.registryEntries,
         }
       : null,
+    modelPreparation: {
+      phase: modelPreparation.phase,
+      lastHttpStatus: modelPreparation.lastHttpStatus,
+      daemonCreated: modelPreparation.daemonCreated,
+      daemonReady: modelPreparation.daemonReady,
+      daemonExitCode: modelPreparation.daemonExitCode,
+      pullRequests: modelPreparation.pullRequests,
+      pullCompleted: modelPreparation.pullCompleted,
+      registryEntriesVerified: modelPreparation.registryEntriesVerified,
+      hostAdmission: modelPreparation.hostAdmission,
+      modelCleanupVerified: modelPreparation.modelCleanupVerified,
+    },
     fresh,
     upgrade,
     upgraded,

@@ -24,7 +24,55 @@ const expectedModelDigest =
 const hash = (value: Buffer) =>
   createHash("sha256").update(value).digest("hex");
 
-export async function requireReleaseHostMargins(fixtureRoot: string) {
+export interface ModelPreparationTrace {
+  phase: string;
+  lastHttpStatus: number | null;
+  daemonCreated: boolean;
+  daemonReady: boolean;
+  daemonExitCode: number | null;
+  pullRequests: number;
+  pullCompleted: boolean;
+  modelCleanupVerified: boolean | null;
+  registryEntriesVerified: number;
+  hostAdmission: {
+    freeVirtualKiB: number | null;
+    cFreeBytes: number | null;
+    fixtureFreeBytes: number | null;
+  } | null;
+}
+export function newModelPreparationTrace(): ModelPreparationTrace {
+  return {
+    phase: "not_started",
+    lastHttpStatus: null,
+    daemonCreated: false,
+    daemonReady: false,
+    daemonExitCode: null,
+    pullRequests: 0,
+    pullCompleted: false,
+    registryEntriesVerified: 0,
+    hostAdmission: null,
+    modelCleanupVerified: null,
+  };
+}
+export function recordHostAdmission(
+  trace: ModelPreparationTrace,
+  value: Record<string, unknown>,
+) {
+  const field = (name: string) =>
+    Number.isSafeInteger(value[name]) && Number(value[name]) >= 0
+      ? Number(value[name])
+      : null;
+  trace.hostAdmission = {
+    freeVirtualKiB: field("freeVirtualKiB"),
+    cFreeBytes: field("cFreeBytes"),
+    fixtureFreeBytes: field("fixtureFreeBytes"),
+  };
+}
+
+export async function requireReleaseHostMargins(
+  fixtureRoot: string,
+  trace?: ModelPreparationTrace,
+) {
   assert.equal(process.platform, "win32");
   assert.equal(process.arch, "x64");
   const drive = path.parse(fixtureRoot).root.slice(0, 1).toUpperCase();
@@ -51,6 +99,7 @@ export async function requireReleaseHostMargins(fixtureRoot: string) {
       )
     ).stdout,
   );
+  if (trace) recordHostAdmission(trace, value);
   for (const field of ["freeVirtualKiB", "cFreeBytes", "fixtureFreeBytes"])
     assert.ok(Number.isSafeInteger(value[field]) && value[field] > 0);
   assert.ok(
@@ -66,7 +115,9 @@ export async function requireReleaseHostMargins(fixtureRoot: string) {
 export async function startOwnedReleaseModel(
   inputsRoot: string,
   executionRoot: string,
+  trace: ModelPreparationTrace = newModelPreparationTrace(),
 ) {
+  trace.phase = "ordinary_context";
   assert.equal(process.platform, "win32");
   assert.equal(process.arch, "x64");
   assert.equal(process.version, "v24.22.1");
@@ -107,7 +158,9 @@ export async function startOwnedReleaseModel(
     },
     "actual_ordinary_execution_context_required",
   );
-  const admission = await requireReleaseHostMargins(privateRoot);
+  trace.phase = "host_resources";
+  const admission = await requireReleaseHostMargins(privateRoot, trace);
+  trace.phase = "pinned_runtime_bytes";
   const runtime = JSON.parse(
     await readFile(path.join(input, "ollama-input.json"), "utf8"),
   );
@@ -145,6 +198,7 @@ export async function startOwnedReleaseModel(
       file.sha256,
     );
   }
+  trace.phase = "empty_private_model_home";
   const modelHome = path.join(privateRoot, "model-home");
   await mkdir(modelHome);
   for (const name of ["models", "tmp", "config", "local", "cache"])
@@ -185,13 +239,17 @@ export async function startOwnedReleaseModel(
       CUDA_VISIBLE_DEVICES: "-1",
       HIP_VISIBLE_DEVICES: "-1",
     });
-    supervisor.start({
+    trace.phase = "daemon_start";
+    const daemonProcess = supervisor.start({
       name: "owned-native-release-ollama",
       command: path.join(runtimeRoot, "ollama.exe"),
       args: ["serve"],
       cwd: modelHome,
       env: environment,
     });
+    trace.daemonCreated =
+      Number.isSafeInteger(daemonProcess.pid) && Number(daemonProcess.pid) > 0;
+    trace.phase = "daemon_readiness";
     await supervisor.waitUntilReady(
       async () => {
         assert.equal(
@@ -215,6 +273,8 @@ export async function startOwnedReleaseModel(
         label: "Owned native release model",
       },
     );
+    trace.daemonReady = true;
+    trace.phase = "daemon_version";
     const version = (await (
       await fetch(daemon + "/api/version", {
         redirect: "error",
@@ -222,6 +282,7 @@ export async function startOwnedReleaseModel(
       })
     ).json()) as any;
     assert.equal(version.version, "0.40.3");
+    trace.phase = "empty_model_catalog";
     const before = (await (
       await fetch(daemon + "/api/tags", {
         redirect: "error",
@@ -237,6 +298,8 @@ export async function startOwnedReleaseModel(
       }),
     );
     // One direct public-model transfer; this does not claim a second app-UI download.
+    trace.phase = "single_model_transfer";
+    trace.pullRequests = 1;
     const response = await fetch(daemon + "/api/pull", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -248,6 +311,7 @@ export async function startOwnedReleaseModel(
       redirect: "error",
       signal: AbortSignal.timeout(20 * 60000),
     });
+    trace.lastHttpStatus = response.status;
     assert.equal(response.status, 200);
     assert.ok(response.body);
     let pending = "",
@@ -281,6 +345,8 @@ export async function startOwnedReleaseModel(
       if (progress.status === "success") success = true;
     }
     assert.equal(success, true, "model_transfer_must_complete");
+    trace.pullCompleted = true;
+    trace.phase = "downloaded_model_catalog";
     const tags = (await (
       await fetch(daemon + "/api/tags", {
         redirect: "error",
@@ -293,10 +359,12 @@ export async function startOwnedReleaseModel(
       String(tags.models[0].digest).replace(/^sha256:/u, ""),
       expectedModelDigest,
     );
+    trace.phase = "anonymous_registry_manifest";
     const publicManifestResponse = await fetch(
       "https://registry.ollama.ai/v2/library/qwen3.5/manifests/2b-q4_K_M",
       { redirect: "error", signal: AbortSignal.timeout(30000) },
     );
+    trace.lastHttpStatus = publicManifestResponse.status;
     assert.equal(publicManifestResponse.status, 200);
     const manifestBytes = Buffer.from(
       await publicManifestResponse.arrayBuffer(),
@@ -304,6 +372,7 @@ export async function startOwnedReleaseModel(
     assert.ok(manifestBytes.length > 0 && manifestBytes.length < 65536);
     assert.equal(hash(manifestBytes), expectedModelDigest);
     const manifest = JSON.parse(manifestBytes.toString());
+    trace.phase = "stored_manifest_anchor";
     const stored = JSON.parse(
       await readFile(
         path.join(
@@ -327,6 +396,7 @@ export async function startOwnedReleaseModel(
       ),
       manifestBytes,
     );
+    trace.phase = "downloaded_blob_bytes";
     let entries = 0;
     for (const entry of [manifest.config, ...manifest.layers]) {
       assert.match(entry.digest, /^sha256:[a-f0-9]{64}$/u);
@@ -343,10 +413,12 @@ export async function startOwnedReleaseModel(
         entry.digest,
       );
       entries++;
+      trace.registryEntriesVerified = entries;
     }
     assert.equal(entries, 6);
     const rawRoot = path.join(privateRoot, "private-model-captures");
     await mkdir(rawRoot);
+    trace.phase = "private_capture_relay";
     relay = await createPrivateModelRelay({
       upstream: daemon,
       root: rawRoot,
@@ -361,6 +433,7 @@ export async function startOwnedReleaseModel(
       }),
     );
     const close = async () => {
+      trace.modelCleanupVerified = false;
       let relayStopped = false;
       try {
         await relay!.close();
@@ -372,8 +445,10 @@ export async function startOwnedReleaseModel(
         relayStopped && supervisor.snapshots().every((item) => !item.running),
         "owned_model_cleanup_required",
       );
+      trace.modelCleanupVerified = true;
       return { cleanupVerified: true };
     };
+    trace.phase = "ready";
     return {
       relay,
       admission,
@@ -386,11 +461,22 @@ export async function startOwnedReleaseModel(
       close,
     };
   } catch {
+    trace.daemonExitCode =
+      supervisor.snapshot("owned-native-release-ollama")?.exitCode ?? null;
+    trace.modelCleanupVerified = false;
     try {
       await relay?.close();
     } finally {
       await supervisor.stopAll();
     }
+    trace.modelCleanupVerified = supervisor
+      .snapshots()
+      .every((item) => !item.running);
+    assert.equal(
+      trace.modelCleanupVerified,
+      true,
+      "owned_model_cleanup_required",
+    );
     throw new Error("owned_model_start_or_download_failed");
   }
 }

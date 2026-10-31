@@ -4,6 +4,36 @@ import { mkdtemp, mkdir, writeFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PackageSession, assertSafePublicText } from "./package-session.mts";
+import { newModelPreparationTrace, recordHostAdmission } from "./runtime.mts";
+
+test("model preparation diagnostics retain only safe numeric host facts and never import probe text", () => {
+  const trace = newModelPreparationTrace();
+  recordHostAdmission(trace, {
+    freeVirtualKiB: 6291456,
+    cFreeBytes: 2147483648,
+    fixtureFreeBytes: 8589934592,
+    privatePath: "C:\\private-fixture",
+    secret: "synthetic-unit-secret-value",
+  });
+  assert.deepEqual(trace.hostAdmission, {
+    freeVirtualKiB: 6291456,
+    cFreeBytes: 2147483648,
+    fixtureFreeBytes: 8589934592,
+  });
+  assertSafePublicText(JSON.stringify(trace), ["synthetic-unit-secret-value"]);
+  recordHostAdmission(trace, {
+    freeVirtualKiB: NaN,
+    cFreeBytes: "C:\\private-fixture",
+    fixtureFreeBytes: 0,
+  });
+  assert.deepEqual(trace.hostAdmission, {
+    freeVirtualKiB: null,
+    cFreeBytes: null,
+    fixtureFreeBytes: 0,
+  });
+  assert.equal(trace.pullRequests, 0);
+  assert.equal(trace.daemonCreated, false);
+});
 
 test("public result proof rejects credential literals and host paths before exporting an image or receipt", () => {
   const secret = "synthetic-unit-secret-value";
