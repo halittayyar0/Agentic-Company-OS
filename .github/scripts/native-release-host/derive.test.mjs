@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import {
   derivePrivatePackageDriver,
   deriveControlledBaselineDriver,
@@ -11,6 +13,29 @@ const source = await readFile(
   new URL("../../scripts/src/setup/native-package-smoke.ts", import.meta.url),
   "utf8",
 );
+test("both relocated driver module graphs resolve before any account, model or application launch", async () => {
+  const { build } = createRequire(
+    new URL("../../artifacts/api-server/package.json", import.meta.url),
+  )("esbuild");
+  for (const derive of [
+    derivePrivatePackageDriver,
+    deriveControlledBaselineDriver,
+  ])
+    await build({
+      stdin: {
+        contents: derive(source).source,
+        resolveDir: fileURLToPath(new URL(".", import.meta.url)),
+        sourcefile: "private-derived-package.mts",
+        loader: "ts",
+      },
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      packages: "external",
+      write: false,
+      logLevel: "silent",
+    });
+});
 
 test("derive only the inspected application package driver; refuse source drift before instrumentation", () => {
   const derived = derivePrivatePackageDriver(source);

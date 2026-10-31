@@ -41,6 +41,7 @@ import { inventoryNativeCluster } from "../../scripts/src/setup/native-cluster-s
 import { observeOwnedFirstTask } from "../../scripts/src/testing/real-local-first-task-observer";
 import { verifyRealFirstTask } from "../../scripts/src/testing/real-local-first-task-proof";
 import { executeBoundedCommand } from "../../scripts/src/endurance/process-supervisor";
+import { collectPackageAttempt } from "./package-diagnostics.mjs";
 
 const execute = promisify(execFile),
   directory = path.dirname(fileURLToPath(import.meta.url));
@@ -63,6 +64,7 @@ const privateRoot = process.env.ACOS_PRIVATE_EXECUTION_ROOT!,
   output = process.env.ACOS_PUBLIC_OUTPUT_ROOT!;
 const allSecrets: string[] = [];
 const modelPreparation = newModelPreparationTrace();
+const packageAttempts: Awaited<ReturnType<typeof collectPackageAttempt>>[] = [];
 const git = async (root: string, ...args: string[]) =>
   (
     await execute(process.env.ACOS_GIT_EXECUTABLE!, ["-C", root, ...args], {
@@ -148,8 +150,10 @@ async function runPackageDriver(name: "fresh" | "baseline", archive: string) {
     });
   } catch (error) {
     packageDriverFailed = true;
+    packageAttempts.push(await collectPackageAttempt(name, evidence, error));
     throw error;
   }
+  packageAttempts.push(await collectPackageAttempt(name, evidence));
   const proof = JSON.parse(await readFile(evidence, "utf8"));
   assert.equal(proof.accepted, true);
   assert.equal(proof.cleanupVerified, true);
@@ -780,6 +784,8 @@ try {
       },
       modelCleanupVerified: modelPreparation.modelCleanupVerified,
     },
+    packageAttempts,
+    inferenceTransport: model ? model.relay.diagnostics() : null,
     fresh,
     upgrade,
     upgraded,

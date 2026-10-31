@@ -64,6 +64,16 @@ test("loopback unit relay preserves raw payload/status and excludes authorizatio
   assert.equal(response.status, 200);
   assert.deepEqual(Buffer.from(await response.arrayBuffer()), reply);
   const receipt = relay.finishCase();
+  assert.deepEqual(relay.diagnostics(), {
+    failures: 0,
+    pending: 0,
+    cases: [{ name: "fresh", calls: 1, finished: true, statuses: [200] }],
+  });
+  assert.equal(JSON.stringify(relay.diagnostics()).includes(root), false);
+  assert.equal(
+    JSON.stringify(relay.diagnostics()).includes("Unit fixture"),
+    false,
+  );
   assert.equal(receipt.calls, 1);
   assert.equal(receipt.captureHashes[0].requestSha256, hash(request));
   assert.equal(receipt.captureHashes[0].responseSha256, hash(reply));

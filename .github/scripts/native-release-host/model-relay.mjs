@@ -180,6 +180,18 @@ export async function createPrivateModelRelay({
     get failures() {
       return failures;
     },
+    diagnostics() {
+      return {
+        failures,
+        pending: pending.size,
+        cases: [...cases.values()].map((phase) => ({
+          name: phase.name,
+          calls: phase.rows.length,
+          finished: phase.finished,
+          statuses: phase.rows.map((row) => row.status),
+        })),
+      };
+    },
     beginCase(name) {
       assert.ok(
         !closed && !closing && !current,

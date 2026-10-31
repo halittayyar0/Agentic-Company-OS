@@ -55,6 +55,7 @@ export function derivePrivatePackageDriver(text) {
     [
       'import assert from "node:assert/strict";',
       'import { observeOwnedFirstTask } from "../../scripts/src/testing/real-local-first-task-observer";',
+      'import { createPackagePhaseRecorder, projectPackageFailure } from "./package-diagnostics.mjs";',
     ].join("\n"),
     "use_application_get_only_observer",
   );
@@ -137,6 +138,82 @@ export function derivePrivatePackageDriver(text) {
     "  console.log(JSON.stringify(proof));",
     "  console.log(JSON.stringify({ accepted: proof.accepted, cleanupVerified: proof.cleanupVerified, error: proof.error }));",
     "no_model_prose_or_private_paths_in_stdout",
+  );
+  replace(
+    "let child: ChildProcess | undefined;",
+    "const recordPackagePhase = createPackagePhaseRecorder(evidencePath);\nlet child: ChildProcess | undefined;",
+    "private_append_only_phase_recorder",
+  );
+  for (const [anchor, phase] of [
+    [
+      "  await executeBoundedCommand({\n    command:\n      process.env.PYTHON ??",
+      "archive_extract",
+    ],
+    [
+      "  const manifest = await readNativeDistribution(packageRoot);",
+      "inventory",
+    ],
+    [
+      '  assert.equal(\n    (await run(node(), ["--version"])).stdout.trim(),',
+      "node_version",
+    ],
+    [
+      '  await run(node(), [path.join(source, "scripts/test-runtime-security.mjs")]);',
+      "node_dns_security",
+    ],
+    [
+      "  // Use the shipped launcher for its read-only check with no developer tools on PATH.",
+      "launcher_check",
+    ],
+    ["  const launched = await startPackage();", "setup_start"],
+    ["  const capabilities = await setup<", "capabilities"],
+    ["  const plan = await setup<", "plan"],
+    ['  await setup("install", "POST", {', "install"],
+    ["  let state: Record<string, unknown> = {};", "installation_state"],
+    ["  appUrl = String(state.url);", "connection"],
+    ["  const agents =\n", "agents"],
+    ['  await request(`/agents/${owner.id}`, "PATCH", {', "owner_model"],
+    [
+      '  const task = await request<{ id: number }>("/tasks", "POST", {',
+      "task_create",
+    ],
+    [
+      "  const taskObservation = { attempts: 0, transientFailures: 0, lastFailure: null, lastTaskAt: null };",
+      "task_observe",
+    ],
+    ['  assert.equal(finished.status, "completed");', "task_contract"],
+    ["  const connectionArgs = [", "private_database"],
+    [
+      '  const copyRegression = path.join(owned, "runtime-copy-security.sql");',
+      "copy_security",
+    ],
+    ["  proof.backup = await proveDatabaseBackup({", "backup"],
+    ["  const resumed = await startPackage();", "restart"],
+    [
+      "  // Relocation and launched infrastructure must leave packaged bytes unchanged.",
+      "final_inventory",
+    ],
+    ["  proof.cleanupVerified = true;\n  proof.accepted = true;", "complete"],
+  ])
+    replace(
+      anchor,
+      '  proof.preparationPhase = "' +
+        phase +
+        '";\n  await recordPackagePhase("' +
+        phase +
+        '");\n' +
+        anchor,
+      "record_private_phase:" + phase,
+    );
+  replace(
+    '  proof.error = "package_acceptance_failed";',
+    '  proof.error = "package_acceptance_failed";\n  proof.failureProjection = projectPackageFailure(error);',
+    "closed_original_failure_without_prose",
+  );
+  replace(
+    "  } catch {\n    proof.accepted = false;\n    proof.cleanupVerified = false;",
+    "  } catch (cleanupError) {\n    proof.cleanupFailure = projectPackageFailure(cleanupError);\n    proof.accepted = false;\n    proof.cleanupVerified = false;",
+    "closed_cleanup_failure_without_prose",
   );
   return {
     source,
