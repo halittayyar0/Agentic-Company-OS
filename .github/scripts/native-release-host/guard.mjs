@@ -1,5 +1,110 @@
 import assert from "node:assert/strict";
 
+export function dependencyMaintenanceRunId(check, expected) {
+  if (
+    check.name !== "Dependabot" ||
+    check.app?.id !== 15368 ||
+    check.head_sha !== expected.applicationCommit
+  )
+    return null;
+  try {
+    const url = new URL(check.details_url),
+      parts = url.pathname.slice(1).split("/");
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "github.com" ||
+      url.port ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    )
+      return null;
+    if (
+      parts.length !== 7 ||
+      parts.slice(0, 2).join("/") !== expected.repo ||
+      parts[2] !== "actions" ||
+      parts[3] !== "runs" ||
+      parts[5] !== "job"
+    )
+      return null;
+    const runId = Number(parts[4]),
+      jobId = Number(parts[6]);
+    if (
+      !Number.isSafeInteger(runId) ||
+      runId <= 0 ||
+      String(runId) !== parts[4] ||
+      !Number.isSafeInteger(jobId) ||
+      jobId !== check.id ||
+      String(jobId) !== parts[6]
+    )
+      return null;
+    return runId;
+  } catch {
+    return null;
+  }
+}
+
+export function classifyMainCheckFailures(checks, producers, expected) {
+  const blocking = [],
+    maintenance = [];
+  for (const check of checks) {
+    if (
+      check.status !== "completed" ||
+      ![
+        "failure",
+        "timed_out",
+        "cancelled",
+        "action_required",
+        "startup_failure",
+      ].includes(check.conclusion)
+    )
+      continue;
+    const id = dependencyMaintenanceRunId(check, expected),
+      producer = id === null ? undefined : producers.get(id);
+    const jobs = Array.isArray(producer?.originalJobs)
+      ? producer.originalJobs.filter((job) => job.id === check.id)
+      : [];
+    const job = jobs.length === 1 ? jobs[0] : undefined;
+    const boundJob =
+      job &&
+      job.run_id === id &&
+      job.run_attempt === 1 &&
+      job.head_sha === expected.applicationCommit &&
+      job.name === check.name &&
+      job.status === check.status &&
+      job.conclusion === check.conclusion &&
+      job.check_run_url ===
+        "https://api.github.com/repos/" +
+          expected.repo +
+          "/check-runs/" +
+          check.id;
+    if (
+      boundJob &&
+      producer &&
+      producer.id === id &&
+      producer.event === "dynamic" &&
+      producer.path === "dynamic/dependabot/dependabot-updates" &&
+      producer.head_branch === "main" &&
+      producer.head_sha === expected.applicationCommit &&
+      producer.run_attempt === 1 &&
+      producer.status === check.status &&
+      producer.conclusion === check.conclusion &&
+      producer.repository?.full_name === expected.repo &&
+      producer.repository?.id === expected.repositoryId
+    ) {
+      maintenance.push({
+        checkId: check.id,
+        producerRunId: id,
+        status: "completed",
+        conclusion: check.conclusion,
+        scope: "automated_dependency_maintenance",
+      });
+    } else blocking.push(check.id);
+  }
+  return { blocking, maintenance };
+}
+
 const sha40 = (value) =>
   assert.match(
     value ?? "",

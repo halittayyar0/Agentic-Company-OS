@@ -732,6 +732,8 @@ try {
           artifactDigest: context.config.nativeArtifactDigest,
         }
       : null,
+    failedDependencyMaintenanceStillFailed:
+      context?.failedDependencyMaintenanceStillFailed ?? [],
     model: model
       ? {
           name: releaseModel,

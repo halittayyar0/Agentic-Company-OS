@@ -17,6 +17,8 @@ import {
   assertExternalWorkflowContext,
   assertSourceIdentity,
   assertNativeMainProducer,
+  classifyMainCheckFailures,
+  dependencyMaintenanceRunId,
 } from "./guard.mjs";
 import { verifyDriverCopy } from "./copy.mjs";
 import {
@@ -236,24 +238,32 @@ async function main() {
   assert.equal(artifact.workflow_run.head_branch, "main");
   assert.equal(artifact.workflow_run.repository_id, config.repositoryId);
   assert.equal(artifact.workflow_run.head_repository_id, config.repositoryId);
+  stage = "main_source_checks";
   const checkRows = await arrayPages(
     prefix + "commits/" + config.applicationCommit + "/check-runs?filter=all",
     "check_runs",
   );
-  assert.equal(
-    checkRows.filter(
-      (c) =>
-        c.status === "completed" &&
-        [
-          "failure",
-          "timed_out",
-          "cancelled",
-          "action_required",
-          "startup_failure",
-        ].includes(c.conclusion),
-    ).length,
-    0,
-    "current_main_has_failed_checks",
+  const maintenanceProducers = new Map();
+  for (const check of checkRows) {
+    const id = dependencyMaintenanceRunId(check, config);
+    if (id !== null && !maintenanceProducers.has(id)) {
+      const producer = await api(prefix + "actions/runs/" + id);
+      const originalJobs = await arrayPages(
+        prefix + "actions/runs/" + id + "/attempts/1/jobs",
+        "jobs",
+      );
+      maintenanceProducers.set(id, { ...producer, originalJobs });
+    }
+  }
+  const checkScope = classifyMainCheckFailures(
+    checkRows,
+    maintenanceProducers,
+    config,
+  );
+  assert.deepEqual(
+    checkScope.blocking,
+    [],
+    "current_main_has_failed_application_checks",
   );
   const pendingMainChecks = checkRows.filter(
     (c) => c.status !== "completed",
@@ -605,6 +615,7 @@ async function main() {
     },
     pendingMainChecksAtInputAdmission: pendingMainChecks,
     originalMainChecksStillSeparateReleaseGates: true,
+    failedDependencyMaintenanceStillFailed: checkScope.maintenance,
     executedApplicationOrModelCode: false,
   };
   await save(path.join(owned, "context.json"), context);

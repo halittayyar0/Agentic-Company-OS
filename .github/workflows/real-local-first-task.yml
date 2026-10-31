@@ -76,7 +76,7 @@ jobs:
         run: |
           pnpm exec tsc --noEmit --strict --allowImportingTsExtensions --module preserve --moduleResolution bundler --target ES2024 --typeRoots ./scripts/node_modules/@types --types node --skipLibCheck --allowJs .tmp/native-release-host/prepare.mts .tmp/native-release-host/runtime.mts .tmp/native-release-host/package-session.mts .tmp/native-release-host/run.mts
           if ($LASTEXITCODE -ne 0) { throw 'external_driver_types_failed' }
-          node --import ./node_modules/tsx/dist/loader.mjs --test --test-concurrency=1 .tmp/native-release-host/guard.test.mjs .tmp/native-release-host/derive.test.mjs .tmp/native-release-host/model-relay.test.mjs .tmp/native-release-host/windows-wrapper.test.mjs .tmp/native-release-host/windows-acl.test.mjs .tmp/native-release-host/copy.test.mjs .tmp/native-release-host/package-session.test.mts
+          node --import ./node_modules/tsx/dist/loader.mjs --test --test-concurrency=1 .tmp/native-release-host/guard.test.mjs .tmp/native-release-host/check-scope.test.mjs .tmp/native-release-host/derive.test.mjs .tmp/native-release-host/model-relay.test.mjs .tmp/native-release-host/windows-wrapper.test.mjs .tmp/native-release-host/windows-acl.test.mjs .tmp/native-release-host/copy.test.mjs .tmp/native-release-host/package-session.test.mts
           if ($LASTEXITCODE -ne 0) { throw 'external_driver_regressions_failed' }
           & $env:PYTHON -B .tmp/native-release-host/archive_inputs_test.py
           if ($LASTEXITCODE -ne 0) { throw 'archive_input_regressions_failed' }
