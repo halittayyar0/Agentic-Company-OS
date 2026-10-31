@@ -1,31 +1,35 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import path from "node:path";
-import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 const execute = promisify(execFile);
 const integer = (value) => (Number.isSafeInteger(value) ? value : null);
 const phases = new Set([
-  "compile",
+  "load_library",
   "memory",
   "c_disk",
   "fixture_disk",
   "complete",
 ]);
-export async function resourceProbeCommand(fixtureRoot) {
+export function resourceProbeInvocation(fixtureRoot) {
   assert.match(fixtureRoot, /^[A-Za-z]:[\\/]/u);
-  const source = await readFile(
-    new URL("./resource-probe.ps1", import.meta.url),
-    "utf8",
+  assert.ok(
+    typeof process.env.PYTHON === "string" &&
+      /^[A-Za-z]:[\\/]/u.test(process.env.PYTHON),
+    "verified_host_python_required",
   );
-  return (
-    "& {\n" +
-    source +
-    "\n} -FixtureRoot '" +
-    fixtureRoot.replaceAll("'", "''") +
-    "'"
-  );
+  return {
+    executable: process.env.PYTHON,
+    args: [
+      "-I",
+      "-S",
+      "-B",
+      fileURLToPath(new URL("./resource-probe.py", import.meta.url)),
+      "--fixture-root",
+      fixtureRoot,
+    ],
+  };
 }
 export function createResourceProbeTrace() {
   return {
@@ -57,27 +61,32 @@ export async function probeWindowsResources(
   let stdout = "",
     failed = false;
   try {
-    const result = await run(
-      path.join(
-        process.env.SystemRoot,
-        "System32/WindowsPowerShell/v1.0/powershell.exe",
-      ),
-      [
-        "-NoLogo",
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        await resourceProbeCommand(fixtureRoot),
-      ],
-      { windowsHide: true, encoding: "utf8", timeout: 15000, maxBuffer: 65536 },
-    );
+    const invocation = resourceProbeInvocation(fixtureRoot);
+    const result = await run(invocation.executable, invocation.args, {
+      windowsHide: true,
+      encoding: "utf8",
+      timeout: 15000,
+      maxBuffer: 65536,
+    });
     stdout = result.stdout;
     trace.exitCode = 0;
   } catch (error) {
     failed = true;
     trace.exitCode = integer(error?.code);
-    trace.timedOut = error?.killed === true;
+    trace.timedOut =
+      error?.killed === true &&
+      error?.code === null &&
+      error?.signal === "SIGTERM";
     if (typeof error?.stdout === "string") stdout = error.stdout;
+    if (
+      typeof error?.stderr === "string" &&
+      Buffer.byteLength(error.stderr) <= 65536
+    ) {
+      for (const line of error.stderr.split(/\r?\n/u)) {
+        const phase = /^native_resource_phase:([a-z_]+)$/u.exec(line)?.[1];
+        if (phases.has(phase)) trace.phase = phase;
+      }
+    }
   } finally {
     trace.elapsedMs = Date.now() - started;
   }

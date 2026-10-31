@@ -7,7 +7,7 @@ import path from "node:path";
 import {
   createResourceProbeTrace,
   probeWindowsResources,
-  resourceProbeCommand,
+  resourceProbeInvocation,
 } from "./resource-probe.mjs";
 
 const good = () => ({
@@ -28,11 +28,10 @@ test("native resource probe requires successful current-user metrics and keeps t
     trace,
     async (exe, args, options) => {
       calls++;
-      assert.match(exe, /WindowsPowerShell[\\/]v1\.0[\\/]powershell\.exe$/u);
-      assert.ok(
-        args.at(-1).endsWith("-FixtureRoot 'D:\\synthetic-private-fixture'"),
-      );
-      assert.equal(args.includes("-Command"), true);
+      assert.equal(exe, process.env.PYTHON);
+      assert.deepEqual(args.slice(0, 3), ["-I", "-S", "-B"]);
+      assert.equal(args.at(-1), "D:\\synthetic-private-fixture");
+      assert.equal(args.at(-2), "--fixture-root");
       assert.equal(options.timeout, 15000);
       assert.equal(options.windowsHide, true);
       return { stdout: JSON.stringify(good()), stderr: "" };
@@ -102,26 +101,17 @@ test("actual native resource probe works without management modules in a sanitiz
   ])
     if (process.env[key]) env[key] = process.env[key];
   env.PATH = path.join(process.env.SystemRoot, "System32");
-  const result = await promisify(execFile)(
-    path.join(
-      process.env.SystemRoot,
-      "System32/WindowsPowerShell/v1.0/powershell.exe",
-    ),
-    [
-      "-NoLogo",
-      "-NoProfile",
-      "-NonInteractive",
-      "-Command",
-      await resourceProbeCommand(process.cwd()),
-    ],
-    {
+  const invoke = async (fixtureRoot) => {
+    const { executable, args } = resourceProbeInvocation(fixtureRoot);
+    return promisify(execFile)(executable, args, {
       env,
       windowsHide: true,
       encoding: "utf8",
       timeout: 15000,
       maxBuffer: 65536,
-    },
-  );
+    });
+  };
+  const result = await invoke(process.cwd());
   const value = JSON.parse(result.stdout);
   assert.equal(value.schema, "native-resource-probe@1");
   assert.equal(value.accepted, true);
@@ -132,27 +122,8 @@ test("actual native resource probe works without management modules in a sanitiz
     assert.ok(Number.isSafeInteger(value[key]) && value[key] > 0);
   // Exercise a real kernel failure too, not a guessed error message. No file
   // or directory is created; an impossible child below this regular file fails.
-  const error = await promisify(execFile)(
-    path.join(
-      process.env.SystemRoot,
-      "System32/WindowsPowerShell/v1.0/powershell.exe",
-    ),
-    [
-      "-NoLogo",
-      "-NoProfile",
-      "-NonInteractive",
-      "-Command",
-      await resourceProbeCommand(
-        fileURLToPath(import.meta.url) + "\\nonexistent",
-      ),
-    ],
-    {
-      env,
-      windowsHide: true,
-      encoding: "utf8",
-      timeout: 15000,
-      maxBuffer: 65536,
-    },
+  const error = await invoke(
+    fileURLToPath(import.meta.url) + "\\nonexistent",
   ).catch((error) => error);
   assert.equal(error.code, 1);
   const failed = JSON.parse(error.stdout);
@@ -175,7 +146,8 @@ test("native resource probe records only closed failure facts and rejects failed
           if (kind === "parse")
             return {
               stdout: "private-invalid-output",
-              stderr: "synthetic-private-secret",
+              stderr:
+                "synthetic-private-secret\nnative_resource_phase:C:\\private-path\nnative_resource_phase:memory\n",
             };
           const error = new Error("synthetic-private-secret C:\\private-path");
           if (kind === "native")
@@ -198,7 +170,8 @@ test("native resource probe records only closed failure facts and rejects failed
               killed: true,
               signal: "SIGTERM",
               stdout: "",
-              stderr: "synthetic-private-secret",
+              stderr:
+                "synthetic-private-secret\nnative_resource_phase:C:\\private-path\nnative_resource_phase:memory\n",
             });
           if (kind === "spawn")
             Object.assign(error, { code: "ENOENT", path: "C:\\private-path" });
@@ -220,6 +193,7 @@ test("native resource probe records only closed failure facts and rejects failed
     if (kind === "timeout") {
       assert.equal(trace.timedOut, true);
       assert.equal(trace.jsonAccepted, false);
+      assert.equal(trace.phase, "memory");
     }
     if (kind === "parse") assert.equal(trace.phase, "parse");
     if (kind === "spawn") {
