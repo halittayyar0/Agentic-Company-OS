@@ -1,0 +1,75 @@
+name: Genuine local first task
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/real-local-first-task.yml
+      - .github/scripts/prepare-real-local-first-task.ps1
+      - scripts/src/testing/real-local-first-task*.ts
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/real-local-first-task.yml
+      - .github/scripts/prepare-real-local-first-task.ps1
+      - scripts/src/testing/real-local-first-task*.ts
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  genuine_first_task:
+    name: Genuine cold local model and first task Windows
+    if: github.event.repository.private == false
+    runs-on: windows-2025
+    timeout-minutes: 120
+    env:
+      CI: true
+      AGENT_BROWSER_CHANNEL: chromium
+      ACOS_REAL_LOCAL_FIRST_TASK: "1"
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24.22.1
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install frozen dependencies and browser
+        run: |
+          pnpm install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm exec playwright install chromium
+      - name: Check types and build exact application
+        run: pnpm run build
+      - name: Prepare byte-pinned runtime inputs
+        run: ./.github/scripts/prepare-real-local-first-task.ps1 -Destination (Join-Path $env:RUNNER_TEMP 'real-first-task-inputs')
+      - name: Download into an empty model store and complete a genuine first task
+        # The installer has its own 15-minute build allowance, followed by
+        # 20-minute transfer and 15-minute task limits. Reserve additional time
+        # for real backup/restart, blob hashing and owned-process cleanup.
+        timeout-minutes: 70
+        run: |
+          $inputs = Join-Path $env:RUNNER_TEMP 'real-first-task-inputs'
+          $public = Join-Path $env:RUNNER_TEMP 'real-local-first-task-public'
+          pnpm test:first-task:native --runtime (Join-Path $inputs 'ollama') --postgres (Join-Path $inputs 'postgres/pgsql/bin') --public $public
+      - name: Preserve safe synthetic first-task evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: genuine-local-first-task-windows
+          path: ${{ runner.temp }}/real-local-first-task-public
+          if-no-files-found: warn
+          retention-days: 7
