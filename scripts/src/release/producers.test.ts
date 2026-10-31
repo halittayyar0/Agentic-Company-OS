@@ -215,10 +215,10 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
     sourceStages++;
     assert.equal(
       stage.source.tests,
-      3093,
+      3102,
       "reviewed census includes the four runtime-security regression cases",
     );
-    assert.equal(stage.source.passed, 3093 - stage.source.skippedCases.length);
+    assert.equal(stage.source.passed, 3102 - stage.source.skippedCases.length);
   }
   assert.equal(sourceStages, 4);
   assert.equal(

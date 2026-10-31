@@ -266,3 +266,39 @@ ACOS_OLLAMA_BOUNDARY_SMOKE=1 pnpm test:ollama:native /absolute/pinned-archive /a
 
 On PowerShell, set `$env:ACOS_OLLAMA_BOUNDARY_SMOKE = "1"` first. No installer,
 model download or account inference is performed by this command.
+
+## Maintainer proof of a genuine first task
+
+The separate **Genuine local first task** workflow downloads the curated model
+into an empty owned store and runs the actual application installer and first-job
+journey on a standard Windows runner. It checks the calculator's numeric result,
+agent completion, recorded token usage, model blob identity, cleanup and the
+completed task at 320 and 1024 pixels. It never supplies a personal model profile
+or paid provider key, and it does not retry a stopped or uncertain task.
+If a read-only status observation has a transient failure, the same admitted task
+can be read again within its original deadline. This never resends model work;
+the receipt records bounded observation failures and timestamps its last task
+snapshot. Persistent reads, authentication failures and malformed responses fail
+the proof.
+
+Run it explicitly for a release from the Actions workflow page, or with an
+already configured GitHub CLI:
+
+```sh
+gh workflow run real-local-first-task.yml --ref main
+```
+
+Automatic runs are limited to changes to that workflow and its own helpers. The
+hosted job runs only in public repositories on the standard `windows-2025`
+runner; it skips private repositories. A skipped job is not first-task evidence.
+GitHub documents standard public runners as free in its
+[runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+The proof downloads approximately 3.6 GB of runtime/model inputs and runs local
+CPU inference; it is deliberately separate from routine unit tests.
+
+Only `receipt.json` and synthetic completed-task screenshots are uploaded. Raw
+model payloads, databases, secrets, weights and runtime homes stay on the disposable
+runner. Read the receipt's actual commit, acceptance and cleanup fields; a workflow
+start or an HTTP success alone does not establish completion. This finite Windows
+case does not prove other operating systems, physical phones, Safari, general
+model quality or 24-hour reliability.

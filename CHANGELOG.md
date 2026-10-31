@@ -5,6 +5,17 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+### Added
+
+- An opt-in genuine cold local-model first-task proof on a standard public
+  Windows runner, with exact arithmetic, durable usage, local-only routing,
+  source and model identity, owned cleanup and narrow-screen evidence.
+
+### Fixed
+
+- Pin TypeDoc's development-only `minimatch` dependency to 11.0.1 to address
+  GHSA-g3hv-75wg-m249 without changing production dependencies.
+
 ## [0.5.9] - 2026-10-23
 
 ### Added
