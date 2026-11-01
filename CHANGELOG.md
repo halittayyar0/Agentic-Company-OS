@@ -14,6 +14,8 @@ All notable changes to Agentic Company OS are documented here. The project uses
   Optional navigation code loads without replacing the focused link; its failure
   leaves the ordinary page link and saved result available. No model call or new
   task is made.
+- Safer Windows troubleshooting: private-storage failures retain bounded startup
+  timing facts without exposing target paths, credentials or helper output.
 
 ### Fixed
 

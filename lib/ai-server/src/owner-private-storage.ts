@@ -11,6 +11,10 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import {
+  beginWindowsStorageDiagnostics,
+  formatWindowsStorageDiagnostics,
+} from "./windows-private-storage-diagnostics";
 
 const executeFile = promisify(execFile);
 const MAX_RECORD_BYTES = 128 * 1024;
@@ -89,6 +93,8 @@ async function windowsProtection(
   directory: boolean,
   create = false,
 ): Promise<void> {
+  let diagnostics:
+    ReturnType<typeof beginWindowsStorageDiagnostics> | undefined;
   try {
     const systemRoot = process.env.SystemRoot;
     if (!systemRoot || !path.isAbsolute(systemRoot))
@@ -100,7 +106,8 @@ async function windowsProtection(
       "v1.0",
       "powershell.exe",
     );
-    const { stdout } = await executeFile(
+    diagnostics = beginWindowsStorageDiagnostics();
+    const pending = executeFile(
       executable,
       [
         "-NoLogo",
@@ -121,6 +128,8 @@ async function windowsProtection(
         },
       },
     );
+    diagnostics.attach(pending.child);
+    const { stdout } = await pending;
     if (stdout.trim() !== "PRIVATE_OK") throw new Error("postcondition");
   } catch (error) {
     const failure = error as {
@@ -145,8 +154,19 @@ async function windowsProtection(
                 ? "windows_private_storage_postcondition"
                 : "windows_private_storage_check_failed";
     throw new Error("private_storage_protection_invalid", {
-      cause: new Error(reason),
+      cause: new Error(
+        reason,
+        diagnostics
+          ? {
+              cause: new Error(
+                formatWindowsStorageDiagnostics(diagnostics.finish()),
+              ),
+            }
+          : undefined,
+      ),
     });
+  } finally {
+    diagnostics?.finish();
   }
 }
 
