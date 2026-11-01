@@ -57,6 +57,16 @@ test("a failed first protection attempt leaves no empty vault blocking explicit 
               error.cause.message,
               "windows_private_storage_spawn_failed",
             );
+            assert.ok(error.cause.cause instanceof Error);
+            assert.ok(
+              error.cause.cause.message.startsWith(
+                "windows_private_storage_timing ",
+              ),
+            );
+            assert.doesNotMatch(
+              error.cause.cause.message,
+              /private-retry|missing-system|S-1-/u,
+            );
           }
           return true;
         },

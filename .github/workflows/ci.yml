@@ -479,7 +479,7 @@ jobs:
   windows-runtime:
     name: Windows runtime and process-tree regression
     needs: windows-installation
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
     timeout-minutes: 90
     env:
