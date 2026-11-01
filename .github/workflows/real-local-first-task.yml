@@ -34,7 +34,7 @@ jobs:
       - name: Check out frozen application main N
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: 5bf1403a9d1134c2d0ee4bb0676eede6022f6e78
+          ref: 3496663ccb91e8ec1bbae1e79d82239fc740ca36
           path: application
           persist-credentials: false
       - name: Install pinned pnpm

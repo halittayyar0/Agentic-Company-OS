@@ -3,10 +3,10 @@ from pathlib import Path
 
 OLLAMA_BYTES=1468053171
 OLLAMA_SHA='e5ecff02dfc7cae8ddf6d6b7a7ac5f727ffeedf4491f44ae75ff5b0820dbbbd5'
-BASE_COMMIT='ea9c571be0f81f4590453086e6675ff654ab1458'
-BASE_BYTES=76115232
-BASE_SHA='6d8f6ab631f527d5cfc1e7c63c5584e3e6b4f89d7c38dc900cd291378193c80a'
-BASE_PROVENANCE_SHA='89d013141e724c9b11055c92e78a5d883f3c1bee8584911dcca26cf442cbb36c'
+BASE_COMMIT='5bf1403a9d1134c2d0ee4bb0676eede6022f6e78'
+BASE_BYTES=76516414
+BASE_SHA='80660fcd0a4b134fdaf74fe698d360333d133608c0d9698b23db1b0879700653'
+BASE_PROVENANCE_SHA='dbb49d5ec5ad0e75f8367144f1408ff1abd3913299971f319c2038c5675c3c3a'
 ARCHIVE='Agentic-Company-OS-win32-x64.zip'
 PROVENANCE='Agentic-Company-OS-win32-x64.provenance.json'
 
@@ -118,7 +118,7 @@ def prepare_native(root,file,source,artifact_sha,artifact_bytes):
         for name in [ARCHIVE,PROVENANCE]:
             with envelope.open(name) as src,(output/name).open('xb') as dst:
                 while data:=src.read(1048576):dst.write(data)
-    inspected=inspect_native_archive(output/ARCHIVE,source,'24.22.1','17.11','0.5.9')
+    inspected=inspect_native_archive(output/ARCHIVE,source,'24.22.1','17.11','0.5.10')
     assert inspected['sha256']==provenance['sha256'] and inspected['files']==provenance['files']
     inspected.update({'accepted':True,'artifactSha256':artifact_sha,'archive':str(output/ARCHIVE),'provenance':str(output/PROVENANCE),'provenanceSha256':file_hash(output/PROVENANCE),'executedCode':False})
     save(root/'native-input.json',inspected)
@@ -130,8 +130,8 @@ def prepare_baseline(root,file,provenance_file):
     provenance=json.loads(provenance_file.read_text())
     assert provenance['commit']==BASE_COMMIT and provenance['sha256']==BASE_SHA
     assert provenance['target']=='win32-x64' and provenance['dirty'] is False and provenance['development'] is False
-    inspected=inspect_native_archive(file,BASE_COMMIT,'24.21.0','17.10','0.5.7')
-    assert inspected['files']==provenance['files']==2295
+    inspected=inspect_native_archive(file,BASE_COMMIT,'24.22.1','17.11','0.5.9')
+    assert inspected['files']==provenance['files']==2311
     inspected.update({'accepted':True,'archive':str(file),'provenance':str(provenance_file),'provenanceSha256':BASE_PROVENANCE_SHA,'executedCode':False,'scope':'Actual published old upgrade input, not current runtime-security acceptance'})
     save(root/'baseline-input.json',inspected)
     return inspected['files']

@@ -62,7 +62,7 @@ test("only a separately labelled controlled old published input excludes current
   assert.ok(result.source.includes("proof.oldRuntimeUpgradeInputOnly = true"));
   assert.ok(
     result.source.includes(
-      "6d8f6ab631f527d5cfc1e7c63c5584e3e6b4f89d7c38dc900cd291378193c80a",
+      "80660fcd0a4b134fdaf74fe698d360333d133608c0d9698b23db1b0879700653",
     ),
   );
   assert.ok(result.source.includes("proof.nodeDnsSecurityRegression = false"));

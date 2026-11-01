@@ -251,7 +251,7 @@ async function baselineUpgrade(baseline: any, native: any) {
   const original = JSON.parse(originalMetadata.toString());
   assert.equal(
     original.runtimeOptions.nativeBundleCommit,
-    "ea9c571be0f81f4590453086e6675ff654ab1458",
+    "5bf1403a9d1134c2d0ee4bb0676eede6022f6e78",
   );
   await writeFile(
     path.join(instance, "data/synthetic-upgrade-retained.md"),
@@ -313,11 +313,11 @@ async function baselineUpgrade(baseline: any, native: any) {
   await page.locator("#language").selectOption("en");
   assert.equal(
     await page.locator("#upgrade-source-version").innerText(),
-    "0.5.7",
+    "0.5.9",
   );
   assert.equal(
     await page.locator("#upgrade-target-version").innerText(),
-    "0.5.9",
+    "0.5.10",
   );
   assert.equal(await page.locator("#upgrade-directory").innerText(), instance);
   assert.equal(await page.locator("#setup-form").isVisible(), false);
@@ -469,8 +469,8 @@ async function baselineUpgrade(baseline: any, native: any) {
     receipt: {
       accepted: true,
       actualGuiUpgrade: true,
-      sourceVersion: "0.5.7",
-      targetVersion: "0.5.9",
+      sourceVersion: "0.5.9",
+      targetVersion: "0.5.10",
       controlledBaselineTokensSimulated: true,
       retainedTasks: 1,
       retainedTableReceiptCount: migration.tables.length,
@@ -554,7 +554,7 @@ try {
   assert.equal(baselineInput.accepted, true);
   assert.equal(
     baselineInput.commit,
-    "ea9c571be0f81f4590453086e6675ff654ab1458",
+    "5bf1403a9d1134c2d0ee4bb0676eede6022f6e78",
   );
   stage = "owned_model";
   console.log(JSON.stringify({ phase: stage }));

@@ -439,12 +439,12 @@ async function main() {
   ]);
   await checkpoint();
   stage = "published_baseline_metadata";
-  const release = await api(prefix + "releases/tags/v0.5.7");
-  assert.equal(release.id, 421370510);
-  assert.equal(release.tag_name, "v0.5.7");
+  const release = await api(prefix + "releases/tags/v0.5.9");
+  assert.equal(release.id, 430234591);
+  assert.equal(release.tag_name, "v0.5.9");
   assert.equal(
     release.target_commitish,
-    "ea9c571be0f81f4590453086e6675ff654ab1458",
+    "5bf1403a9d1134c2d0ee4bb0676eede6022f6e78",
   );
   assert.equal(release.draft, false);
   assert.equal(release.prerelease, false);
@@ -452,15 +452,15 @@ async function main() {
   const baselineAssets = [
     {
       name: "Agentic-Company-OS-win32-x64.zip",
-      bytes: 76115232,
+      bytes: 76516414,
       sha256:
-        "6d8f6ab631f527d5cfc1e7c63c5584e3e6b4f89d7c38dc900cd291378193c80a",
+        "80660fcd0a4b134fdaf74fe698d360333d133608c0d9698b23db1b0879700653",
     },
     {
       name: "Agentic-Company-OS-win32-x64.provenance.json",
       bytes: 1002,
       sha256:
-        "89d013141e724c9b11055c92e78a5d883f3c1bee8584911dcca26cf442cbb36c",
+        "dbb49d5ec5ad0e75f8367144f1408ff1abd3913299971f319c2038c5675c3c3a",
     },
   ];
   for (const expected of baselineAssets) {
@@ -472,7 +472,7 @@ async function main() {
       rows[0].browser_download_url,
       "https://github.com/" +
         config.repo +
-        "/releases/download/v0.5.7/" +
+        "/releases/download/v0.5.9/" +
         expected.name,
     );
   }
@@ -482,7 +482,7 @@ async function main() {
     await publicDownload(
       "https://github.com/" +
         config.repo +
-        "/releases/download/v0.5.7/" +
+        "/releases/download/v0.5.9/" +
         asset.name,
       path.join(owned, "baseline-" + asset.name),
       asset.bytes,

@@ -250,10 +250,10 @@ export function deriveControlledBaselineDriver(text) {
   replace(
     "  proof.commit = manifest.commit;",
     [
-      '  assert.equal(manifest.commit, "ea9c571be0f81f4590453086e6675ff654ab1458");',
-      '  assert.equal(manifest.nodeVersion, "24.21.0");',
-      '  assert.equal(manifest.postgresVersion, "17.10");',
-      '  assert.equal(proof.archiveSha256, "6d8f6ab631f527d5cfc1e7c63c5584e3e6b4f89d7c38dc900cd291378193c80a");',
+      '  assert.equal(manifest.commit, "5bf1403a9d1134c2d0ee4bb0676eede6022f6e78");',
+      '  assert.equal(manifest.nodeVersion, "24.22.1");',
+      '  assert.equal(manifest.postgresVersion, "17.11");',
+      '  assert.equal(proof.archiveSha256, "80660fcd0a4b134fdaf74fe698d360333d133608c0d9698b23db1b0879700653");',
       "  proof.commit = manifest.commit;",
       "  proof.oldRuntimeUpgradeInputOnly = true;",
     ].join("\n"),
