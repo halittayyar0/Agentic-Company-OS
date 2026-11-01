@@ -5,6 +5,8 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+## [0.5.10] - 2026-11-01
+
 ### Added
 
 - A seven-language **View saved delivery** link below the project title, with
@@ -12,21 +14,19 @@ All notable changes to Agentic Company OS are documented here. The project uses
   Optional navigation code loads without replacing the focused link; its failure
   leaves the ordinary page link and saved result available. No model call or new
   task is made.
-- An opt-in genuine cold local-model first-task proof on a standard public
-  Windows runner, with exact arithmetic, durable usage, local-only routing,
-  source and model identity, owned cleanup and narrow-screen evidence.
 
 ### Fixed
 
 - Give the title and saved result their full reading width on compact laptop
   screens, retaining the existing two-column workspace on wide screens.
-- Pin TypeDoc's development-only `minimatch` dependency to 11.0.1 to address
-  GHSA-g3hv-75wg-m249 without changing production dependencies.
 
 ## [0.5.9] - 2026-10-23
 
 ### Added
 
+- An opt-in genuine cold local-model first-task proof on a standard public
+  Windows runner, with exact arithmetic, durable usage, local-only routing,
+  source and model identity, owned cleanup and narrow-screen evidence.
 - Optional saved table layouts for task results, with ordered headings,
   completion-time validation and accessible narrow-screen delivery in all seven
   application languages.
@@ -38,6 +38,8 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Fixed
 
+- Pin TypeDoc's development-only `minimatch` dependency to 11.0.1 to address
+  GHSA-g3hv-75wg-m249 without changing production dependencies.
 - After rejecting an optional tool that was not offered, load its already
   authorized schema for the next model request. The rejected call still does not
   execute; permissions, same-response boundaries and schema limits remain intact.
