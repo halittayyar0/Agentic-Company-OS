@@ -16,7 +16,8 @@ test("required Windows gate fails instead of skipping after unsuccessful install
   assert.equal(jobs?.length, 1);
   const job = jobs![0]!;
   assert.match(job, /^    needs: windows-installation$/mu);
-  assert.match(job, /^    if: \$\{\{ always\(\) \}\}$/mu);
+  // Keep the failure guard runnable, but let cancelled workflows release CI.
+  assert.match(job, /^    if: \$\{\{ !cancelled\(\) \}\}$/mu);
   const first = job.split(/^      - name: /mu)[1]!;
   assert.match(first, /^Require complete Windows installation acceptance\n/u);
   assert.doesNotMatch(first, /^        if:/mu);
