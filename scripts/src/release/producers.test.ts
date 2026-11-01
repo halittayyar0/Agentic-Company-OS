@@ -215,10 +215,10 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
     sourceStages++;
     assert.equal(
       stage.source.tests,
-      3102,
-      "reviewed census includes the four runtime-security regression cases",
+      3112,
+      "reviewed census includes ten saved-delivery bundle ownership regressions",
     );
-    assert.equal(stage.source.passed, 3102 - stage.source.skippedCases.length);
+    assert.equal(stage.source.passed, 3112 - stage.source.skippedCases.length);
   }
   assert.equal(sourceStages, 4);
   assert.equal(
@@ -228,7 +228,7 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
         "utf8",
       ),
     ).linux.ui.tests,
-    1465,
+    1488,
   );
 });
 

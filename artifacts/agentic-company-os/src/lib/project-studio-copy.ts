@@ -137,6 +137,7 @@ export type ProjectStudioCopy = {
   model: string;
   unknownModel: string;
   deliverySummary: string;
+  viewSavedDelivery: string;
   deliveryHelp: string;
   reviewDelivery: string;
   cycleDeliveryNote: string;

@@ -51,3 +51,109 @@ test("metadata growth keeps its own limit even when total transfer has spare roo
     measureReaderMetadataGrowth(Buffer.from(current), source, control),
   );
 });
+
+function aliasFixture() {
+  const helper =
+    "function Ml(e,t){const r=Ls(e,t),s=E(r);return O(s,r.queryKey)}";
+  const baselineBody =
+    'import{aY as j}from"./index-aaaaaaaa.js";' +
+    body +
+    'function query(){return j({locale:"en"})}';
+  const current =
+    header(["assets/library-bbbbbbbb.js"]) +
+    baselineBody
+      .replace("aY as j", "aZ as j")
+      .replace("index-aaaaaaaa", "index-bbbbbbbb");
+  const assets = [
+    { fileName: "skills-fixture.js", contents: Buffer.from(current) },
+    {
+      fileName: "index-bbbbbbbb.js",
+      contents: Buffer.from(helper + "export{Ml as aZ};"),
+    },
+  ];
+  const manifest = {
+    schemaVersion: 1,
+    chunks: assets.map((a, i) => ({
+      fileName: "assets/" + a.fileName,
+      sha256: hash(a.contents.toString()),
+      modules: [
+        i === 0
+          ? "artifacts/agentic-company-os/src/pages/skills.tsx"
+          : "lib/api-client-react/src/generated/api.ts",
+      ],
+    })),
+  };
+  const aliasControl = {
+    ...control,
+    bodySha: hash(
+      baselineBody
+        .replace(/-[A-Za-z0-9_-]{8}\.js/gu, "-HASH.js")
+        .replace(/__vite__mapDeps\(\[[\d,]+\]\)/gu, "__vite__mapDeps([])"),
+    ),
+  };
+  const update = (i: number, text: string) => {
+    assets[i].contents = Buffer.from(text);
+    manifest.chunks[i].sha256 = hash(text);
+  };
+  return { assets, manifest, current, aliasControl, update };
+}
+
+test("generated export alias changes require a hash-owned unique frozen API helper and keep actual transfer measurements", () => {
+  const f = aliasFixture();
+  const result = measureReaderMetadataGrowth(
+    Buffer.from(f.current),
+    source,
+    f.aliasControl,
+    { assets: f.assets, manifest: f.manifest },
+  );
+  assert.equal(
+    result.raw,
+    Math.max(0, Buffer.byteLength(f.current) - f.aliasControl.raw),
+  );
+  assert.equal(
+    result.gzip,
+    Math.max(0, gzipSync(f.current, { level: 9 }).length - f.aliasControl.gzip),
+  );
+});
+
+test("export alias normalization cannot hide a different target, helper body, local binding, runtime expression or changed manifest bytes", () => {
+  for (const tamper of [
+    "target",
+    "body",
+    "local",
+    "runtime",
+    "hash",
+  ] as const) {
+    const f = aliasFixture();
+    if (tamper === "target")
+      f.update(
+        1,
+        f.assets[1].contents.toString().replace("Ml as aZ", "Other as aZ"),
+      );
+    if (tamper === "body")
+      f.update(
+        1,
+        f.assets[1].contents
+          .toString()
+          .replace("return O(s,r.queryKey)", "return O(s,[] )"),
+      );
+    if (tamper === "local")
+      f.update(
+        0,
+        f.current.replaceAll("as j", "as k").replace("return j(", "return k("),
+      );
+    if (tamper === "runtime")
+      f.update(0, f.current.replace("return j(", "return other("));
+    if (tamper === "hash") f.assets[1].contents = Buffer.from("changed");
+    assert.throws(
+      () =>
+        measureReaderMetadataGrowth(
+          f.assets[0].contents,
+          source,
+          f.aliasControl,
+          { assets: f.assets, manifest: f.manifest },
+        ),
+      tamper,
+    );
+  }
+});

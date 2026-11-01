@@ -178,6 +178,7 @@ const copy: ProjectStudioCopy = {
   cycleDeliveryNote:
     "Это последний сохранённый результат. Текущий статус регулярной задачи показан выше.",
   deliverySummary: "Итог работы",
+  viewSavedDelivery: "Посмотреть сохранённый результат",
   noDelivery: "Итог работы ещё не записан. После сохранения он появится здесь.",
 };
 export default copy;

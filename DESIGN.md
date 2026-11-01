@@ -349,6 +349,15 @@ Accepted table deliveries use semantic column headers, isolated text cells and
 a focusable horizontal scroll region on small screens. Keep untrusted HTML as
 text and preserve the conservative Markdown path for other results.
 
+Saved-delivery discovery (2026-11-01) reuses the outline touch Button as a native
+fragment link below the project title. Its target uses the shared focus ring and
+app-bar clearance. Below 1280px, title/team and workbench/conversation stack so
+the title and saved result use the available reading width; the workbench comes
+first. The existing `xl` breakpoint is 80rem (1280px at the default browser font);
+larger default text can keep the single-column layout on a desktop viewport.
+The wide-screen team column is bounded at 320px. No color, typography,
+radius, scroll ownership or completion-authority meaning changes with this link.
+
 Operator result review follows the same inbox layout but has a distinct meaning:
 the operator confirms an exact proposed result after a model rejection. Never
 frame this as permission to execute a command, or expose the internal server

@@ -30,7 +30,8 @@ export function ProjectDeliverySummary({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2
           id="project-delivery-heading"
-          className="flex items-center gap-2 text-base font-semibold"
+          tabIndex={-1}
+          className="flex scroll-mt-20 items-center gap-2 rounded-control text-base font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <FileText size={18} className="text-primary" aria-hidden />
           {c.deliverySummary}

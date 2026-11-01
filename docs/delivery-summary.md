@@ -1,7 +1,18 @@
 # Save a delivery summary
 
-Open a project with a saved **Delivery summary**, then choose **Download summary
-(.txt)**. Your browser saves a UTF-8 text file named `project-<id>-summary.txt`.
+The direct shortcut is available in current source builds after v0.5.9. In the
+released v0.5.9 package, scroll to **Delivery summary** to read or download it.
+
+Open a project and choose **View saved delivery** below its title to go directly
+to the existing **Delivery summary**. The link appears only when a nonempty
+summary has been saved. It preserves the current tab and unsent conversation,
+and makes no model request or new task. Back returns to the previous position;
+the result link can also be bookmarked or reloaded. A saved delivery is not a
+claim that a recurring responsibility has finished or that the model accepted
+an operator-confirmed result; review its current status and authority labels.
+
+Choose **Download summary (.txt)** to save a UTF-8 text file named
+`project-<id>-summary.txt`.
 The browser controls the save location and any save prompt.
 
 The file contains the project title, its current status, the saved summary and

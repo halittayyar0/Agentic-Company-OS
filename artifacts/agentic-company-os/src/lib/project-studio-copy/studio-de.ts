@@ -183,6 +183,7 @@ const copy: ProjectStudioCopy = {
   cycleDeliveryNote:
     "Dies ist das zuletzt gespeicherte Ergebnis. Der aktuelle Status der wiederkehrenden Aufgabe steht oben.",
   deliverySummary: "Ergebnisübersicht",
+  viewSavedDelivery: "Gespeichertes Ergebnis ansehen",
   noDelivery:
     "Noch keine Ergebnisübersicht gespeichert. Sie erscheint nach dem Speichern hier.",
 };

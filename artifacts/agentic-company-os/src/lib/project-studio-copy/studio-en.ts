@@ -175,6 +175,7 @@ const copy: ProjectStudioCopy = {
   cycleDeliveryNote:
     "This is the latest saved delivery. The current status of the recurring responsibility is shown above.",
   deliverySummary: "Delivery summary",
+  viewSavedDelivery: "View saved delivery",
   noDelivery:
     "No delivery summary has been recorded yet. It appears here when saved.",
 };
