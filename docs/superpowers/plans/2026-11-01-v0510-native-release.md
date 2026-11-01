@@ -40,7 +40,7 @@
 
 ### Task 2: Accept the exact version source
 
-- [ ] Finish original main acceptance of `7b1181e05a56fe8202f75ace24a8da0f132a6efd` using the original PR #94 head/base/tree/tested-merge identities before submitting this version branch.
+- [ ] Finish original main acceptance of `7b1181e05a56fe8202f75ace24a8da0f132a6efd` using the original PR #94 head/base/tree/tested-merge identities before merging this version branch. Its metadata PR may run independent checks in parallel while main remains unchanged.
 - [ ] Push the version branch and open its PR. Require original protected/platform/package checks and full stock PR verification, then ordinary protected squash and fresh actual-main verification.
 - [ ] Capture the resulting version PR head, base, tested merge, tree and actual main from GitHub; do not substitute previous-version identities or passing reruns.
 
@@ -53,4 +53,4 @@
 
 ## Execution boundary
 
-Version preparation may be committed locally while the preceding actual-main checks run. Submit it only after that main is accepted. Return to the original candidate branch between preparation and submission so the pending operator-host fixture and exact-source verifier remain ready.
+Version preparation and its independent PR checks may run while the preceding actual-main checks finish. Opening that PR must not move main, replace the original main evidence or relax any gate. Merge it only after both the preceding main and exact version candidate are accepted. Return to the original candidate branch between preparation and submission so the pending operator-host fixture and exact-source verifier remain ready.
