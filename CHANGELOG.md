@@ -21,6 +21,8 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 - Give the title and saved result their full reading width on compact laptop
   screens, retaining the existing two-column workspace on wide screens.
+- Native package builds recover bounded connection failures while acquiring the
+  pinned Node archive, preserving the total deadline and checksum checks.
 
 ## [0.5.9] - 2026-10-23
 

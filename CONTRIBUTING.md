@@ -74,6 +74,8 @@ Use a clean development shell for `pnpm test` and `pnpm run verify`. The general
 
 Native PostgreSQL evidence uses separate disposable-database commands in `.github/workflows/ci.yml` and the endurance documentation. Those checks require their own explicit disposable target and must never use an installation database. Direct `node --test` commands bypass the general runner's preflight; use them only from a clean development shell unless a specific test documents and enforces a disposable PostgreSQL target. The standalone `@workspace/db migrate` command remains an installation command and intentionally uses its configured database.
 
+Native archive builds acquire Node.js only from the reviewed target URL in `scripts/native-runtime-download.mjs`. Pre-response connection failures may receive up to three attempts within one 120-second deadline, including transfer time. HTTP refusals, TLS failures, redirects and archive-body/checksum failures are not retried. Keep the official URL, checksum and 150 MiB transfer cap intact; a failed download must not be replaced with an unreviewed mirror or counted as a qualified package. These build-download attempts do not retry application or agent tasks.
+
 ## Commit and pull request quality
 
 Write commit messages in the imperative mood and explain _why_ when the reason is not obvious. A pull request should contain:
