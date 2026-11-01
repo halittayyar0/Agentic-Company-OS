@@ -7,12 +7,19 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Added
 
+- A seven-language **View saved delivery** link below the project title, with
+  keyboard focus, direct links and scoped Back/Forward scroll restoration.
+  Optional navigation code loads without replacing the focused link; its failure
+  leaves the ordinary page link and saved result available. No model call or new
+  task is made.
 - An opt-in genuine cold local-model first-task proof on a standard public
   Windows runner, with exact arithmetic, durable usage, local-only routing,
   source and model identity, owned cleanup and narrow-screen evidence.
 
 ### Fixed
 
+- Give the title and saved result their full reading width on compact laptop
+  screens, retaining the existing two-column workspace on wide screens.
 - Pin TypeDoc's development-only `minimatch` dependency to 11.0.1 to address
   GHSA-g3hv-75wg-m249 without changing production dependencies.
 

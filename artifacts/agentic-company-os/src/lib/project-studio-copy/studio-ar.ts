@@ -169,6 +169,7 @@ const copy: ProjectStudioCopy = {
   cycleDeliveryNote:
     "هذا أحدث تسليم محفوظ. تظهر الحالة الحالية للمهمة المتكررة أعلاه.",
   deliverySummary: "ملخص التسليم",
+  viewSavedDelivery: "عرض التسليم المحفوظ",
   noDelivery: "لم يُسجل ملخص التسليم بعد. يظهر هنا عند حفظه.",
 };
 export default copy;

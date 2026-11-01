@@ -36,6 +36,10 @@ import {
   resolveExclusiveBundleAssets,
 } from "./bundle-source-map";
 import { measureReaderMetadataGrowth } from "./reader-metadata-growth";
+import {
+  measureSavedDeliveryDiscovery,
+  measureSavedDeliveryEntryExport,
+} from "./saved-delivery-discovery-bundle-budget";
 
 const outputDirectory = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -226,23 +230,27 @@ const reusableMeasured = measureReusableWorkBundle(
   sourceDirectory,
 );
 const readerModules = ["artifacts/agentic-company-os/src/pages/skills.tsx"];
-const [skillReader] = resolveExclusiveBundleAssets(
-  codeAssets.map((asset) => ({
-    fileName: asset.fileName,
-    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
-  })),
-  JSON.parse(
-    readFileSync(
-      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
-      "utf8",
-    ),
+const readerBundleAssets = codeAssets.map((asset) => ({
+  fileName: asset.fileName,
+  contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+}));
+const readerBundleManifest = JSON.parse(
+  readFileSync(
+    resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+    "utf8",
   ),
+);
+const [skillReader] = resolveExclusiveBundleAssets(
+  readerBundleAssets,
+  readerBundleManifest,
   readerModules,
   readerModules,
 );
 // Frozen control2db64b5: skills-C5i47NKm.js, SHAe428e465...; source
 // SHA df6ce0ab... is unchanged. Runtime-body SHA also stays identical after
-// replacing only generated asset hashes and preload indexes. Credit bounded
+// replacing generated asset hashes/preload indexes and a manifest-bound,
+// frozen-target export alias (aY -> aZ after the new buttonVariants export).
+// Keep the original source/body hashes. Credit bounded
 // dependency metadata growth, never an existing reader's runtime code.
 const readerMetadata = measureReaderMetadataGrowth(
   skillReader.contents,
@@ -257,6 +265,7 @@ const readerMetadata = measureReaderMetadataGrowth(
     rawCap: 200,
     gzipCap: 75,
   },
+  { assets: readerBundleAssets, manifest: readerBundleManifest },
 );
 const reusableWork = {
   ...reusableMeasured,
@@ -414,6 +423,19 @@ const resultReview = measureTaskResultReviewBundle(
     gzip: resultReviewApi.gzip + resultReviewIntegration.gzip,
   },
 );
+// New style-factory export metadata must not consume the older composer's
+// entry allowance or also earn Keeper credit. Its existing body is frozen.
+const savedDeliveryEntry = measureSavedDeliveryEntryExport(
+  readerBundleAssets,
+  readerBundleManifest,
+  [...draftControls.values()],
+);
+const precedingDeliveryEntry = draftControls.get(savedDeliveryEntry.fileName);
+draftControls.set(savedDeliveryEntry.fileName, {
+  ...savedDeliveryEntry,
+  raw: (precedingDeliveryEntry?.raw ?? 0) + savedDeliveryEntry.raw,
+  gzip: (precedingDeliveryEntry?.gzip ?? 0) + savedDeliveryEntry.gzip,
+});
 const composerScope = resolveComposerDraftScope(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
@@ -589,18 +611,29 @@ const inferenceAccounting = measureInferenceAccountingBundle(
       readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
 );
+const codingRecoveryInputs = codeAssets.map((asset) => ({
+  fileName: asset.fileName,
+  // New accounting JSX must not also receive older project recovery credit.
+  contents:
+    inferenceAccounting.routes.find(
+      (route) => route.fileName === asset.fileName,
+    )?.contents ??
+    reusableWork.routes.find((route) => route.fileName === asset.fileName)
+      ?.contents ??
+    readFileSync(resolve(outputDirectory, asset.fileName)),
+}));
+const savedDeliveryDiscovery = measureSavedDeliveryDiscovery(
+  currentBundleAssets,
+  currentBundleManifest,
+  codingRecoveryInputs,
+  savedDeliveryEntry,
+);
 const codingRecovery = measureCodingRecoveryBundle(
-  codeAssets.map((asset) => ({
-    fileName: asset.fileName,
-    // New accounting JSX must not also receive older project recovery credit.
-    contents:
-      inferenceAccounting.routes.find(
-        (route) => route.fileName === asset.fileName,
-      )?.contents ??
-      reusableWork.routes.find((route) => route.fileName === asset.fileName)
-        ?.contents ??
-      readFileSync(resolve(outputDirectory, asset.fileName)),
-  })),
+  codingRecoveryInputs.map((asset) =>
+    asset.fileName === savedDeliveryDiscovery.route.fileName
+      ? { ...asset, contents: savedDeliveryDiscovery.route.contents }
+      : asset,
+  ),
 );
 const usageReportingGrowth = measureUsageReportingBundleGrowth(
   codeAssets.map((asset) => ({
@@ -1079,19 +1112,29 @@ if (budgetResumeAssets.length !== 1)
 // 8557 raw / 2826 gzip bytes. Its studio sources match released c408141.
 // Scope/root bindings and lazy loading remain in existing generated/route code;
 // bound that integration to 2 KB raw / 900 bytes gzip within the feature cap.
+// Reconstruct only the new saved-delivery label first: this same selected-pack
+// growth belongs to its own source/hash-bound scope and cannot earn credit twice.
 const budgetResumeRawBytes =
   2_000 +
   budgetResumeAssets.reduce((sum, asset) => sum + asset.rawBytes, 0) +
   Math.max(
     0,
-    Math.max(...studioLocaleAssets.map((asset) => asset.rawBytes)) - 8_557,
+    Math.max(
+      ...savedDeliveryDiscovery.labels.controls.map(
+        (asset) => asset.contents.length,
+      ),
+    ) - 8_557,
   );
 const budgetResumeGzipBytes =
   900 +
   budgetResumeAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0) +
   Math.max(
     0,
-    Math.max(...studioLocaleAssets.map((asset) => asset.gzipBytes)) - 2_826,
+    Math.max(
+      ...savedDeliveryDiscovery.labels.controls.map(
+        (asset) => gzipSync(asset.contents, { level: 9 }).length,
+      ),
+    ) - 2_826,
   );
 if (
   budgetResumeRawBytes > budgets.budgetResumeRawBytes ||
@@ -1232,6 +1275,7 @@ const budgetResumeGlobalGzipBytes =
   budgetResumeGzipBytes - Math.min(900, sharedResumeGzipBytes);
 if (
   totalCodeGzipBytes -
+    savedDeliveryDiscovery.gzip -
     deliveryDownload.gzip -
     completionConditions.gzip -
     resultFormat.globalGzip -
@@ -1258,12 +1302,13 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - savedDeliveryDiscovery.gzip - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
 if (
   totalCodeRawBytes -
+    savedDeliveryDiscovery.raw -
     deliveryDownload.raw -
     completionConditions.raw -
     resultFormat.globalRaw -
@@ -1284,12 +1329,13 @@ if (
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `raw code after bounded feature accounting (${totalCodeRawBytes - deliveryDownload.raw - completionConditions.raw - resultFormat.globalRaw - resultReview.globalRaw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - localPreparation.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - savedDeliveryDiscovery.raw - deliveryDownload.raw - completionConditions.raw - resultFormat.globalRaw - resultReview.globalRaw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - localPreparation.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
 if (
   totalCodeGzipBytes -
+    savedDeliveryDiscovery.gzip -
     deliveryDownload.gzip -
     completionConditions.gzip -
     resultFormat.globalGzip -
@@ -1310,7 +1356,7 @@ if (
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `gzip code after bounded feature accounting (${totalCodeGzipBytes - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - savedDeliveryDiscovery.gzip - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -1463,6 +1509,9 @@ console.log(
 );
 console.log(
   `Reusable work: ${reusableWork.raw} raw / ${reusableWork.gzip} gzip selected transfer (32 KB / 11.5 KB cap); ${reusableWork.globalRaw} raw / ${reusableWork.globalGzip} gzip global credit. Sole new-reader preload suffix ${reusableWork.metadataRaw} raw / ${reusableWork.metadataGzip} gzip (180 / 80 cap); unchanged Skills runtime metadata growth ${readerMetadata.raw} raw / ${readerMetadata.gzip} gzip (200 / 75 cap). Older library credit excludes this same growth; no duplicate, vendor, API or CSS credit.`,
+);
+console.log(
+  `Saved delivery discovery: ${savedDeliveryDiscovery.raw} raw / ${savedDeliveryDiscovery.gzip} gzip bytes (3 KB / 1.5 KB independent cap), including ${savedDeliveryDiscovery.logic.raw} raw source-exclusive behavior, ${savedDeliveryDiscovery.route.raw} raw exact stable-anchor/focus wiring, ${savedDeliveryDiscovery.labels.raw} raw selected-label growth, and ${savedDeliveryEntry.raw} raw new style-export metadata. Controls exclude the same bytes from older coding recovery, budget resume, composer and Keeper scopes; no existing factory, vendor, CSS, API or unrelated route credit. Existing ceilings unchanged.`,
 );
 if (violations.length > 0) {
   throw new Error(

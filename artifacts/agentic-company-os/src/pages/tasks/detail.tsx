@@ -25,8 +25,9 @@ import {
 import { HandoffSpine } from "@/components/studio/handoff-spine";
 import { ProjectChatPanel } from "@/components/studio/project-chat-panel";
 import { ProjectWorkbench } from "@/components/studio/project-workbench";
+import type { DeliveryReturnPoint } from "@/components/studio/project-delivery-jump";
 import { BlockedTaskResume } from "@/components/tasks/blocked-task-resume";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { setupMessages } from "@/lib/i18n";
@@ -69,6 +70,9 @@ const ResultFormatChoice = lazy(
 );
 const CompletionRequirementsPanel = lazy(
   () => import("@/components/tasks/completion-requirements-panel"),
+);
+const ProjectDeliveryJump = lazy(
+  () => import("@/components/studio/project-delivery-jump"),
 );
 
 function hasBudgetResumeRecovery(taskId: number) {
@@ -125,6 +129,7 @@ function ProjectDetail({
     Number.isInteger(taskId) && taskId > 0 && taskId <= 2_147_483_647;
   const queryClient = useQueryClient();
   const taskHeadingRef = useRef<HTMLHeadingElement>(null);
+  const deliveryOriginRef = useRef<DeliveryReturnPoint | null>(null);
 
   const {
     data: project,
@@ -270,6 +275,43 @@ function ProjectDetail({
       </div>
     ) : null;
 
+  const deliveryAnchor = (
+    <a
+      id="project-delivery-link"
+      href="#project-delivery-heading"
+      className={buttonVariants({
+        variant: "outline",
+        size: "touch",
+        className: "mt-3",
+      })}
+      onClick={(event) => {
+        if (
+          event.defaultPrevented ||
+          event.button !== 0 ||
+          event.altKey ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.shiftKey ||
+          window.location.hash === "#project-delivery-heading"
+        )
+          return;
+        const scroll: DeliveryReturnPoint["scroll"] = [];
+        for (
+          let node = event.currentTarget.parentElement;
+          node;
+          node = node.parentElement
+        )
+          if (
+            node.scrollHeight > node.clientHeight ||
+            node.scrollWidth > node.clientWidth
+          )
+            scroll.push({ node, top: node.scrollTop, left: node.scrollLeft });
+        deliveryOriginRef.current = { url: window.location.href, scroll };
+      }}
+    >
+      {c.viewSavedDelivery}
+    </a>
+  );
   return (
     <div className="project-studio min-h-full bg-background px-[12px] py-3 [overflow-wrap:anywhere] sm:px-5 sm:py-5">
       <header className="mx-auto max-w-[1680px] overflow-hidden rounded-[28px] border border-border/70 bg-card/90 shadow-[0_28px_80px_-58px_rgba(0,0,0,0.8)]">
@@ -326,7 +368,7 @@ function ProjectDetail({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 px-[16px] py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,auto)] lg:items-end">
+        <div className="grid grid-cols-1 items-end gap-6 px-[16px] py-6 sm:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,320px)]">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span
@@ -366,6 +408,16 @@ function ProjectDetail({
             >
               {project.title}
             </h1>
+            {project.resultSummary?.trim() ? (
+              <>
+                {deliveryAnchor}
+                <ErrorBoundary resetKey={taskId} FallbackComponent={() => null}>
+                  <Suspense fallback={null}>
+                    <ProjectDeliveryJump origin={deliveryOriginRef} />
+                  </Suspense>
+                </ErrorBoundary>
+              </>
+            ) : null}
             <p
               dir="auto"
               className="mt-2 max-w-4xl whitespace-pre-wrap text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6"
@@ -552,8 +604,8 @@ function ProjectDetail({
         </div>
       ) : null}
 
-      <section className="mx-auto mt-4 grid max-w-[1680px] gap-4 lg:grid-cols-[350px_minmax(0,1fr)]">
-        <div className="order-2 min-w-0 [&>section]:rounded-[24px] [&>section]:border-border/70 [&>section]:shadow-[0_24px_70px_-52px_rgba(0,0,0,0.75)] lg:order-1">
+      <section className="mx-auto mt-4 grid max-w-[1680px] gap-4 xl:grid-cols-[350px_minmax(0,1fr)]">
+        <div className="order-2 min-w-0 [&>section]:rounded-[24px] [&>section]:border-border/70 [&>section]:shadow-[0_24px_70px_-52px_rgba(0,0,0,0.75)] xl:order-1">
           {owner ? (
             <ProjectChatPanel
               project={project}
@@ -574,7 +626,7 @@ function ProjectDetail({
             </div>
           )}
         </div>
-        <div className="order-1 min-w-0 lg:order-2">
+        <div className="order-1 min-w-0 xl:order-2">
           <ProjectWorkbench
             c={c}
             project={project}
@@ -599,7 +651,7 @@ function ProjectStudioSkeleton({ c }: { c: ProjectStudioCopy }) {
     <div className="space-y-3 p-4" role="status" aria-label={c.loading}>
       <h1 className="sr-only">{c.loading}</h1>
       <Skeleton className="h-44 w-full rounded-[28px]" />
-      <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
         <Skeleton className="h-[660px] rounded-[24px]" />
         <Skeleton className="h-[660px] rounded-[24px]" />
       </div>

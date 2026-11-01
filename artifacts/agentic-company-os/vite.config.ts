@@ -144,6 +144,14 @@ export default defineConfig({
           // this tiny owner avoids importing the entire project view for it.
           if (moduleId.endsWith("/src/lib/project-studio-copy.ts"))
             return "project-studio-copy";
+          // Keep saved-result navigation separate from older recovery-route
+          // accounting; shared controls remain in their existing owners.
+          if (
+            moduleId.endsWith(
+              "/src/components/studio/project-delivery-jump.tsx",
+            )
+          )
+            return "delivery-nav";
           // Keep the existing shared language-file recovery owner separate.
           if (
             moduleId.endsWith("/src/components/i18n/language-pack-status.tsx")

@@ -262,6 +262,22 @@ Behavioral evidence belongs in project-owned tests. A static premium audit is a 
 
 ## Saved delivery downloads
 
+The project heading offers **View saved delivery** only for a trimmed saved
+result. Its native fragment link targets the existing delivery heading, moves
+keyboard focus with app-bar clearance, and preserves tab/query/history and
+conversation drafts. Restore that explicit fragment after asynchronous task
+loading on reload; ordinary polling or changing summary text must not steal
+focus. Recurring, failed and operator-confirmed saved results keep their existing
+status and authority. The link makes no work write, model call or approval.
+
+Below 1280px, project title/team and workbench/conversation use one reading
+column, with the workbench first. Use the existing 80rem `xl` breakpoint (1280px
+at the default browser font); larger default text may retain one column on a
+desktop viewport. Above that breakpoint the two-column layout remains available;
+cap the team column at 320px so its intrinsic content cannot
+squeeze the title. Keep the same document scroll owner and verify 320/1024px
+navigation, RTL and 200% text as well as the existing wide-screen route audits.
+
 `ProjectDeliverySummary` owns the visible delivery actions; the shared Button
 owns focus, emphasis and touch targets. `project-delivery-export.ts` owns the
 plain-text projection and bounded object-URL cleanup. Use the selected language

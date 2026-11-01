@@ -1,5 +1,6 @@
 import { toolMessage } from "../../artifacts/api-server/src/lib/orchestrator/tool-localization";
 import { loadDeliveryDownloadCopy } from "../../artifacts/agentic-company-os/src/lib/delivery-download-copy";
+import { loadTaskResultReviewCopy } from "../../artifacts/agentic-company-os/src/lib/task-result-review-copy";
 import {
   inspectRoute,
   inspectReadableLabel,
@@ -927,6 +928,182 @@ for (const locale of LOCALES) {
   });
 }
 
+test("compact laptop gives the project title and saved result their full reading width", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1024, height: 844 });
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installProjectStudioMocks(page);
+  await page.route("**/api/tasks/101", (route) =>
+    json(route, {
+      ...project,
+      status: "completed",
+      resultSummary: "Saved result: 73 EUR.",
+    }),
+  );
+  await page.goto("/projects/101");
+  const heading = page.getByRole("heading", { level: 1 });
+  await expect(heading).toHaveText(PROJECT_TITLE);
+  await page.screenshot({
+    path: info.outputPath("compact-laptop-initial.png"),
+  });
+  const titleBox = (await heading.boundingBox())!;
+  const teamBox = (await page
+    .locator(".project-studio > header aside")
+    .boundingBox())!;
+  expect(Math.abs(titleBox.x - teamBox.x)).toBeLessThanOrEqual(2);
+  expect(teamBox.y).toBeGreaterThan(titleBox.y + titleBox.height);
+  const delivery = (await page
+    .locator("#project-delivery-summary")
+    .boundingBox())!;
+  const chat = (await page
+    .getByRole("heading", { name: "Project conversation", exact: true })
+    .boundingBox())!;
+  expect(delivery.y + delivery.height).toBeLessThan(chat.y);
+});
+
+const savedDeliveryJumpLabels = {
+  en: "View saved delivery",
+  tr: "Kayıtlı teslimatı gör",
+  de: "Gespeichertes Ergebnis ansehen",
+  ru: "Посмотреть сохранённый результат",
+  "zh-CN": "查看已保存的交付结果",
+  "zh-TW": "查看已儲存的交付成果",
+  ar: "عرض التسليم المحفوظ",
+} as const;
+
+for (const locale of LOCALES) {
+  for (const width of [320, 1024]) {
+    test(`${locale} ${width}px saved delivery jump preserves scope, history and draft without starting work`, async ({
+      page,
+    }, info) => {
+      await page.setViewportSize({ width, height: 844 });
+      await page.addInitScript((value) => {
+        localStorage.setItem("acos.locale.v1", value);
+        localStorage.setItem(
+          "acos.color-mode.v2",
+          value === "en" || value === "ar" ? "light" : "dark",
+        );
+      }, locale);
+      const harness = await installProjectStudioMocks(page);
+      const c = await loadProjectStudioCopy(locale);
+      const chat = await loadExpertChatCopy(locale);
+      await page.route("**/api/tasks/101", (route) =>
+        json(route, {
+          ...project,
+          status: "completed",
+          resultSummary: "Saved result: 58.5 + 14.5 = 73 EUR.",
+          completionAuthority: locale === "ar" ? "operator" : "agent",
+        }),
+      );
+      await page.goto("/projects/101?view=team&keep=1");
+      const heading = page.getByRole("heading", { level: 1 });
+      await expect(heading).toHaveText(PROJECT_TITLE);
+      const draft = page.getByRole("textbox", {
+        name: chat.instruction,
+        exact: true,
+      });
+      await draft.fill("Keep this unsent project draft 原文 العربية");
+      if (width === 320 && (locale === "en" || locale === "ar"))
+        await page.addStyleTag({
+          content: "html { font-size: 200% !important; }",
+        });
+      await heading.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: info.outputPath("initial-project.png") });
+      const writes: { method: string; path: string }[] = [];
+      page.on("request", (request) => {
+        if (!["GET", "HEAD", "OPTIONS"].includes(request.method()))
+          writes.push({
+            method: request.method(),
+            path: new URL(request.url()).pathname,
+          });
+      });
+      const jump = page.getByRole("link", {
+        name: savedDeliveryJumpLabels[locale],
+        exact: true,
+      });
+      await expect(jump).toBeVisible();
+      expect(
+        await jump.evaluate((el) => el.getBoundingClientRect().height),
+      ).toBeGreaterThanOrEqual(44);
+      await jump.focus();
+      const originTop = await jump.evaluate(
+        (element) => element.getBoundingClientRect().top,
+      );
+      await page.keyboard.press("Enter");
+      const resultHeading = page.getByRole("heading", {
+        name: c.deliverySummary,
+        exact: true,
+      });
+      await expect(resultHeading).toBeFocused();
+      await expect(resultHeading).toBeInViewport();
+      expect(
+        await resultHeading.evaluate((el) => el.getBoundingClientRect().top),
+      ).toBeGreaterThanOrEqual(64);
+      await expect(page).toHaveURL(
+        /\/projects\/101\?view=team&keep=1#project-delivery-heading$/,
+      );
+      await expect(
+        page.getByRole("tab", { name: c.teamTab, exact: true }),
+      ).toHaveAttribute("aria-selected", "true");
+      await expect(draft).toHaveValue(
+        "Keep this unsent project draft 原文 العربية",
+      );
+      await expect(page.locator("#project-delivery-summary")).toContainText(
+        "Saved result: 58.5 + 14.5 = 73 EUR.",
+      );
+      if (locale === "ar") {
+        const review = await loadTaskResultReviewCopy(locale);
+        await expect(page.locator("#project-delivery-summary")).toContainText(
+          review.provenance,
+        );
+      }
+      await page.screenshot({
+        path: info.outputPath("saved-delivery-jump.png"),
+      });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.goBack();
+      await expect(page).toHaveURL(/\/projects\/101\?view=team&keep=1$/);
+      await expect(jump).toBeInViewport();
+      await expect(jump).toBeFocused();
+      await expect
+        .poll(async () =>
+          Math.abs(
+            (await jump.evaluate(
+              (element) => element.getBoundingClientRect().top,
+            )) - originTop,
+          ),
+        )
+        .toBeLessThanOrEqual(2);
+      await expect(draft).toHaveValue(
+        "Keep this unsent project draft 原文 العربية",
+      );
+      await page.goForward();
+      await expect(page).toHaveURL(/#project-delivery-heading$/);
+      await expect(resultHeading).toBeInViewport();
+      expect(writes).toEqual([]);
+      await page.reload();
+      await expect(resultHeading).toBeInViewport();
+      await expect(draft).toHaveValue(
+        "Keep this unsent project draft 原文 العربية",
+      );
+      // Reload performs the existing language bootstrap PUT. Navigation itself
+      // must make no write, and no work mutation is allowed after reload either.
+      expect(
+        writes.filter(
+          (row) => row.method !== "PUT" || row.path !== "/api/settings/locale",
+        ),
+      ).toEqual([]);
+      expect(harness.messagePosts).toEqual([]);
+      expect([...harness.unexpected]).toEqual([]);
+    });
+  }
+}
+
 for (const failure of ["object-url", "click"] as const) {
   test(`delivery download ${failure} failure preserves the report and supports an explicit retry`, async ({
     page,
@@ -1007,6 +1184,199 @@ for (const failure of ["object-url", "click"] as const) {
   });
 }
 
+test("slow delivery navigation code never replaces the focused native result link", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installProjectStudioMocks(page);
+  await page.route("**/api/tasks/101", (route) =>
+    json(route, {
+      ...project,
+      status: "completed",
+      resultSummary: "The saved report is already readable.",
+    }),
+  );
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\/assets\/delivery-nav-[^/]+\.js$/, async (route) => {
+    await gate;
+    await route.continue();
+  });
+  try {
+    await page.goto("/projects/101", { waitUntil: "domcontentloaded" });
+    const jump = page.getByRole("link", {
+      name: savedDeliveryJumpLabels.en,
+      exact: true,
+    });
+    await expect(jump).toBeVisible();
+    await jump.focus();
+    await expect(jump).toBeFocused();
+    const response = page.waitForResponse(
+      (value) =>
+        /\/assets\/delivery-nav-[^/]+\.js$/.test(value.url()) &&
+        value.status() === 200,
+    );
+    release();
+    await response;
+    await page.waitForLoadState("networkidle");
+    await expect(jump).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#project-delivery-heading")).toBeFocused();
+  } finally {
+    release();
+  }
+});
+
+for (const arriveAfterBack of [false, true]) {
+  test(`early saved-delivery click keeps its return point when code arrives ${arriveAfterBack ? "after" : "before"} Back`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1024, height: 844 });
+    await page.addInitScript(() =>
+      localStorage.setItem("acos.locale.v1", "en"),
+    );
+    await installProjectStudioMocks(page);
+    await page.route("**/api/tasks/101", (route) =>
+      json(route, {
+        ...project,
+        status: "completed",
+        resultSummary: "Saved before the shortcut code loaded.",
+      }),
+    );
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(/\/assets\/delivery-nav-[^/]+\.js$/, async (route) => {
+      await gate;
+      await route.continue();
+    });
+    try {
+      await page.goto("/projects/101?view=team&keep=1", {
+        waitUntil: "domcontentloaded",
+      });
+      const jump = page.getByRole("link", {
+        name: savedDeliveryJumpLabels.en,
+        exact: true,
+      });
+      await jump.focus();
+      const top = await jump.evaluate(
+        (element) => element.getBoundingClientRect().top,
+      );
+      await page.keyboard.press("Enter");
+      await expect(page.locator("#project-delivery-heading")).toBeFocused();
+      if (arriveAfterBack) await page.goBack();
+      const response = page.waitForResponse(
+        (value) =>
+          /\/assets\/delivery-nav-[^/]+\.js$/.test(value.url()) &&
+          value.status() === 200,
+      );
+      release();
+      await response;
+      await page.waitForLoadState("networkidle");
+      if (!arriveAfterBack) await page.goBack();
+      await expect(page).toHaveURL(/\/projects\/101\?view=team&keep=1$/);
+      await expect(jump).toBeFocused();
+      await expect(jump).toBeInViewport();
+      await expect
+        .poll(async () =>
+          Math.abs(
+            (await jump.evaluate(
+              (element) => element.getBoundingClientRect().top,
+            )) - top,
+          ),
+        )
+        .toBeLessThanOrEqual(2);
+    } finally {
+      release();
+    }
+  });
+}
+
+test("unavailable navigation enhancement leaves the native saved-result link and report usable", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  const harness = await installProjectStudioMocks(page);
+  await page.route("**/api/tasks/101", (route) =>
+    json(route, {
+      ...project,
+      status: "completed",
+      resultSummary: "The saved report survives optional code failure.",
+    }),
+  );
+  let blocked = 0;
+  await page.route(/\/assets\/delivery-nav-[^/]+\.js$/, (route) => {
+    blocked++;
+    return route.abort("failed");
+  });
+  await page.goto("/projects/101");
+  await expect.poll(() => blocked).toBeGreaterThan(0);
+  const jump = page.getByRole("link", {
+    name: savedDeliveryJumpLabels.en,
+    exact: true,
+  });
+  await jump.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#project-delivery-heading")).toBeFocused();
+  await expect(page.locator("#project-delivery-summary")).toContainText(
+    "The saved report survives optional code failure.",
+  );
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    PROJECT_TITLE,
+  );
+  expect(harness.messagePosts).toEqual([]);
+  expect([...harness.unexpected]).toEqual([]);
+});
+
+test("late result-navigation startup does not take focus from a newer conversation draft", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installProjectStudioMocks(page);
+  await page.route("**/api/tasks/101", (route) =>
+    json(route, {
+      ...project,
+      status: "completed",
+      resultSummary: "The already saved result.",
+    }),
+  );
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\/assets\/delivery-nav-[^/]+\.js$/, async (route) => {
+    await gate;
+    await route.continue();
+  });
+  try {
+    await page.goto("/projects/101", { waitUntil: "domcontentloaded" });
+    const chat = await loadExpertChatCopy("en");
+    await page
+      .getByRole("link", { name: savedDeliveryJumpLabels.en, exact: true })
+      .click();
+    const draft = page.getByRole("textbox", {
+      name: chat.instruction,
+      exact: true,
+    });
+    await draft.fill("Do not move my focus while I write.");
+    const response = page.waitForResponse(
+      (value) =>
+        /\/assets\/delivery-nav-[^/]+\.js$/.test(value.url()) &&
+        value.status() === 200,
+    );
+    release();
+    await response;
+    await page.waitForLoadState("networkidle");
+    await expect(draft).toBeFocused();
+    await expect(draft).toHaveValue("Do not move my focus while I write.");
+  } finally {
+    release();
+  }
+});
+
 test("completed work without a summary does not invent a delivery", async ({
   page,
 }) => {
@@ -1025,6 +1395,129 @@ test("completed work without a summary does not invent a delivery", async ({
       .locator("#project-delivery-summary")
       .getByRole("button", { name: c.downloadDelivery, exact: true }),
   ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: savedDeliveryJumpLabels.en, exact: true }),
+  ).toHaveCount(0);
+});
+
+test("an unsaved project has no delivery jump even with a saved-result fragment", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installProjectStudioMocks(page);
+  await page.goto("/projects/101#project-delivery-heading");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    PROJECT_TITLE,
+  );
+  await expect(
+    page.getByRole("link", { name: savedDeliveryJumpLabels.en, exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator("#project-delivery-summary")).toHaveCount(0);
+});
+
+test("saved delivery polling and stale refresh preserve the reader's focus and draft", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  const harness = await installProjectStudioMocks(page);
+  const c = await loadProjectStudioCopy("en");
+  const chat = await loadExpertChatCopy("en");
+  let summary = "Saved output before refresh.";
+  let failed = false;
+  await page.route("**/api/tasks/101", (route) =>
+    route.fulfill({
+      status: failed ? 503 : 200,
+      json: failed
+        ? { error: "private-refresh-failure" }
+        : { ...project, status: "failed", resultSummary: summary },
+    }),
+  );
+  await page.goto("/projects/101#project-delivery-heading");
+  const heading = page.getByRole("heading", {
+    name: c.deliverySummary,
+    exact: true,
+  });
+  await expect(heading).toBeFocused();
+  const draft = page.getByRole("textbox", {
+    name: chat.instruction,
+    exact: true,
+  });
+  await draft.fill("Keep reading and this unsent text.");
+  summary = "Newly observed saved output.";
+  await expect(page.locator("#project-delivery-summary")).toContainText(
+    summary,
+    { timeout: 12000 },
+  );
+  await expect(draft).toBeFocused();
+  await expect(draft).toHaveValue("Keep reading and this unsent text.");
+  failed = true;
+  await expect(page.getByText(c.stale, { exact: true })).toBeVisible({
+    timeout: 15000,
+  });
+  const writes: string[] = [];
+  page.on("request", (request) => {
+    if (!["GET", "HEAD", "OPTIONS"].includes(request.method()))
+      writes.push(request.url());
+  });
+  await page
+    .getByRole("link", { name: savedDeliveryJumpLabels.en, exact: true })
+    .click();
+  await expect(heading).toBeFocused();
+  await expect(page.locator("#project-delivery-summary")).toContainText(
+    summary,
+  );
+  await expect(page.getByText(c.stale, { exact: true })).toBeVisible();
+  await expect(page.getByText("private-refresh-failure")).toHaveCount(0);
+  await expect(draft).toHaveValue("Keep reading and this unsent text.");
+  expect(writes).toEqual([]);
+  expect(harness.messagePosts).toEqual([]);
+  expect([...harness.unexpected]).toEqual([]);
+});
+
+test("leaving a saved delivery for a child project cannot reuse its result or fragment return point", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  const harness = await installProjectStudioMocks(page);
+  await page.route("**/api/tasks/101", (route) =>
+    json(route, {
+      ...project,
+      status: "completed",
+      resultSummary: "Only project 101 owns this saved result.",
+    }),
+  );
+  await page.route("**/api/tasks/102", (route) =>
+    json(route, { ...subtask, ownerAgentId: 1 }),
+  );
+  for (const resource of ["members", "subtasks"])
+    await page.route(`**/api/tasks/102/${resource}*`, (route) =>
+      json(route, []),
+    );
+  await page.goto("/projects/101?view=team");
+  await page
+    .getByRole("link", { name: savedDeliveryJumpLabels.en, exact: true })
+    .click();
+  await expect(page.locator("#project-delivery-heading")).toBeFocused();
+  await page.locator('#project-workbench-team a[href="/projects/102"]').click();
+  await expect(page).toHaveURL(/\/projects\/102$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    subtask.title,
+  );
+  await expect(
+    page.getByRole("link", { name: savedDeliveryJumpLabels.en, exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator("#project-delivery-summary")).toHaveCount(0);
+  await expect(
+    page.getByText("Only project 101 owns this saved result.", { exact: true }),
+  ).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(
+    /\/projects\/101\?view=team#project-delivery-heading$/,
+  );
+  await expect(page.locator("#project-delivery-heading")).toBeFocused();
+  expect(harness.messagePosts).toEqual([]);
+  expect([...harness.unexpected]).toEqual([]);
 });
 
 test("recurring work identifies the saved delivery without claiming the responsibility is finished", async ({
@@ -1047,6 +1540,12 @@ test("recurring work identifies the saved delivery without claiming the responsi
   await expect(delivery).toContainText(
     "This is the latest saved delivery. The current status of the recurring responsibility is shown above.",
   );
+  await page
+    .getByRole("link", { name: savedDeliveryJumpLabels.en, exact: true })
+    .click();
+  await expect(
+    delivery.getByRole("heading", { name: "Delivery summary", exact: true }),
+  ).toBeFocused();
   await expect(delivery).toContainText(
     "Last cycle report: two source changes found.",
   );
@@ -4424,6 +4923,22 @@ for (const variant of routeAuditMatrix) {
     await expect(
       page.getByRole("heading", { name: project.title, exact: true }),
     ).toBeVisible();
+    if (screen === "desktop") {
+      const team = page.locator(".project-studio > header aside");
+      await expect(team).toBeVisible();
+      const wide = await page.evaluate(
+        () => matchMedia("(min-width: 80rem)").matches,
+      );
+      const columns = await team.evaluate(
+        (element) =>
+          getComputedStyle(element.parentElement!).gridTemplateColumns.split(
+            " ",
+          ).length,
+      );
+      expect(columns).toBe(wide ? 2 : 1);
+      if (wide)
+        expect((await team.boundingBox())!.width).toBeLessThanOrEqual(320);
+    }
     const tabs = page.getByRole("tablist", { name: c.tabs });
     for (const [key, label] of [
       ["workspace", c.workspace],

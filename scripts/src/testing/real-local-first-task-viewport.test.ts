@@ -14,8 +14,8 @@ test("genuine first-task capture requires the actual delivery result inside the 
     });
     await page.setContent(`
       <style>html,body{margin:0;height:100%;overflow:hidden}main{height:844px;overflow:auto}section{padding:24px}p{margin:0}</style>
-      <main><h1>Brief: report the result 73</h1><div style="height:1600px"></div>
-        <section id="project-delivery-summary" aria-label="Delivery summary"><p>Calculated 58.5 + 14.5 = 73 using the calculator.</p></section>
+      <main><h1>Brief: report the result 73</h1><a href="#project-delivery-heading">View saved delivery</a><div style="height:1600px"></div>
+        <section id="project-delivery-summary" aria-label="Delivery summary"><h2 id="project-delivery-heading" tabindex="-1">Delivery summary</h2><p>Calculated 58.5 + 14.5 = 73 using the calculator.</p></section>
         <div style="height:1200px"></div></main>`);
     const delivery = page.locator("#project-delivery-summary");
     assert.ok((await delivery.boundingBox())!.y > 844);
@@ -24,6 +24,11 @@ test("genuine first-task capture requires the actual delivery result inside the 
     assert.equal(capture.overflow, false);
     assert.equal(capture.image.readUInt32BE(16), 1024);
     assert.equal(capture.image.readUInt32BE(20), 844);
+    assert.equal(
+      await page.evaluate<string>("document.activeElement?.id"),
+      "project-delivery-heading",
+    );
+    assert.ok(page.url().endsWith("#project-delivery-heading"));
     const bounds = (await delivery.getByText(/73/u).boundingBox())!;
     assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= 844);
 

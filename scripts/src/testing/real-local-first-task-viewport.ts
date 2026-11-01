@@ -12,6 +12,18 @@ export async function captureRealTaskDelivery(
     Number.isSafeInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 15000,
   );
   await page.setViewportSize({ width, height: 844 });
+  // Exercise the same saved-result discovery used by a person on the actual
+  // native application. The English first-task fixture owns this language.
+  const jump = page.getByRole("link", {
+    name: "View saved delivery",
+    exact: true,
+  });
+  await expect(jump).toBeVisible({ timeout: timeoutMs });
+  await jump.focus({ timeout: timeoutMs });
+  await jump.press("Enter", { timeout: timeoutMs });
+  await expect(page.locator("#project-delivery-heading")).toBeFocused({
+    timeout: timeoutMs,
+  });
   const delivery = page.locator("#project-delivery-summary");
   const result = delivery.getByText(/\b73\b/u).first();
   await expect(result).toBeVisible({ timeout: timeoutMs });

@@ -152,6 +152,7 @@ const copy: ProjectStudioCopy = {
   reviewDelivery: "查看證據",
   cycleDeliveryNote: "這是最近儲存的交付結果。定期任務的目前狀態顯示於上方。",
   deliverySummary: "交付摘要",
+  viewSavedDelivery: "查看已儲存的交付成果",
   noDelivery: "尚未記錄交付摘要。儲存後會顯示於此。",
 };
 export default copy;

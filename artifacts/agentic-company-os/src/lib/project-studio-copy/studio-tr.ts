@@ -175,6 +175,7 @@ const copy: ProjectStudioCopy = {
   cycleDeliveryNote:
     "Bu, kaydedilmiş son teslimatı gösterir. Düzenli sorumluluğun güncel durumu yukarıda gösterilir.",
   deliverySummary: "Teslim özeti",
+  viewSavedDelivery: "Kayıtlı teslimatı gör",
   noDelivery: "Henüz kayıtlı teslim özeti yok. Kaydedildiğinde burada görünür.",
 };
 export default copy;
