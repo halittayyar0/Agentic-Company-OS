@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import {
   beginWindowsStorageDiagnostics,
   formatWindowsStorageDiagnostics,
-} from "./windows-private-storage-diagnostics";
+} from "./owner-private-storage";
 
 function fixture() {
   let clock = 0;
