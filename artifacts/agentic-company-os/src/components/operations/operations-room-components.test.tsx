@@ -116,6 +116,30 @@ test("truth badge never renders disconnected transport as live", () => {
   assert.match(html, /text-rose/);
 });
 
+test("capacity badge stays amber and wrapping while a stale snapshot keeps priority", () => {
+  const capacityTruth = {
+    ...truth,
+    backendState: "degraded" as const,
+    transportState: "live" as const,
+    healthyWorkerCount: 1,
+    minimumHealthyWorkerCount: 2,
+    reasons: ["worker_capacity_below_minimum"],
+  };
+  const html = renderToStaticMarkup(
+    <RuntimeTruthBadge truth={capacityTruth} />,
+  );
+  assert.match(html, /Kısıtlı kapasite · 1 hazır, 2 gerekli/);
+  assert.match(html, /text-amber/);
+  assert.match(html, /min-h-11 max-w-full/);
+  assert.match(html, /overflow-wrap:anywhere/);
+  assert.doesNotMatch(html, /text-emerald/);
+  const stale = renderToStaticMarkup(
+    <RuntimeTruthBadge truth={capacityTruth} snapshotStale />,
+  );
+  assert.match(stale, new RegExp(copy.snapshotOutdated));
+  assert.doesNotMatch(stale, /1 hazır, 2 gerekli/);
+});
+
 test("24-hour ring exposes persisted, degraded, incident and unknown minutes", () => {
   const html = renderToStaticMarkup(<TwentyFourHourRing ring={ring} />);
   assert.match(html, /24 saatlik sağlık penceresi/);

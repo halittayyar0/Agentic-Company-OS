@@ -284,6 +284,10 @@ Configure provider-side spend limits and alerts. The application has the per-tas
 ## 4. Configure secure defaults
 
 A production private baseline uses one API process and two worker processes.
+
+The managed native and Compose profiles declare that two healthy scheduler workers are required. If one stops or its heartbeat expires, Operations shows reduced capacity and the ready/required count until a replacement becomes healthy. Remaining workers continue processing under the same leases and permissions. Historical stale worker rows stay visible without keeping a recovered fleet degraded.
+
+`RUNTIME_MIN_HEALTHY_WORKERS` accepts an integer from 1 to 64. Standalone/combined development defaults to 1; Compose defaults to 2, and managed native installation supplies 2. In a deliberately custom one-worker deployment, set it to 1 consistently for API and workers. This health policy does not create, stop, scale or authorize workers, and does not change model or spending limits. Existing historical health samples retain the state observed when they were recorded; changing the policy does not rewrite them.
 Start with this API baseline; copy only the database,
 runtime-control, model, limit, and isolation values to workers, not the
 operator token or public-host settings:
@@ -337,6 +341,7 @@ DATABASE_URL=postgresql://...
 TRUSTED_HOSTS=company-os.example.com
 CORS_ALLOWED_ORIGINS=https://company-os.example.com
 RUNTIME_ROLE=api
+RUNTIME_MIN_HEALTHY_WORKERS=2
 SCHEDULER_ENABLED=false
 RUNTIME_CONTROL_KEY=<different-at-least-32-random-characters>
 AGENT_BROWSER_ALLOW_PRIVATE_NETWORKS=false
@@ -349,6 +354,7 @@ Each worker uses the same `DATABASE_URL` and `RUNTIME_CONTROL_KEY`, plus:
 NODE_ENV=production
 HOST=127.0.0.1
 RUNTIME_ROLE=worker
+RUNTIME_MIN_HEALTHY_WORKERS=2
 SCHEDULER_ENABLED=true
 RUNTIME_CONTROL_API_URL=https://private-control.example.com/api/internal/runtime-control
 ALLOW_REMOTE_ACCESS=false
@@ -394,7 +400,7 @@ PostgreSQL, an operator token, and a runtime-control key):
 
 ```bash
 PORT=5000 HOST=127.0.0.1 NODE_ENV=production \
-RUNTIME_ROLE=api SCHEDULER_ENABLED=false \
+RUNTIME_ROLE=api SCHEDULER_ENABLED=false RUNTIME_MIN_HEALTHY_WORKERS=2 \
 DATABASE_URL='postgresql://...' OPERATOR_AUTH_TOKEN='...' \
 RUNTIME_CONTROL_KEY='independently-generated-32-plus-character-secret' \
 pnpm --filter @workspace/api-server run start
@@ -405,7 +411,7 @@ and control key. They deliberately receive no operator token and expose no
 HTTP listener:
 
 ```bash
-NODE_ENV=production RUNTIME_ROLE=worker SCHEDULER_ENABLED=true \
+NODE_ENV=production RUNTIME_ROLE=worker SCHEDULER_ENABLED=true RUNTIME_MIN_HEALTHY_WORKERS=2 \
 DATABASE_URL='postgresql://...' \
 RUNTIME_CONTROL_KEY='independently-generated-32-plus-character-secret' \
 RUNTIME_CONTROL_API_URL='http://127.0.0.1:5000/api/internal/runtime-control' \

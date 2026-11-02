@@ -17,6 +17,12 @@ export interface OperationsRuntimeTruth {
   emergencyStopEnabled: boolean;
   /** @minimum 0 */
   healthyWorkerCount: number;
+  /**
+     * Required healthy scheduler capacity configured by the installation; this policy never starts additional workers.
+     * @minimum 1
+     * @maximum 64
+     */
+  minimumHealthyWorkerCount: number;
   /** @minimum 0 */
   staleWorkerCount: number;
   /**

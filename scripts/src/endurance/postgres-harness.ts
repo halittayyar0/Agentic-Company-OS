@@ -343,6 +343,7 @@ export class PostgresEnduranceHarness {
     this.environment = {
       ...process.env,
       ...options.environment,
+      RUNTIME_MIN_HEALTHY_WORKERS: "2",
       ENDURANCE_RUN_ID: this.runId,
       COMPOSE_PROJECT_NAME: this.projectName,
       ENDURANCE_RUNTIME_IMAGE: this.runtimeImage,

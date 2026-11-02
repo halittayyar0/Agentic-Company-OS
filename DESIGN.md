@@ -307,6 +307,14 @@ inherited text colors during theme changes.
 
 Transport state (`disabled`, `connecting`, `live`, `stale`, `disconnected`) is displayed separately from backend operational state. The last known good snapshot remains visible with its age when transport degrades.
 
+When the backend reports a required worker capacity deficit, the existing amber
+runtime badge names ready and required workers using localized numbers. Cached
+snapshots without a known minimum keep the generic degraded label. Snapshot and
+transport freshness retain their existing priority; the UI never derives a live
+state from worker counts. Arabic names each count in prose rather than a ratio
+whose order can reverse in RTL. The badge keeps its 44px minimum height and wraps
+within the available width.
+
 ## Accessibility baseline
 
 - WCAG 2.2 AA contrast for text, controls, focus, and meaningful status.

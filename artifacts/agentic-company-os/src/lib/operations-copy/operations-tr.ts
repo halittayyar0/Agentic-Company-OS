@@ -177,6 +177,7 @@ const copy = {
   unknownState: "Bilinmeyen kayıt: {value}",
   live: "Canlı · {count} worker",
   degradedTruth: "Kısıtlı çalışma · müdahale gerekebilir",
+  capacityDeficitTruth: "Kısıtlı kapasite · {ready} hazır, {required} gerekli",
   staleTruth: "Worker sinyali gecikiyor",
   offlineTruth: "Çalışan worker yok",
   emergencyTruth: "Acil durdurma etkin",

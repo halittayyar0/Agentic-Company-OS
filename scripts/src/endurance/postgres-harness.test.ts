@@ -35,6 +35,7 @@ test("compose harness owns one exact run-scoped project and worker target", asyn
   const fake = recordingExecutor();
   const harness = new PostgresEnduranceHarness({
     runId: "run-240901",
+    environment: { RUNTIME_MIN_HEALTHY_WORKERS: "1" },
     resolveSourceIdentity: resolveTestSourceIdentity,
     workspaceRoot: "D:/workspace",
     execute: fake.execute,
@@ -50,6 +51,7 @@ test("compose harness owns one exact run-scoped project and worker target", asyn
   for (const call of fake.calls) {
     assert.equal(call.command, "docker");
     assert.equal(call.environment.ENDURANCE_RUN_ID, "run-240901");
+    assert.equal(call.environment.RUNTIME_MIN_HEALTHY_WORKERS, "2");
     assert.equal(call.cwd, path.resolve("D:/workspace"));
     assert.deepEqual(call.args.slice(0, 4), [
       "compose",

@@ -166,6 +166,7 @@ const copy = {
   unknownState: "未知记录：{value}",
   live: "实时 · 工作进程：{count}",
   degradedTruth: "运行降级 · 可能需要介入",
+  capacityDeficitTruth: "容量不足 · 就绪 {ready}，需要 {required}",
   staleTruth: "工作进程信号延迟",
   offlineTruth: "没有运行中的工作进程",
   emergencyTruth: "紧急停止已启用",

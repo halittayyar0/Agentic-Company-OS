@@ -12,6 +12,7 @@ const DEFAULT_CONFIG = {
   taskHeartbeatMs: 15_000,
   runtimeHeartbeatMs: 5_000,
   workerStaleAfterMs: 15_000,
+  minimumHealthyWorkerCount: 1,
   recoveryTargetMs: 120_000,
   opsSampleMs: 60_000,
   opsSampleRetentionDays: 30,
@@ -36,6 +37,30 @@ test("accepts every supported runtime role", () => {
     assert.equal(
       readRuntimeOperationsConfig({ RUNTIME_ROLE: configured }).role,
       expected,
+    );
+  }
+});
+
+test("runtime capacity is explicit while a single-worker target stays the default", () => {
+  assert.equal(readRuntimeOperationsConfig({}).minimumHealthyWorkerCount, 1);
+  for (const role of ["api", "worker", "combined"]) {
+    assert.equal(
+      readRuntimeOperationsConfig({
+        RUNTIME_ROLE: role,
+        RUNTIME_MIN_HEALTHY_WORKERS: "2",
+      }).minimumHealthyWorkerCount,
+      2,
+    );
+  }
+  assert.equal(
+    readRuntimeOperationsConfig({ RUNTIME_MIN_HEALTHY_WORKERS: "" })
+      .minimumHealthyWorkerCount,
+    1,
+  );
+  for (const value of ["0", "65", "1.5", "NaN"]) {
+    assert.throws(
+      () => readRuntimeOperationsConfig({ RUNTIME_MIN_HEALTHY_WORKERS: value }),
+      /RUNTIME_MIN_HEALTHY_WORKERS/,
     );
   }
 });

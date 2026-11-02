@@ -32,6 +32,115 @@ async function noHorizontalOverflow(page: Page) {
     .toBeLessThanOrEqual(1);
 }
 for (const locale of operationLocales) {
+  for (const width of [320, 1024]) {
+    test(`operations capacity ${locale} ${width}: required capacity, recovery and legacy truth`, async ({
+      page,
+    }, testInfo) => {
+      const c = await loadOperationsCopy(locale);
+      const p = operationsPresentation(c, locale);
+      await page.setViewportSize({ width, height: 850 });
+      await page.addInitScript(
+        (locale) => localStorage.setItem("acos.locale.v1", locale),
+        locale,
+      );
+      let currentRuntime = {
+        ...overview.runtime,
+        state: "degraded",
+        reasons: ["worker_capacity_below_minimum"],
+        healthyWorkerCount: 1,
+        minimumHealthyWorkerCount: 2 as number | undefined,
+        staleWorkerCount: 1,
+      };
+      const unexpected = await installOperationsMocks(page, {
+        overviewSnapshot: () => ({ ...overview, runtime: currentRuntime }),
+        projectSnapshot: () => ({
+          ...projectOperations,
+          runtime: currentRuntime,
+        }),
+      });
+      const capacityLabel = {
+        tr: "Kısıtlı kapasite · 1 hazır, 2 gerekli",
+        en: "Reduced capacity · 1 ready, 2 required",
+        de: "Reduzierte Kapazität · 1 bereit, 2 erforderlich",
+        ru: "Сниженная мощность · готово: 1, требуется: 2",
+        "zh-CN": "容量不足 · 就绪 1，需要 2",
+        "zh-TW": "容量不足 · 就緒 1，需要 2",
+        ar: `سعة محدودة · الجاهز ${p.number.format(1)} والمطلوب ${p.number.format(2)}`,
+      }[locale];
+      await page.goto("/operations");
+      const badge = page.locator('[role="status"][data-runtime]');
+      await expect(badge).toHaveText(capacityLabel);
+      await expect(badge).toHaveClass(/text-amber/);
+      await expect(badge).not.toHaveClass(/text-emerald/);
+      await expect(page.locator("html")).toHaveAttribute(
+        "dir",
+        locale === "ar" ? "rtl" : "ltr",
+      );
+      await noHorizontalOverflow(page);
+      const box = await badge.boundingBox();
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+      expect(box?.x).toBeGreaterThanOrEqual(0);
+      expect((box?.x ?? width) + (box?.width ?? width)).toBeLessThanOrEqual(
+        width,
+      );
+      await page.goto("/projects/101/operations");
+      await expect(badge).toHaveText(capacityLabel);
+      await noHorizontalOverflow(page);
+      if (locale === "en" || locale === "ar") {
+        await page.screenshot({
+          path: testInfo.outputPath(`capacity-${locale}-${width}.png`),
+          fullPage: true,
+        });
+        await badge.screenshot({
+          path: testInfo.outputPath(`capacity-badge-${locale}-${width}.png`),
+        });
+      }
+      const refresh = page.getByRole("button", {
+        name: c.refresh,
+        exact: true,
+      });
+      currentRuntime = {
+        ...currentRuntime,
+        state: "live",
+        reasons: [],
+        healthyWorkerCount: 2,
+      };
+      await refresh.click();
+      await expect(badge).toHaveText(
+        p.t("live", { count: p.number.format(2) }),
+      );
+      await expect(badge).toHaveClass(/text-emerald/);
+      currentRuntime = {
+        ...currentRuntime,
+        healthyWorkerCount: 1,
+        minimumHealthyWorkerCount: 1,
+      };
+      await refresh.click();
+      await expect(badge).toHaveText(
+        p.t("live", { count: p.number.format(1) }),
+      );
+      currentRuntime = {
+        ...currentRuntime,
+        state: "degraded",
+        reasons: ["worker_capacity_below_minimum"],
+        minimumHealthyWorkerCount: undefined,
+      };
+      await refresh.click();
+      await expect(badge).toHaveText(c.degradedTruth);
+      currentRuntime = {
+        ...currentRuntime,
+        state: "emergency_stopped",
+        minimumHealthyWorkerCount: 2,
+      };
+      await refresh.click();
+      await expect(badge).toHaveText(c.emergencyTruth);
+      await expect(badge).toHaveClass(/text-rose/);
+      await noHorizontalOverflow(page);
+      expect([...unexpected]).toEqual([]);
+    });
+  }
+}
+for (const locale of operationLocales) {
   test(`operations ${locale}: phone evidence, focus and uncertain reconciliation stay scoped`, async ({
     page,
   }, testInfo) => {
@@ -478,6 +587,7 @@ async function installOperationsMocks(
     failProjectAfterFirst?: boolean;
     failInstancesAfterFirst?: boolean;
     projectSnapshot?: () => unknown;
+    overviewSnapshot?: () => unknown;
     receiptReview?: () => { status: number; body: unknown };
     handleReconciliation?: (input: {
       receiptId: string;
@@ -624,7 +734,8 @@ async function installOperationsMocks(
       });
       return json(route, result.body, result.status);
     }
-    if (path === "/api/ops/overview") return json(route, overview);
+    if (path === "/api/ops/overview")
+      return json(route, options.overviewSnapshot?.() ?? overview);
     if (path === "/api/ops/instances") {
       instanceRequestCount++;
       if (options.failInstancesAfterFirst && instanceRequestCount > 1)

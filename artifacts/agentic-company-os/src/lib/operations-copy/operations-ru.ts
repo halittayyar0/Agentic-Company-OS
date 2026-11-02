@@ -181,6 +181,8 @@ const copy = {
   unknownState: "Неизвестная запись: {value}",
   live: "В реальном времени · процессов: {count}",
   degradedTruth: "Работа ограничена · возможно вмешательство",
+  capacityDeficitTruth:
+    "Сниженная мощность · готово: {ready}, требуется: {required}",
   staleTruth: "Сигнал рабочего процесса задерживается",
   offlineTruth: "Нет работающих процессов",
   emergencyTruth: "Аварийная остановка активна",

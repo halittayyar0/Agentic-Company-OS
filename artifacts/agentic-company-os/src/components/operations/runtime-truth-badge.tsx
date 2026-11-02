@@ -12,6 +12,11 @@ import {
 import type { OperationsRoomTruth } from "../../lib/operations-view-model";
 import { cn } from "../../lib/utils";
 
+const amberClassName =
+  "border-amber-600/25 bg-amber-600/[0.08] text-amber-800 dark:text-amber-200";
+const roseClassName =
+  "border-rose-600/25 bg-rose-600/[0.08] text-rose-800 dark:text-rose-200";
+
 const TRUTH_PRESENTATION = {
   live: {
     icon: Radio,
@@ -20,23 +25,19 @@ const TRUTH_PRESENTATION = {
   },
   degraded: {
     icon: TriangleAlert,
-    className:
-      "border-amber-600/25 bg-amber-600/[0.08] text-amber-800 dark:text-amber-200",
+    className: amberClassName,
   },
   stale: {
     icon: CircleAlert,
-    className:
-      "border-amber-600/25 bg-amber-600/[0.08] text-amber-800 dark:text-amber-200",
+    className: amberClassName,
   },
   offline: {
     icon: CloudOff,
-    className:
-      "border-rose-600/25 bg-rose-600/[0.08] text-rose-800 dark:text-rose-200",
+    className: roseClassName,
   },
   emergency_stopped: {
     icon: CircleStop,
-    className:
-      "border-rose-600/25 bg-rose-600/[0.08] text-rose-800 dark:text-rose-200",
+    className: roseClassName,
   },
   local_demo: {
     icon: FlaskConical,

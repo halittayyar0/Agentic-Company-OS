@@ -31,6 +31,9 @@ test("prebuilt installation pulls an immutable image without compiling source", 
   assert.ok(deployment.args.includes("--no-build"));
   assert.ok(!deployment.args.includes("--build"));
   assert.equal(deployment.override.services.app.image, image);
+  for (const service of Object.values(deployment.override.services)) {
+    assert.equal(service.environment.RUNTIME_MIN_HEALTHY_WORKERS, "2");
+  }
   assert.equal(deployment.override.services["worker-1"].image, image);
   assert.throws(() =>
     buildContainerDeployment(
@@ -188,6 +191,9 @@ test("native launch has one API and two workers with separate writable data", ()
     specs.every(
       (spec) => spec.cwd === directory && spec.command === process.execPath,
     ),
+  );
+  assert.ok(
+    specs.every((spec) => spec.env?.RUNTIME_MIN_HEALTHY_WORKERS === "2"),
   );
   assert.equal(specs[0].env?.HOST, "127.0.0.1");
   assert.equal(specs[0].env?.SERVE_STATIC_UI, "true");

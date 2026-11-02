@@ -150,6 +150,7 @@ interface ProjectOperationsEvidence {
     databaseBackend: string;
     durable: boolean;
     healthyWorkerCount: number;
+    minimumHealthyWorkerCount?: number;
     staleWorkerCount: number;
     schedulerTickAgeMs: number | null;
   };
@@ -526,6 +527,22 @@ function assertIrreversibleReceiptInvocationEvidence(
 function parseProjectOperations(value: unknown): ProjectOperationsEvidence {
   const body = record(value, "project operations response");
   const runtime = record(body.runtime, "project operations runtime");
+  const minimumHealthyWorkerCount =
+    runtime.minimumHealthyWorkerCount === undefined
+      ? undefined
+      : integer(
+          runtime.minimumHealthyWorkerCount,
+          "runtime minimum healthy worker count",
+          1,
+        );
+  if (
+    minimumHealthyWorkerCount !== undefined &&
+    minimumHealthyWorkerCount > 64
+  ) {
+    throw new TypeError(
+      "runtime minimum healthy worker count must be from 1 to 64",
+    );
+  }
   const truncation = record(body.truncation, "project operations truncation");
   for (const field of [
     "members",
@@ -543,6 +560,9 @@ function parseProjectOperations(value: unknown): ProjectOperationsEvidence {
     generatedAt: iso(body.generatedAt, "project operations generatedAt"),
     cursor: cursor(body.cursor),
     runtime: {
+      ...(minimumHealthyWorkerCount === undefined
+        ? {}
+        : { minimumHealthyWorkerCount }),
       state: stringValue(runtime.state, "project operations runtime state"),
       databaseBackend: stringValue(
         runtime.databaseBackend,
@@ -1100,6 +1120,14 @@ export class DockerWallClockDriver implements WallClockRuntimeDriver {
       });
       this.projectId = integer(created.id, "created endurance project id", 1);
       const snapshot = await this.readProjectOperations();
+      if (
+        snapshot.runtime.minimumHealthyWorkerCount !== undefined &&
+        snapshot.runtime.minimumHealthyWorkerCount !== 2
+      ) {
+        throw new Error(
+          "Two-worker endurance health capacity policy must require exactly two healthy workers",
+        );
+      }
       const memberAgentIds = new Set(
         snapshot.members.map((member) => member.agentId),
       );

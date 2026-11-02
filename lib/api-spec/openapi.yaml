@@ -4365,6 +4365,11 @@ components:
         healthyWorkerCount:
           type: integer
           minimum: 0
+        minimumHealthyWorkerCount:
+          type: integer
+          minimum: 1
+          maximum: 64
+          description: Required healthy scheduler capacity configured by the installation; this policy never starts additional workers.
         staleWorkerCount:
           type: integer
           minimum: 0
@@ -4381,6 +4386,7 @@ components:
         - durable
         - multiProcessCapable
         - emergencyStopEnabled
+        - minimumHealthyWorkerCount
         - healthyWorkerCount
         - staleWorkerCount
         - schedulerTickAgeMs

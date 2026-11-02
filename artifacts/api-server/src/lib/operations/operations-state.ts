@@ -21,6 +21,7 @@ export interface RuntimeTruth {
   multiProcessCapable: boolean;
   emergencyStopEnabled: boolean;
   healthyWorkerCount: number;
+  minimumHealthyWorkerCount: number;
   staleWorkerCount: number;
   schedulerTickAgeMs: number | null;
 }
@@ -47,8 +48,19 @@ export function deriveRuntimeTruth(input: {
   databaseBackend: "postgresql" | "pglite";
   emergencyStopEnabled: boolean;
   workerStaleAfterMs: number;
+  minimumHealthyWorkerCount?: number;
   instances: ReadonlyArray<RuntimeTruthInstance>;
 }): RuntimeTruth {
+  const minimumHealthyWorkerCount = input.minimumHealthyWorkerCount ?? 1;
+  if (
+    !Number.isInteger(minimumHealthyWorkerCount) ||
+    minimumHealthyWorkerCount < 1 ||
+    minimumHealthyWorkerCount > 64
+  ) {
+    throw new TypeError(
+      "minimumHealthyWorkerCount must be an integer from 1 to 64",
+    );
+  }
   const schedulerInstances = input.instances.filter(
     (instance) =>
       instance.schedulerEnabled &&
@@ -78,6 +90,7 @@ export function deriveRuntimeTruth(input: {
     multiProcessCapable: input.databaseBackend === "postgresql",
     emergencyStopEnabled: input.emergencyStopEnabled,
     healthyWorkerCount: healthy.length,
+    minimumHealthyWorkerCount,
     staleWorkerCount: stale.length,
     schedulerTickAgeMs,
   };
@@ -111,6 +124,9 @@ export function deriveRuntimeTruth(input: {
   }
 
   const reasons: string[] = [];
+  if (healthy.length < minimumHealthyWorkerCount) {
+    reasons.push("worker_capacity_below_minimum");
+  }
   // A stale row can be the durable history of a worker that was replaced.
   // Keep it visible in staleWorkerCount, but judge current availability from
   // the healthy schedulers and their freshest tick.

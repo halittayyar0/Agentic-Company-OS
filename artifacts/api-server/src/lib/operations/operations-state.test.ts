@@ -141,3 +141,78 @@ test("a transitional worker still degrades an otherwise healthy fleet", () => {
   assert.equal(truth.healthyWorkerCount, 1);
   assert.equal(truth.staleWorkerCount, 0);
 });
+
+test("required two-worker capacity stays degraded after a worker becomes stale", () => {
+  const truth = deriveRuntimeTruth({
+    now,
+    databaseBackend: "postgresql",
+    emergencyStopEnabled: false,
+    workerStaleAfterMs: 15_000,
+    minimumHealthyWorkerCount: 2,
+    instances: [
+      worker({ id: "worker-live", tickAgeMs: 780 }),
+      worker({ id: "worker-lost", heartbeatAgeMs: 20_000 }),
+    ],
+  });
+  assert.equal(truth.state, "degraded");
+  assert.deepEqual(truth.reasons, ["worker_capacity_below_minimum"]);
+  assert.equal(truth.healthyWorkerCount, 1);
+  assert.equal(truth.staleWorkerCount, 1);
+  assert.equal(truth.schedulerTickAgeMs, 780);
+  assert.equal(truth.minimumHealthyWorkerCount, 2);
+});
+
+test("required worker capacity recovers without removing historical stale rows", () => {
+  const truth = deriveRuntimeTruth({
+    now,
+    databaseBackend: "postgresql",
+    emergencyStopEnabled: false,
+    workerStaleAfterMs: 15_000,
+    minimumHealthyWorkerCount: 2,
+    instances: [
+      worker({ id: "worker-retired", heartbeatAgeMs: 60_000 }),
+      worker({ id: "worker-replacement", tickAgeMs: 500 }),
+      worker({ id: "worker-current", tickAgeMs: 750 }),
+    ],
+  });
+  assert.equal(truth.state, "live");
+  assert.deepEqual(truth.reasons, []);
+  assert.equal(truth.minimumHealthyWorkerCount, 2);
+  assert.equal(truth.healthyWorkerCount, 2);
+  assert.equal(truth.staleWorkerCount, 1);
+});
+
+test("an intentional single-worker target remains live with retired workers", () => {
+  const truth = deriveRuntimeTruth({
+    now,
+    databaseBackend: "postgresql",
+    emergencyStopEnabled: false,
+    workerStaleAfterMs: 15_000,
+    minimumHealthyWorkerCount: 1,
+    instances: [
+      worker({ id: "worker-current" }),
+      worker({ id: "worker-retired", heartbeatAgeMs: 60_000 }),
+    ],
+  });
+  assert.equal(truth.state, "live");
+  assert.equal(truth.minimumHealthyWorkerCount, 1);
+  assert.equal(truth.healthyWorkerCount, 1);
+  assert.equal(truth.staleWorkerCount, 1);
+});
+
+test("invalid worker capacity cannot silently classify runtime health", () => {
+  for (const minimumHealthyWorkerCount of [0, -1, 1.5, 65, NaN, Infinity]) {
+    assert.throws(
+      () =>
+        deriveRuntimeTruth({
+          now,
+          databaseBackend: "postgresql",
+          emergencyStopEnabled: false,
+          workerStaleAfterMs: 15_000,
+          minimumHealthyWorkerCount,
+          instances: [worker({})],
+        }),
+      /minimumHealthyWorkerCount/,
+    );
+  }
+});

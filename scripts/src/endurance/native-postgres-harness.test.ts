@@ -328,6 +328,7 @@ test("native runtime environments enforce one API, two workers, and no provider 
       WORKSPACE_ENV_FILE: "must-not-cross",
       DATABASE_URL_FILE: "must-not-cross",
       OPERATOR_AUTH_TOKEN_FILE: "must-not-cross",
+      RUNTIME_MIN_HEALTHY_WORKERS: "1",
     },
     databaseUrl: "postgresql://agentic:redacted@127.0.0.1:55432/postgres",
     apiPort: 55123,
@@ -353,6 +354,7 @@ test("native runtime environments enforce one API, two workers, and no provider 
     "http://127.0.0.1:55123/api/internal/runtime-control",
   );
   for (const environment of Object.values(environments)) {
+    assert.equal(environment.RUNTIME_MIN_HEALTHY_WORKERS, "2");
     assert.equal(environment.MAX_TASK_STEPS, "0");
     assert.equal(environment.MAX_TASK_TOKENS, "100000");
     assert.equal(environment.MAX_TASK_REPORTED_COST_USD, "1");
