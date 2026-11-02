@@ -6,6 +6,7 @@ import {
   lstat,
   mkdtemp,
   readFile,
+  realpath,
   rename,
   rmdir,
   unlink,
@@ -46,8 +47,17 @@ assert.equal(
 );
 assert.equal(build.executableSha256, sha(await readFile(helper)));
 const execute = promisify(execFile);
+const temporaryRoot = await realpath(tmpdir());
 const base = await mkdtemp(
-  path.join(tmpdir(), "acos-native-checker-lifetime-"),
+  path.join(temporaryRoot, "acos-native-checker-lifetime-"),
+);
+assert.equal(await realpath(base), base);
+console.log(
+  JSON.stringify({
+    fixtureRootCanonical: true,
+    temporaryAliasResolved:
+      path.normalize(tmpdir()).toLowerCase() !== temporaryRoot.toLowerCase(),
+  }),
 );
 assert.ok(
   path.isAbsolute(base) &&
@@ -220,6 +230,7 @@ const report = {
   checks,
   passed: true,
   cleanupVerified: true,
+  fixtureRootCanonical: true,
   applicationOrModelStarted: false,
   originalCIIncidentReproduced: false,
   actualMainOrReleaseAccepted: false,

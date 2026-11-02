@@ -8,6 +8,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rmdir,
   unlink,
   writeFile,
@@ -47,7 +48,16 @@ const powershell = path.join(
   process.env.SystemRoot,
   "System32/WindowsPowerShell/v1.0/powershell.exe",
 );
-const base = await mkdtemp(path.join(tmpdir(), "acos-checker-security-"));
+const temporaryRoot = await realpath(tmpdir());
+const base = await mkdtemp(path.join(temporaryRoot, "acos-checker-security-"));
+assert.equal(await realpath(base), base);
+console.log(
+  JSON.stringify({
+    fixtureRootCanonical: true,
+    temporaryAliasResolved:
+      path.normalize(tmpdir()).toLowerCase() !== temporaryRoot.toLowerCase(),
+  }),
+);
 const files = [],
   directories = [],
   checks = [];
@@ -289,6 +299,7 @@ const report = {
   checks,
   passed: true,
   cleanupVerified: true,
+  fixtureRootCanonical: true,
   applicationOrModelStarted: false,
   privilegesChanged: false,
   actualMainOrReleaseAccepted: false,
