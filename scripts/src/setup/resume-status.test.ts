@@ -89,6 +89,19 @@ test("offline resume status explains local availability in seven languages at ph
   });
   t.after(() => browser.close());
   const page = await browser.newPage();
+  const selectLocale = async (locale: string) => {
+    const pending = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/locale" &&
+        response.request().method() === "POST" &&
+        response.request().postDataJSON().locale === locale,
+      { timeout: 3000 },
+    );
+    await page.locator("#language").selectOption(locale);
+    const saved = await pending;
+    assert.equal(saved.status(), 200);
+    assert.equal(await saved.finished(), null);
+  };
   const fragments = {
     en: "Phone access",
     tr: "Telefon erişimi",
@@ -111,7 +124,7 @@ test("offline resume status explains local availability in seven languages at ph
       width === 320 ? "tr" : "ar",
     );
     for (const [locale, text] of Object.entries(fragments)) {
-      await page.locator("#language").selectOption(locale);
+      await selectLocale(locale);
       if (locale === "en")
         assert.equal(
           await page.locator("#heading").innerText(),
@@ -154,13 +167,32 @@ test("offline resume status explains local availability in seven languages at ph
     await page.locator("#phone-unavailable:not([hidden])").waitFor();
     assert.equal(await page.locator("#language").inputValue(), "ar");
   }
-  await page.locator("#connection").click();
-  assert.equal(
-    await page.locator("#operator-key").inputValue(),
-    resumed.operatorToken,
-  );
+  let releaseConnection!: () => void;
+  const connectionGate = new Promise<void>((resolve) => {
+    releaseConnection = resolve;
+  });
+  await page.route("**/api/connection", async (route) => {
+    await connectionGate;
+    await route.continue();
+  });
+  try {
+    await page.locator("#connection").click();
+    assert.equal(await page.locator("#operator-key").inputValue(), "");
+    assert.equal(await page.locator("#connection-field").isVisible(), false);
+    assert.equal(await page.locator("#connection").isDisabled(), true);
+    releaseConnection();
+    await page
+      .locator("#connection-field")
+      .waitFor({ state: "visible", timeout: 3000 });
+    assert.equal(
+      await page.locator("#operator-key").inputValue(),
+      resumed.operatorToken,
+    );
+  } finally {
+    releaseConnection();
+  }
   assert.equal(await page.locator("#connection").isVisible(), false);
-  await page.locator("#language").selectOption("tr");
+  await selectLocale("tr");
   assert.equal(await page.locator("#connection").isVisible(), false);
   // A plain refresh cannot recover the removed private fragment. Preserve the
   // existing no-browser-storage rule rather than silently retaining a bearer.
