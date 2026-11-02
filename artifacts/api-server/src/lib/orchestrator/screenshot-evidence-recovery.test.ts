@@ -227,9 +227,6 @@ for (const mode of [
       agent.id,
       "ekran-goruntuleri/evidence.png",
     ).abs;
-    const original = await fsp.readFile(artifact);
-    assert.ok(original.length > 100);
-    await dropTrigger();
     const [before] = await db
       .select()
       .from(operationReceiptsTable)
@@ -239,6 +236,41 @@ for (const mode of [
       .from(operationInvocationsTable)
       .where(eq(operationInvocationsTable.receiptId, first.receiptId))
       .orderBy(sql`${operationInvocationsTable.claimedAt} DESC`);
+    let original: Buffer;
+    try {
+      original = await fsp.readFile(artifact);
+    } catch (error) {
+      const code = (error as { code?: unknown }).code;
+      const content = first.content
+        .replaceAll(root, "<sandbox>")
+        .replaceAll(base, "<fixture-origin>")
+        .replace(
+          /(?:[A-Za-z]:[\\/]|\/(?:Users|private|tmp|var|home)\/)[^\s"'<>]+/gu,
+          "<path>",
+        )
+        .replace(/https?:\/\/[^\s"'<>]+/gu, "<url>")
+        .slice(0, 800);
+      assert.fail(
+        `fixture_screenshot_publication_missing ${JSON.stringify({
+          mode,
+          toolOutcome: first.toolOutcome ?? null,
+          content,
+          receiptState: before?.state ?? null,
+          receiptFailureKind: before?.failureKind ?? null,
+          invocationState: invocation?.state ?? null,
+          effectStarted: invocation?.effectStartedAt != null,
+          invocationFailureKind: invocation?.failureKind ?? null,
+          artifactReadCode:
+            typeof code === "string" && /^[A-Z_0-9]{1,40}$/u.test(code)
+              ? code
+              : "other",
+        })}`,
+      );
+    }
+    assert.ok(original.length > 100);
+    await dropTrigger();
+    assert.ok(before);
+    assert.ok(invocation);
     assert.ok(invocation.effectStartedAt);
     if (mode.includes("released") || mode === "legacy-old-key") {
       // Reconstruct the persisted state left by the old unsafe retry policy,

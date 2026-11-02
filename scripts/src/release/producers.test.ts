@@ -216,10 +216,10 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
     sourceStages++;
     assert.equal(
       stage.source.tests,
-      3137,
-      "reviewed census includes offline phone resumption, private checker protocol and asset guards, and versioned package admission",
+      3139,
+      "reviewed census includes offline phone resumption, private checker guards, versioned package admission and native usage phase regressions",
     );
-    assert.equal(stage.source.passed, 3137 - stage.source.skippedCases.length);
+    assert.equal(stage.source.passed, 3139 - stage.source.skippedCases.length);
   }
   assert.equal(sourceStages, 4);
   assert.equal(
