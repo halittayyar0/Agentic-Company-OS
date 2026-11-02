@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./owner-private-storage": "./src/owner-private-storage.ts",
+    "./windows-private-helper": "./src/windows-private-helper.ts",
     "./chatgpt-plan-types": "./src/chatgpt-plan-types.ts"
   },
   "scripts": {

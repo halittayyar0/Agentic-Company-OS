@@ -21,6 +21,7 @@ import { Transform } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { build } from "../artifacts/api-server/node_modules/esbuild/lib/main.js";
+import { copyWindowsPrivateHelper } from "./build-windows-private-helper-asset.mjs";
 import {
   fetchPinnedNodeArchive,
   nodeArchiveDownloadUrl,
@@ -308,6 +309,11 @@ try {
     path.join(root, "artifacts/api-server/dist"),
     path.join(directory, "artifacts/api-server/dist"),
   );
+  // Verify the source binding before creating the final Windows inventory.
+  if (process.platform === "win32")
+    await copyWindowsPrivateHelper(
+      path.join(directory, "artifacts/api-server/dist"),
+    );
   for (const name of [
     "start.mjs",
     "start-worker.mjs",
@@ -411,6 +417,7 @@ try {
   );
   const setup = path.join(directory, "scripts/src/setup");
   await mkdir(setup, { recursive: true });
+  if (process.platform === "win32") await copyWindowsPrivateHelper(setup);
   for (const [entry, output] of [
     ["scripts/src/setup/bootstrap.ts", "bootstrap.mjs"],
     ["scripts/src/setup/stage-postgres.ts", "stage-postgres.mjs"],

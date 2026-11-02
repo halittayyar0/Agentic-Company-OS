@@ -2,6 +2,7 @@ import { mkdir, copyFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "../artifacts/api-server/node_modules/esbuild/lib/main.js";
+import { copyWindowsPrivateHelper } from "./build-windows-private-helper-asset.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const args = process.argv.slice(2);
@@ -44,6 +45,7 @@ await mkdir(directory, { recursive: false });
 const setup = path.join(directory, "scripts/src/setup");
 await mkdir(setup, { recursive: true });
 await mkdir(path.join(directory, "deploy"));
+await copyWindowsPrivateHelper(setup);
 await build({
   entryPoints: [path.join(root, "scripts/src/setup/bootstrap.ts")],
   outfile: path.join(setup, "bootstrap.mjs"),

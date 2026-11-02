@@ -38,6 +38,11 @@ Linux uses the Ubuntu 24.04/glibc build floor matching its build and CI environm
 
 Windows and macOS packages are unsigned. No macOS notarization or SmartScreen reputation is provided; normal OS trust prompts can appear. Verify the source and release checksum and use the operating system's normal reviewed trust process. Do not disable OS security or remove host protections to force execution.
 
+Windows private-record checks use a bundled metadata checker. Keep the whole
+package together; if its checked helper is missing or altered, re-extract the
+verified archive into a separate folder. See [Windows private storage](windows-private-storage.md)
+for recovery, source builds and the component's runtime terms.
+
 ### Data and restarting the native package
 
 Data and secrets live outside the extracted package, by default under `~/.agentic-company-os/instances/instance-UUID` (the equivalent user-home path on Windows). The terminal prints the actual installation directory. Keep it private and retain both it and the original extracted package. Restarting **the same package at the same location and revision** uses its private last-installation pointer to resume the recorded installation. The pointer contains no model/operator secret and deliberately refuses a different package location or revision. Do not edit it to adopt unfamiliar data.

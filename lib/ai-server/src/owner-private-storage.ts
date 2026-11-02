@@ -12,6 +12,11 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import {
+  windowsPrivateHelperExecutable,
+  parseWindowsDirectoryReceipt,
+  type WindowsDirectoryReceipt,
+} from "./windows-private-helper";
 
 const executeFile = promisify(execFile);
 const MAX_RECORD_BYTES = 128 * 1024;
@@ -147,89 +152,93 @@ export function assertPrivateUnixMetadata(
   }
 }
 
-// Paths travel only through a child environment variable, never interpolated
-// PowerShell source. Replace access rules only for a newly created, empty directory
-// or an exclusively created empty file, before writing any protected contents.
-// Existing files/directories must already satisfy the postcondition; a broad
-// explicit ACE must not survive an inheritance-only change.
-const WINDOWS_PROTECTION_SCRIPT = String.raw`
-$ErrorActionPreference = 'Stop'
-[Console]::Error.Write('ACOS_PRIVATE_STORAGE_STARTED')
-$target = $env:ACOS_PRIVATE_STORAGE_TARGET
-$directory = $env:ACOS_PRIVATE_STORAGE_DIRECTORY -eq '1'
-$owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-$system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
-if ($env:ACOS_PRIVATE_STORAGE_CREATE -eq '1') {
-  $sections = [System.Security.AccessControl.AccessControlSections]::Access -bor [System.Security.AccessControl.AccessControlSections]::Owner
-  $acl = if ($directory) { [System.IO.Directory]::GetAccessControl($target, $sections) } else { [System.IO.File]::GetAccessControl($target, $sections) }
-  $previousOwner = $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
-  if ($previousOwner -ne $owner.Value) {
-    if ($previousOwner -ne 'S-1-5-32-544') { throw 'owner' }
-    $acl.SetOwner($owner)
-  }
-  $acl.SetAccessRuleProtection($true, $false)
-  foreach ($rule in $acl.GetAccessRules($true, $false, [System.Security.Principal.SecurityIdentifier])) { $acl.RemoveAccessRuleSpecific($rule) }
-  foreach ($sid in @($owner, $system)) {
-    $rule = if ($directory) { [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow') } else { [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'Allow') }
-    $acl.AddAccessRule($rule)
-  }
-  if ($directory) { [System.IO.Directory]::SetAccessControl($target, $acl) } else { [System.IO.File]::SetAccessControl($target, $acl) }
+interface WindowsObjectIdentity {
+  dev: bigint;
+  ino: bigint;
 }
-$acl = if ($env:ACOS_PRIVATE_STORAGE_DIRECTORY -eq '1') { [System.IO.Directory]::GetAccessControl($target) } else { [System.IO.File]::GetAccessControl($target) }
-if ($acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value -ne $owner.Value) { throw 'owner' }
-if ($env:ACOS_PRIVATE_STORAGE_DIRECTORY -eq '1' -and -not $acl.AreAccessRulesProtected) { throw 'inheritance' }
-$ownerFull = $false
-foreach ($rule in $acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])) {
-  if ($rule.IdentityReference.Value -notin @($owner.Value, $system.Value) -or $rule.AccessControlType -ne 'Allow') { throw 'grant' }
-  if ($rule.IdentityReference.Value -eq $owner.Value -and ($rule.FileSystemRights -band [System.Security.AccessControl.FileSystemRights]::FullControl) -eq [System.Security.AccessControl.FileSystemRights]::FullControl -and $rule.PropagationFlags -ne 'InheritOnly') { $ownerFull = $true }
-}
-if (-not $ownerFull) { throw 'rights' }
-[Console]::Write('PRIVATE_OK')
-`;
+const CREATED_DIRECTORY = Symbol("private-created-directory");
+const CREATED = "ACOS_PRIVATE_STORAGE_CREATED ";
 
-async function windowsProtection(
-  target: string,
-  directory: boolean,
-  create = false,
-): Promise<void> {
+function identityFromReceipt(
+  value: WindowsDirectoryReceipt,
+): WindowsObjectIdentity {
+  return { dev: BigInt(value.device), ino: BigInt(value.inode) };
+}
+
+/** Entire native validation/creation handshake retains the original deadline. */
+async function windowsPrivateCommand(
+  mode: "--check" | "--initialize-directory",
+  environment: Record<string, string>,
+): Promise<{ stdout: string; receipt?: WindowsDirectoryReceipt }> {
   let diagnostics:
     ReturnType<typeof beginWindowsStorageDiagnostics> | undefined;
+  let pending:
+    | (Promise<{ stdout: string; stderr: string }> & { child: ChildProcess })
+    | undefined;
+  let receipt: WindowsDirectoryReceipt | undefined;
+  let protocolFailed = false;
+  let tail = "";
+  const onInputError = () => {
+    protocolFailed = true;
+    pending?.child?.kill();
+  };
+  const onReceipt = (chunk: Buffer | string) => {
+    if (mode !== "--initialize-directory" || protocolFailed) return;
+    tail += chunk.toString("utf8");
+    if (tail.length > 16_384) {
+      protocolFailed = true;
+      pending?.child?.kill();
+      return;
+    }
+    const start = tail.indexOf(CREATED);
+    if (start < 0) return;
+    const end = tail.indexOf("\n", start);
+    if (end < 0) return;
+    try {
+      const value = parseWindowsDirectoryReceipt(
+        tail.slice(start + CREATED.length, end),
+      );
+      if (receipt || !value.created) throw new Error("postcondition");
+      // Synchronous assignment precedes ACK: a later child death cannot erase
+      // our authority to remove only this unchanged, still-empty directory.
+      receipt = value;
+      tail = tail.slice(end + 1);
+      pending!.child!.stdin!.end("COMMIT\n");
+    } catch {
+      protocolFailed = true;
+      pending?.child?.kill();
+    }
+  };
   try {
-    const systemRoot = process.env.SystemRoot;
-    if (!systemRoot || !path.isAbsolute(systemRoot))
-      throw new Error("system_root");
-    const executable = path.join(
-      systemRoot,
-      "System32",
-      "WindowsPowerShell",
-      "v1.0",
-      "powershell.exe",
-    );
+    const executable = await windowsPrivateHelperExecutable();
     diagnostics = beginWindowsStorageDiagnostics();
-    const pending = executeFile(
-      executable,
-      [
-        "-NoLogo",
-        "-NoProfile",
-        "-NonInteractive",
-        "-EncodedCommand",
-        Buffer.from(WINDOWS_PROTECTION_SCRIPT, "utf16le").toString("base64"),
-      ],
-      {
-        windowsHide: true,
-        timeout: 15_000,
-        maxBuffer: 16_384,
-        env: {
-          ...process.env,
-          ACOS_PRIVATE_STORAGE_TARGET: target,
-          ACOS_PRIVATE_STORAGE_DIRECTORY: directory ? "1" : "0",
-          ACOS_PRIVATE_STORAGE_CREATE: create ? "1" : "0",
-        },
-      },
-    );
+    pending = executeFile(executable, [mode], {
+      windowsHide: true,
+      encoding: "utf8",
+      timeout: 15_000,
+      maxBuffer: 16_384,
+      env: environment,
+    });
     diagnostics.attach(pending.child);
-    const { stdout } = await pending;
-    if (stdout.trim() !== "PRIVATE_OK") throw new Error("postcondition");
+    pending.child?.stdin?.on("error", onInputError);
+    if (mode === "--initialize-directory")
+      pending.child?.stderr?.on("data", onReceipt);
+    const { stdout, stderr } = await pending;
+    const expectedStderr =
+      START + (receipt ? CREATED + JSON.stringify(receipt) + "\n" : "");
+    if (protocolFailed || stderr !== expectedStderr)
+      throw new Error("postcondition");
+    if (mode === "--check" && stdout !== "PRIVATE_OK")
+      throw new Error("postcondition");
+    if (mode === "--initialize-directory") {
+      const final = parseWindowsDirectoryReceipt(stdout);
+      if (
+        final.created !== Boolean(receipt) ||
+        (receipt && JSON.stringify(final) !== JSON.stringify(receipt))
+      )
+        throw new Error("postcondition");
+    }
+    return { stdout, receipt };
   } catch (error) {
     const failure = error as {
       code?: unknown;
@@ -237,22 +246,37 @@ async function windowsProtection(
       stderr?: unknown;
       message?: unknown;
     };
+    if (
+      mode === "--initialize-directory" &&
+      failure.code === 17 &&
+      !receipt &&
+      !protocolFailed
+    ) {
+      throw Object.assign(new Error("Private storage already exists"), {
+        code: "EEXIST",
+      });
+    }
+    const knownHelperFailure =
+      failure.message === "windows_private_storage_helper_unavailable" ||
+      failure.message === "windows_private_storage_helper_invalid";
     const reason =
-      failure?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
-        ? "windows_private_storage_output_limit"
-        : failure?.killed === true
-          ? typeof failure.stderr === "string" &&
-            failure.stderr.includes("ACOS_PRIVATE_STORAGE_STARTED")
-            ? "windows_private_storage_operation_timeout"
-            : "windows_private_storage_startup_timeout"
-          : failure?.code === "ENOENT"
-            ? "windows_private_storage_spawn_failed"
-            : failure?.message === "system_root"
-              ? "windows_private_storage_system_root_invalid"
-              : failure?.message === "postcondition"
-                ? "windows_private_storage_postcondition"
+      protocolFailed ||
+      failure.message === "postcondition" ||
+      failure.message === "windows_private_storage_postcondition"
+        ? "windows_private_storage_postcondition"
+        : knownHelperFailure
+          ? String(failure.message)
+          : failure.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+            ? "windows_private_storage_output_limit"
+            : failure.killed === true
+              ? typeof failure.stderr === "string" &&
+                failure.stderr.includes(START)
+                ? "windows_private_storage_operation_timeout"
+                : "windows_private_storage_startup_timeout"
+              : failure.code === "ENOENT"
+                ? "windows_private_storage_spawn_failed"
                 : "windows_private_storage_check_failed";
-    throw new Error("private_storage_protection_invalid", {
+    const result = new Error("private_storage_protection_invalid", {
       cause: new Error(
         reason,
         diagnostics
@@ -264,9 +288,39 @@ async function windowsProtection(
           : undefined,
       ),
     });
+    if (receipt)
+      Object.defineProperty(result, CREATED_DIRECTORY, {
+        value: identityFromReceipt(receipt),
+      });
+    throw result;
   } finally {
+    pending?.child?.stderr?.removeListener("data", onReceipt);
+    pending?.child?.stdin?.removeListener("error", onInputError);
     diagnostics?.finish();
   }
+}
+
+async function windowsProtection(
+  target: string,
+  directory: boolean,
+  create: boolean,
+  expected: WindowsObjectIdentity,
+): Promise<void> {
+  await windowsPrivateCommand("--check", {
+    ACOS_PRIVATE_STORAGE_TARGET: target,
+    ACOS_PRIVATE_STORAGE_DIRECTORY: directory ? "1" : "0",
+    ACOS_PRIVATE_STORAGE_CREATE: create ? "1" : "0",
+    ACOS_PRIVATE_STORAGE_DEVICE: expected.dev.toString(),
+    ACOS_PRIVATE_STORAGE_INODE: expected.ino.toString(),
+  });
+}
+
+async function initializeWindowsDirectory(target: string, exclusive: boolean) {
+  const result = await windowsPrivateCommand("--initialize-directory", {
+    ACOS_PRIVATE_STORAGE_TARGET: target,
+    ACOS_PRIVATE_STORAGE_EXCLUSIVE: exclusive ? "1" : "0",
+  });
+  return parseWindowsDirectoryReceipt(result.stdout);
 }
 
 function samePath(left: string, right: string): boolean {
@@ -302,7 +356,12 @@ export class OwnerPrivateStorage {
     )
       throw new Error("private_storage_path_invalid");
     if (process.platform === "win32") {
-      await windowsProtection(target, directory);
+      await windowsProtection(
+        target,
+        directory,
+        false,
+        await lstat(target, { bigint: true }),
+      );
     } else {
       if (!process.getuid) throw new Error("private_storage_owner_unavailable");
       assertPrivateUnixMetadata(
@@ -323,23 +382,35 @@ export class OwnerPrivateStorage {
     const parent = path.dirname(this.directory);
     if (!samePath(await realpath(parent), parent))
       throw new Error("private_storage_parent_redirected");
-    let created = false;
+    let createdMetadata: WindowsObjectIdentity | undefined;
     try {
-      await mkdir(this.directory, { mode: 0o700 });
-      created = true;
-    } catch (error) {
-      if (exclusive || (error as NodeJS.ErrnoException).code !== "EEXIST")
-        throw error;
-    }
-    const createdMetadata = created ? await lstat(this.directory) : undefined;
-    try {
-      if (created && process.platform === "win32")
-        await windowsProtection(this.directory, true, true);
+      if (process.platform === "win32") {
+        const result = await initializeWindowsDirectory(
+          this.directory,
+          exclusive,
+        );
+        const expected = identityFromReceipt(result);
+        if (result.created) createdMetadata = expected;
+        const actual = await lstat(this.directory, { bigint: true });
+        if (actual.dev !== expected.dev || actual.ino !== expected.ino)
+          throw new Error("private_storage_path_invalid");
+      } else {
+        try {
+          await mkdir(this.directory, { mode: 0o700 });
+          createdMetadata = await lstat(this.directory, { bigint: true });
+        } catch (error) {
+          if (exclusive || (error as NodeJS.ErrnoException).code !== "EEXIST")
+            throw error;
+        }
+      }
       await this.assertProtected(this.directory, true);
     } catch (error) {
+      createdMetadata ??= (
+        error as { [CREATED_DIRECTORY]?: WindowsObjectIdentity }
+      )[CREATED_DIRECTORY];
       if (createdMetadata) {
         try {
-          const current = await lstat(this.directory);
+          const current = await lstat(this.directory, { bigint: true });
           if (
             current.dev === createdMetadata.dev &&
             current.ino === createdMetadata.ino &&
@@ -392,7 +463,12 @@ export class OwnerPrivateStorage {
       // Elevated Windows tokens can create files owned by Administrators.
       // Protect only this new empty file before any secret bytes are written.
       if (process.platform === "win32")
-        await windowsProtection(temporary, false, true);
+        await windowsProtection(
+          temporary,
+          false,
+          true,
+          await handle.stat({ bigint: true }),
+        );
       await this.assertProtected(temporary, false);
       await handle.writeFile(value, "utf8");
       await handle.sync();
@@ -449,7 +525,12 @@ export class OwnerPrivateStorage {
     }
     try {
       if (process.platform === "win32")
-        await windowsProtection(target, false, true);
+        await windowsProtection(
+          target,
+          false,
+          true,
+          await handle.stat({ bigint: true }),
+        );
       await this.assertProtected(target, false);
       return await action();
     } finally {

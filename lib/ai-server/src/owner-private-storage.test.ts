@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {
   chmod,
+  copyFile,
+  lstat,
   mkdtemp,
   readFile,
   realpath,
@@ -10,6 +12,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 import {
   OwnerPrivateStorage,
@@ -39,15 +42,34 @@ test("private storage protects secrets before atomic writes and survives reopeni
 test("a failed first protection attempt leaves no empty vault blocking explicit retry", async () => {
   const parent = await mkdtemp(path.join(tmpdir(), "acos-private-retry-"));
   const directory = path.join(parent, "vault");
-  const previousRoot = process.env.SystemRoot;
   const previousMask = process.umask();
+  let Storage = OwnerPrivateStorage;
   try {
+    if (process.platform === "win32") {
+      const { build } = await import(
+        new URL(
+          "../../../artifacts/api-server/node_modules/esbuild/lib/main.js",
+          import.meta.url,
+        ).href
+      );
+      const bundled = path.join(parent, "private-storage.mjs");
+      await build({
+        entryPoints: [
+          fileURLToPath(new URL("./owner-private-storage.ts", import.meta.url)),
+        ],
+        outfile: bundled,
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        target: "node24",
+        logLevel: "silent",
+      });
+      Storage = (await import(pathToFileURL(bundled).href)).OwnerPrivateStorage;
+    }
     try {
-      if (process.platform === "win32")
-        process.env.SystemRoot = path.join(parent, "missing-system");
-      else process.umask(0o777);
+      if (process.platform !== "win32") process.umask(0o777);
       await assert.rejects(
-        new OwnerPrivateStorage(directory).initialize(true),
+        new Storage(directory).initialize(true),
         (error: unknown) => {
           assert.ok(error instanceof Error);
           assert.equal(error.message, "private_storage_protection_invalid");
@@ -55,18 +77,14 @@ test("a failed first protection attempt leaves no empty vault blocking explicit 
             assert.ok(error.cause instanceof Error);
             assert.equal(
               error.cause.message,
-              "windows_private_storage_spawn_failed",
+              "windows_private_storage_helper_unavailable",
             );
-            assert.ok(error.cause.cause instanceof Error);
-            assert.ok(
-              error.cause.cause.message.startsWith(
-                "windows_private_storage_timing ",
-              ),
+            assert.equal(
+              error.cause.cause,
+              undefined,
+              "a missing asset starts no child",
             );
-            assert.doesNotMatch(
-              error.cause.cause.message,
-              /private-retry|missing-system|S-1-/u,
-            );
+            assert.doesNotMatch(error.cause.message, /private-retry|S-1-/u);
           }
           return true;
         },
@@ -74,13 +92,60 @@ test("a failed first protection attempt leaves no empty vault blocking explicit 
       await assert.rejects(realpath(directory), { code: "ENOENT" });
     } finally {
       process.umask(previousMask);
-      if (previousRoot === undefined) delete process.env.SystemRoot;
-      else process.env.SystemRoot = previousRoot;
     }
-    const retried = new OwnerPrivateStorage(directory);
+    if (process.platform === "win32")
+      await copyFile(
+        new URL("./windows-private-helper.exe", import.meta.url),
+        path.join(parent, "windows-private-helper.exe"),
+      );
+    const retried = new Storage(directory);
     await retried.initialize(true);
     await retried.write("record.json", "explicit retry");
     assert.equal(await retried.read("record.json"), "explicit retry");
+    if (process.platform === "win32") {
+      const asset = path.join(parent, "windows-private-helper.exe");
+      const original = await readFile(asset);
+      let entered = 0;
+      try {
+        for (const unavailable of ["missing", "corrupted"]) {
+          if (unavailable === "missing") await rm(asset);
+          else {
+            const changed = Buffer.from(original);
+            changed[changed.length - 1] ^= 1;
+            await writeFile(asset, changed);
+          }
+          await assert.rejects(
+            retried.withLock(async () => {
+              entered++;
+            }),
+            /private_storage_protection_invalid/u,
+          );
+          assert.equal(
+            entered,
+            0,
+            "a failed checker must never admit the protected action",
+          );
+          await assert.rejects(
+            lstat(path.join(directory, "registration.lock")),
+            { code: "ENOENT" },
+          );
+          assert.equal(
+            await readFile(path.join(directory, "record.json"), "utf8"),
+            "explicit retry",
+          );
+        }
+      } finally {
+        await writeFile(asset, original);
+      }
+      await retried.withLock(async () => {
+        entered++;
+      });
+      assert.equal(
+        entered,
+        1,
+        "restoring the verified asset permits an explicit retry without stale lock state",
+      );
+    }
   } finally {
     await rm(parent, { recursive: true, force: true });
   }
@@ -153,14 +218,23 @@ $existing = Join-Path $env:ACOS_TEST_PRIVATE_PARENT 'preexisting'
         "preexisting owner and access rules must remain unchanged",
       );
       const storage = new OwnerPrivateStorage(path.join(parent, "vault"));
-      await storage.initialize();
-      await storage.write("record.json", "secret");
-      await storage.withLock(async () => {
-        assert.equal(await storage.read("registration.lock"), "");
-      });
-      const reopened = new OwnerPrivateStorage(storage.directory);
-      await reopened.initialize();
-      assert.equal(await reopened.read("record.json"), "secret");
+      const previousSystemRoot = process.env.SystemRoot;
+      try {
+        // Permission checks must not depend on starting an interpreter. Keep
+        // the real ACL fixture and all write/reopen/lock assertions intact.
+        process.env.SystemRoot = path.join(parent, "no-system-powershell");
+        await storage.initialize();
+        await storage.write("record.json", "secret");
+        await storage.withLock(async () => {
+          assert.equal(await storage.read("registration.lock"), "");
+        });
+        const reopened = new OwnerPrivateStorage(storage.directory);
+        await reopened.initialize();
+        assert.equal(await reopened.read("record.json"), "secret");
+      } finally {
+        if (previousSystemRoot === undefined) delete process.env.SystemRoot;
+        else process.env.SystemRoot = previousSystemRoot;
+      }
     } finally {
       await rm(parent, { recursive: true, force: true });
     }

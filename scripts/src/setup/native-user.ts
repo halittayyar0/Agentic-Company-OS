@@ -1,8 +1,6 @@
-import path from "node:path";
+import { windowsPrivateHelperExecutable } from "@workspace/ai-server/windows-private-helper";
 import { executeBoundedCommand } from "../endurance/process-supervisor";
 import { SetupArgumentError } from "./cli-options";
-
-const WINDOWS_TOKEN_ROLE = `[Console]::Write($(if (([System.Security.Principal.WindowsPrincipal]::new([System.Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) { 'administrator' } else { 'ordinary' }))`;
 
 /** PostgreSQL requires an ordinary token. Check before creating private data;
  * this does not change UAC, groups, credentials or the caller's privileges. */
@@ -10,7 +8,6 @@ export async function assertNativeUser(
   dependencies: {
     platform?: string;
     uid?: (() => number) | undefined;
-    systemRoot?: string;
     run?: typeof executeBoundedCommand;
   } = {},
 ): Promise<void> {
@@ -27,36 +24,29 @@ export async function assertNativeUser(
   }
   const unavailable = () =>
     new SetupArgumentError(
-      "Could not verify this Windows account's permissions. Use a normal terminal with the system PowerShell available.",
+      "Could not verify this Windows account's permissions. Re-extract the complete package and start it normally.",
     );
-  const systemRoot =
-    dependencies.systemRoot ?? process.env.SystemRoot ?? process.env.SYSTEMROOT;
-  if (!systemRoot || !path.isAbsolute(systemRoot)) throw unavailable();
   let result: Awaited<ReturnType<typeof executeBoundedCommand>>;
   try {
     result = await (dependencies.run ?? executeBoundedCommand)({
-      command: path.join(
-        systemRoot,
-        "System32/WindowsPowerShell/v1.0/powershell.exe",
-      ),
-      args: [
-        "-NoLogo",
-        "-NoProfile",
-        "-NonInteractive",
-        "-EncodedCommand",
-        Buffer.from(WINDOWS_TOKEN_ROLE, "utf16le").toString("base64"),
-      ],
-      environment: process.env,
+      command: await windowsPrivateHelperExecutable(),
+      args: ["--token-role"],
+      environment: {},
       cwd: process.cwd(),
       timeoutMs: 10_000,
       maxBufferBytes: 1024,
     });
+    if (
+      result.exitCode !== 0 ||
+      result.stderr !== "ACOS_PRIVATE_STORAGE_STARTED"
+    )
+      throw unavailable();
   } catch {
     throw unavailable();
   }
-  if (result.stdout.trim() === "administrator")
+  if (result.stdout === "administrator")
     throw new SetupArgumentError(
       'Run START.cmd normally. Do not choose "Run as administrator"; the private database requires an ordinary user.',
     );
-  if (result.stdout.trim() !== "ordinary") throw unavailable();
+  if (result.stdout !== "ordinary") throw unavailable();
 }

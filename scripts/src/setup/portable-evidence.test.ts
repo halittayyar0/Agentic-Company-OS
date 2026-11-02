@@ -38,6 +38,42 @@ test("portable installer includes an offline evidence verifier", async () => {
       `ghcr.io/owner/app@sha256:${"c".repeat(64)}`,
     );
     const bootstrap = path.join(output, "scripts/src/setup/bootstrap.mjs");
+    assert.deepEqual(
+      await readFile(
+        path.join(output, "scripts/src/setup/windows-private-helper.exe"),
+      ),
+      await readFile(
+        path.join(root, "lib/ai-server/src/windows-private-helper.exe"),
+      ),
+    );
+    assert.deepEqual(
+      await readFile(
+        path.join(
+          output,
+          "scripts/src/setup/windows-private-helper-NOTICE.txt",
+        ),
+      ),
+      await readFile(
+        path.join(
+          root,
+          "deploy/native-attribution/WINDOWS-PRIVATE-HELPER-NOTICE.txt",
+        ),
+      ),
+    );
+    assert.deepEqual(
+      await readFile(
+        path.join(
+          output,
+          "scripts/src/setup/windows-private-helper.provenance.json",
+        ),
+      ),
+      await readFile(
+        path.join(
+          root,
+          "lib/ai-server/native/windows-private-helper-provenance.json",
+        ),
+      ),
+    );
     const noTools = {
       cwd: directory,
       timeout: 10_000,

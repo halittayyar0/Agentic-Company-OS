@@ -7,6 +7,10 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ### Fixed
 
+- Windows private-record checks and native account admission use a bundled
+  metadata checker instead of starting PowerShell. Existing access restrictions
+  remain enforced; a missing or altered helper stops protected operations and
+  requires re-extracting the complete verified package.
 - Existing workspaces can restart locally while their saved private phone network
   is unavailable. A seven-language connection status keeps the local workspace
   usable, retains the phone preference for the next restart and never opens a

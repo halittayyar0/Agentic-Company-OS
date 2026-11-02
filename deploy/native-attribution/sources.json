@@ -32,6 +32,20 @@
       "licenseUrl": "https://raw.githubusercontent.com/nodejs/node/v24.22.1/LICENSE",
       "licenseFiles": ["NODE-LICENSE.txt"],
       "licenseHandling": "Retain the LICENSE from the exact hash-verified target Node distribution; compare it with this pinned-tag reference before packaging."
+    },
+    {
+      "component": "Windows private metadata checker",
+      "auditedDate": "2026-11-02",
+      "sourcePath": "lib/ai-server/native/windows-private-helper.c",
+      "sourceUrl": "https://github.com/halittayyar0/Agentic-Company-OS/blob/fc86767a4296ece6c472104d0ec3eea01eabf3d8/lib/ai-server/native/windows-private-helper.c",
+      "sourceSha256": "9fe2b88bd1407dad0375b5ef092cd61bf520b9d5b7feb9590ba57087c67e5407",
+      "executableSha256": "72f100903d99de66f12c83e3580418de3f5c40b535df0d0884ba34cf7fffd84f",
+      "buildProvenance": "lib/ai-server/native/windows-private-helper-provenance.json",
+      "compiler": "MSVC19.51/v14.51",
+      "sdkVersion": "10.0.26100.0",
+      "licenseFiles": ["WINDOWS-PRIVATE-HELPER-NOTICE.txt"],
+      "licenseUrl": "https://visualstudio.microsoft.com/license-terms/vs2026-ga-visualcpp-v14-redist-runtime/",
+      "licenseHandling": "Project C source is MIT; static Microsoft runtime components retain separate terms. Include the notice and pinned component provenance beside every packaged Windows checker. Unix native runtimes neither require nor execute it."
     }
   ],
   "noticeSha256": {
@@ -40,6 +54,7 @@
     "POSTGRESQL-COPYRIGHT.txt": "3d6af92ff8a4c2cdf69afb1cf44edea727922f5cd0cf8b5f72b11cdecac8fdfd",
     "POSTGRESQL-REGEX-COPYRIGHT.txt": "5027cfe4f54842896b01ca6be28becc9a018623aaadc0f5b51350da71118cb0e",
     "POSTGRESQL-TIMEZONE-README.txt": "fc1ef049eb3c965a60291102e22177e33fae2bd0ad002ee38c9b2d463268d261",
-    "ZLIB-LICENSE.txt": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+    "ZLIB-LICENSE.txt": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+    "WINDOWS-PRIVATE-HELPER-NOTICE.txt": "f6abae0d33e682b49cd428e7a23b75ce4860c68a0720da87b48d7fb9e36c4363"
   }
 }

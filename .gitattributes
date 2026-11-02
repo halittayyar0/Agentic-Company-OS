@@ -12,6 +12,7 @@
 *.woff binary
 *.woff2 binary
 *.wasm binary
+*.exe binary
 *.pdf binary
 
 # Markdown uses two trailing spaces for explicit line breaks.

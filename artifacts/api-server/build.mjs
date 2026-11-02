@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import { cp, rm } from "node:fs/promises";
 import { portableLoggingPlugin, runtimeBanner } from "./build-logging.mjs";
+import { copyWindowsPrivateHelper } from "../../scripts/build-windows-private-helper-asset.mjs";
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -129,6 +130,7 @@ async function buildAll() {
     path.resolve(distDir, "db-migrations"),
     { recursive: true },
   );
+  if (process.platform === "win32") await copyWindowsPrivateHelper(distDir);
 }
 
 buildAll().catch((err) => {
