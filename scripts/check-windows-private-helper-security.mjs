@@ -68,6 +68,7 @@ const record = (name) => {
 const fixtureSource = String.raw`
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+[Console]::Error.WriteLine('FIXTURE_STARTED')
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
@@ -76,6 +77,7 @@ public static class FixtureAcl {
   public static extern uint SetNamedSecurityInfo(string name, int type, uint information, IntPtr owner, IntPtr group, IntPtr dacl, IntPtr sacl);
 }
 '@
+[Console]::Error.WriteLine('FIXTURE_COMPILED')
 $target = $env:ACOS_TEST_TARGET
 $kind = $env:ACOS_TEST_KIND
 $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
@@ -127,31 +129,74 @@ if ([System.IO.Directory]::Exists($target)) {
   $security = [System.IO.Directory]::GetAccessControl($target, $sections)
 } else { $security = [System.IO.File]::GetAccessControl($target, $sections) }
 [Console]::Write([Convert]::ToBase64String($security.GetSecurityDescriptorBinaryForm()))
+[Console]::Error.WriteLine('FIXTURE_COMPLETE')
 `;
 async function acl(target, kind) {
-  const result = await execute(
-    powershell,
-    [
-      "-NoLogo",
-      "-NoProfile",
-      "-NonInteractive",
-      "-EncodedCommand",
-      Buffer.from(fixtureSource, "utf16le").toString("base64"),
-    ],
-    {
-      windowsHide: true,
-      timeout: 15_000,
-      maxBuffer: 16_384,
-      env: {
-        SystemRoot: process.env.SystemRoot,
-        TEMP: process.env.TEMP,
-        TMP: process.env.TMP,
-        ACOS_TEST_TARGET: target,
-        ACOS_TEST_KIND: kind,
-      },
-    },
+  // The fixture compiler uses the host's normal Windows/.NET tool locations.
+  // Keep credentials out; production native invocations still inherit none.
+  const environment = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) =>
+      [
+        "systemroot",
+        "windir",
+        "systemdrive",
+        "comspec",
+        "path",
+        "pathext",
+        "userprofile",
+        "home",
+        "homedrive",
+        "homepath",
+        "temp",
+        "tmp",
+        "localappdata",
+        "appdata",
+        "psmodulepath",
+        "programfiles",
+        "programfiles(x86)",
+        "programw6432",
+        "number_of_processors",
+        "processor_architecture",
+        "username",
+        "userdomain",
+      ].includes(name.toLowerCase()),
+    ),
   );
-  assert.equal(result.stderr, "");
+  let result;
+  try {
+    result = await execute(
+      powershell,
+      [
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-EncodedCommand",
+        Buffer.from(fixtureSource, "utf16le").toString("base64"),
+      ],
+      {
+        windowsHide: true,
+        timeout: 15_000,
+        maxBuffer: 16_384,
+        env: {
+          ...environment,
+          ACOS_TEST_TARGET: target,
+          ACOS_TEST_KIND: kind,
+        },
+      },
+    );
+  } catch (error) {
+    const markers =
+      String(error.stderr ?? "").match(
+        /FIXTURE_(?:STARTED|COMPILED|COMPLETE)/gu,
+      ) ?? [];
+    throw new Error(
+      `Windows ACL fixture ${kind} failed: killed=${error.killed === true}; exit=${error.code ?? "none"}; phase=${markers.at(-1) ?? "before-script"}`,
+    );
+  }
+  assert.equal(
+    result.stderr.replaceAll("\r\n", "\n"),
+    "FIXTURE_STARTED\nFIXTURE_COMPILED\nFIXTURE_COMPLETE\n",
+  );
   return sha(Buffer.from(result.stdout, "base64"));
 }
 async function initialize(target) {
