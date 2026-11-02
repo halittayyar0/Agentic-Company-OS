@@ -216,10 +216,10 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
     sourceStages++;
     assert.equal(
       stage.source.tests,
-      3127,
-      "reviewed census includes saved-delivery ownership and Windows storage diagnostics regressions",
+      3134,
+      "reviewed census includes offline phone resumption and protected localized status regressions",
     );
-    assert.equal(stage.source.passed, 3127 - stage.source.skippedCases.length);
+    assert.equal(stage.source.passed, 3134 - stage.source.skippedCases.length);
   }
   assert.equal(sourceStages, 4);
   assert.equal(

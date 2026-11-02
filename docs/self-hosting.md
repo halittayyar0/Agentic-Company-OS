@@ -42,6 +42,16 @@ Windows and macOS packages are unsigned. No macOS notarization or SmartScreen re
 
 Data and secrets live outside the extracted package, by default under `~/.agentic-company-os/instances/instance-UUID` (the equivalent user-home path on Windows). The terminal prints the actual installation directory. Keep it private and retain both it and the original extracted package. Restarting **the same package at the same location and revision** uses its private last-installation pointer to resume the recorded installation. The pointer contains no model/operator secret and deliberately refuses a different package location or revision. Do not edit it to adopt unfamiliar data.
 
+If a saved private phone connection is unavailable at restart, an existing
+workspace can still open on this computer. The launcher shows a private local
+connection-status link with **Open workspace** and an explicit access-key reveal.
+It retains your phone preference, data and permissions. Check the private
+connection in Tailscale, close the launcher and restart the same START to retry
+phone access. The local fallback does not configure Serve, enable Funnel or add
+an external trusted hostname. Fresh setup still requires a ready private network
+when that phone option is selected. A failure after phone configuration begins
+still stops startup for recovery; this fallback covers the phone preflight.
+
 Native packages from v0.5.6 offer a guided same-platform update from the public v0.5.5 release and compatible newer 0.5.x patch releases. See [Upgrades](#upgrades) for its boundaries. Keep the original package and backups. A separately selected new `--data-dir` creates an independent installation; it does not migrate existing work. Native setup does not publish a website, allocate a public domain or provide free public hosting/tunneling. Private remote access needs its own reviewed configuration.
 
 ## Portable container installer

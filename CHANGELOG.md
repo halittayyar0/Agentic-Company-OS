@@ -5,6 +5,13 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+### Fixed
+
+- Existing workspaces can restart locally while their saved private phone network
+  is unavailable. A seven-language connection status keeps the local workspace
+  usable, retains the phone preference for the next restart and never opens a
+  public route or replaces saved credentials and permissions.
+
 ## [0.5.10] - 2026-11-01
 
 ### Added

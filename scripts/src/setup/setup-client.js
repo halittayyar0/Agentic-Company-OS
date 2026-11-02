@@ -16,6 +16,55 @@
     ar: "الإعداد|مساحتك. قواعدك.|اختر مكان عمل الوكلاء وما يمكنهم فعله.|أين تريد التشغيل؟|على هذا الكمبيوتر|تشغيل مباشر على Windows أو macOS أو Linux. يتطلب PostgreSQL.|داخل حاوية|شغّل التطبيق وقاعدة البيانات معًا باستخدام Docker.|صلاحيات الوكلاء|قراءة فقط|طلب الموافقة|وصول كامل|مخصص|يقتصر الوصول على مساحة العمل وصلاحيات نظام التشغيل.|مزود الذكاء الاصطناعي|الإعداد لاحقًا|عنوان اتصال PostgreSQL|مفتاح API|المنفذ المحلي|حزم الأدوات|البيانات|المستندات|الويب|البرمجة|التخطيط|الوصول من الهاتف|هذا الكمبيوتر فقط|شبكة خاصة|استخدم متصفح هاتفك. تحتاج الشبكة الخاصة إلى اتصال مُعدّ مسبقًا؛ لا حاجة إلى تطبيق هاتف.|مراجعة التثبيت|تبقى بيانات الدخول في مجلد التثبيت الخاص ولا تظهر في الملخص.|فتح مساحة العمل|رجوع|متابعة|تثبيت|جارٍ فحص الكمبيوتر…|جاهز للمتابعة.|المتطلبات غير مكتملة. تحقق من Node 24 أو محرك Docker يعمل بنظام Linux مع Compose v2.|تعذرت المتابعة. تحقق من البيانات والاتصال ثم حاول مجددًا.|جارٍ التثبيت…|تم التحقق من التثبيت.|توقف التثبيت. تم الاحتفاظ بالإعدادات؛ افحص أداة التثبيت قبل البدء مجددًا.|افتح رابط الإعداد الذي يعرضه برنامج التشغيل.",
   };
   const permissionKeys = ["files", "terminal", "browser", "delegation", "sudo"];
+  const phoneUnavailableWords = {
+    en: "Phone access is unavailable. Your workspace is running on this computer. Check the private connection in Tailscale, then restart the launcher to retry. Your phone preference is saved.",
+    tr: "Telefon erişimi kullanılamıyor. Çalışma alanın bu bilgisayarda açık. Tailscale’de özel bağlantıyı kontrol et, ardından yeniden denemek için başlatıcıyı yeniden aç. Telefon tercihin kayıtlı.",
+    de: "Telefonzugriff ist nicht verfügbar. Dein Arbeitsbereich läuft auf diesem Computer. Prüfe die private Verbindung in Tailscale und starte dann das Startprogramm neu. Deine Telefoneinstellung bleibt gespeichert.",
+    ru: "Доступ с телефона недоступен. Рабочее пространство работает на этом компьютере. Проверьте частное соединение в Tailscale и перезапустите программу запуска. Настройка доступа с телефона сохранена.",
+    "zh-CN":
+      "手机访问暂不可用。工作空间已在这台电脑上运行。请检查 Tailscale 中的私有连接，然后重新运行启动程序以重试。手机访问偏好已保留。",
+    "zh-TW":
+      "手機存取暫時無法使用。工作空間已在這台電腦上執行。請檢查 Tailscale 中的私人連線，然後重新執行啟動程式以重試。手機存取偏好已保留。",
+    ar: "الوصول من الهاتف غير متاح. تعمل مساحة العمل على هذا الكمبيوتر. تحقق من الاتصال الخاص في Tailscale، ثم أعد تشغيل برنامج التشغيل للمحاولة مجددًا. تم حفظ تفضيل الوصول من الهاتف.",
+  };
+  const resumedReadyWords = {
+    en: "Workspace ready on this computer.",
+    tr: "Çalışma alanı bu bilgisayarda hazır.",
+    de: "Arbeitsbereich auf diesem Computer bereit.",
+    ru: "Рабочее пространство готово на этом компьютере.",
+    "zh-CN": "工作空间已在这台电脑上就绪。",
+    "zh-TW": "工作空間已在這台電腦上就緒。",
+    ar: "مساحة العمل جاهزة على هذا الكمبيوتر.",
+  };
+  const resumedHeaderWords = {
+    en: [
+      "WORKSPACE",
+      "Connection status",
+      "Continue using your saved workspace on this computer.",
+    ],
+    tr: [
+      "ÇALIŞMA ALANI",
+      "Bağlantı durumu",
+      "Kaydedilmiş çalışma alanını bu bilgisayarda kullanmaya devam et.",
+    ],
+    de: [
+      "ARBEITSBEREICH",
+      "Verbindungsstatus",
+      "Nutze deinen gespeicherten Arbeitsbereich auf diesem Computer weiter.",
+    ],
+    ru: [
+      "РАБОЧЕЕ ПРОСТРАНСТВО",
+      "Состояние подключения",
+      "Продолжайте работу в сохранённом пространстве на этом компьютере.",
+    ],
+    "zh-CN": ["工作空间", "连接状态", "继续在这台电脑上使用已保存的工作空间。"],
+    "zh-TW": ["工作空間", "連線狀態", "繼續在這台電腦上使用已儲存的工作空間。"],
+    ar: [
+      "مساحة العمل",
+      "حالة الاتصال",
+      "تابع استخدام مساحة العمل المحفوظة على هذا الكمبيوتر.",
+    ],
+  };
   const bundledNativeWords = {
     en: "Node.js, PostgreSQL and the app are included. No separate infrastructure installation is needed.",
     tr: "Node.js, PostgreSQL ve uygulama pakete dahil. Ayrı bir altyapı kurulumu gerekmez.",
@@ -246,12 +295,26 @@
     checking = false,
     checkFailed = false;
   let copy = {};
+  let lastState = null,
+    resumedStatus = false;
+  function renderPhoneStatus(state) {
+    if (!state) return;
+    $("phone-unavailable").hidden = state?.phoneUnavailable !== true;
+    $("phone-unavailable").textContent =
+      state?.phoneUnavailable === true
+        ? phoneUnavailableWords[$("language").value]
+        : "";
+  }
   const value = (name) => new FormData(form).get(name);
   function translate() {
     const locale = $("language").value;
     copy = Object.fromEntries(
       keys.map((key, index) => [key, words[locale].split("|")[index]]),
     );
+    if (resumedStatus) {
+      const [setup, title, intro] = resumedHeaderWords[locale];
+      Object.assign(copy, { setup, title, intro });
+    }
     const connectionWords = {
       tr: [
         "Erişim anahtarını göster",
@@ -428,7 +491,7 @@
       $(id).hidden = index !== stage;
     $("back").hidden = stage === 0 || stage === 3;
     $("back").disabled = busy;
-    $("language").disabled = busy || stage === 3;
+    $("language").disabled = busy || (stage === 3 && !resumedStatus);
     $("upgrade-existing").disabled = busy || stage === 3;
     $("next").hidden = stage === 3;
     $("next").textContent = stage === 2 ? copy.install : copy.next;
@@ -568,36 +631,44 @@
         : {}),
     };
   }
+  function renderProgress(state) {
+    lastState = state;
+    renderPhoneStatus(state);
+    $("phase").textContent = state.resumeOnly
+      ? resumedReadyWords[$("language").value]
+      : copy[state.phase] || copy.installing;
+    $("progress").hidden = Boolean(state.resumeOnly);
+    $("step").hidden = Boolean(state.resumeOnly);
+    $("step").textContent =
+      `${state.completedSteps.length} / ${plan ? plan.steps.length : "…"}`;
+    if (state.phase === "complete") {
+      $("progress").value = 1;
+      const url = new URL(state.url);
+      if (url.protocol === "http:" && url.hostname === "127.0.0.1") {
+        $("open").href = url.href;
+        $("open").hidden = false;
+      }
+      $("connection").hidden = !state.connectionAvailable;
+      if (state.phoneUrl) {
+        const phone = new URL(state.phoneUrl);
+        if (
+          phone.protocol === "https:" &&
+          phone.hostname.endsWith(".ts.net") &&
+          phone.port === "8443"
+        ) {
+          $("phone-link").href = phone.href;
+          $("phone-link").hidden = false;
+        }
+      }
+    } else if (state.phase === "failed") {
+      $("progress").hidden = true;
+    }
+  }
   async function poll() {
     try {
       const state = await api("state");
-      $("phase").textContent = copy[state.phase] || copy.installing;
-      $("step").textContent =
-        `${state.completedSteps.length} / ${plan ? plan.steps.length : "…"}`;
-      if (state.phase === "complete") {
-        $("progress").value = 1;
-        const url = new URL(state.url);
-        if (url.protocol === "http:" && url.hostname === "127.0.0.1") {
-          $("open").href = url.href;
-          $("open").hidden = false;
-        }
-        $("connection").hidden = !state.connectionAvailable;
-        if (state.phoneUrl) {
-          const phone = new URL(state.phoneUrl);
-          if (
-            phone.protocol === "https:" &&
-            phone.hostname.endsWith(".ts.net") &&
-            phone.port === "8443"
-          ) {
-            $("phone-link").href = phone.href;
-            $("phone-link").hidden = false;
-          }
-        }
-      } else if (state.phase === "failed") {
-        $("progress").hidden = true;
-      } else {
-        setTimeout(poll, 1200);
-      }
+      renderProgress(state);
+      if (!["complete", "failed"].includes(state.phase)) setTimeout(poll, 1200);
     } catch (error) {
       $("error").textContent = copy[error.message] || copy.error;
     }
@@ -606,11 +677,13 @@
     plan = null;
     if (stage === 2) stage = 1;
     translate();
+    if (lastState) renderProgress(lastState);
   });
   $("connection").addEventListener("click", async () => {
     $("connection").disabled = true;
     try {
       const value = await api("connection", {});
+      if (lastState) lastState.connectionAvailable = false;
       $("operator-key").value = value.operatorToken;
       $("connection-field").hidden = false;
       $("connection").hidden = true;
@@ -701,8 +774,22 @@
     $("error").textContent = copy.session;
     return;
   }
-  void refreshCapabilities();
   void globalThis
-    .initializeSetupUpgrade({ api, language: $("language"), freshForm: form })
+    .initializeSetupUpgrade({
+      api,
+      language: $("language"),
+      freshForm: form,
+      onResume(state) {
+        resumedStatus = true;
+        stage = 3;
+        if (Object.hasOwn(words, state.uiLocale))
+          $("language").value = state.uiLocale;
+        translate();
+        draw();
+        renderProgress(state);
+      },
+      onReady: () => void refreshCapabilities(),
+      onState: renderPhoneStatus,
+    })
     .start();
 })();

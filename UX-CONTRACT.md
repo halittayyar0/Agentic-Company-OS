@@ -46,6 +46,12 @@ Paths in this map are relative to `artifacts/agentic-company-os`. A future owner
 
 ### Standalone setup and native upgrade
 
+An existing workspace may resume locally when its optional private phone
+preflight is unavailable. Its completed status variant names both facts and
+retains the saved phone preference. It preserves the existing authenticated
+one-shot key reveal, supports all seven languages, and blocks installation and
+upgrade mutations. Only a new launcher restart retries the saved phone route.
+
 `scripts/src/setup/page.ts`, `setup-client.js`, `setup-upgrade-client.js` and
 `session.ts` are the canonical pre-API setup owners. Native HTML controls and the
 OS language select are the named standalone-installer variant documented in

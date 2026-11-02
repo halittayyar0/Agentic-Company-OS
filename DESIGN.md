@@ -240,6 +240,13 @@ The ring never invents missing samples, interpolates “healthy,” or equates a
 
 ### Standalone installer variant
 
+Existing installations with an unavailable optional private phone preflight use
+the same setup status surface after verified local startup. The message names
+local availability and the unavailable phone connection separately, retains the
+saved language and phone preference, and offers the existing Open workspace/key
+actions. This is a completed read-only status variant: no installation controls,
+invented progress or silent policy changes. Its language select remains usable.
+
 The local setup page in `scripts/src/setup/page.ts` owns the pre-API installer.
 It cannot depend on the running React application, network fonts or a component
 server. Its native form controls and language popup are a deliberate platform-owned

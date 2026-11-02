@@ -244,8 +244,23 @@ export async function launchSetup(argv = process.argv.slice(2)) {
       process.stdout.write(
         `Workspace: ${result.url}\n${result.phoneUrl ? `Phone: ${result.phoneUrl}\n` : ""}Operator key: ${path.join(restored.resources.directory, "secrets/operator_auth_token")}\n`,
       );
+      if (result.phoneUnavailable) {
+        session = await createSetupSession({
+          resumed: {
+            ...result,
+            phoneUnavailable: true,
+            locale: restored.plan.settings.locale,
+          },
+          execute: async () => {
+            throw new Error("resumed_status_read_only");
+          },
+        });
+        process.stdout.write(
+          `Phone access is unavailable. Your workspace is running on this computer. Check Tailscale and restart the launcher to retry.\nLocal connection status: ${session.url}\n`,
+        );
+      }
       if (nativeDistribution && !args.noBrowser)
-        await openNativeBrowser(result.url);
+        await openNativeBrowser(session?.url ?? result.url);
     } else {
       session = await createSetupSession({
         capabilities,

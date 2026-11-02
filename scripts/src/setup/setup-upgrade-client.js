@@ -1,5 +1,12 @@
 /* Standalone installer controller: no app runtime, external assets or storage. */
-globalThis.initializeSetupUpgrade = function ({ api, language, freshForm }) {
+globalThis.initializeSetupUpgrade = function ({
+  api,
+  language,
+  freshForm,
+  onState,
+  onResume,
+  onReady,
+}) {
   const keys =
     "title|lead|existing|path|pathHelp|find|fresh|keep|from|to|data|preserve|close|update|recover|retry|paused|open|check|checking|copying|migrating|qualifying|promoting|recovering|opening|complete|failed|cancelled|stale|notFound|session|offline|cancel|stopping|key|keyHint|hide|language|recoveryLead|restart".split(
       "|",
@@ -24,6 +31,7 @@ globalThis.initializeSetupUpgrade = function ({ api, language, freshForm }) {
     busy = false,
     selected = false,
     freshAvailable = true,
+    resumeOnly = false,
     timer;
   let failure = "",
     keyLoaded = false,
@@ -45,6 +53,11 @@ globalThis.initializeSetupUpgrade = function ({ api, language, freshForm }) {
     if (active) title.textContent = copy().title;
   }
   function render() {
+    onState?.(state);
+    if (resumeOnly) {
+      $("existing").hidden = true;
+      return;
+    }
     const text = copy();
     root.querySelectorAll("[data-upgrade-copy]").forEach((node) => {
       node.textContent = text[node.dataset.upgradeCopy];
@@ -319,6 +332,14 @@ globalThis.initializeSetupUpgrade = function ({ api, language, freshForm }) {
       freshForm.hidden = true;
       try {
         const support = await api("upgrade");
+        if (support.resumeOnly) {
+          resumeOnly = true;
+          const current = await api("state");
+          select(false);
+          onResume?.(current);
+          return;
+        }
+        onReady?.();
         if (!support.available) {
           select(false);
           return;

@@ -68,6 +68,9 @@ export function createInstallationExecutor(options: {
   capabilities?: typeof detectInstallCapabilities;
   run?: typeof executeBoundedCommand;
   verify?: typeof waitForRuntimeTopology;
+  inspectPhone?: typeof inspectPhoneAccess;
+  configurePhone?: typeof configurePhoneAccess;
+  verifyPhone?: typeof verifyPhoneAccess;
   signal?: AbortSignal;
   resume?: {
     resources: InstallationResources;
@@ -117,6 +120,7 @@ export function createInstallationExecutor(options: {
     const completed: InstallationStep[] = [];
     let currentStep: InstallationStep | null = null;
     let phone: PhoneConnection | undefined;
+    let phoneUnavailable: true | undefined;
     let codingAppArmor: boolean | undefined;
     const record = async (phase: string) => {
       if (!resources) return;
@@ -138,6 +142,7 @@ export function createInstallationExecutor(options: {
                 runtimeOptions: {
                   ollamaUrl: credentials.ollamaUrl,
                   phoneUrl: phone?.url,
+                  ...(phoneUnavailable ? { phoneUnavailable } : {}),
                   ...(bundledNative
                     ? { nativeBundleCommit: options.nativeDistribution!.commit }
                     : {}),
@@ -184,7 +189,9 @@ export function createInstallationExecutor(options: {
         const detected = await (
           options.capabilities ?? detectInstallCapabilities
         )();
-        planInstallation(plan.settings, detected);
+        planInstallation(plan.settings, detected, {
+          existingInstallation: Boolean(options.resume),
+        });
         if (plan.settings.codingRuntime) {
           if (options.prebuiltImage && !options.codingImage)
             throw new Error("coding_distribution_missing");
@@ -203,8 +210,19 @@ export function createInstallationExecutor(options: {
           throw new Error("Installation data must be outside the checkout");
         if (!options.resume || plan.settings.mode === "native")
           await assertInstallPortAvailable(plan.settings.port);
-        if (plan.settings.phoneAccess === "private_network")
-          phone = await inspectPhoneAccess(plan.settings.port);
+        if (plan.settings.phoneAccess === "private_network") {
+          try {
+            if (!detected.phone?.ready) throw new Error("PHONE_NOT_READY");
+            phone = await (options.inspectPhone ?? inspectPhoneAccess)(
+              plan.settings.port,
+            );
+          } catch (error) {
+            // Existing local work remains available without trusting or changing
+            // any phone route. Keep the saved selection for the next restart.
+            if (!options.resume) throw error;
+            phoneUnavailable = true;
+          }
+        }
       });
       await step("prepare_private_config", async () => {
         if (options.resume) {
@@ -368,8 +386,11 @@ export function createInstallationExecutor(options: {
       });
       if (phone)
         await step("configure_phone", async () => {
-          await configurePhoneAccess(phone!);
-          await verifyPhoneAccess(phone!, operatorToken);
+          await (options.configurePhone ?? configurePhoneAccess)(phone!);
+          await (options.verifyPhone ?? verifyPhoneAccess)(
+            phone!,
+            operatorToken,
+          );
         });
       await step("verify_runtime", async () => {
         await verify(
@@ -382,6 +403,7 @@ export function createInstallationExecutor(options: {
         url: baseUrl,
         operatorToken,
         ...(phone ? { phoneUrl: phone.url } : {}),
+        ...(phoneUnavailable ? { phoneUnavailable } : {}),
       };
     } catch (error) {
       // Keep the database, secrets, build and manifest for recovery. Only child

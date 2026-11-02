@@ -66,7 +66,9 @@ export async function readInstallation(
     throw new Error(
       "Resume must use the installation's original native package commit",
     );
-  const normalized = planInstallation(saved.plan.settings, await detect());
+  const normalized = planInstallation(saved.plan.settings, await detect(), {
+    existingInstallation: true,
+  });
   const plan = {
     ...normalized,
     id: saved.plan.id,
