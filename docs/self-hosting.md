@@ -755,6 +755,21 @@ That is the secure default. Built-in workspace file commands still work. Do not 
 
 That is the secure default. Use normal host administration outside the application. Enabling founder shell should be an explicit, temporary risk decision inside an isolated environment.
 
+### Source CI cannot upload macOS evidence
+
+An artifact-service DNS failure can happen after every installation and UI test
+has passed. The macOS evidence upload steps retry only `ENOTFOUND` or `EAI_AGAIN`
+lookups for their existing GitHub results service, before opening a connection.
+There are at most two additional lookups per upload process, with one- and
+two-second delays and a 75-second absolute lookup deadline. The OS resolver,
+HTTP requests, TLS, credentials and application runtime are unchanged.
+
+Persistent failure still fails the job and its dependent platform gates. A failed
+original is retained; passing test lines alone do not qualify a release. The
+transport tests use loopback requests and synthetic DNS faults, require no GitHub
+token, and run with `pnpm test:ci-artifact-dns` under Node 24. They verify recovery
+sends one request and persistent failure sends none.
+
 ## Final go/no-go
 
 Do not place the instance on a remote network unless all of these are true:

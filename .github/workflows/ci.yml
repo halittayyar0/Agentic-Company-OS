@@ -192,6 +192,9 @@ jobs:
       - name: Check formatting
         run: pnpm run format:check
 
+      - name: Test artifact-service DNS recovery without remote writes
+        run: pnpm run test:ci-artifact-dns
+
       - name: Prove pinned Ollama local-only and cloud-disabled boundary
         timeout-minutes: 15
         env:

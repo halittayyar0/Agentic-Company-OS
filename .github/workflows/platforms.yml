@@ -98,6 +98,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install browser for native and UI tests
         run: pnpm exec playwright install chromium
+      - name: Test artifact-service DNS recovery without remote writes
+        run: pnpm run test:ci-artifact-dns
       - name: Build application and check types
         run: pnpm run build
       - name: Prove pinned Ollama local-only and cloud-disabled boundary
@@ -117,6 +119,8 @@ jobs:
           path: ${{ runner.temp }}/ollama-local-boundary.json
           if-no-files-found: warn
           retention-days: 7
+        env:
+          NODE_OPTIONS: --require "${{ github.workspace }}/.github/scripts/artifact-dns-preload.cjs"
       - name: Install PostgreSQL 17 for disposable restore acceptance
         run: |
           brew install postgresql@17
@@ -159,6 +163,8 @@ jobs:
             ${{ runner.temp }}/acos-native-install-proof-*/reusable-project-guides-cleanup.json
           if-no-files-found: warn
           retention-days: 7
+        env:
+          NODE_OPTIONS: --require "${{ github.workspace }}/.github/scripts/artifact-dns-preload.cjs"
 
   # A skipped dependency must not turn a required platform check green. Keep
   # the existing protected names and require both complete architecture
