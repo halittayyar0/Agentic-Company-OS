@@ -41,3 +41,9 @@ and native qualification remain pending. No new physical-phone, genuine-model,
 actual-main, upgrade, distribution or published-release acceptance is claimed.
 The next valuable action is fresh complete candidate qualification, followed by
 normal protected integration and actual-main release validation.
+
+The first snapshot candidate bd7d0b1 received fresh original CodeQL check
+125691919289: the four filesystem alerts are absent, while the test's array
+`includes` call still triggers the hostname-substring rule. It remains rejected.
+The assertion now uses `some` with explicit equality between each complete entry
+and the saved hostname. Its next original security result is still required.
