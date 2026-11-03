@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import {
   copyFile,
   mkdir,
@@ -12,6 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import test from "node:test";
 import { parseWindowsDirectoryReceipt } from "./windows-private-helper";
 
@@ -101,6 +103,23 @@ test("relocated private checker loader rejects missing, altered, nonregular and 
   await mkdir(executable);
   await assert.rejects(load(), /windows_private_storage_helper_invalid/u);
   await rm(executable, { recursive: true });
+  if (process.platform !== "win32") {
+    await promisify(execFile)("mkfifo", [executable], { timeout: 5_000 });
+    // Isolate a blocking open in a child so a regression cannot stall the suite.
+    const fifoProbe = await promisify(execFile)(
+      process.execPath,
+      [
+        "--input-type=module",
+        "--eval",
+        `import assert from 'node:assert/strict';
+const { windowsPrivateHelperExecutable: load } = await import(${JSON.stringify(pathToFileURL(bundled).href)});
+await assert.rejects(load(), /windows_private_storage_helper_invalid/u);`,
+      ],
+      { timeout: 5_000 },
+    );
+    assert.equal(fifoProbe.stderr, "");
+    await rm(executable);
+  }
   await copyFile(
     new URL("./windows-private-helper.exe", import.meta.url),
     executable,

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { lstat, open, realpath } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import type { BigIntStats } from "node:fs";
+import { constants, type BigIntStats } from "node:fs";
 import { WINDOWS_PRIVATE_HELPER } from "./windows-private-helper-manifest";
 
 function unchanged(left: BigIntStats, right: BigIntStats): boolean {
@@ -24,24 +24,28 @@ export async function windowsPrivateHelperExecutable(): Promise<string> {
     new URL("./windows-private-helper.exe", import.meta.url),
   );
   try {
-    const before = await lstat(executable, { bigint: true });
-    if (
-      !before.isFile() ||
-      before.isSymbolicLink() ||
-      before.size !== BigInt(WINDOWS_PRIVATE_HELPER.bytes) ||
-      before.size <= 0n ||
-      before.size > 1024n * 1024n
-    )
-      throw new Error("invalid");
-    const actual = await realpath(executable);
-    if (
-      (process.platform === "win32" ? actual.toLowerCase() : actual) !==
-      (process.platform === "win32" ? executable.toLowerCase() : executable)
-    )
-      throw new Error("invalid");
-    const handle = await open(executable, "r");
+    // Inspect and consume one descriptor. POSIX nonblocking mode also lets us
+    // reject a substituted FIFO instead of waiting for another process to open it.
+    const handle = await open(
+      executable,
+      process.platform === "win32"
+        ? constants.O_RDONLY
+        : constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    );
     try {
-      if (!unchanged(before, await handle.stat({ bigint: true })))
+      const before = await handle.stat({ bigint: true });
+      if (
+        !before.isFile() ||
+        before.size !== BigInt(WINDOWS_PRIVATE_HELPER.bytes) ||
+        before.size <= 0n ||
+        before.size > 1024n * 1024n
+      )
+        throw new Error("invalid");
+      const actual = await realpath(executable);
+      if (
+        (process.platform === "win32" ? actual.toLowerCase() : actual) !==
+        (process.platform === "win32" ? executable.toLowerCase() : executable)
+      )
         throw new Error("invalid");
       const bytes = Buffer.alloc(WINDOWS_PRIVATE_HELPER.bytes + 1);
       let length = 0;

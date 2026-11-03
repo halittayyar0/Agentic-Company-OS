@@ -7,6 +7,7 @@ import {
   lstat,
   mkdir,
   mkdtemp,
+  open,
   readFile,
   realpath,
   rmdir,
@@ -289,22 +290,30 @@ try {
     "directory create-flag misuse and file-type mismatch leave the descriptor unchanged",
   );
   const file = path.join(base, "empty-file");
-  await writeFile(file, "", { flag: "wx" });
+  const fileHandle = await open(file, "wx+");
   files.push(file);
-  const info = await lstat(file, { bigint: true });
-  const inherited = await acl(file, "read");
-  await rejected(
-    check(file, false, true, { dev: info.dev, ino: info.ino + 1n }),
-  );
-  assert.equal(await acl(file, "read"), inherited);
-  await check(file, false, true, info);
-  await check(file, false);
-  const secured = await acl(file, "read");
-  await writeFile(file, "synthetic-retained-content");
-  await rejected(check(file, false, true, info));
-  await rejected(check(file, true));
-  assert.equal(await acl(file, "read"), secured);
-  assert.equal(await readFile(file, "utf8"), "synthetic-retained-content");
+  try {
+    const info = await fileHandle.stat({ bigint: true });
+    const inherited = await acl(file, "read");
+    await rejected(
+      check(file, false, true, { dev: info.dev, ino: info.ino + 1n }),
+    );
+    assert.equal(await acl(file, "read"), inherited);
+    await check(file, false, true, info);
+    await check(file, false);
+    const secured = await acl(file, "read");
+    const content = "synthetic-retained-content";
+    await fileHandle.writeFile(content);
+    await rejected(check(file, false, true, info));
+    await rejected(check(file, true));
+    assert.equal(await acl(file, "read"), secured);
+    const bytes = Buffer.alloc(Buffer.byteLength(content));
+    const { bytesRead } = await fileHandle.read(bytes, 0, bytes.length, 0);
+    assert.equal(bytesRead, bytes.length);
+    assert.equal(bytes.toString("utf8"), content);
+  } finally {
+    await fileHandle.close();
+  }
   record(
     "stale file identity, nonempty creation and type mismatch cannot mutate security or contents",
   );

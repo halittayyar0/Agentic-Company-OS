@@ -195,7 +195,9 @@ test("a late phone listener conflict keeps resume local and the next restart ret
       run: async (command) => {
         calls.push("docker");
         assert.equal(
-          command.environment?.TRUSTED_HOSTS?.includes("owned.example.ts.net"),
+          command.environment?.TRUSTED_HOSTS?.split(",").includes(
+            "owned.example.ts.net",
+          ),
           !conflict,
         );
         return { stdout: "", stderr: "", exitCode: 0 };
