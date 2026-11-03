@@ -1,4 +1,5 @@
 import { measureDeliveryDownloadBundle } from "./delivery-download-bundle-budget";
+import { measureBoundedAuthRead } from "./bounded-auth-read-bundle-budget";
 import {
   measureResultReviewApi,
   measureResultReviewIntegration,
@@ -12,6 +13,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+import { measureRequiredWorkerHealthCopy } from "./required-worker-health-bundle-budget";
 import { measureUsageReportingBundleGrowth } from "./usage-reporting-bundle-budget";
 import { measureCodingRecoveryBundle } from "./coding-recovery-bundle-budget";
 import {
@@ -448,6 +450,24 @@ const composerScope = resolveComposerDraftScope(
     ),
   ),
 );
+const authReadAllocation = measureBoundedAuthRead(
+  codeAssets.map((asset) => ({
+    fileName: asset.fileName,
+    contents: readFileSync(resolve(outputDirectory, asset.fileName)),
+  })),
+  JSON.parse(
+    readFileSync(
+      resolve(sourceDirectory, "../dist/bundle-budget-manifest.json"),
+      "utf8",
+    ),
+  ),
+  [
+    {
+      fileName: savedDeliveryEntry.fileName,
+      contents: draftControls.get(savedDeliveryEntry.fileName)!.contents,
+    },
+  ],
+);
 const composerDraft = measureComposerDraftBundle(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
@@ -455,7 +475,9 @@ const composerDraft = measureComposerDraftBundle(
       projectStartRecovery.packs.find(
         (pack) => pack.fileName === asset.fileName,
       )?.contents ??
-      draftControls.get(asset.fileName)?.contents ??
+      (asset.fileName === authReadAllocation.control.fileName
+        ? authReadAllocation.control.contents
+        : draftControls.get(asset.fileName)?.contents) ??
       readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
   composerScope.route,
@@ -635,13 +657,16 @@ const codingRecovery = measureCodingRecoveryBundle(
       : asset,
   ),
 );
-const usageReportingGrowth = measureUsageReportingBundleGrowth(
+const requiredWorkerCopy = measureRequiredWorkerHealthCopy(
   codeAssets.map((asset) => ({
     fileName: asset.fileName,
     contents:
       reusableWork.routes.find((route) => route.fileName === asset.fileName)
         ?.contents ?? readFileSync(resolve(outputDirectory, asset.fileName)),
   })),
+);
+const usageReportingGrowth = measureUsageReportingBundleGrowth(
+  requiredWorkerCopy.controls,
 );
 const meetingLocaleAssets = languagePackAssets("meetings-", "project meetings");
 const studioLocaleAssets = languagePackAssets("studio-", "project studio");
@@ -1245,11 +1270,13 @@ for (const surface of keeperSurfaces) {
     matches[0].rawBytes -
     (draftControls.get(matches[0].fileName)?.raw ?? 0) -
     (isEntry ? composerDraft.entryRaw : 0) -
+    (isEntry ? authReadAllocation.raw : 0) -
     (accountingRoute?.raw ?? 0);
   const accountedGzip =
     matches[0].gzipBytes -
     (draftControls.get(matches[0].fileName)?.gzip ?? 0) -
     (isEntry ? composerDraft.entryGzip : 0) -
+    (isEntry ? authReadAllocation.gzip : 0) -
     (accountingRoute?.gzip ?? 0);
   keeperLiveRawBytes += Math.max(0, accountedRaw - surface.raw);
   keeperLiveGzipBytes += Math.max(0, accountedGzip - surface.gzip);
@@ -1275,6 +1302,8 @@ const budgetResumeGlobalGzipBytes =
   budgetResumeGzipBytes - Math.min(900, sharedResumeGzipBytes);
 if (
   totalCodeGzipBytes -
+    authReadAllocation.gzip -
+    requiredWorkerCopy.gzip -
     savedDeliveryDiscovery.gzip -
     deliveryDownload.gzip -
     completionConditions.gzip -
@@ -1302,12 +1331,14 @@ if (
   budgets.baseCodeGzipBytes
 ) {
   violations.push(
-    `code after bounded feature accounting (${totalCodeGzipBytes - savedDeliveryDiscovery.gzip - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
+    `code after bounded feature accounting (${totalCodeGzipBytes - authReadAllocation.gzip - requiredWorkerCopy.gzip - savedDeliveryDiscovery.gzip - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - skillLibraryGzipBytes - customizationGzipBytes - localUtilityGzipBytes - providerSetupGzipBytes - budgets.providerSetupIntegrationGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes - firstTaskModelCheckGzipBytes} bytes gzip) exceeds ${budgets.baseCodeGzipBytes} bytes`,
   );
 }
 
 if (
   totalCodeRawBytes -
+    authReadAllocation.raw -
+    requiredWorkerCopy.raw -
     savedDeliveryDiscovery.raw -
     deliveryDownload.raw -
     completionConditions.raw -
@@ -1329,12 +1360,14 @@ if (
   budgets.totalCodeRawBytes
 ) {
   violations.push(
-    `raw code after bounded feature accounting (${totalCodeRawBytes - savedDeliveryDiscovery.raw - deliveryDownload.raw - completionConditions.raw - resultFormat.globalRaw - resultReview.globalRaw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - localPreparation.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
+    `raw code after bounded feature accounting (${totalCodeRawBytes - authReadAllocation.raw - requiredWorkerCopy.raw - savedDeliveryDiscovery.raw - deliveryDownload.raw - completionConditions.raw - resultFormat.globalRaw - resultReview.globalRaw - reusableWork.globalRaw - projectStartRecovery.globalRaw - inferenceAccounting.raw - retryRepair.raw - connection.raw - localPreparation.raw - ollamaPrivacy.raw - composerDraft.raw - codingRecovery.raw - usageReportingGrowth.raw - budgetResumeGlobalRawBytes - completionReviewRawBytes - keeperLiveRawBytes} bytes) exceeds ${budgets.totalCodeRawBytes} bytes`,
   );
 }
 
 if (
   totalCodeGzipBytes -
+    authReadAllocation.gzip -
+    requiredWorkerCopy.gzip -
     savedDeliveryDiscovery.gzip -
     deliveryDownload.gzip -
     completionConditions.gzip -
@@ -1356,7 +1389,7 @@ if (
   budgets.totalCodeGzipBytes
 ) {
   violations.push(
-    `gzip code after bounded feature accounting (${totalCodeGzipBytes - savedDeliveryDiscovery.gzip - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
+    `gzip code after bounded feature accounting (${totalCodeGzipBytes - authReadAllocation.gzip - requiredWorkerCopy.gzip - savedDeliveryDiscovery.gzip - deliveryDownload.gzip - completionConditions.gzip - resultFormat.globalGzip - resultReview.globalGzip - reusableWork.globalGzip - projectStartRecovery.globalGzip - inferenceAccounting.gzip - retryRepair.gzip - connection.gzip - localPreparation.gzip - ollamaPrivacy.gzip - composerDraft.gzip - codingRecovery.gzip - usageReportingGrowth.gzip - budgetResumeGlobalGzipBytes - completionReviewGzipBytes - keeperLiveGzipBytes} bytes) exceeds ${budgets.totalCodeGzipBytes} bytes`,
   );
 }
 
@@ -1459,9 +1492,11 @@ if (
   violations.push("Meeting language packs exceed their aggregate budget.");
 if (
   operationsLocaleAssets.reduce((sum, a) => sum + a.rawBytes, 0) -
+    requiredWorkerCopy.allRaw -
     usageReportingGrowth.allLocaleRaw >
     100000 ||
   operationsLocaleAssets.reduce((sum, a) => sum + a.gzipBytes, 0) -
+    requiredWorkerCopy.allGzip -
     usageReportingGrowth.allLocaleGzip >
     36000
 )
@@ -1512,6 +1547,12 @@ console.log(
 );
 console.log(
   `Saved delivery discovery: ${savedDeliveryDiscovery.raw} raw / ${savedDeliveryDiscovery.gzip} gzip bytes (3 KB / 1.5 KB independent cap), including ${savedDeliveryDiscovery.logic.raw} raw source-exclusive behavior, ${savedDeliveryDiscovery.route.raw} raw exact stable-anchor/focus wiring, ${savedDeliveryDiscovery.labels.raw} raw selected-label growth, and ${savedDeliveryEntry.raw} raw new style-export metadata. Controls exclude the same bytes from older coding recovery, budget resume, composer and Keeper scopes; no existing factory, vendor, CSS, API or unrelated route credit. Existing ceilings unchanged.`,
+);
+console.log(
+  `Required worker health copy: ${requiredWorkerCopy.raw} raw / ${requiredWorkerCopy.gzip} gzip selected bytes (160 / 96 cap); all seven additions ${requiredWorkerCopy.allRaw} raw / ${requiredWorkerCopy.allGzip} gzip (960 / 480 cap). Only the new label is credited; older reporting uses controls without that field. Existing numeric base, total, route and media ceilings retained.`,
+);
+console.log(
+  `Bounded authentication read: ${authReadAllocation.raw} raw / ${authReadAllocation.gzip} gzip bytes (256 / 128 independent cap). Exact read/query reconstruction precedes Composer accounting; the same growth is excluded from Keeper/resume overlap before one global credit. No mutation, route, vendor, media or duplicate credit; existing numeric ceilings unchanged.`,
 );
 if (violations.length > 0) {
   throw new Error(

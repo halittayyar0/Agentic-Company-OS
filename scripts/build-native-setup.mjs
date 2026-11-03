@@ -21,7 +21,9 @@ import { Transform } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { build } from "../artifacts/api-server/node_modules/esbuild/lib/main.js";
+import { copyWindowsPrivateHelper } from "./build-windows-private-helper-asset.mjs";
 import {
+  fetchPinnedNodeArchive,
   nodeArchiveDownloadUrl,
   postgresSourceDownloadUrl,
 } from "./native-runtime-download.mjs";
@@ -73,7 +75,7 @@ if (
   !/^17\.\d+$/u.test(pins.postgres?.version)
 )
   throw new Error("Unsupported host or invalid pinned runtime inputs");
-const nodeDownloadUrl = nodeArchiveDownloadUrl(target, node);
+nodeArchiveDownloadUrl(target, node);
 postgresSourceDownloadUrl(pins.postgres);
 const head = (
   await execute("git", ["rev-parse", "HEAD"], { cwd: root })
@@ -227,10 +229,7 @@ await mkdir(directory);
 const temporary = await mkdtemp(path.join(tmpdir(), "acos-native-build-"));
 try {
   const downloaded = path.join(temporary, "node.archive");
-  const response = await fetch(nodeDownloadUrl, {
-    signal: AbortSignal.timeout(120_000),
-    redirect: "error",
-  });
+  const response = await fetchPinnedNodeArchive(target, node);
   if (!response.ok || !response.body)
     throw new Error("Pinned Node download failed");
   let received = 0;
@@ -310,6 +309,11 @@ try {
     path.join(root, "artifacts/api-server/dist"),
     path.join(directory, "artifacts/api-server/dist"),
   );
+  // Verify the source binding before creating the final Windows inventory.
+  if (process.platform === "win32")
+    await copyWindowsPrivateHelper(
+      path.join(directory, "artifacts/api-server/dist"),
+    );
   for (const name of [
     "start.mjs",
     "start-worker.mjs",
@@ -413,6 +417,7 @@ try {
   );
   const setup = path.join(directory, "scripts/src/setup");
   await mkdir(setup, { recursive: true });
+  if (process.platform === "win32") await copyWindowsPrivateHelper(setup);
   for (const [entry, output] of [
     ["scripts/src/setup/bootstrap.ts", "bootstrap.mjs"],
     ["scripts/src/setup/stage-postgres.ts", "stage-postgres.mjs"],

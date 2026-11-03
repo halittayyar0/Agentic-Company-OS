@@ -230,10 +230,40 @@ export async function runNativeInstallSmoke(
     }
     stage = "verify_restart";
     await executor.stopNative();
-    const restored = await readInstallation(privateDirectory, source);
+    // Controlled saved selection, actual native restart. This drill does not
+    // connect an account, configure Tailscale or claim physical phone access.
+    const manifestPath = path.join(privateDirectory, "installation.json");
+    const originalManifest = await readFile(manifestPath, "utf8");
+    const savedManifest = JSON.parse(originalManifest);
+    await writeFile(
+      manifestPath,
+      JSON.stringify({
+        ...savedManifest,
+        plan: {
+          ...savedManifest.plan,
+          settings: {
+            ...savedManifest.plan.settings,
+            phoneAccess: "private_network",
+          },
+        },
+      }),
+    );
+    const offlineCapabilities = async () => ({
+      ...(await detectInstallCapabilities()),
+      phone: { ready: false },
+    });
+    const restored = await readInstallation(
+      privateDirectory,
+      source,
+      offlineCapabilities,
+    );
     assert.equal(restored.complete, true);
     executor = createInstallationExecutor({
       ...options,
+      capabilities: offlineCapabilities,
+      applyPreferences: async () => {
+        throw new Error("completed preferences must be retained");
+      },
       resume: {
         resources: restored.resources,
         planId: restored.plan.id,
@@ -246,6 +276,9 @@ export async function runNativeInstallSmoke(
       () => {},
     );
     assert.equal(restarted.operatorToken, result.operatorToken);
+    assert.equal(restarted.phoneUnavailable, true);
+    assert.equal(restarted.phoneUrl, undefined);
+    assert.equal((await fetch(`${result.url}/api/skills`)).status, 401);
     const entries = (await (
       await fetch(`${result.url}/api/skills/extensions`, { headers })
     ).json()) as { id: string }[];
@@ -260,6 +293,15 @@ export async function runNativeInstallSmoke(
       "complete",
     );
     checks.push("restart preserved operator identity and capability");
+    const offlineManifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    assert.equal(offlineManifest.plan.settings.phoneAccess, "private_network");
+    assert.equal(offlineManifest.runtimeOptions.phoneUnavailable, true);
+    checks.push(
+      "controlled saved phone preference resumed locally with actual API and two workers while phone preflight was offline; no phone configuration or model request",
+    );
+    // Only the owned drill's selection was changed. Restore its original local
+    // selection before subsequent independent backup/model acceptance scenarios.
+    await writeFile(manifestPath, originalManifest);
     if (additionalDataProof) {
       assert.ok(result.operatorToken);
       await additionalDataProof.verifyResumed({

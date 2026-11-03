@@ -44,7 +44,26 @@ Paths in this map are relative to `artifacts/agentic-company-os`. A future owner
 
 ## Scroll ownership
 
+### Authentication startup and recovery
+
+`src/lib/auth.ts` owns the shared `authStatusQuery`; AuthGate and operator result
+review use its cancellable status read. Its 15-second deadline includes response
+body consumption. Late or malformed responses never grant workspace access.
+An initial failure keeps the existing localized recovery panel visible until
+Retry, focus or reconnection triggers a new read. Periodic refresh begins only
+after valid status data. Browser offline hints do not block this same-origin
+read, since a local installation may remain reachable without internet access.
+Login and recovery primary actions use the shared Button `touch` size (at least
+44px at phone and desktop widths). Server authorization remains authoritative;
+this read policy never retries login/logout writes or infers an operator role.
+
 ### Standalone setup and native upgrade
+
+An existing workspace may resume locally when its optional private phone
+preflight is unavailable. Its completed status variant names both facts and
+retains the saved phone preference. It preserves the existing authenticated
+one-shot key reveal, supports all seven languages, and blocks installation and
+upgrade mutations. Only a new launcher restart retries the saved phone route.
 
 `scripts/src/setup/page.ts`, `setup-client.js`, `setup-upgrade-client.js` and
 `session.ts` are the canonical pre-API setup owners. Native HTML controls and the

@@ -16,7 +16,8 @@ test("required Windows gate fails instead of skipping after unsuccessful install
   assert.equal(jobs?.length, 1);
   const job = jobs![0]!;
   assert.match(job, /^    needs: windows-installation$/mu);
-  assert.match(job, /^    if: \$\{\{ always\(\) \}\}$/mu);
+  // Keep the failure guard runnable, but let cancelled workflows release CI.
+  assert.match(job, /^    if: \$\{\{ !cancelled\(\) \}\}$/mu);
   const first = job.split(/^      - name: /mu)[1]!;
   assert.match(first, /^Require complete Windows installation acceptance\n/u);
   assert.doesNotMatch(first, /^        if:/mu);
@@ -215,10 +216,10 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
     sourceStages++;
     assert.equal(
       stage.source.tests,
-      3112,
-      "reviewed census includes ten saved-delivery bundle ownership regressions",
+      3167,
+      "reviewed census includes offline phone resumption, private checker guards, native usage phases, required worker health and bounded auth transport and read-budget regressions",
     );
-    assert.equal(stage.source.passed, 3112 - stage.source.skippedCases.length);
+    assert.equal(stage.source.passed, 3167 - stage.source.skippedCases.length);
   }
   assert.equal(sourceStages, 4);
   assert.equal(
@@ -228,7 +229,7 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
         "utf8",
       ),
     ).linux.ui.tests,
-    1488,
+    1517,
   );
 });
 

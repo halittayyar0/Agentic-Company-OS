@@ -2,6 +2,14 @@
 
 Agentic Company OS can run locally or as a single-operator private service. The repository ships fail-closed single-operator authentication, reviewed versioned database migrations, liveness/readiness probes, request limits, and a hardened Docker Compose baseline. It does not ship TLS termination, multi-user authorization, or tenant isolation.
 
+If the workspace stays at the initial loading screen because the authentication
+service stops responding, the browser shows its localized recovery panel after
+15 seconds, including when response headers arrived but the body stalled. Restore
+the local server or proxy and choose **Retry**. A browser's offline indicator
+does not prevent retrying a reachable local installation. Recovery reads do not
+resubmit a login, logout, task or approval; protected workspace access still
+requires a valid server authentication result.
+
 > [!WARNING]
 > Public-internet deployment without TLS and the built-in operator token is unsupported. Every authenticated user has full operator-level application authority.
 
@@ -38,9 +46,24 @@ Linux uses the Ubuntu 24.04/glibc build floor matching its build and CI environm
 
 Windows and macOS packages are unsigned. No macOS notarization or SmartScreen reputation is provided; normal OS trust prompts can appear. Verify the source and release checksum and use the operating system's normal reviewed trust process. Do not disable OS security or remove host protections to force execution.
 
+Windows private-record checks use a bundled metadata checker. Keep the whole
+package together; if its checked helper is missing or altered, re-extract the
+verified archive into a separate folder. See [Windows private storage](windows-private-storage.md)
+for recovery, source builds and the component's runtime terms.
+
 ### Data and restarting the native package
 
 Data and secrets live outside the extracted package, by default under `~/.agentic-company-os/instances/instance-UUID` (the equivalent user-home path on Windows). The terminal prints the actual installation directory. Keep it private and retain both it and the original extracted package. Restarting **the same package at the same location and revision** uses its private last-installation pointer to resume the recorded installation. The pointer contains no model/operator secret and deliberately refuses a different package location or revision. Do not edit it to adopt unfamiliar data.
+
+If a saved private phone connection is unavailable at restart, an existing
+workspace can still open on this computer. The launcher shows a private local
+connection-status link with **Open workspace** and an explicit access-key reveal.
+It retains your phone preference, data and permissions. Check the private
+connection in Tailscale, close the launcher and restart the same START to retry
+phone access. The local fallback does not configure Serve, enable Funnel or add
+an external trusted hostname. Fresh setup still requires a ready private network
+when that phone option is selected. A failure after phone configuration begins
+still stops startup for recovery; this fallback covers the phone preflight.
 
 Native packages from v0.5.6 offer a guided same-platform update from the public v0.5.5 release and compatible newer 0.5.x patch releases. See [Upgrades](#upgrades) for its boundaries. Keep the original package and backups. A separately selected new `--data-dir` creates an independent installation; it does not migrate existing work. Native setup does not publish a website, allocate a public domain or provide free public hosting/tunneling. Private remote access needs its own reviewed configuration.
 
@@ -269,6 +292,10 @@ Configure provider-side spend limits and alerts. The application has the per-tas
 ## 4. Configure secure defaults
 
 A production private baseline uses one API process and two worker processes.
+
+The managed native and Compose profiles declare that two healthy scheduler workers are required. If one stops or its heartbeat expires, Operations shows reduced capacity and the ready/required count until a replacement becomes healthy. Remaining workers continue processing under the same leases and permissions. Historical stale worker rows stay visible without keeping a recovered fleet degraded.
+
+`RUNTIME_MIN_HEALTHY_WORKERS` accepts an integer from 1 to 64. Standalone/combined development defaults to 1; Compose defaults to 2, and managed native installation supplies 2. In a deliberately custom one-worker deployment, set it to 1 consistently for API and workers. This health policy does not create, stop, scale or authorize workers, and does not change model or spending limits. Existing historical health samples retain the state observed when they were recorded; changing the policy does not rewrite them.
 Start with this API baseline; copy only the database,
 runtime-control, model, limit, and isolation values to workers, not the
 operator token or public-host settings:
@@ -322,6 +349,7 @@ DATABASE_URL=postgresql://...
 TRUSTED_HOSTS=company-os.example.com
 CORS_ALLOWED_ORIGINS=https://company-os.example.com
 RUNTIME_ROLE=api
+RUNTIME_MIN_HEALTHY_WORKERS=2
 SCHEDULER_ENABLED=false
 RUNTIME_CONTROL_KEY=<different-at-least-32-random-characters>
 AGENT_BROWSER_ALLOW_PRIVATE_NETWORKS=false
@@ -334,6 +362,7 @@ Each worker uses the same `DATABASE_URL` and `RUNTIME_CONTROL_KEY`, plus:
 NODE_ENV=production
 HOST=127.0.0.1
 RUNTIME_ROLE=worker
+RUNTIME_MIN_HEALTHY_WORKERS=2
 SCHEDULER_ENABLED=true
 RUNTIME_CONTROL_API_URL=https://private-control.example.com/api/internal/runtime-control
 ALLOW_REMOTE_ACCESS=false
@@ -379,7 +408,7 @@ PostgreSQL, an operator token, and a runtime-control key):
 
 ```bash
 PORT=5000 HOST=127.0.0.1 NODE_ENV=production \
-RUNTIME_ROLE=api SCHEDULER_ENABLED=false \
+RUNTIME_ROLE=api SCHEDULER_ENABLED=false RUNTIME_MIN_HEALTHY_WORKERS=2 \
 DATABASE_URL='postgresql://...' OPERATOR_AUTH_TOKEN='...' \
 RUNTIME_CONTROL_KEY='independently-generated-32-plus-character-secret' \
 pnpm --filter @workspace/api-server run start
@@ -390,7 +419,7 @@ and control key. They deliberately receive no operator token and expose no
 HTTP listener:
 
 ```bash
-NODE_ENV=production RUNTIME_ROLE=worker SCHEDULER_ENABLED=true \
+NODE_ENV=production RUNTIME_ROLE=worker SCHEDULER_ENABLED=true RUNTIME_MIN_HEALTHY_WORKERS=2 \
 DATABASE_URL='postgresql://...' \
 RUNTIME_CONTROL_KEY='independently-generated-32-plus-character-secret' \
 RUNTIME_CONTROL_API_URL='http://127.0.0.1:5000/api/internal/runtime-control' \
@@ -739,6 +768,21 @@ That is the secure default. Built-in workspace file commands still work. Do not 
 ### Founder terminal is forbidden
 
 That is the secure default. Use normal host administration outside the application. Enabling founder shell should be an explicit, temporary risk decision inside an isolated environment.
+
+### Source CI cannot upload macOS evidence
+
+An artifact-service DNS failure can happen after every installation and UI test
+has passed. The macOS evidence upload steps retry only `ENOTFOUND` or `EAI_AGAIN`
+lookups for their existing GitHub results service, before opening a connection.
+There are at most two additional lookups per upload process, with one- and
+two-second delays and a 75-second absolute lookup deadline. The OS resolver,
+HTTP requests, TLS, credentials and application runtime are unchanged.
+
+Persistent failure still fails the job and its dependent platform gates. A failed
+original is retained; passing test lines alone do not qualify a release. The
+transport tests use loopback requests and synthetic DNS faults, require no GitHub
+token, and run with `pnpm test:ci-artifact-dns` under Node 24. They verify recovery
+sends one request and persistent failure sends none.
 
 ## Final go/no-go
 

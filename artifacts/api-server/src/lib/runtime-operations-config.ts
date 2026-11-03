@@ -9,6 +9,7 @@ export interface RuntimeOperationsConfig {
   taskHeartbeatMs: number;
   runtimeHeartbeatMs: number;
   workerStaleAfterMs: number;
+  minimumHealthyWorkerCount: number;
   recoveryTargetMs: number;
   opsSampleMs: number;
   opsSampleRetentionDays: number;
@@ -62,6 +63,13 @@ export function readRuntimeOperationsConfig(
       15_000,
       5_000,
       15_000,
+      env,
+    ),
+    minimumHealthyWorkerCount: readIntegerEnvironment(
+      "RUNTIME_MIN_HEALTHY_WORKERS",
+      1,
+      1,
+      64,
       env,
     ),
     recoveryTargetMs: readIntegerEnvironment(

@@ -162,6 +162,73 @@ test("transport freshness and persisted runtime truth remain separate", () => {
   assert.equal(model.cursor, "9007199254740993");
 });
 
+test("project and fleet truth preserve required worker capacity without relabeling backend state", () => {
+  const snapshot = baseSnapshot();
+  const runtime = {
+    ...snapshot.runtime,
+    state: "degraded" as const,
+    reasons: ["worker_capacity_below_minimum"],
+    healthyWorkerCount: 1,
+    minimumHealthyWorkerCount: 2,
+    staleWorkerCount: 1,
+  };
+  const options = {
+    now: NOW,
+    stream: {
+      state: "live" as const,
+      transportLastFrameAt: NOW.toISOString(),
+      lastEventId: snapshot.cursor,
+      lastEventAt: NOW.toISOString(),
+      reconnectCount: 0,
+    },
+  };
+  const project = buildOperationsRoomModel({ ...snapshot, runtime }, options);
+  const fleet = buildFleetOperationsModel(
+    {
+      ...snapshot,
+      runtime,
+      tasks: snapshot.taskCounts,
+      operations: { reserved: 0, running: 0, unresolvedUnknown: 0 },
+    },
+    options,
+  );
+  for (const model of [project, fleet]) {
+    assert.equal(model.truth.minimumHealthyWorkerCount, 2);
+    assert.equal(model.truth.healthyWorkerCount, 1);
+    assert.equal(model.truth.backendState, "degraded");
+    assert.equal(model.truth.live, false);
+    assert.deepEqual(model.truth.reasons, ["worker_capacity_below_minimum"]);
+  }
+  const single = buildOperationsRoomModel(
+    {
+      ...snapshot,
+      runtime: {
+        ...runtime,
+        state: "live",
+        reasons: [],
+        minimumHealthyWorkerCount: 1,
+      },
+    },
+    options,
+  );
+  assert.equal(single.truth.minimumHealthyWorkerCount, 1);
+  assert.equal(single.truth.live, true);
+});
+
+test("legacy snapshots do not invent a required worker capacity", () => {
+  const model = buildOperationsRoomModel(baseSnapshot(), {
+    now: NOW,
+    stream: {
+      state: "live",
+      transportLastFrameAt: NOW.toISOString(),
+      lastEventId: "1",
+      lastEventAt: NOW.toISOString(),
+      reconnectCount: 0,
+    },
+  });
+  assert.equal(model.truth.minimumHealthyWorkerCount, undefined);
+});
+
 test("project model preserves the exact evidence window, limits and truncation contract", () => {
   const model = buildOperationsRoomModel(
     baseSnapshot({

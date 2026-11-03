@@ -36,3 +36,10 @@ for the application's JavaScript production dependencies, nor does it certify
 platform compatibility or production readiness. Release evidence must identify
 the actual target, compiler, configuration, source changes, binary inventory,
 and the tests performed on the extracted final archive.
+
+`WINDOWS-PRIVATE-HELPER-NOTICE.txt` describes the project's Windows metadata
+checker and its statically linked Microsoft C runtime. Its project source is
+MIT; Microsoft components retain their separate terms. Copy the notice beside
+each packaged checker as well as into the native attribution directory. The
+checker build record identifies the actual compiler and library input hashes;
+SDK headers, compiler tools and static libraries are never release payloads.

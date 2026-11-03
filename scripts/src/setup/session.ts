@@ -42,6 +42,7 @@ export interface InstallationCredentials {
   ollamaUrl?: string;
 }
 export interface SetupProgress {
+  resumeOnly?: true;
   /** Display preference only. Never changes a saved installation plan. */
   uiLocale?: (typeof SETUP_LOCALES)[number];
   phase: "idle" | "planned" | "installing" | "complete" | "failed";
@@ -50,6 +51,7 @@ export interface SetupProgress {
   error: string | null;
   url: string | null;
   phoneUrl?: string;
+  phoneUnavailable?: true;
   connectionAvailable?: boolean;
   operation?: "upgrade";
   upgrade?: SetupUpgradeReview & {
@@ -63,7 +65,12 @@ export type InstallationExecutor = (
   plan: InstallationPlan,
   credentials: InstallationCredentials,
   progress: (step: InstallationStep, completed: boolean) => void,
-) => Promise<{ url: string; operatorToken?: string; phoneUrl?: string }>;
+) => Promise<{
+  url: string;
+  operatorToken?: string;
+  phoneUrl?: string;
+  phoneUnavailable?: true;
+}>;
 
 class RequestFailure extends Error {
   constructor(
@@ -124,7 +131,29 @@ export async function createSetupSession(options: {
   now?: () => number;
   lifetimeMs?: number;
   upgrade?: SetupUpgradeAdapter;
+  resumed?: {
+    url: string;
+    operatorToken?: string;
+    phoneUnavailable: true;
+    locale: (typeof SETUP_LOCALES)[number];
+  };
 }) {
+  if (options.resumed) {
+    const url = new URL(options.resumed.url);
+    if (
+      url.protocol !== "http:" ||
+      url.hostname !== "127.0.0.1" ||
+      !url.port ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      url.pathname !== "/" ||
+      !SETUP_LOCALES.includes(options.resumed.locale) ||
+      options.resumed.phoneUnavailable !== true
+    )
+      throw new TypeError("Invalid resumed local status");
+  }
   const token = randomBytes(32).toString("base64url");
   const expectedToken = Buffer.from(`Bearer ${token}`);
   const now = options.now ?? Date.now;
@@ -143,10 +172,20 @@ export async function createSetupSession(options: {
     completedSteps: [],
     error: null,
     url: null,
+    ...(options.resumed
+      ? {
+          phase: "complete" as const,
+          resumeOnly: true as const,
+          uiLocale: options.resumed.locale,
+          url: options.resumed.url,
+          phoneUnavailable: true as const,
+          connectionAvailable: Boolean(options.resumed.operatorToken),
+        }
+      : {}),
   };
   let plan: InstallationPlan | null = null;
   let execution: Promise<void> | null = null;
-  let connectionToken: string | null = null;
+  let connectionToken: string | null = options.resumed?.operatorToken ?? null;
   let origin = "";
   let upgradeReview: {
     candidate: NativeUpgradeCandidate;
@@ -208,6 +247,13 @@ export async function createSetupSession(options: {
         json(response, 200, state);
         return;
       }
+      if (
+        options.resumed &&
+        request.method === "POST" &&
+        path !== "/api/locale" &&
+        path !== "/api/connection"
+      )
+        throw new RequestFailure(409, "resumed_status_read_only");
       if (request.method === "POST" && path === "/api/locale") {
         const body = record(await readJson(request));
         if (
@@ -239,6 +285,7 @@ export async function createSetupSession(options: {
         json(response, 200, {
           available: Boolean(options.upgrade),
           freshAvailable: options.upgrade?.freshAvailable !== false,
+          ...(options.resumed ? { resumeOnly: true } : {}),
         });
         return;
       }
@@ -408,6 +455,7 @@ export async function createSetupSession(options: {
           .then((result) => {
             state.url = result.url;
             state.phoneUrl = result.phoneUrl;
+            state.phoneUnavailable = result.phoneUnavailable;
             connectionToken = result.operatorToken ?? null;
             state.connectionAvailable = Boolean(connectionToken);
             state.phase = "complete";
@@ -516,6 +564,7 @@ export async function createSetupSession(options: {
           .then((result) => {
             state.url = result.url;
             state.phoneUrl = result.phoneUrl;
+            state.phoneUnavailable = result.phoneUnavailable;
             connectionToken = result.operatorToken ?? null;
             state.connectionAvailable = Boolean(connectionToken);
             state.phase = "complete";

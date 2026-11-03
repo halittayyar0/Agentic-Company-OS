@@ -179,6 +179,7 @@ const copy = {
   unknownState: "Unknown record: {value}",
   live: "Live · workers: {count}",
   degradedTruth: "Degraded operation · intervention may be needed",
+  capacityDeficitTruth: "Reduced capacity · {ready} ready, {required} required",
   staleTruth: "Worker signal is late",
   offlineTruth: "No running workers",
   emergencyTruth: "Emergency stop active",

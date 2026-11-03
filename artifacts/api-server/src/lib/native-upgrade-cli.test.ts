@@ -100,7 +100,7 @@ test("packaged upgrade entrypoint cannot import API, scheduler, provider or agen
   for (const file of ownInputs)
     assert.match(
       file.replaceAll("\\", "/"),
-      /(?:lib\/db\/src\/|lib\/ai-server\/src\/owner-private-storage\.ts$|artifacts\/api-server\/src\/(?:native-upgrade-entry\.ts|lib\/(?:native-upgrade-cli|native-upgrade-database|read-bounded-file)\.ts)$)/u,
+      /(?:lib\/db\/src\/|lib\/ai-server\/src\/(?:owner-private-storage|windows-private-helper|windows-private-helper-manifest)\.ts$|artifacts\/api-server\/src\/(?:native-upgrade-entry\.ts|lib\/(?:native-upgrade-cli|native-upgrade-database|read-bounded-file)\.ts)$)/u,
       file,
     );
   assert.doesNotMatch(

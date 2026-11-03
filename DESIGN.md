@@ -240,6 +240,13 @@ The ring never invents missing samples, interpolates “healthy,” or equates a
 
 ### Standalone installer variant
 
+Existing installations with an unavailable optional private phone preflight use
+the same setup status surface after verified local startup. The message names
+local availability and the unavailable phone connection separately, retains the
+saved language and phone preference, and offers the existing Open workspace/key
+actions. This is a completed read-only status variant: no installation controls,
+invented progress or silent policy changes. Its language select remains usable.
+
 The local setup page in `scripts/src/setup/page.ts` owns the pre-API installer.
 It cannot depend on the running React application, network fonts or a component
 server. Its native form controls and language popup are a deliberate platform-owned
@@ -288,6 +295,7 @@ inherited text colors during theme changes.
 - Icon-only controls require a visible tooltip and a Turkish accessible name.
 - Toasts report bounded user mutation results. Runtime health, incidents, stale data, and connection state stay inline and persistent.
 - Loading skeletons match final geometry. Empty, filtered-empty, partial, unauthorized, stale, and disconnected are different states.
+- AuthGate reuses the existing localized session-unavailable panel after a bounded 15-second authentication status read, including a stalled response body. Initial failure stays actionable rather than cycling through a polling spinner. AuthGate and operator result review share `authStatusQuery`; browser offline hints do not prevent local recovery reads. Primary login/retry/reload controls use the canonical Button `touch` size at all widths. Server permission checks remain the access authority.
 - Desktop attempt details are a non-modal persistent inspector; mobile details use a focus-trapped Sheet with Escape and focus restoration.
 
 ## Operations information hierarchy
@@ -299,6 +307,14 @@ inherited text colors during theme changes.
 5. Selected attempt inspector: durable attempt, invocation, operation receipt, approval, tools, usage, and audit evidence.
 
 Transport state (`disabled`, `connecting`, `live`, `stale`, `disconnected`) is displayed separately from backend operational state. The last known good snapshot remains visible with its age when transport degrades.
+
+When the backend reports a required worker capacity deficit, the existing amber
+runtime badge names ready and required workers using localized numbers. Cached
+snapshots without a known minimum keep the generic degraded label. Snapshot and
+transport freshness retain their existing priority; the UI never derives a live
+state from worker counts. Arabic names each count in prose rather than a ratio
+whose order can reverse in RTL. The badge keeps its 44px minimum height and wraps
+within the available width.
 
 ## Accessibility baseline
 

@@ -4,6 +4,14 @@ Agentic Company OS telefon tarayıcısında çalışır. iOS veya Android için 
 
 ## Önerilen özel bağlantı
 
+Mevcut bir kurulumu yeniden açarken özel telefon bağlantısı hazır değilse çalışma
+alanı bu bilgisayarda açılabilir. Başlatıcının yazdırdığı özel bağlantı durumunu
+açıp **Çalışma alanını aç** düğmesini kullanın. Telefon tercihiniz kayıtlı kalır;
+Tailscale’de özel bağlantıyı kontrol edip aynı başlatıcıyı yeniden açarak tekrar
+deneyin. Bu yerel açılış telefon dinleyicisini değiştirmez. İlk kurulumda özel ağ
+seçilmişse bağlantının hazır olması hâlâ gerekir. Telefon yapılandırması
+başladıktan sonraki hatalar için başlatma durdurulur; bu davranış ön kontrole aittir.
+
 Kişisel ve ticari olmayan kullanımda Tailscale'in [Personal planı](https://tailscale.com/pricing) şu anda ücretsizdir. Tailscale Serve, bilgisayardaki yerel web sunucusunu yalnız aynı özel ağa bağlı cihazlara HTTPS ile ulaştırır; alan adı satın almak veya modem portu açmak gerekmez. Telefonda yalnız standart Tailscale ağ istemcisi ve normal tarayıcı kullanılır. Ticari kullanım için Personal planın uygun olduğunu varsaymayın; kendi WireGuard VPN'inizi kullanabilirsiniz.
 
 OSI lisanslı açık kaynak projeyi bir GitHub kuruluşu üzerinden işletenler için Tailscale, ücretsiz bir [Community on GitHub planı](https://tailscale.com/docs/reference/free-plans-discounts) da belgeliyor. GitHub ile kimlik doğrulama ve Tailscale Support ile görüşme gerekir; depoyu herkese açmak bu planı otomatik olarak sağlamaz. Aşağıdaki kendi WireGuard yolunuz Tailscale planına bağımlı değildir.

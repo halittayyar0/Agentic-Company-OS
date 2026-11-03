@@ -39,6 +39,7 @@ function commonEnvironment(
   phoneUrl?: string,
 ): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = {
+    RUNTIME_MIN_HEALTHY_WORKERS: "2",
     NODE_ENV: "production",
     HOST: "127.0.0.1",
     PORT: String(plan.settings.port),
@@ -174,6 +175,7 @@ export function buildContainerDeployment(
       "coding_runtime_requires_separate_immutable_image_and_host_policy",
     );
   const common: Record<string, string> = {
+    RUNTIME_MIN_HEALTHY_WORKERS: "2",
     ALLOW_AGENT_PROCESS_EXEC:
       plan.settings.accessMode === "read_only" ? "false" : "true",
     OPENAI_API_KEY: "",

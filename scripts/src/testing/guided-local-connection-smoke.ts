@@ -296,8 +296,32 @@ try {
             const pageErrors: string[] = [];
             page.on("pageerror", () => pageErrors.push("pageerror"));
             const diagnostics = createConnectionSaveDiagnostics(baseUrl);
+            const browserRequestIds = new WeakMap<object, number>();
+            let browserRequestNumber = 0;
+            const requestObservation = (request: {
+              url(): string;
+              method(): string;
+            }) => ({
+              id: browserRequestIds.get(request),
+              url: request.url(),
+              method: request.method(),
+            });
+            page.on("request", (request) => {
+              browserRequestIds.set(request, ++browserRequestNumber);
+              diagnostics.requestStarted(requestObservation(request));
+            });
+            page.on("requestfinished", (request) =>
+              diagnostics.requestFinished(requestObservation(request)),
+            );
+            page.on("requestfailed", (request) =>
+              diagnostics.requestFailed(
+                requestObservation(request),
+                request.failure()?.errorText,
+              ),
+            );
             page.on("response", (response) =>
               diagnostics.observe({
+                requestId: browserRequestIds.get(response.request()),
                 url: response.url(),
                 method: response.request().method(),
                 status: response.status(),

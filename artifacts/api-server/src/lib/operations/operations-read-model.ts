@@ -456,6 +456,7 @@ async function loadRuntimeTruth(input: {
   now: Date;
   start: Date;
   workerStaleAfterMs: number;
+  minimumHealthyWorkerCount: number;
   lastSampleAt: string | null;
 }): Promise<OperationsOverview["runtime"]> {
   const backend: "postgresql" | "pglite" =
@@ -494,6 +495,7 @@ async function loadRuntimeTruth(input: {
     databaseBackend: backend,
     emergencyStopEnabled: controls[0]?.emergencyStopEnabled ?? true,
     workerStaleAfterMs: input.workerStaleAfterMs,
+    minimumHealthyWorkerCount: input.minimumHealthyWorkerCount,
     instances,
   });
   return { ...truth, lastSampleAt: input.lastSampleAt };
@@ -646,6 +648,7 @@ export async function getOperationsOverview(
     now,
     start,
     workerStaleAfterMs: input.workerStaleAfterMs ?? config.workerStaleAfterMs,
+    minimumHealthyWorkerCount: config.minimumHealthyWorkerCount,
     lastSampleAt,
   });
   return {

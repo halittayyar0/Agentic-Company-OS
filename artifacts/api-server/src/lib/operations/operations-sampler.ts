@@ -85,6 +85,7 @@ async function collectSample(
     databaseBackend: backend,
     emergencyStopEnabled: control?.emergencyStopEnabled ?? true,
     workerStaleAfterMs: input.config.workerStaleAfterMs,
+    minimumHealthyWorkerCount: input.config.minimumHealthyWorkerCount,
     instances: runtimeRows,
   });
 

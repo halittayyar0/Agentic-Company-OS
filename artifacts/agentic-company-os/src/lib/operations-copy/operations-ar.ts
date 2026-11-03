@@ -175,6 +175,7 @@ const copy = {
   unknownState: "سجل غير معروف: {value}",
   live: "مباشر · العمليات العاملة: {count}",
   degradedTruth: "تشغيل متدهور · قد يلزم التدخل",
+  capacityDeficitTruth: "سعة محدودة · الجاهز {ready} والمطلوب {required}",
   staleTruth: "إشارة العملية العاملة متأخرة",
   offlineTruth: "لا توجد عمليات عاملة نشطة",
   emergencyTruth: "الإيقاف الطارئ نشط",

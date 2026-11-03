@@ -56,11 +56,24 @@ export function operationsPresentation(copy: OperationsCopy, locale: Locale) {
     return Object.hasOwn(copy, key) ? copy[key] : t("unknownState", { value });
   };
   const truthLabel = (truth: OperationsRoomTruth) => {
+    const { healthyWorkerCount, minimumHealthyWorkerCount } = truth;
     const backend = () => {
       switch (truth.backendState) {
         case "live":
-          return t("live", { count: number.format(truth.healthyWorkerCount) });
+          return t("live", { count: number.format(healthyWorkerCount) });
         case "degraded":
+          if (
+            truth.reasons.includes("worker_capacity_below_minimum") &&
+            Number.isInteger(minimumHealthyWorkerCount) &&
+            minimumHealthyWorkerCount! > 0 &&
+            healthyWorkerCount > 0 &&
+            healthyWorkerCount < minimumHealthyWorkerCount!
+          ) {
+            return t("capacityDeficitTruth", {
+              ready: number.format(healthyWorkerCount),
+              required: number.format(minimumHealthyWorkerCount!),
+            });
+          }
           return copy.degradedTruth;
         case "stale":
           return copy.staleTruth;

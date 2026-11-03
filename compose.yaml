@@ -2,6 +2,7 @@ name: agentic-company-os
 
 x-runtime-environment: &runtime-environment
   NODE_ENV: production
+  RUNTIME_MIN_HEALTHY_WORKERS: ${RUNTIME_MIN_HEALTHY_WORKERS:-2}
   PORT: 5000
   DATABASE_URL_FILE: /run/secrets/database_url
   RUNTIME_CONTROL_KEY_FILE: /run/secrets/runtime_control_key

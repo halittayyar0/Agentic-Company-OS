@@ -842,6 +842,74 @@ test("runtime truth accepts historical stale rows but not an unhealthy active fl
   );
 });
 
+test("two-worker endurance rejects an explicit conflicting health capacity policy", async () => {
+  for (const minimum of [1, 3, 0, 65, 1.5, 2, undefined]) {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "agentic-capacity-policy-"),
+    );
+    const existing = operationsSnapshot({ cursor: "1" });
+    const snapshot = {
+      ...existing,
+      runtime: {
+        ...existing.runtime,
+        ...(minimum === undefined
+          ? {}
+          : { minimumHealthyWorkerCount: minimum }),
+      },
+    };
+    const log: string[] = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const pathname = new URL(String(input)).pathname;
+      if (pathname === "/api/readyz") return Response.json({ status: "ready" });
+      if (pathname === "/api/ops/instances")
+        return Response.json({
+          instances: ["api", "worker", "worker"].map((role, index) => ({
+            id: `capacity-${index}`,
+            role,
+            effectiveState: "healthy",
+            schedulerEnabled: role === "worker",
+          })),
+        });
+      if (pathname === "/api/tasks" && init?.method === "POST")
+        return Response.json({ id: 7 }, { status: 201 });
+      if (pathname === "/api/tasks/7/operations")
+        return Response.json(snapshot);
+      return Response.json({ error: "not found" }, { status: 404 });
+    };
+    const driver = new DockerWallClockDriver({
+      runId: "capacity-policy-test",
+      seed: 240901,
+      durationHours: 1 / 6,
+      workspaceRoot: process.cwd(),
+      controlDirectory: directory,
+      baseUrl: "http://127.0.0.1:5000",
+      operatorToken: "local-operator-secret",
+      harness: harness(log),
+      fetchImpl,
+    });
+    try {
+      if (minimum === 2 || minimum === undefined) await driver.start();
+      else {
+        await assert.rejects(
+          driver.start(),
+          /health capacity policy|minimum healthy worker count/iu,
+        );
+        assert.ok(
+          log.includes("harness:stop"),
+          "Rejected startup must clean up its owned topology",
+        );
+      }
+    } finally {
+      await driver.stop({ keepData: false });
+      assert.equal(
+        path.dirname(path.resolve(directory)),
+        path.resolve(tmpdir()),
+      );
+      await rm(directory, { recursive: true });
+    }
+  }
+});
+
 test("commanded native smoke faults admit only bounded degraded health samples", async () => {
   const directory = await mkdtemp(
     path.join(tmpdir(), "agentic-commanded-health-"),

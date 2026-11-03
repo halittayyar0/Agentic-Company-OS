@@ -5020,6 +5020,8 @@ export const getOperationsOverviewResponseWindowHoursMax = 168;
 
 export const getOperationsOverviewResponseRuntimeHealthyWorkerCountMin = 0;
 
+export const getOperationsOverviewResponseRuntimeMinimumHealthyWorkerCountMax = 64;
+
 export const getOperationsOverviewResponseRuntimeStaleWorkerCountMin = 0;
 
 export const getOperationsOverviewResponseRuntimeSchedulerTickAgeMsMin = 0;
@@ -5113,6 +5115,7 @@ export const GetOperationsOverviewResponse = zod.object({
   "multiProcessCapable": zod.boolean(),
   "emergencyStopEnabled": zod.boolean(),
   "healthyWorkerCount": zod.int().min(getOperationsOverviewResponseRuntimeHealthyWorkerCountMin),
+  "minimumHealthyWorkerCount": zod.int().min(1).max(getOperationsOverviewResponseRuntimeMinimumHealthyWorkerCountMax).describe('Required healthy scheduler capacity configured by the installation; this policy never starts additional workers.'),
   "staleWorkerCount": zod.int().min(getOperationsOverviewResponseRuntimeStaleWorkerCountMin),
   "schedulerTickAgeMs": zod.int().min(getOperationsOverviewResponseRuntimeSchedulerTickAgeMsMin).nullable(),
   "lastSampleAt": zod.coerce.date().nullable()
@@ -5246,6 +5249,8 @@ export const getProjectOperationsResponseWindowHoursMax = 168;
 
 export const getProjectOperationsResponseRuntimeHealthyWorkerCountMin = 0;
 
+export const getProjectOperationsResponseRuntimeMinimumHealthyWorkerCountMax = 64;
+
 export const getProjectOperationsResponseRuntimeStaleWorkerCountMin = 0;
 
 export const getProjectOperationsResponseRuntimeSchedulerTickAgeMsMin = 0;
@@ -5371,6 +5376,7 @@ export const GetProjectOperationsResponse = zod.object({
   "multiProcessCapable": zod.boolean(),
   "emergencyStopEnabled": zod.boolean(),
   "healthyWorkerCount": zod.int().min(getProjectOperationsResponseRuntimeHealthyWorkerCountMin),
+  "minimumHealthyWorkerCount": zod.int().min(1).max(getProjectOperationsResponseRuntimeMinimumHealthyWorkerCountMax).describe('Required healthy scheduler capacity configured by the installation; this policy never starts additional workers.'),
   "staleWorkerCount": zod.int().min(getProjectOperationsResponseRuntimeStaleWorkerCountMin),
   "schedulerTickAgeMs": zod.int().min(getProjectOperationsResponseRuntimeSchedulerTickAgeMsMin).nullable(),
   "lastSampleAt": zod.coerce.date().nullable()

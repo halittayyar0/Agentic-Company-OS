@@ -1,0 +1,23 @@
+Windows private metadata checker
+
+The project's C source in lib/ai-server/native/windows-private-helper.c is
+covered by the repository's MIT license. The compiled Windows executable also
+contains statically linked Microsoft C runtime components. Those components
+retain their Microsoft terms and are not relicensed under MIT.
+
+Microsoft Corporation. All rights reserved.
+
+Runtime terms:
+https://visualstudio.microsoft.com/license-terms/vs2026-ga-visualcpp-v14-redist-runtime/
+Compiler and redistribution terms:
+https://visualstudio.microsoft.com/license-terms/
+https://learn.microsoft.com/en-us/visualstudio/releases/2026/redistribution
+
+No Microsoft compiler, SDK headers, static libraries or debug runtime are
+included in this package. Rebuilding requires an appropriately licensed build
+toolchain; end users need no compiler or separate runtime installation for this
+checker. Updates to its statically linked runtime require a rebuilt checker.
+The recorded build inputs identify the compiler and library bytes used.
+
+The pinned distributed asset was built with MSVC 19.51/v14.51 and Windows SDK
+10.0.26100.0; its adjacent provenance records exact input hashes.

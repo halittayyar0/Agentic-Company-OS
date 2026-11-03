@@ -30,4 +30,12 @@ If Tailscale's Personal terms do not fit your use, run an existing WireGuard VPN
 
 ## Verification limits
 
+For an existing installation created by the guided launcher, an unavailable
+private phone preflight no longer prevents local work. Open the private
+connection-status link printed by the launcher, then **Open workspace**. Your
+saved phone preference remains selected; check Tailscale and restart the same
+launcher to retry. The fallback does not configure or change a phone listener.
+An initial installation selecting private phone access still requires the network
+to be ready. This does not add a post-install phone-settings editor.
+
 The repository can test mobile viewport layout, HTTPS-origin security rules, and authenticated API flows. A real phone connection depends on the installer's network, tailnet or VPN account, DNS, and TLS state; it must be checked on the installed system. The app intentionally does not discover a private hostname or silently expose a public port.

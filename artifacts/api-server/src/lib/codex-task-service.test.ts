@@ -3,7 +3,8 @@ import path from "node:path";
 import os from "node:os";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, realpath, rm, stat } from "node:fs/promises";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 import { eq } from "drizzle-orm";
 import {
   db,
@@ -213,7 +214,10 @@ test("source workspace invalidation while awaiting native approval stops the own
   }
 });
 
-test("a stalled usage acknowledgement times out without publishing or later resurrecting the session", async (t) => {
+async function stalledUsageCase(
+  t: TestContext,
+  scenario: "ready" | "slow-admission" | "early-ownership-loss",
+) {
   const f = await fixture(t);
   await db
     .delete(codexTaskSessionsTable)
@@ -227,9 +231,24 @@ test("a stalled usage acknowledgement times out without publishing or later resu
   const acknowledged = new Promise<void>((resolve) => {
     written = resolve;
   });
+  const controller = new AbortController();
+  let reachedTurnBoundary!: () => void;
+  const turnBoundary = new Promise<void>((resolve) => {
+    reachedTurnBoundary = resolve;
+  });
+  let admissionDelayed = false;
+  let ownershipLost = false;
+  let lastUsageOutcome: string | undefined;
+  const context = {
+    ...f.context,
+    assertTaskLease: async (label: string) => {
+      if (ownershipLost) throw new Error("fixture-owned-lease-lost");
+      return f.context.assertTaskLease!(label);
+    },
+  };
   const running = runGovernedCodexTask(
-    f.context,
-    { prompt: "Fixture" },
+    context,
+    { prompt: "Fixture", signal: controller.signal },
     {
       environment: {
         ALLOW_AGENT_CODEX_TASKS: "true",
@@ -244,13 +263,47 @@ test("a stalled usage acknowledgement times out without publishing or later resu
             (await f.store.readActiveRegistration())!,
         }),
       },
-      resolveWorkspace: async () => f.workspace,
-      processPorts: (input) =>
-        nativeFixturePorts(t, { ...f, session: input.session! }, "completed"),
+      resolveWorkspace: async () => {
+        if (scenario === "slow-admission" && !admissionDelayed) {
+          admissionDelayed = true;
+          await delay(16_000);
+        }
+        return f.workspace;
+      },
+      processPorts: (input) => {
+        const ports = nativeFixturePorts(
+          t,
+          { ...f, session: input.session! },
+          "completed",
+        );
+        if (scenario !== "early-ownership-loss") return ports;
+        return {
+          ...ports,
+          launch: async (prepared, binding) => {
+            const owned = await ports.launch(prepared, binding);
+            let pending = "";
+            owned.child.stdout?.on("data", (chunk) => {
+              pending += String(chunk);
+              let newline: number;
+              while ((newline = pending.indexOf("\n")) !== -1) {
+                const line = pending.slice(0, newline);
+                pending = pending.slice(newline + 1);
+                if (JSON.parse(line).method === "thread/tokenUsage/updated")
+                  ownershipLost = true;
+              }
+            });
+            return owned;
+          },
+        };
+      },
       checkpointTimeoutMs: 40,
+      beforeTurnBoundary: async () => {
+        reachedTurnBoundary();
+      },
       recordUsage: async (input) => {
         inserts++;
-        await gate;
+        lastUsageOutcome = input.outcome;
+        if (input.outcome === "completed") await gate;
         try {
           await recordCodexTaskUsage(input);
         } finally {
@@ -260,12 +313,33 @@ test("a stalled usage acknowledgement times out without publishing or later resu
     },
   );
   void running.catch(() => {});
-  const approval = await f.pending(running);
-  await f.decide(approval.id, {
-    decision: "approved",
-    expectedArgsHash: approval.scope?.argsHash,
-  });
   try {
+    // Admission, digest reads and native startup precede the approval phase.
+    // Observe their real boundary without changing the approval/checkpoint limits.
+    await Promise.race([turnBoundary, running]);
+    if (scenario === "early-ownership-loss") {
+      await assert.rejects(f.pending(running), (error: any) => {
+        assert.equal(error.kind, "ownership_lost");
+        assert.equal(error.requestStarted, true);
+        return true;
+      });
+      await acknowledged;
+      assert.equal(inserts, 1);
+      assert.equal(lastUsageOutcome, "failed");
+      const [session] = await db
+        .select()
+        .from(codexTaskSessionsTable)
+        .where(eq(codexTaskSessionsTable.taskId, f.task.id));
+      assert.equal(session.state, "uncertain");
+      assert.equal(session.cleanupState, "verified");
+      return;
+    }
+    const approval = await f.pending(running);
+    const decision = await f.decide(approval.id, {
+      decision: "approved",
+      expectedArgsHash: approval.scope?.argsHash,
+    });
+    assert.equal(decision.status, 200);
     await assert.rejects(running, (error: any) => {
       assert.equal(error.kind, "timeout");
       assert.equal(error.requestStarted, true);
@@ -305,8 +379,16 @@ test("a stalled usage acknowledgement times out without publishing or later resu
     );
   } finally {
     release();
+    controller.abort();
+    await running.catch(() => {});
   }
-});
+}
+test("a stalled usage acknowledgement times out without publishing or later resurrecting the session", (t) =>
+  stalledUsageCase(t, "ready"));
+test("slow admission preserves the native usage checkpoint and approval observation phases", (t) =>
+  stalledUsageCase(t, "slow-admission"));
+test("early ownership loss is not masked by the successful usage checkpoint gate", (t) =>
+  stalledUsageCase(t, "early-ownership-loss"));
 for (const mode of ["completed", "lost_after_consumption"])
   test(`backend service wires ${mode} native turn to real approvals, durable usage and session`, async (t) => {
     const f = await fixture(t);

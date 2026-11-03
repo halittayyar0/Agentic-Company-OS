@@ -60,6 +60,8 @@ worker loss is reclaimed within 120 seconds, every injection has timely
 durable incident evidence, health never reports a false green state, SSE
 reconnects, and at least 1,440 persisted minute buckets exist.
 
+Both controlled two-worker topology producers force `RUNTIME_MIN_HEALTHY_WORKERS=2`; an inherited lower value cannot weaken the run. Production health sampling and current Operations runtime truth use that minimum, so a single remaining worker during an injected loss is degraded, while a recovered pair remains live even with historical stale rows. The observer and independent primary verifier still require exactly two healthy scheduler workers, reject false green, and retain the original fault/recovery windows, cadence, deadlines and responsibility counts. A short passing run still leaves `verified24h=false`.
+
 ## Prepare a candidate
 
 Run from a clean checkout of the commit being tested. The runner fails before

@@ -151,6 +151,7 @@ export function validateInstallationInput(value: unknown): InstallationInput {
 export function planInstallation(
   value: unknown,
   capabilities: InstallCapabilities,
+  options: { existingInstallation?: boolean } = {},
 ): InstallationPlan {
   const settings = validateInstallationInput(value);
   if (
@@ -165,7 +166,11 @@ export function planInstallation(
     throw new Error(
       `coding_runtime_unavailable: ${capabilities.coding?.issues.join(", ") || "container_and_terminal_permission_required"}`,
     );
-  if (settings.phoneAccess === "private_network" && !capabilities.phone?.ready)
+  if (
+    settings.phoneAccess === "private_network" &&
+    !capabilities.phone?.ready &&
+    !options.existingInstallation
+  )
     throw new Error(
       "Private phone access requires a connected Tailscale installation",
     );

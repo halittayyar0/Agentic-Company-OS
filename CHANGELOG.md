@@ -5,6 +5,17 @@ All notable changes to Agentic Company OS are documented here. The project uses
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows private-record checks and native account admission use a bundled
+  metadata checker instead of starting PowerShell. Existing access restrictions
+  remain enforced; a missing or altered helper stops protected operations and
+  requires re-extracting the complete verified package.
+- Existing workspaces can restart locally while their saved private phone network
+  is unavailable. A seven-language connection status keeps the local workspace
+  usable, retains the phone preference for the next restart and never opens a
+  public route or replaces saved credentials and permissions.
+
 ## [0.5.10] - 2026-11-01
 
 ### Added
@@ -14,11 +25,15 @@ All notable changes to Agentic Company OS are documented here. The project uses
   Optional navigation code loads without replacing the focused link; its failure
   leaves the ordinary page link and saved result available. No model call or new
   task is made.
+- Safer Windows troubleshooting: private-storage failures retain bounded startup
+  timing facts without exposing target paths, credentials or helper output.
 
 ### Fixed
 
 - Give the title and saved result their full reading width on compact laptop
   screens, retaining the existing two-column workspace on wide screens.
+- Native package builds recover bounded connection failures while acquiring the
+  pinned Node archive, preserving the total deadline and checksum checks.
 
 ## [0.5.9] - 2026-10-23
 

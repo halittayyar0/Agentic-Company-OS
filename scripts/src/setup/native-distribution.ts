@@ -3,6 +3,7 @@ import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 import { readBoundedRegularFile } from "./resume";
+import { readNativeRelease } from "./native-release";
 
 export interface NativeDistribution {
   schemaVersion: 1;
@@ -198,5 +199,6 @@ export async function readNativeDistribution(
       await handle?.close();
     }
   }
+  await readNativeRelease(exact, data);
   return data;
 }

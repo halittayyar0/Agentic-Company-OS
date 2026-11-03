@@ -329,6 +329,7 @@ export function createNativeRuntimeEnvironments(
     ...withoutInheritedSecrets(input.baseEnvironment ?? process.env),
     ...createEnduranceSpendConfiguration(input.baseEnvironment ?? process.env)
       .environment,
+    RUNTIME_MIN_HEALTHY_WORKERS: "2",
     WORKSPACE_ENV_FILE: path.join(runDirectory, "runtime-test.env"),
     NODE_ENV: "development",
     DATABASE_URL: input.databaseUrl,

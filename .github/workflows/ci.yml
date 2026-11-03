@@ -192,6 +192,9 @@ jobs:
       - name: Check formatting
         run: pnpm run format:check
 
+      - name: Test artifact-service DNS recovery without remote writes
+        run: pnpm run test:ci-artifact-dns
+
       - name: Prove pinned Ollama local-only and cloud-disabled boundary
         timeout-minutes: 15
         env:
@@ -479,7 +482,7 @@ jobs:
   windows-runtime:
     name: Windows runtime and process-tree regression
     needs: windows-installation
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
     timeout-minutes: 90
     env:

@@ -7,13 +7,17 @@ import {
   databaseBackend,
   db,
   dbReady,
+  closeDatabase,
   runtimeHealthSamplesTable,
   runtimeInstancesTable,
+  runtimeControlsTable,
   tasksTable,
 } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import type { RuntimeInstanceHandle } from "../orchestrator/runtime-instance-registry";
 import { readRuntimeOperationsConfig } from "../runtime-operations-config";
+
+test.after(() => closeDatabase());
 
 test("sampler targets only the last completed UTC minute", async () => {
   const modulePath = "./operations-sampler";
@@ -34,6 +38,129 @@ test("sampler targets only the last completed UTC minute", async () => {
       .toISOString(),
     "2026-09-01T12:34:00.000Z",
   );
+});
+
+test("persisted and live health share required worker capacity without rewriting history", async () => {
+  await dbReady;
+  const sampler = await import("./operations-sampler");
+  const readModel = await import("./operations-read-model");
+  const suffix = randomUUID();
+  const runtimeId = `capacity-live-${suffix}`;
+  const hostname = `capacity-test-${suffix}`;
+  const now = new Date(
+    Date.UTC(2060, 0, 1) +
+      (Number.parseInt(suffix.slice(0, 8), 16) % 100_000) * 60_000 +
+      1000,
+  );
+  const bucketAt = sampler.completedOperationsMinute(now);
+  const oldBucket = new Date(bucketAt.getTime() - 60_000);
+  const previousMinimum = process.env.RUNTIME_MIN_HEALTHY_WORKERS;
+  process.env.RUNTIME_MIN_HEALTHY_WORKERS = "2";
+  const config = readRuntimeOperationsConfig({
+    RUNTIME_ROLE: "worker",
+    RUNTIME_MIN_HEALTHY_WORKERS: "2",
+    OPS_SAMPLE_RETENTION_DAYS: "3650",
+  });
+  await db
+    .insert(runtimeControlsTable)
+    .values({ id: 1, emergencyStopEnabled: false })
+    .onConflictDoNothing();
+  const [control] = await db
+    .select()
+    .from(runtimeControlsTable)
+    .where(eq(runtimeControlsTable.id, 1));
+  assert.equal(control.emergencyStopEnabled, false);
+  const runtime = (id: string, age: number) => ({
+    id,
+    role: "worker" as const,
+    state: "healthy" as const,
+    hostname,
+    processId: 123,
+    buildVersion: "capacity-test",
+    schedulerEnabled: true,
+    startedAt: new Date(now.getTime() - 60_000),
+    lastHeartbeatAt: new Date(now.getTime() - age),
+    lastSchedulerTickAt: new Date(now.getTime() - age),
+  });
+  try {
+    await db
+      .insert(runtimeInstancesTable)
+      .values([
+        runtime(runtimeId, 780),
+        runtime(`capacity-lost-${suffix}`, 20_000),
+      ]);
+    await db.insert(runtimeHealthSamplesTable).values({
+      bucketAt: oldBucket,
+      sampledAt: new Date(now.getTime() - 60_000),
+      sampledByInstanceId: runtimeId,
+      runtimeTruthState: "live",
+      healthyWorkerCount: 1,
+      staleWorkerCount: 1,
+    });
+    assert.equal(
+      await sampler.recordOperationsHealthSample({
+        runtimeInstanceId: runtimeId,
+        now,
+        config,
+      }),
+      true,
+    );
+    const [stored] = await db
+      .select()
+      .from(runtimeHealthSamplesTable)
+      .where(eq(runtimeHealthSamplesTable.bucketAt, bucketAt));
+    const partialState =
+      databaseBackend === "postgresql" ? "degraded" : "local_demo";
+    assert.equal(stored.runtimeTruthState, partialState);
+    assert.equal(stored.healthyWorkerCount, 1);
+    const partial = await readModel.getOperationsOverview({
+      now,
+      windowHours: 1,
+    });
+    assert.equal(partial.runtime.minimumHealthyWorkerCount, 2);
+    assert.equal(partial.runtime.state, partialState);
+    assert.equal(partial.runtime.healthyWorkerCount, 1);
+    if (databaseBackend === "postgresql")
+      assert.ok(
+        partial.runtime.reasons.includes("worker_capacity_below_minimum"),
+      );
+    await db
+      .insert(runtimeInstancesTable)
+      .values(runtime(`capacity-replacement-${suffix}`, 500));
+    const recovered = await readModel.getOperationsOverview({
+      now: new Date(now.getTime() + 1000),
+      windowHours: 1,
+    });
+    assert.equal(recovered.runtime.minimumHealthyWorkerCount, 2);
+    assert.equal(
+      recovered.runtime.state,
+      databaseBackend === "postgresql" ? "live" : "local_demo",
+    );
+    assert.equal(recovered.runtime.healthyWorkerCount, 2);
+    assert.ok(recovered.runtime.staleWorkerCount >= 1);
+    const [unchangedOld] = await db
+      .select()
+      .from(runtimeHealthSamplesTable)
+      .where(eq(runtimeHealthSamplesTable.bucketAt, oldBucket));
+    const [unchangedPartial] = await db
+      .select()
+      .from(runtimeHealthSamplesTable)
+      .where(eq(runtimeHealthSamplesTable.bucketAt, bucketAt));
+    assert.equal(unchangedOld.runtimeTruthState, "live");
+    assert.equal(unchangedOld.healthyWorkerCount, 1);
+    assert.equal(unchangedPartial.runtimeTruthState, partialState);
+    assert.equal(unchangedPartial.healthyWorkerCount, 1);
+  } finally {
+    if (previousMinimum === undefined)
+      delete process.env.RUNTIME_MIN_HEALTHY_WORKERS;
+    else process.env.RUNTIME_MIN_HEALTHY_WORKERS = previousMinimum;
+    await db
+      .delete(runtimeHealthSamplesTable)
+      .where(eq(runtimeHealthSamplesTable.sampledByInstanceId, runtimeId));
+    await db
+      .delete(runtimeInstancesTable)
+      .where(eq(runtimeInstancesTable.hostname, hostname));
+  }
 });
 
 test("database ownership records one sample and one safe event per bucket", async () => {

@@ -1,0 +1,2488 @@
+{
+  "schema": "agentic-company-os/windows-private-helper-pinned-provenance@1",
+  "sourceSha256": "9fe2b88bd1407dad0375b5ef092cd61bf520b9d5b7feb9590ba57087c67e5407",
+  "executableSha256": "72f100903d99de66f12c83e3580418de3f5c40b535df0d0884ba34cf7fffd84f",
+  "executableBytes": 144896,
+  "producer": {
+    "repository": "halittayyar0/Agentic-Company-OS",
+    "commit": "fc86767a4296ece6c472104d0ec3eea01eabf3d8",
+    "runId": 41496914533,
+    "jobId": 125454177776,
+    "attempt": 1,
+    "artifactId": 13165539728,
+    "artifactSha256": "a0ab5b47430f4d674494cd9b382be9817305c813d0a8eba3a85e300764de4b1f",
+    "url": "https://github.com/halittayyar0/Agentic-Company-OS/actions/runs/41496914533",
+    "originalImmutableComponentAccepted": true
+  },
+  "builds": [
+    {
+      "schema": "agentic-company-os/windows-private-helper-build@1",
+      "protocol": 1,
+      "target": "win32-x64",
+      "sourceSha256": "9fe2b88bd1407dad0375b5ef092cd61bf520b9d5b7feb9590ba57087c67e5407",
+      "executableSha256": "72f100903d99de66f12c83e3580418de3f5c40b535df0d0884ba34cf7fffd84f",
+      "executableBytes": 144896,
+      "compiler": {
+        "name": "cl.exe",
+        "sha256": "b0a1818ebae6da7f18230a84e76ce839212584ac4c2ab55b97a0d5268085da57",
+        "versions": [
+          "14.51.36231",
+          "14.51.36260.0",
+          "19.51.36260",
+          "19.51.36260.0"
+        ]
+      },
+      "linker": {
+        "name": "link.exe",
+        "sha256": "a8c42e25c91ca2453e1110540ac08f0fc12d7539454a11b9af8baeecb469837d"
+      },
+      "sdkVersion": "10.0.26100.0",
+      "compilerOptions": [
+        "/nologo",
+        "/W4",
+        "/WX",
+        "/O2",
+        "/sdl",
+        "/analyze",
+        "/MT",
+        "/GS",
+        "/guard:cf",
+        "/Brepro",
+        "/DUNICODE",
+        "/D_UNICODE",
+        "/TC",
+        "/std:c11",
+        "/DACOS_SOURCE_SHA256=\"9fe2b88bd1407dad0375b5ef092cd61bf520b9d5b7feb9590ba57087c67e5407\"",
+        "/sourceDependencies",
+        "${BUILD}/source-dependencies.json"
+      ],
+      "linkerOptions": [
+        "/WX",
+        "/INCREMENTAL:NO",
+        "/DEBUG:NONE",
+        "/DYNAMICBASE",
+        "/HIGHENTROPYVA",
+        "/NXCOMPAT",
+        "/GUARD:CF",
+        "/CETCOMPAT",
+        "/BREPRO",
+        "/MACHINE:X64",
+        "/SUBSYSTEM:CONSOLE,6.02",
+        "/MANIFESTUAC:level='asInvoker'",
+        "advapi32.lib",
+        "/LINKREPRO:${BUILD}/link-inputs"
+      ],
+      "headerInputs": [
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/apiset.h",
+          "bytes": 6423,
+          "sha256": "e984e20681fd3de73ce14ab09d759d5b4faf03f7d66a78602da2ac9234b24df4"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/apisetcconv.h",
+          "bytes": 2162,
+          "sha256": "1093683104f97c8c9725bb2e7539dca22722dc8c5618cd846287e9458698abfe"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/basetsd.h",
+          "bytes": 11448,
+          "sha256": "d35b73f885d7ef7dfd27fce3762c190c1c952a21e10a3945bcb3d1860c673b12"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/driverspecs.h",
+          "bytes": 41698,
+          "sha256": "9cf7e9e1c9b55c7c351e87ff5a98e362b6ffdb511c3309ab9cf46b62b0dace42"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/guiddef.h",
+          "bytes": 5083,
+          "sha256": "0c08463fbc5a23a8862e57699e2f30dd14cd3db4a40903e4fca9392a57942dae"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/kernelspecs.h",
+          "bytes": 11879,
+          "sha256": "e844c7726c42736df74445b36351dc01e29bccee7d57ea208f77f61aa4c2b191"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/ktmtypes.h",
+          "bytes": 7849,
+          "sha256": "68d2848d00ae33282fb265880f8166f2b5dc60cd7a26db652450a5b44d44ee11"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/minwindef.h",
+          "bytes": 6876,
+          "sha256": "a9cf08be8407a196104124d5ade2308e204e47d3252bcd2ad20d0f2137843d62"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/poppack.h",
+          "bytes": 1021,
+          "sha256": "a50d0ef5cfe96d634a41ee9a97749c147165f8656cdfed5df53bc24c8adb1210"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/pshpack1.h",
+          "bytes": 918,
+          "sha256": "dee27f2712b9e72ca78a404834735303d16bdb21c8aa3addaca7dbca22664529"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/pshpack2.h",
+          "bytes": 918,
+          "sha256": "971d19074639cb36134bb40776cb2f817c53cbd05d748b52468f571932bbcc49"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/pshpack4.h",
+          "bytes": 918,
+          "sha256": "1cb4d07a218ec43c7935b431b16146fc0f3d29d43bd192f12959051d62c48d57"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/pshpack8.h",
+          "bytes": 918,
+          "sha256": "47f3972a1211e3a5ac32b18fae1a824db087dc7dc562d152e9ccab9b297faef0"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpc.h",
+          "bytes": 5189,
+          "sha256": "063bd35df91c85b029064abe19d635d985e414c9733c60ee8ca8ce937c98d6d5"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcasync.h",
+          "bytes": 19693,
+          "sha256": "5e91801cee17b175a397cc56ff08790783d4fcdbc8d52fe7bb7461ccfa369a85"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcdce.h",
+          "bytes": 89430,
+          "sha256": "991883893134c8ecbe6af8335df0781bfb779c11684b3367def514136241b866"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcdcep.h",
+          "bytes": 32196,
+          "sha256": "df032ed7952b84113857284d86e7365b158cc57f955a5c0580e57e96c6df5ba2"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcndr.h",
+          "bytes": 82121,
+          "sha256": "2e77ad831f8300436d86d7d1a90ccba470f9fe7f09f59b4bde8c60eece41339a"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcnterr.h",
+          "bytes": 17723,
+          "sha256": "9d94281cbd9272e02a39b51e19367df2a87f3756b85b5c848bee38828e0cdc23"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcsal.h",
+          "bytes": 30696,
+          "sha256": "c15959eb632ab0f27d2bcb3b6873cd2873bdd5669069409d936ef993dcb1c108"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/sdkddkver.h",
+          "bytes": 11565,
+          "sha256": "2472140e0a4d56595743bb74002a51aee9b58667bd178fc43742e19debfeb774"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/sdv_driverspecs.h",
+          "bytes": 554,
+          "sha256": "99fd81f9464150f56963c3bbafaa95f93b837c221c4237e6e399a85e00ea9f39"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/specstrings.h",
+          "bytes": 48804,
+          "sha256": "3b83b1cd3b4f9bf46009bfdccf01d5c3a6fa6eed3f823d1ef497ed6d1b9bce0e"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/specstrings_strict.h",
+          "bytes": 67448,
+          "sha256": "49b12898b42bcf53e5f8fb75e6db1a5d3ffb7a9f394e50df3351e0824d4a8b42"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/specstrings_undef.h",
+          "bytes": 13106,
+          "sha256": "6aba76eabbec627edadba5ab29304d9e2ff4eb9da165fd81a9095c851f405a01"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/stralign.h",
+          "bytes": 16784,
+          "sha256": "f7d2f48b6a9154937ad907e91b70faf6c68044fbe9d4042c392ac3c0eb1a82ef"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/tvout.h",
+          "bytes": 4128,
+          "sha256": "8c359d2dff894d546f3eced2fe9463dfa4824bffc6c8c71ecd8feef02e7eae21"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/winapifamily.h",
+          "bytes": 11292,
+          "sha256": "bda507d14f2e40023d344cb943cbd98af26de8a47f3b0f5fac694d2025711af1"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/windef.h",
+          "bytes": 7362,
+          "sha256": "040535b19a60264e5fe6971f7cb13cbf24be17abeeaa8acd21e44f5d7dfe8d22"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/winerror.h",
+          "bytes": 1627224,
+          "sha256": "4c965127e2ec9019d19edcbfe771a7daf91fe469931d8a7e84a96f51f19a581a"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/winpackagefamily.h",
+          "bytes": 3699,
+          "sha256": "8f74e254896094a3884e6975fd24b3493846514065f47d2666df53cdea45b8ea"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/wnnc.h",
+          "bytes": 4001,
+          "sha256": "fb3aaeef324b5d00ce0a6ae11702dcc3c1de65fa0a10caaab4336b97d3adf493"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/wtypes.h",
+          "bytes": 23996,
+          "sha256": "71417094369493700ce385e32c63002ed651dd70b5d7f7d8a6f64c9e9a0939db"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/wtypesbase.h",
+          "bytes": 14187,
+          "sha256": "e5277f89186f786ae0923c9d7689a16d91dbeff7fad36a86b08671416e4b679d"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt.h",
+          "bytes": 127273,
+          "sha256": "822e503b81dd7b3d7df93ca22fced3672a5154484fd42054d5941e619bcf6cbc"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_malloc.h",
+          "bytes": 7405,
+          "sha256": "44bd1bb518e730ba0be045f44a4735869e08f7d54ab85c298270770812fcff80"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_memcpy_s.h",
+          "bytes": 3692,
+          "sha256": "359f3ce9e84bc00c983f01d9c3375d0ca9e0ef6a42e797d16e119c62b2ef333b"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_memory.h",
+          "bytes": 3527,
+          "sha256": "18ca520416579183bc369c0a8e555914db5c7577075b9359173fc6bc45595560"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_search.h",
+          "bytes": 10959,
+          "sha256": "fe06c4dd27c3df5ca6bed52a433b8848f32e14ed0f3712d00f7e602416471c1b"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_share.h",
+          "bytes": 1005,
+          "sha256": "08e7a7eb0b0c7ebdd7e5fa9f9a65f626f5a725b688502ac178ca67334328b898"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_stdio_config.h",
+          "bytes": 5009,
+          "sha256": "a7e100624320a8e0123890c5008bcb2281c1273ca7ce5bb1d297f987fdbe79a0"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wconio.h",
+          "bytes": 13310,
+          "sha256": "6cfdcfd9e1ec60014c4e7e87913275ce3cacda008dbc397a17306976266aa5b6"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wctype.h",
+          "bytes": 10605,
+          "sha256": "b622b24cbda842a1736987f38c9deb5076e51af018630842a127bebd9104076e"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wdirect.h",
+          "bytes": 1495,
+          "sha256": "b8477593983d23ed4ef93c3efcabb8239375b518ba589a65338db29bb0dc2237"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wio.h",
+          "bytes": 7427,
+          "sha256": "e6a08ad4c75ef96fd5fafcff334048c4cc610f990f39c15e07c03af14d607197"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wprocess.h",
+          "bytes": 3980,
+          "sha256": "e75c5cdf244070ddcebac8920dd4cc96c33d0e21fdfbc82446c0374950e98487"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wstdio.h",
+          "bytes": 75265,
+          "sha256": "a10bbf4667b3aada380a6b80df853f9fbddc3cc691ca57389b3b6759f119e515"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wstdlib.h",
+          "bytes": 16790,
+          "sha256": "98b62ac5fb4291961c19ecf5c1b2e641b437f9042054f1a56ebdfd0deb71eca1"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wstring.h",
+          "bytes": 20015,
+          "sha256": "c485f918d43f0f846d77a36eaee9e111f57bf2eec32db7d9719ff924771744c6"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wtime.h",
+          "bytes": 7205,
+          "sha256": "4e487fddafbc724cf4e6df45feb920bc46dae80f54ffe5d983bf742a1fd9a12f"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/ctype.h",
+          "bytes": 12981,
+          "sha256": "6a10e9f0505b896d356d986d671c939b7fb0602012e463314ff7bfd0182a861f"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/errno.h",
+          "bytes": 3835,
+          "sha256": "c64e8df96f057fdebc0474bd765cee3ae17de34a2b1fc9d197597321f2d1e447"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/malloc.h",
+          "bytes": 5079,
+          "sha256": "8acfe0c7a33a4d5ae2253f7167f92b0e728dea86f83289cee9d583c45b175b6e"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/stddef.h",
+          "bytes": 1413,
+          "sha256": "3f1f7eeefad270928749c89a2a2094ccc3f38829b1d8c197f6ce7483ead2284c"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/stdio.h",
+          "bytes": 81489,
+          "sha256": "06cbab3a501306fdd9176a00a83e5bb92ea4d7863cfd666355743527cf99edc6"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/stdlib.h",
+          "bytes": 43968,
+          "sha256": "1576fdb40eb225dff53489db2fd52e41c7bb24f1e621e4a95c2c7f4a7216949c"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/string.h",
+          "bytes": 17395,
+          "sha256": "39767b2e1963b8ef679b62d5e27cb2d0ca1de6a6173b75389b79c9d575da92fc"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/sys/stat.h",
+          "bytes": 6856,
+          "sha256": "2b720dd0426cf0a74eefdb684ac559c8b4f84b1d7d345e3582ce0dfeb01b9aa7"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/sys/types.h",
+          "bytes": 1280,
+          "sha256": "dfb9ebc7d527c30d71f1056ddd85e33fb931df573b41424bb1db9a48457bebd7"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/wchar.h",
+          "bytes": 18447,
+          "sha256": "802dc6f33d128ac94cb0e8a978c65382c7c18e85dc2eb7d340b038d79ad10ea5"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/AccCtrl.h",
+          "bytes": 28225,
+          "sha256": "37a7438a7233ad985e312151f6979a55d499c75f1b92ba8beb930a71ffa8e429"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/AclAPI.h",
+          "bytes": 21344,
+          "sha256": "963251e7ffd638a9e93e60e22b0ee95abf858e846dcc49d6b1df61ae0c59270b"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/apiquery2.h",
+          "bytes": 1549,
+          "sha256": "56c61c2ee306428d38037a578b66a49ef347a14a3760936416035b0d45da2b11"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/consoleapi.h",
+          "bytes": 8161,
+          "sha256": "a0e727e696f3599ef0b570942f28646dbd94374e62c812659eba5ebe2a42a99f"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/consoleapi2.h",
+          "bytes": 11697,
+          "sha256": "f2134e1d2c01611e60ff939ccd45561884aa0ccbce590136ffd1d95161892d17"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/consoleapi3.h",
+          "bytes": 8574,
+          "sha256": "0a00bf6ca901d0d980fe8c2b9bb91a39fb84c3a99e9c87498149a04cf7cf5925"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/datetimeapi.h",
+          "bytes": 3964,
+          "sha256": "a4325c76b9bc900c22ef3d766c739ccd3a71894e81833ad637d50f9e45417117"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/debugapi.h",
+          "bytes": 3591,
+          "sha256": "d63f6c4aad9787bb8ff2e54966c8db156b0ef1570be58201d74dff12cd6f1e22"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/enclaveapi.h",
+          "bytes": 3502,
+          "sha256": "9467c4bc6400057c3d3205d53667000be525cad64a381552291e869430af6a76"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/errhandlingapi.h",
+          "bytes": 6566,
+          "sha256": "b73cccce6dac8ce02c6a399862ec2a6e22fe27a4d09874d86ec2be3bd5d17fbf"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/fibersapi.h",
+          "bytes": 2582,
+          "sha256": "f8eeadc28f8e3e4c7bfd1217d55315eb31d63f3d86c66a3948d74ceb8e7a00d0"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/fileapi.h",
+          "bytes": 40460,
+          "sha256": "f8927178c75de487c0e57f044a215e455522bf6eaa0b660421be09cd06ae05a1"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/fileapifromapp.h",
+          "bytes": 4111,
+          "sha256": "d07110e7f7989aeef7eed77d5f584f3ee60ff2ce58bc1a374d70151a18b4a664"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/handleapi.h",
+          "bytes": 2578,
+          "sha256": "c967fdf1a98e4ce8d501dae26b905f6452173b2be1c25e6aa2e5eeae415369cc"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/heapapi.h",
+          "bytes": 5317,
+          "sha256": "22b606b0a4096295272bcae6fc353c4f159f0cdfc90b5f1a9a712b2fff50b53f"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/ime_cmodes.h",
+          "bytes": 833,
+          "sha256": "27904e900938749c12a4d1e741afd564198a57a24724c1ddd36cd3302224df26"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/imm.h",
+          "bytes": 28873,
+          "sha256": "942d0b80eb7d186ee935fce8064ccdcdea3a49b39bcc03f55208b7c37e289779"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/interlockedapi.h",
+          "bytes": 2604,
+          "sha256": "4b0d3bc138eaab8dc9dd40bfb109f5fea4cbd2caaf92d63a4cf60a8edcfb0e3a"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/ioapiset.h",
+          "bytes": 4791,
+          "sha256": "7c3f659f98b3f1748a314bd64106583d01649333e0419b66232b4f64b3f85b0c"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/jobapi.h",
+          "bytes": 1307,
+          "sha256": "08ddff85ec80f12b156837bbce4f969480fea0e32a08dade7cc16acecb0892d1"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/jobapi2.h",
+          "bytes": 2976,
+          "sha256": "a8f9591dc2b0bd249d03150b70abd47c0068c6eda2a1d74d24bc8964bcd68549"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/libloaderapi.h",
+          "bytes": 15518,
+          "sha256": "8ad0ba5600d6c2e9aed318ca9d2f48f2bdf9f47ed3cd5d9f243e6f779c8e04c4"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/mcx.h",
+          "bytes": 24640,
+          "sha256": "4ee416b2d24e45cfc5d35ce5b34833b64b34fd9a39957c66d75509f6d3b8f972"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/memoryapi.h",
+          "bytes": 33539,
+          "sha256": "58edcc2090c411a1821e04a6a2954c258fd59ded44440bdd671984027e0a852f"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/minwinbase.h",
+          "bytes": 13973,
+          "sha256": "7d1408f4b8eeba96ae45892209132258cde80cab6dab192b4cceea591972c78b"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/namedpipeapi.h",
+          "bytes": 5539,
+          "sha256": "37062eba19e35b391cf050519c9403e19c6782663ea644ff38b2b5eb71dfce6b"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/namespaceapi.h",
+          "bytes": 1974,
+          "sha256": "3257ad8af53c5809be4d5d17ed0ffd8b49451d3f27c1fd747ffde3e0a7a81583"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/processenv.h",
+          "bytes": 7427,
+          "sha256": "c10dd3bd48a2416e0aece2259ea57cc47d6c8b9fdbae085a4c7a5b29c71a85dd"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/processthreadsapi.h",
+          "bytes": 37180,
+          "sha256": "436ae4cbb017d1cdb381aaf2119a3f89b04bae257fd4c881ef251daa02533540"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/processtopologyapi.h",
+          "bytes": 2081,
+          "sha256": "4507a5e0c4f41d19a80d1543833f1a9d90277bc376441b277884bb043be24ba5"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/profileapi.h",
+          "bytes": 1413,
+          "sha256": "cfa8e3626dba11689997d8fcd65b5dfbf4bcef8de09dd7e4e881769d48d165a2"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/realtimeapiset.h",
+          "bytes": 3149,
+          "sha256": "00c874b981a1242ee4ebc21e6ae96a69d7aa70662d820ceffbabcfea859b03e4"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/reason.h",
+          "bytes": 5042,
+          "sha256": "30540eb35daa79c7a5cb98059430df480e86b549b7980247288da8a2801add1d"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/rpcnsi.h",
+          "bytes": 15272,
+          "sha256": "f49466a31875d34a6e5c02f301d81b7a78f25cb947f3d6e6ea712ab356b42c8e"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/rpcnsip.h",
+          "bytes": 1563,
+          "sha256": "7c8138b43e028724e0fd143be29c40de5b5650a3e0f87356662a77dbad186712"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/securityappcontainer.h",
+          "bytes": 1470,
+          "sha256": "85cc13ed7028960bd7f97c91f98b96825b46f4b8bc386aed2f2a6a9bccbe4083"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/securitybaseapi.h",
+          "bytes": 36514,
+          "sha256": "a443b4183d3ec5b8e1ae40db5824f002a34eb0415f38227fa1dddbbf02a448d4"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/stringapiset.h",
+          "bytes": 3941,
+          "sha256": "624c82fb73517a3829f3766a50a0235e2f9a51cb4bda95a0c39981e39fa4d42d"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/synchapi.h",
+          "bytes": 15696,
+          "sha256": "d962588974e5e100205f683160b351dee70ea100aa736e14d878b7a74577a9c5"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/sysinfoapi.h",
+          "bytes": 19345,
+          "sha256": "077088cb53ec69d454916aac5f00e45dda79e09da64054acc141120eb67a5700"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/systemtopologyapi.h",
+          "bytes": 2319,
+          "sha256": "8bfd1a78cc30b6d33c88e3f61ae2ac6468cee0607352ee8d096ba5375b4d401c"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/threadpoolapiset.h",
+          "bytes": 7148,
+          "sha256": "e91d7dee4d22ca848e3110a4c55f32e1918dc865479343896aec9ab653ee5110"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/threadpoollegacyapiset.h",
+          "bytes": 2824,
+          "sha256": "87c1630abf7dc4ed7978f2c4dbacf418f6bcf94cb946e277cb7250770bd44200"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/timezoneapi.h",
+          "bytes": 5462,
+          "sha256": "621c0252a8a831813592c4a95e183a2e7ae55efbbd7b8ad886af7d8871fc4d50"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/utilapiset.h",
+          "bytes": 2482,
+          "sha256": "a8e0f6001c784b3ad9feb44c61d96b58c57366c473832ca8b2ea5de05877b470"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/verrsrc.h",
+          "bytes": 6705,
+          "sha256": "ff9bee8ee5b7aa81eaf79a1eab0e93bd307601e87d3b80a73f24984e9c951c61"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/WinBase.h",
+          "bytes": 272738,
+          "sha256": "1e27239cda673a4b6c8f4295a3a0a8c3b87892eb7a593922eb11e0f22e602318"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/wincon.h",
+          "bytes": 1129,
+          "sha256": "98e33720f9ec8fded808ab94f111b8335d0ba2fd2246a5adab3aab2ce05503d9"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/wincontypes.h",
+          "bytes": 4610,
+          "sha256": "209e79fdbbb30971740e59b2da2d6c86e27c0e9dd02bee9cbc21736fbd2426ad"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/Windows.h",
+          "bytes": 7511,
+          "sha256": "b337d661d03a4abefb7b86a2742ce1ad5d19b57cd8b858bd13e7bbcc1dbeeaaa"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/wingdi.h",
+          "bytes": 244023,
+          "sha256": "96f3528cabc7e5fe30e2f2c51daa01c018dd6cedb3768121202434758629b8a2"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winnetwk.h",
+          "bytes": 27073,
+          "sha256": "7c7412df502fb6ea390c96d7c9f805a2a211609b95b8fdb4740540f789d9c4ce"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/WinNls.h",
+          "bytes": 129219,
+          "sha256": "e47861762a4b51a2689c8a99798a1a7e68335573e03c857e545172b095c5c829"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winnt.h",
+          "bytes": 904340,
+          "sha256": "797b974b2c95697bcb28a4c1d7ca33d9b0be602b4e0b28118fb1edf770d82d21"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winreg.h",
+          "bytes": 42295,
+          "sha256": "bff833e8d092a0cb657837e3162b8bb0cf35b43105203f4ce880972a501d61d6"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winsvc.h",
+          "bytes": 59863,
+          "sha256": "8108fe3f099960014f36d1b2da425a8382e9d839de3477eb06f181289a0685c8"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winternl.h",
+          "bytes": 30360,
+          "sha256": "a43424486349c38f697c009512dfe4eb8fca733d7665afab42f50752170b9785"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/WinUser.h",
+          "bytes": 431790,
+          "sha256": "b0d43a49f32a6a4f0a8172cfb491c54136df88d3164102e39415ec5cf3dad5be"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winver.h",
+          "bytes": 8809,
+          "sha256": "c60e137e7ff88582f72e50fe74904f5773502d229f78234ea83abb2688f6e8ae"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/wow64apiset.h",
+          "bytes": 5421,
+          "sha256": "6b14e2b59ae5b9f22bfd9a1e989a5589adf5790832ff24cb9d8828d4e8d45cda"
+        },
+        {
+          "path": "vc/include/ammintrin.h",
+          "bytes": 16119,
+          "sha256": "d53a3e43803820ffe804f2f0266ce7a3166d6c7ae82b0dfba2a4ae2601eb059f"
+        },
+        {
+          "path": "vc/include/concurrencysal.h",
+          "bytes": 17273,
+          "sha256": "1ea9a2e32a6ff298ad7904610cc71028caa9b172399a579ca90a120d1b1aec12"
+        },
+        {
+          "path": "vc/include/emmintrin.h",
+          "bytes": 16130,
+          "sha256": "735efe76e3f5190c1b2c0c7aadcbec4a4bf1156f91cb12f7be3ed53ad1709a5a"
+        },
+        {
+          "path": "vc/include/excpt.h",
+          "bytes": 2493,
+          "sha256": "9532b07eff7b34c062401b7155fe77494068e82bb7c2bef34cec5937e948cefc"
+        },
+        {
+          "path": "vc/include/immintrin.h",
+          "bytes": 121509,
+          "sha256": "a23efe7eceb2bc98584124a8263bcff1ec7f273b6d1f58ec634ddee6bd63a466"
+        },
+        {
+          "path": "vc/include/intrin.h",
+          "bytes": 64899,
+          "sha256": "80919d795d8c0793dae4a3698a683bee8186f357ff46f0d72e05bb3309d06011"
+        },
+        {
+          "path": "vc/include/intrin0.inl.h",
+          "bytes": 20586,
+          "sha256": "6f044368f38ba290c9f40260d4d55bf7bc23e8edd0cbba9291d5a222a74f80f8"
+        },
+        {
+          "path": "vc/include/limits.h",
+          "bytes": 1919,
+          "sha256": "2ed583abdb8a052b919d4652b10839e28a6fadbe63674108dcc65f719c9ff51c"
+        },
+        {
+          "path": "vc/include/mmintrin.h",
+          "bytes": 6634,
+          "sha256": "d2dce9191fbdd235a94fc1af6bd163119dbcdfeadfb50f777b2d75b12ca1f028"
+        },
+        {
+          "path": "vc/include/nmmintrin.h",
+          "bytes": 4632,
+          "sha256": "69ecf104338622b7f1e44b0d99469adb95c46dd9e5858f5dc8279c3ef3b99421"
+        },
+        {
+          "path": "vc/include/pmmintrin.h",
+          "bytes": 3208,
+          "sha256": "2fb7131f91e5e300a7d9f2f148b6fe79a9775d06c3f1be26908e138ac6f9fbc5"
+        },
+        {
+          "path": "vc/include/sal.h",
+          "bytes": 213957,
+          "sha256": "cda06459ca38681800ce5e98703c66534c74a803aa652bd4bc2b3407dd45ed46"
+        },
+        {
+          "path": "vc/include/setjmp.h",
+          "bytes": 3810,
+          "sha256": "7e4243ef92eee5f552fe66256e4b7d6f20b9050fbc034fcc9458cae39dcecf5e"
+        },
+        {
+          "path": "vc/include/smmintrin.h",
+          "bytes": 10000,
+          "sha256": "2f773512dac1c4515c13cb9173a2c852d8c884b0cedc5814cff3956b742a1071"
+        },
+        {
+          "path": "vc/include/stdarg.h",
+          "bytes": 554,
+          "sha256": "5d61d0b6734ef0832c30064800e8d01b3f12d29d24c8b1bd07b3ece3b72a9330"
+        },
+        {
+          "path": "vc/include/stdint.h",
+          "bytes": 4114,
+          "sha256": "29fb6d4ba5e311e06877609c20a1bc49c6cdfb730f56dd0f9c53a6241c40ab5c"
+        },
+        {
+          "path": "vc/include/tmmintrin.h",
+          "bytes": 4763,
+          "sha256": "e5981ed52590bbcd7cad7d84e7ab3b47b81837136138854de0ee807332f95dab"
+        },
+        {
+          "path": "vc/include/vadefs.h",
+          "bytes": 7668,
+          "sha256": "282dcb4af7cdbbf34095235b069474621fdd82e28eec698b467f553df4759f01"
+        },
+        {
+          "path": "vc/include/vcruntime.h",
+          "bytes": 11444,
+          "sha256": "8a6e89fe85c66162d62c772d02367ae2e6530f1faaaa8d099427698a689bac7f"
+        },
+        {
+          "path": "vc/include/vcruntime_string.h",
+          "bytes": 2959,
+          "sha256": "b05204f6814d1d7b7ca729b41d4192d0e47722f162c0b1d322f994bf9650af63"
+        },
+        {
+          "path": "vc/include/wmmintrin.h",
+          "bytes": 2615,
+          "sha256": "ccee1d63e178b3dcff1625817c2a0722fbb2966956d3cbe5531feecb6afd5a9b"
+        },
+        {
+          "path": "vc/include/xmmintrin.h",
+          "bytes": 20078,
+          "sha256": "6c30762cf69f112244617f72ea7f9ef933b673c3cc8afd1866158f0143fd263c"
+        },
+        {
+          "path": "vc/include/zmmintrin.h",
+          "bytes": 501410,
+          "sha256": "12c732298b86162914cee68c5dfe2f83b5c1fe71602707eca695901443bdac01"
+        }
+      ],
+      "compilerBinaryInputs": [
+        {
+          "path": "1033/atlprovui.dll",
+          "bytes": 35128,
+          "sha256": "767c7c5c841d62ae8197048e6b405564572b90ffa896296c0ce3292baec6f952"
+        },
+        {
+          "path": "1033/bscmakeui.dll",
+          "bytes": 18744,
+          "sha256": "2908aec0eedd5749209c8e0672a1475e1241da1afe6041e73d57517a237f094d"
+        },
+        {
+          "path": "1033/clui.dll",
+          "bytes": 630072,
+          "sha256": "5271e867c8fd4f87a8c74de583ea90e81773334db1769ff7f9dcf8917ec603cf"
+        },
+        {
+          "path": "1033/cvtresui.dll",
+          "bytes": 15672,
+          "sha256": "58e349850ad7fb28e760b7894a20f639f130cef496b4b405a5b02aada3e81e15"
+        },
+        {
+          "path": "1033/linkui.dll",
+          "bytes": 108896,
+          "sha256": "85d691a31e0d49e70b111b1a3776dbe5d1dfdf689931d00266035a6e90237b17"
+        },
+        {
+          "path": "1033/mspdbcmfui.dll",
+          "bytes": 17248,
+          "sha256": "9ef32eb33c93fb8c720f8ec2da0d55c40a1b1df66671be5a6313fcb57dd9e3ec"
+        },
+        {
+          "path": "1033/mspft140ui.dll",
+          "bytes": 202592,
+          "sha256": "7b031f164ca41336bada7d8552e529552c644f6a0c2ee52f099f34b1ec6e1114"
+        },
+        {
+          "path": "1033/nmakeui.dll",
+          "bytes": 24376,
+          "sha256": "f91aa115386bb2d667fe8fbb635453e65c2a9790ce1b28d8fd2553ecf132b48f"
+        },
+        {
+          "path": "1033/pgort140ui.dll",
+          "bytes": 21344,
+          "sha256": "5e49b38b4d81fce5aa14fad14332d6df3b1ed1f1223ec7df4affa1da3b207ba4"
+        },
+        {
+          "path": "1033/pgoui.dll",
+          "bytes": 47968,
+          "sha256": "d4a72a25c0b7be65b6f3dcb4ee90a9f4ba8d39fbf62128b65806025f9067f424"
+        },
+        {
+          "path": "atlprov.dll",
+          "bytes": 211256,
+          "sha256": "b312525880cf640ddcae074f4f6935d65c0fb72298e84bcdcd40ba39c9e39fba"
+        },
+        {
+          "path": "bscmake.exe",
+          "bytes": 111504,
+          "sha256": "cf0574bc1e5926883ad304ae75d72a1f2300289b0dd096f1a64d5d9a60e8dd0e"
+        },
+        {
+          "path": "c1.dll",
+          "bytes": 3623736,
+          "sha256": "49bd8b0b1c3d814b6b39cf0d649ac8a7ffc8fea021b0c5fd363f787b158d39a5"
+        },
+        {
+          "path": "c1xx.dll",
+          "bytes": 13249848,
+          "sha256": "de129befb4cfeca19ea62c4d72162f19f2b7952545cc64b7b3f1fcfd4981c5f1"
+        },
+        {
+          "path": "c2.dll",
+          "bytes": 11492664,
+          "sha256": "1477c03a2a267effe4a40d8debb846f3e4ab42547c5b966d7d5187bb2823e2f5"
+        },
+        {
+          "path": "c2dd.dll",
+          "bytes": 11492704,
+          "sha256": "59186b7f2988c9f4bd5b81fae79cebd101fcd557cff7b409c7b0f84c632a8afc"
+        },
+        {
+          "path": "cfgpersist.dll",
+          "bytes": 1603384,
+          "sha256": "5fdbecf891f10f2720fbffffd7b2da90211188459394ab38ea35fd261a7bdafa"
+        },
+        {
+          "path": "cl.exe",
+          "bytes": 893288,
+          "sha256": "b0a1818ebae6da7f18230a84e76ce839212584ac4c2ab55b97a0d5268085da57"
+        },
+        {
+          "path": "clang_rt.asan_dbg_dynamic-x86_64.dll",
+          "bytes": 1831224,
+          "sha256": "ffc75f33331223e5970bce1f90fc9f08ff5ae14096bc0414976174a6b21826b3"
+        },
+        {
+          "path": "clang_rt.asan_dynamic-x86_64.dll",
+          "bytes": 1881912,
+          "sha256": "7f901a239979c49b36a3b18ecd1843f551f94b5879585bded41a650c5b71f35f"
+        },
+        {
+          "path": "CppBuildInsights.dll",
+          "bytes": 298560,
+          "sha256": "fd906969e481c42dbe6882973638aaf2b61dadce32dba2a942c44949090d08f7"
+        },
+        {
+          "path": "cvtres.exe",
+          "bytes": 45984,
+          "sha256": "830d09e8e4a66b2f8fb0bfaad943d0bc5ce704b990d6a57e2e1aad3ec91e8ef7"
+        },
+        {
+          "path": "d3dcompiler_47.dll",
+          "bytes": 4467904,
+          "sha256": "8c88c162010a8d6b80f2c0433d4ce973ce626afcbc8da5be68bfa2ba68341eba"
+        },
+        {
+          "path": "dpcmi.dll",
+          "bytes": 1397048,
+          "sha256": "aecbc7ed828821675ff41f10a9eb1b4386f88242466416566bbe25eaa3067e3f"
+        },
+        {
+          "path": "dumpbin.exe",
+          "bytes": 23376,
+          "sha256": "357c989e1c926841df4e6e97c25a60b205b30110cd6db39bde8d81a627e48ebb"
+        },
+        {
+          "path": "editbin.exe",
+          "bytes": 23416,
+          "sha256": "edaee7981c7f78953b0643b3ea4a77c89d2207abf97632ea5026a5b102a24bf0"
+        },
+        {
+          "path": "EspXEngine.dll",
+          "bytes": 4181856,
+          "sha256": "059938169a3abf5636450cb5937da3a14ade477b24d9f0fd9c406211245499c8"
+        },
+        {
+          "path": "ifc.exe",
+          "bytes": 216888,
+          "sha256": "985ea160e2370a0ee8ea28596531be135407d72a04b7e422d5c4821f2eff0be5"
+        },
+        {
+          "path": "KernelTraceControl.dll",
+          "bytes": 253512,
+          "sha256": "9e2477efeb3d218f4a1844afc590e6040efecca599c91f777e56ce64a1faccc5"
+        },
+        {
+          "path": "lib.exe",
+          "bytes": 23384,
+          "sha256": "d8dae02a50c7571c6c0ea5cd7a853830aaca8fad13f8f4be147828d51dd4adec"
+        },
+        {
+          "path": "libz3.dll",
+          "bytes": 15187256,
+          "sha256": "d4dbe180fdb89d6d5bfbec007bb6a6aeb335cf129285f6aed2c2054b939d6ba3"
+        },
+        {
+          "path": "link.exe",
+          "bytes": 3701088,
+          "sha256": "a8c42e25c91ca2453e1110540ac08f0fc12d7539454a11b9af8baeecb469837d"
+        },
+        {
+          "path": "llvm-symbolizer.exe",
+          "bytes": 13902136,
+          "sha256": "10409d7f56976c7c3df4248bedf26837fef99c8f2341a13024cf864fb56b2ea4"
+        },
+        {
+          "path": "math.dll",
+          "bytes": 310584,
+          "sha256": "182ca601734fbb7b5173bfdf475bce90711ed9218705d9b89d7f6637d3025976"
+        },
+        {
+          "path": "Microsoft.Diagnostics.Tracing.EventSource.dll",
+          "bytes": 170288,
+          "sha256": "a20f6d6c0dae7ac9c7c295b819d085bdfc7cfab123e8fc4ca4ddfd0a88701d04"
+        },
+        {
+          "path": "Microsoft.VisualStudio.RemoteControl.dll",
+          "bytes": 47536,
+          "sha256": "cc52e19735d6152702672feb5911c8ba77f60fdc73df5ed0d601b37415f3a7ed"
+        },
+        {
+          "path": "Microsoft.VisualStudio.Telemetry.dll",
+          "bytes": 1026088,
+          "sha256": "c6b09bdb01fb84406fb95f77befd68b4f8f0b5d715bb00df817b5e691501c50d"
+        },
+        {
+          "path": "Microsoft.VisualStudio.Utilities.Internal.dll",
+          "bytes": 62480,
+          "sha256": "4d1d5efd28d72c332ba87e1993cb35e46404753543c5563700b98a97aa3c42a6"
+        },
+        {
+          "path": "ml64.exe",
+          "bytes": 752016,
+          "sha256": "baf8f8be0e77992bb01cfd2b30ff46b1532362a649495df24966567f8517c1e1"
+        },
+        {
+          "path": "msobj140.dll",
+          "bytes": 175416,
+          "sha256": "3bb97a52d2e94ea0210443e8b0c424ec3ded0b93c7edd7ac0e1952f27253a93c"
+        },
+        {
+          "path": "mspdb140.dll",
+          "bytes": 386912,
+          "sha256": "429b03bbecf0851bd7f1922448c4ff4184d5e521af13a5ce0da6e8c54b033dff"
+        },
+        {
+          "path": "mspdbcmf.exe",
+          "bytes": 2645368,
+          "sha256": "92325876afd3becb63c423a52ac289ec92cc7f3e22b26f9dbba02c04445f205e"
+        },
+        {
+          "path": "mspdbcore.dll",
+          "bytes": 1446240,
+          "sha256": "91c61f30fafb3324b03070c4ee85f370902cf3d80240a210f7240e89777bf6be"
+        },
+        {
+          "path": "mspdbsrv.exe",
+          "bytes": 192352,
+          "sha256": "498fdb05a806e44bd564aac3263645be748a0e9cecbb0220d598a3ddd7220748"
+        },
+        {
+          "path": "mspdbst.dll",
+          "bytes": 1402208,
+          "sha256": "7956adf9b55835091f6cb304febaf6356b7ef101f76c9da2a3683650baa6c2bd"
+        },
+        {
+          "path": "mspft140.dll",
+          "bytes": 3115320,
+          "sha256": "7958bbaf5768837dacc2361d4db771f267d8f1da00130ba2afed328a2f497d14"
+        },
+        {
+          "path": "msvcdis140.dll",
+          "bytes": 2143584,
+          "sha256": "ab2dad7a0260427deab6d17797d4676e74f041d19d60d223a92c6f739c635803"
+        },
+        {
+          "path": "msvcp140.dll",
+          "bytes": 643440,
+          "sha256": "aa30f46a44704dd3d8207f5fe859b4f9ac0d4e53de486b18841fc586827ea946"
+        },
+        {
+          "path": "msvcp140_1.dll",
+          "bytes": 35776,
+          "sha256": "3703b2d0e966ce43b28f1fe8efb606c8b486b1643c7df8e5b1b3afb1059d835b"
+        },
+        {
+          "path": "msvcp140_2.dll",
+          "bytes": 274800,
+          "sha256": "2df4ba8c007568725238139e962a8f539d4c5d6321fe00e6a950ecc134f43142"
+        },
+        {
+          "path": "msvcp140_atomic_wait.dll",
+          "bytes": 57704,
+          "sha256": "bf42a95e7ff83446a3c58bde8ad95b643ca4a75ce6ed99d6043700b1dcf1c0e4"
+        },
+        {
+          "path": "msvcp140_codecvt_ids.dll",
+          "bytes": 31168,
+          "sha256": "c177906114f641bc7c56566c58d83a0d30b9904506c3f65f438addf7943516ea"
+        },
+        {
+          "path": "Newtonsoft.Json.dll",
+          "bytes": 719160,
+          "sha256": "ad537ef13183a95c4c40001f3994f751a6b0843fa812ff49d52ba861bd643cb9"
+        },
+        {
+          "path": "nmake.exe",
+          "bytes": 134040,
+          "sha256": "492b4589acd95ac3a5066fdc8898ea32bda185e2e89ffbc0e6e7b1b056e026b9"
+        },
+        {
+          "path": "onecore/pgort140.dll",
+          "bytes": 50696,
+          "sha256": "2e0cd090305346804ab50b7ed635d0fae587aa28f220389b5a06d340db505824"
+        },
+        {
+          "path": "onecore/pgosweep.exe",
+          "bytes": 79424,
+          "sha256": "1c45839477a67706459b949f74d5c2d2b5c146edbefa7291e171b58423a64503"
+        },
+        {
+          "path": "pgocvt.exe",
+          "bytes": 76216,
+          "sha256": "471c7e2934405a0a2b052003f4c6f069c0d6e70ed1ab8f4d2c5eb98df72a1e4e"
+        },
+        {
+          "path": "pgodb140.dll",
+          "bytes": 105272,
+          "sha256": "a01717cdf46b6a5c9f75dd1b2d5e85198d4bce69609c908fca8d092bdc29d578"
+        },
+        {
+          "path": "pgomgr.exe",
+          "bytes": 111552,
+          "sha256": "439800ad8c4881679da8743be12698860c56a29d3b0b5406b4221e9a70712049"
+        },
+        {
+          "path": "pgort140.dll",
+          "bytes": 48952,
+          "sha256": "8009e9ae64c5088a1c8e0eaa8ba16a1a29c38fbe36dbddb33cf674b234f38912"
+        },
+        {
+          "path": "pgosweep.exe",
+          "bytes": 77256,
+          "sha256": "e74e99f1347569f73e5181212013a21e449c210c7cf10cb33ba364e03bf95fc2"
+        },
+        {
+          "path": "spdconvert.exe",
+          "bytes": 431464,
+          "sha256": "dec754ae5667ca53e093b12457513f6f18f0d935c61529aa112ae85c969b2b06"
+        },
+        {
+          "path": "spddump.exe",
+          "bytes": 252768,
+          "sha256": "9a09faa9fa833f1810094c1a71e43217ff82e4861e3c63cea7670434b8d8229d"
+        },
+        {
+          "path": "sptaggregate.exe",
+          "bytes": 327016,
+          "sha256": "89e05ec3d327f92c7274146467df7198499296d60191200910bc6e28dca2455d"
+        },
+        {
+          "path": "sptdump.exe",
+          "bytes": 244576,
+          "sha256": "6fd2e3cd50c1c52c737a4a066bf1833709634ca3a6edf0c2bd9341d556180b48"
+        },
+        {
+          "path": "System.Memory.dll",
+          "bytes": 138144,
+          "sha256": "06ea95f8388a6b031acb2449fd5663d9d26d720ae13df80c800805f896734430"
+        },
+        {
+          "path": "System.Runtime.CompilerServices.Unsafe.dll",
+          "bytes": 16768,
+          "sha256": "3cadcb6b8a7335141c7c357a1d77af1ff49b59b872df494f5025580191d1c0d5"
+        },
+        {
+          "path": "tbbmalloc.dll",
+          "bytes": 111416,
+          "sha256": "cc333821876857302b7458533b71af66e4636918d64031112a52e920fc96f651"
+        },
+        {
+          "path": "undname.exe",
+          "bytes": 26472,
+          "sha256": "898491aea7eb002a5b165191191a696129d082315631a9738073aafcf7c52cd8"
+        },
+        {
+          "path": "vcmeta.dll",
+          "bytes": 122208,
+          "sha256": "1a448333e6b8f7e9cb4f90397e49b2b3d3c92d51dec5d564bdb13130f008f0fc"
+        },
+        {
+          "path": "vcperf.exe",
+          "bytes": 267064,
+          "sha256": "afb8f85d530b62718ecf2e678b512ab63fec6d13f031be8c8483aa83bc9cd741"
+        },
+        {
+          "path": "vcruntime140.dll",
+          "bytes": 178544,
+          "sha256": "2aa42da93ed9f3c1fe9c085666bea24a59fb4c3542d60885ea9cfcfbc11b26ea"
+        },
+        {
+          "path": "vcruntime140_1.dll",
+          "bytes": 50024,
+          "sha256": "417e18eda9b2f5dcd65b9bac6640d90e5e79d373419cf4573bd9dc35faf42e33"
+        },
+        {
+          "path": "vcruntime140_threads.dll",
+          "bytes": 38760,
+          "sha256": "2c3b345f6096b1f31d69776326ce0536c6f481a251f0688c09d570880c53cce7"
+        },
+        {
+          "path": "vctip.exe",
+          "bytes": 514528,
+          "sha256": "41fe46f8a0b41f6dd94c68c85fba20a10aacb662a9ef04784a632e37f3692371"
+        },
+        {
+          "path": "xdcmake.exe",
+          "bytes": 42920,
+          "sha256": "116d05fd0db0cc32712ba503902be1c922bc8b9807f0b7d0437d9bc82fdd5232"
+        }
+      ],
+      "linkInputs": [
+        {
+          "path": "advapi32.lib",
+          "bytes": 178306,
+          "sha256": "ecafe89a632a35b183c2129d2d8612b31a4d43a9cda78c4b2e3bc6b130ae3c6f"
+        },
+        {
+          "path": "helper.obj",
+          "bytes": 35601,
+          "sha256": "145d13313f33da520cae74bac22bbf607706b20c22788156450c1c989b999251"
+        },
+        {
+          "path": "kernel32.lib",
+          "bytes": 311908,
+          "sha256": "842f5ce7ad8cf5aab7491b791e7968d2be510ae93f4019d3311797289399d221"
+        },
+        {
+          "path": "LIBCMT.lib",
+          "bytes": 6610744,
+          "sha256": "d4cc4c224455825dec1669f9ad6a9872a4f5b37ed1daae1fd0b9044d7650d908"
+        },
+        {
+          "path": "libucrt.lib",
+          "bytes": 43370172,
+          "sha256": "c3a20426b5142bfd0848468a3b95c47440759f0391ef2764e5020672811803cb"
+        },
+        {
+          "path": "libvcruntime.lib",
+          "bytes": 2364572,
+          "sha256": "f0a898588ecb26fe4c7530b2495a6fe5e768856309a33391702a3cbcb72b0589"
+        },
+        {
+          "path": "OLDNAMES.lib",
+          "bytes": 157422,
+          "sha256": "67653ba64d59a33964a811d950c9d424f7afacba8e613af60138f64fe10c2679"
+        },
+        {
+          "path": "uuid.lib",
+          "bytes": 8969608,
+          "sha256": "bbe8429a3c8c3a950d471bea1a3252cef5b4fe137f73196c5c983e7d8d268996"
+        }
+      ],
+      "importedSystemDlls": ["ADVAPI32.dll", "KERNEL32.dll"],
+      "residentSystemModules": ["ntdll.dll"],
+      "staticAnalysis": {
+        "tool": "MSVC /analyze",
+        "warningsAsErrors": true
+      },
+      "runtimeCompilerRequired": false,
+      "runtimeDownloadRequired": false,
+      "privilegedExecutionRequired": false,
+      "actualMainOrReleaseAccepted": false
+    },
+    {
+      "schema": "agentic-company-os/windows-private-helper-build@1",
+      "protocol": 1,
+      "target": "win32-x64",
+      "sourceSha256": "9fe2b88bd1407dad0375b5ef092cd61bf520b9d5b7feb9590ba57087c67e5407",
+      "executableSha256": "72f100903d99de66f12c83e3580418de3f5c40b535df0d0884ba34cf7fffd84f",
+      "executableBytes": 144896,
+      "compiler": {
+        "name": "cl.exe",
+        "sha256": "b0a1818ebae6da7f18230a84e76ce839212584ac4c2ab55b97a0d5268085da57",
+        "versions": [
+          "14.51.36231",
+          "14.51.36260.0",
+          "19.51.36260",
+          "19.51.36260.0"
+        ]
+      },
+      "linker": {
+        "name": "link.exe",
+        "sha256": "a8c42e25c91ca2453e1110540ac08f0fc12d7539454a11b9af8baeecb469837d"
+      },
+      "sdkVersion": "10.0.26100.0",
+      "compilerOptions": [
+        "/nologo",
+        "/W4",
+        "/WX",
+        "/O2",
+        "/sdl",
+        "/analyze",
+        "/MT",
+        "/GS",
+        "/guard:cf",
+        "/Brepro",
+        "/DUNICODE",
+        "/D_UNICODE",
+        "/TC",
+        "/std:c11",
+        "/DACOS_SOURCE_SHA256=\"9fe2b88bd1407dad0375b5ef092cd61bf520b9d5b7feb9590ba57087c67e5407\"",
+        "/sourceDependencies",
+        "${BUILD}/source-dependencies.json"
+      ],
+      "linkerOptions": [
+        "/WX",
+        "/INCREMENTAL:NO",
+        "/DEBUG:NONE",
+        "/DYNAMICBASE",
+        "/HIGHENTROPYVA",
+        "/NXCOMPAT",
+        "/GUARD:CF",
+        "/CETCOMPAT",
+        "/BREPRO",
+        "/MACHINE:X64",
+        "/SUBSYSTEM:CONSOLE,6.02",
+        "/MANIFESTUAC:level='asInvoker'",
+        "advapi32.lib",
+        "/LINKREPRO:${BUILD}/link-inputs"
+      ],
+      "headerInputs": [
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/apiset.h",
+          "bytes": 6423,
+          "sha256": "e984e20681fd3de73ce14ab09d759d5b4faf03f7d66a78602da2ac9234b24df4"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/apisetcconv.h",
+          "bytes": 2162,
+          "sha256": "1093683104f97c8c9725bb2e7539dca22722dc8c5618cd846287e9458698abfe"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/basetsd.h",
+          "bytes": 11448,
+          "sha256": "d35b73f885d7ef7dfd27fce3762c190c1c952a21e10a3945bcb3d1860c673b12"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/driverspecs.h",
+          "bytes": 41698,
+          "sha256": "9cf7e9e1c9b55c7c351e87ff5a98e362b6ffdb511c3309ab9cf46b62b0dace42"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/guiddef.h",
+          "bytes": 5083,
+          "sha256": "0c08463fbc5a23a8862e57699e2f30dd14cd3db4a40903e4fca9392a57942dae"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/kernelspecs.h",
+          "bytes": 11879,
+          "sha256": "e844c7726c42736df74445b36351dc01e29bccee7d57ea208f77f61aa4c2b191"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/ktmtypes.h",
+          "bytes": 7849,
+          "sha256": "68d2848d00ae33282fb265880f8166f2b5dc60cd7a26db652450a5b44d44ee11"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/minwindef.h",
+          "bytes": 6876,
+          "sha256": "a9cf08be8407a196104124d5ade2308e204e47d3252bcd2ad20d0f2137843d62"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/poppack.h",
+          "bytes": 1021,
+          "sha256": "a50d0ef5cfe96d634a41ee9a97749c147165f8656cdfed5df53bc24c8adb1210"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/pshpack1.h",
+          "bytes": 918,
+          "sha256": "dee27f2712b9e72ca78a404834735303d16bdb21c8aa3addaca7dbca22664529"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/pshpack2.h",
+          "bytes": 918,
+          "sha256": "971d19074639cb36134bb40776cb2f817c53cbd05d748b52468f571932bbcc49"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/pshpack4.h",
+          "bytes": 918,
+          "sha256": "1cb4d07a218ec43c7935b431b16146fc0f3d29d43bd192f12959051d62c48d57"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/pshpack8.h",
+          "bytes": 918,
+          "sha256": "47f3972a1211e3a5ac32b18fae1a824db087dc7dc562d152e9ccab9b297faef0"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpc.h",
+          "bytes": 5189,
+          "sha256": "063bd35df91c85b029064abe19d635d985e414c9733c60ee8ca8ce937c98d6d5"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcasync.h",
+          "bytes": 19693,
+          "sha256": "5e91801cee17b175a397cc56ff08790783d4fcdbc8d52fe7bb7461ccfa369a85"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcdce.h",
+          "bytes": 89430,
+          "sha256": "991883893134c8ecbe6af8335df0781bfb779c11684b3367def514136241b866"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcdcep.h",
+          "bytes": 32196,
+          "sha256": "df032ed7952b84113857284d86e7365b158cc57f955a5c0580e57e96c6df5ba2"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcndr.h",
+          "bytes": 82121,
+          "sha256": "2e77ad831f8300436d86d7d1a90ccba470f9fe7f09f59b4bde8c60eece41339a"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcnterr.h",
+          "bytes": 17723,
+          "sha256": "9d94281cbd9272e02a39b51e19367df2a87f3756b85b5c848bee38828e0cdc23"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/rpcsal.h",
+          "bytes": 30696,
+          "sha256": "c15959eb632ab0f27d2bcb3b6873cd2873bdd5669069409d936ef993dcb1c108"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/sdkddkver.h",
+          "bytes": 11565,
+          "sha256": "2472140e0a4d56595743bb74002a51aee9b58667bd178fc43742e19debfeb774"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/sdv_driverspecs.h",
+          "bytes": 554,
+          "sha256": "99fd81f9464150f56963c3bbafaa95f93b837c221c4237e6e399a85e00ea9f39"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/specstrings.h",
+          "bytes": 48804,
+          "sha256": "3b83b1cd3b4f9bf46009bfdccf01d5c3a6fa6eed3f823d1ef497ed6d1b9bce0e"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/specstrings_strict.h",
+          "bytes": 67448,
+          "sha256": "49b12898b42bcf53e5f8fb75e6db1a5d3ffb7a9f394e50df3351e0824d4a8b42"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/specstrings_undef.h",
+          "bytes": 13106,
+          "sha256": "6aba76eabbec627edadba5ab29304d9e2ff4eb9da165fd81a9095c851f405a01"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/stralign.h",
+          "bytes": 16784,
+          "sha256": "f7d2f48b6a9154937ad907e91b70faf6c68044fbe9d4042c392ac3c0eb1a82ef"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/tvout.h",
+          "bytes": 4128,
+          "sha256": "8c359d2dff894d546f3eced2fe9463dfa4824bffc6c8c71ecd8feef02e7eae21"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/winapifamily.h",
+          "bytes": 11292,
+          "sha256": "bda507d14f2e40023d344cb943cbd98af26de8a47f3b0f5fac694d2025711af1"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/windef.h",
+          "bytes": 7362,
+          "sha256": "040535b19a60264e5fe6971f7cb13cbf24be17abeeaa8acd21e44f5d7dfe8d22"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/winerror.h",
+          "bytes": 1627224,
+          "sha256": "4c965127e2ec9019d19edcbfe771a7daf91fe469931d8a7e84a96f51f19a581a"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/winpackagefamily.h",
+          "bytes": 3699,
+          "sha256": "8f74e254896094a3884e6975fd24b3493846514065f47d2666df53cdea45b8ea"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/wnnc.h",
+          "bytes": 4001,
+          "sha256": "fb3aaeef324b5d00ce0a6ae11702dcc3c1de65fa0a10caaab4336b97d3adf493"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/wtypes.h",
+          "bytes": 23996,
+          "sha256": "71417094369493700ce385e32c63002ed651dd70b5d7f7d8a6f64c9e9a0939db"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/shared/wtypesbase.h",
+          "bytes": 14187,
+          "sha256": "e5277f89186f786ae0923c9d7689a16d91dbeff7fad36a86b08671416e4b679d"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt.h",
+          "bytes": 127273,
+          "sha256": "822e503b81dd7b3d7df93ca22fced3672a5154484fd42054d5941e619bcf6cbc"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_malloc.h",
+          "bytes": 7405,
+          "sha256": "44bd1bb518e730ba0be045f44a4735869e08f7d54ab85c298270770812fcff80"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_memcpy_s.h",
+          "bytes": 3692,
+          "sha256": "359f3ce9e84bc00c983f01d9c3375d0ca9e0ef6a42e797d16e119c62b2ef333b"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_memory.h",
+          "bytes": 3527,
+          "sha256": "18ca520416579183bc369c0a8e555914db5c7577075b9359173fc6bc45595560"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_search.h",
+          "bytes": 10959,
+          "sha256": "fe06c4dd27c3df5ca6bed52a433b8848f32e14ed0f3712d00f7e602416471c1b"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_share.h",
+          "bytes": 1005,
+          "sha256": "08e7a7eb0b0c7ebdd7e5fa9f9a65f626f5a725b688502ac178ca67334328b898"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_stdio_config.h",
+          "bytes": 5009,
+          "sha256": "a7e100624320a8e0123890c5008bcb2281c1273ca7ce5bb1d297f987fdbe79a0"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wconio.h",
+          "bytes": 13310,
+          "sha256": "6cfdcfd9e1ec60014c4e7e87913275ce3cacda008dbc397a17306976266aa5b6"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wctype.h",
+          "bytes": 10605,
+          "sha256": "b622b24cbda842a1736987f38c9deb5076e51af018630842a127bebd9104076e"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wdirect.h",
+          "bytes": 1495,
+          "sha256": "b8477593983d23ed4ef93c3efcabb8239375b518ba589a65338db29bb0dc2237"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wio.h",
+          "bytes": 7427,
+          "sha256": "e6a08ad4c75ef96fd5fafcff334048c4cc610f990f39c15e07c03af14d607197"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wprocess.h",
+          "bytes": 3980,
+          "sha256": "e75c5cdf244070ddcebac8920dd4cc96c33d0e21fdfbc82446c0374950e98487"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wstdio.h",
+          "bytes": 75265,
+          "sha256": "a10bbf4667b3aada380a6b80df853f9fbddc3cc691ca57389b3b6759f119e515"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wstdlib.h",
+          "bytes": 16790,
+          "sha256": "98b62ac5fb4291961c19ecf5c1b2e641b437f9042054f1a56ebdfd0deb71eca1"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wstring.h",
+          "bytes": 20015,
+          "sha256": "c485f918d43f0f846d77a36eaee9e111f57bf2eec32db7d9719ff924771744c6"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/corecrt_wtime.h",
+          "bytes": 7205,
+          "sha256": "4e487fddafbc724cf4e6df45feb920bc46dae80f54ffe5d983bf742a1fd9a12f"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/ctype.h",
+          "bytes": 12981,
+          "sha256": "6a10e9f0505b896d356d986d671c939b7fb0602012e463314ff7bfd0182a861f"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/errno.h",
+          "bytes": 3835,
+          "sha256": "c64e8df96f057fdebc0474bd765cee3ae17de34a2b1fc9d197597321f2d1e447"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/malloc.h",
+          "bytes": 5079,
+          "sha256": "8acfe0c7a33a4d5ae2253f7167f92b0e728dea86f83289cee9d583c45b175b6e"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/stddef.h",
+          "bytes": 1413,
+          "sha256": "3f1f7eeefad270928749c89a2a2094ccc3f38829b1d8c197f6ce7483ead2284c"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/stdio.h",
+          "bytes": 81489,
+          "sha256": "06cbab3a501306fdd9176a00a83e5bb92ea4d7863cfd666355743527cf99edc6"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/stdlib.h",
+          "bytes": 43968,
+          "sha256": "1576fdb40eb225dff53489db2fd52e41c7bb24f1e621e4a95c2c7f4a7216949c"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/string.h",
+          "bytes": 17395,
+          "sha256": "39767b2e1963b8ef679b62d5e27cb2d0ca1de6a6173b75389b79c9d575da92fc"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/sys/stat.h",
+          "bytes": 6856,
+          "sha256": "2b720dd0426cf0a74eefdb684ac559c8b4f84b1d7d345e3582ce0dfeb01b9aa7"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/sys/types.h",
+          "bytes": 1280,
+          "sha256": "dfb9ebc7d527c30d71f1056ddd85e33fb931df573b41424bb1db9a48457bebd7"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/ucrt/wchar.h",
+          "bytes": 18447,
+          "sha256": "802dc6f33d128ac94cb0e8a978c65382c7c18e85dc2eb7d340b038d79ad10ea5"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/AccCtrl.h",
+          "bytes": 28225,
+          "sha256": "37a7438a7233ad985e312151f6979a55d499c75f1b92ba8beb930a71ffa8e429"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/AclAPI.h",
+          "bytes": 21344,
+          "sha256": "963251e7ffd638a9e93e60e22b0ee95abf858e846dcc49d6b1df61ae0c59270b"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/apiquery2.h",
+          "bytes": 1549,
+          "sha256": "56c61c2ee306428d38037a578b66a49ef347a14a3760936416035b0d45da2b11"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/consoleapi.h",
+          "bytes": 8161,
+          "sha256": "a0e727e696f3599ef0b570942f28646dbd94374e62c812659eba5ebe2a42a99f"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/consoleapi2.h",
+          "bytes": 11697,
+          "sha256": "f2134e1d2c01611e60ff939ccd45561884aa0ccbce590136ffd1d95161892d17"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/consoleapi3.h",
+          "bytes": 8574,
+          "sha256": "0a00bf6ca901d0d980fe8c2b9bb91a39fb84c3a99e9c87498149a04cf7cf5925"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/datetimeapi.h",
+          "bytes": 3964,
+          "sha256": "a4325c76b9bc900c22ef3d766c739ccd3a71894e81833ad637d50f9e45417117"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/debugapi.h",
+          "bytes": 3591,
+          "sha256": "d63f6c4aad9787bb8ff2e54966c8db156b0ef1570be58201d74dff12cd6f1e22"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/enclaveapi.h",
+          "bytes": 3502,
+          "sha256": "9467c4bc6400057c3d3205d53667000be525cad64a381552291e869430af6a76"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/errhandlingapi.h",
+          "bytes": 6566,
+          "sha256": "b73cccce6dac8ce02c6a399862ec2a6e22fe27a4d09874d86ec2be3bd5d17fbf"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/fibersapi.h",
+          "bytes": 2582,
+          "sha256": "f8eeadc28f8e3e4c7bfd1217d55315eb31d63f3d86c66a3948d74ceb8e7a00d0"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/fileapi.h",
+          "bytes": 40460,
+          "sha256": "f8927178c75de487c0e57f044a215e455522bf6eaa0b660421be09cd06ae05a1"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/fileapifromapp.h",
+          "bytes": 4111,
+          "sha256": "d07110e7f7989aeef7eed77d5f584f3ee60ff2ce58bc1a374d70151a18b4a664"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/handleapi.h",
+          "bytes": 2578,
+          "sha256": "c967fdf1a98e4ce8d501dae26b905f6452173b2be1c25e6aa2e5eeae415369cc"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/heapapi.h",
+          "bytes": 5317,
+          "sha256": "22b606b0a4096295272bcae6fc353c4f159f0cdfc90b5f1a9a712b2fff50b53f"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/ime_cmodes.h",
+          "bytes": 833,
+          "sha256": "27904e900938749c12a4d1e741afd564198a57a24724c1ddd36cd3302224df26"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/imm.h",
+          "bytes": 28873,
+          "sha256": "942d0b80eb7d186ee935fce8064ccdcdea3a49b39bcc03f55208b7c37e289779"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/interlockedapi.h",
+          "bytes": 2604,
+          "sha256": "4b0d3bc138eaab8dc9dd40bfb109f5fea4cbd2caaf92d63a4cf60a8edcfb0e3a"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/ioapiset.h",
+          "bytes": 4791,
+          "sha256": "7c3f659f98b3f1748a314bd64106583d01649333e0419b66232b4f64b3f85b0c"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/jobapi.h",
+          "bytes": 1307,
+          "sha256": "08ddff85ec80f12b156837bbce4f969480fea0e32a08dade7cc16acecb0892d1"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/jobapi2.h",
+          "bytes": 2976,
+          "sha256": "a8f9591dc2b0bd249d03150b70abd47c0068c6eda2a1d74d24bc8964bcd68549"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/libloaderapi.h",
+          "bytes": 15518,
+          "sha256": "8ad0ba5600d6c2e9aed318ca9d2f48f2bdf9f47ed3cd5d9f243e6f779c8e04c4"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/mcx.h",
+          "bytes": 24640,
+          "sha256": "4ee416b2d24e45cfc5d35ce5b34833b64b34fd9a39957c66d75509f6d3b8f972"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/memoryapi.h",
+          "bytes": 33539,
+          "sha256": "58edcc2090c411a1821e04a6a2954c258fd59ded44440bdd671984027e0a852f"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/minwinbase.h",
+          "bytes": 13973,
+          "sha256": "7d1408f4b8eeba96ae45892209132258cde80cab6dab192b4cceea591972c78b"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/namedpipeapi.h",
+          "bytes": 5539,
+          "sha256": "37062eba19e35b391cf050519c9403e19c6782663ea644ff38b2b5eb71dfce6b"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/namespaceapi.h",
+          "bytes": 1974,
+          "sha256": "3257ad8af53c5809be4d5d17ed0ffd8b49451d3f27c1fd747ffde3e0a7a81583"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/processenv.h",
+          "bytes": 7427,
+          "sha256": "c10dd3bd48a2416e0aece2259ea57cc47d6c8b9fdbae085a4c7a5b29c71a85dd"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/processthreadsapi.h",
+          "bytes": 37180,
+          "sha256": "436ae4cbb017d1cdb381aaf2119a3f89b04bae257fd4c881ef251daa02533540"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/processtopologyapi.h",
+          "bytes": 2081,
+          "sha256": "4507a5e0c4f41d19a80d1543833f1a9d90277bc376441b277884bb043be24ba5"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/profileapi.h",
+          "bytes": 1413,
+          "sha256": "cfa8e3626dba11689997d8fcd65b5dfbf4bcef8de09dd7e4e881769d48d165a2"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/realtimeapiset.h",
+          "bytes": 3149,
+          "sha256": "00c874b981a1242ee4ebc21e6ae96a69d7aa70662d820ceffbabcfea859b03e4"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/reason.h",
+          "bytes": 5042,
+          "sha256": "30540eb35daa79c7a5cb98059430df480e86b549b7980247288da8a2801add1d"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/rpcnsi.h",
+          "bytes": 15272,
+          "sha256": "f49466a31875d34a6e5c02f301d81b7a78f25cb947f3d6e6ea712ab356b42c8e"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/rpcnsip.h",
+          "bytes": 1563,
+          "sha256": "7c8138b43e028724e0fd143be29c40de5b5650a3e0f87356662a77dbad186712"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/securityappcontainer.h",
+          "bytes": 1470,
+          "sha256": "85cc13ed7028960bd7f97c91f98b96825b46f4b8bc386aed2f2a6a9bccbe4083"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/securitybaseapi.h",
+          "bytes": 36514,
+          "sha256": "a443b4183d3ec5b8e1ae40db5824f002a34eb0415f38227fa1dddbbf02a448d4"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/stringapiset.h",
+          "bytes": 3941,
+          "sha256": "624c82fb73517a3829f3766a50a0235e2f9a51cb4bda95a0c39981e39fa4d42d"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/synchapi.h",
+          "bytes": 15696,
+          "sha256": "d962588974e5e100205f683160b351dee70ea100aa736e14d878b7a74577a9c5"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/sysinfoapi.h",
+          "bytes": 19345,
+          "sha256": "077088cb53ec69d454916aac5f00e45dda79e09da64054acc141120eb67a5700"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/systemtopologyapi.h",
+          "bytes": 2319,
+          "sha256": "8bfd1a78cc30b6d33c88e3f61ae2ac6468cee0607352ee8d096ba5375b4d401c"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/threadpoolapiset.h",
+          "bytes": 7148,
+          "sha256": "e91d7dee4d22ca848e3110a4c55f32e1918dc865479343896aec9ab653ee5110"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/threadpoollegacyapiset.h",
+          "bytes": 2824,
+          "sha256": "87c1630abf7dc4ed7978f2c4dbacf418f6bcf94cb946e277cb7250770bd44200"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/timezoneapi.h",
+          "bytes": 5462,
+          "sha256": "621c0252a8a831813592c4a95e183a2e7ae55efbbd7b8ad886af7d8871fc4d50"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/utilapiset.h",
+          "bytes": 2482,
+          "sha256": "a8e0f6001c784b3ad9feb44c61d96b58c57366c473832ca8b2ea5de05877b470"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/verrsrc.h",
+          "bytes": 6705,
+          "sha256": "ff9bee8ee5b7aa81eaf79a1eab0e93bd307601e87d3b80a73f24984e9c951c61"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/WinBase.h",
+          "bytes": 272738,
+          "sha256": "1e27239cda673a4b6c8f4295a3a0a8c3b87892eb7a593922eb11e0f22e602318"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/wincon.h",
+          "bytes": 1129,
+          "sha256": "98e33720f9ec8fded808ab94f111b8335d0ba2fd2246a5adab3aab2ce05503d9"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/wincontypes.h",
+          "bytes": 4610,
+          "sha256": "209e79fdbbb30971740e59b2da2d6c86e27c0e9dd02bee9cbc21736fbd2426ad"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/Windows.h",
+          "bytes": 7511,
+          "sha256": "b337d661d03a4abefb7b86a2742ce1ad5d19b57cd8b858bd13e7bbcc1dbeeaaa"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/wingdi.h",
+          "bytes": 244023,
+          "sha256": "96f3528cabc7e5fe30e2f2c51daa01c018dd6cedb3768121202434758629b8a2"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winnetwk.h",
+          "bytes": 27073,
+          "sha256": "7c7412df502fb6ea390c96d7c9f805a2a211609b95b8fdb4740540f789d9c4ce"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/WinNls.h",
+          "bytes": 129219,
+          "sha256": "e47861762a4b51a2689c8a99798a1a7e68335573e03c857e545172b095c5c829"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winnt.h",
+          "bytes": 904340,
+          "sha256": "797b974b2c95697bcb28a4c1d7ca33d9b0be602b4e0b28118fb1edf770d82d21"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winreg.h",
+          "bytes": 42295,
+          "sha256": "bff833e8d092a0cb657837e3162b8bb0cf35b43105203f4ce880972a501d61d6"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winsvc.h",
+          "bytes": 59863,
+          "sha256": "8108fe3f099960014f36d1b2da425a8382e9d839de3477eb06f181289a0685c8"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winternl.h",
+          "bytes": 30360,
+          "sha256": "a43424486349c38f697c009512dfe4eb8fca733d7665afab42f50752170b9785"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/WinUser.h",
+          "bytes": 431790,
+          "sha256": "b0d43a49f32a6a4f0a8172cfb491c54136df88d3164102e39415ec5cf3dad5be"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/winver.h",
+          "bytes": 8809,
+          "sha256": "c60e137e7ff88582f72e50fe74904f5773502d229f78234ea83abb2688f6e8ae"
+        },
+        {
+          "path": "sdk/Include/10.0.26100.0/um/wow64apiset.h",
+          "bytes": 5421,
+          "sha256": "6b14e2b59ae5b9f22bfd9a1e989a5589adf5790832ff24cb9d8828d4e8d45cda"
+        },
+        {
+          "path": "vc/include/ammintrin.h",
+          "bytes": 16119,
+          "sha256": "d53a3e43803820ffe804f2f0266ce7a3166d6c7ae82b0dfba2a4ae2601eb059f"
+        },
+        {
+          "path": "vc/include/concurrencysal.h",
+          "bytes": 17273,
+          "sha256": "1ea9a2e32a6ff298ad7904610cc71028caa9b172399a579ca90a120d1b1aec12"
+        },
+        {
+          "path": "vc/include/emmintrin.h",
+          "bytes": 16130,
+          "sha256": "735efe76e3f5190c1b2c0c7aadcbec4a4bf1156f91cb12f7be3ed53ad1709a5a"
+        },
+        {
+          "path": "vc/include/excpt.h",
+          "bytes": 2493,
+          "sha256": "9532b07eff7b34c062401b7155fe77494068e82bb7c2bef34cec5937e948cefc"
+        },
+        {
+          "path": "vc/include/immintrin.h",
+          "bytes": 121509,
+          "sha256": "a23efe7eceb2bc98584124a8263bcff1ec7f273b6d1f58ec634ddee6bd63a466"
+        },
+        {
+          "path": "vc/include/intrin.h",
+          "bytes": 64899,
+          "sha256": "80919d795d8c0793dae4a3698a683bee8186f357ff46f0d72e05bb3309d06011"
+        },
+        {
+          "path": "vc/include/intrin0.inl.h",
+          "bytes": 20586,
+          "sha256": "6f044368f38ba290c9f40260d4d55bf7bc23e8edd0cbba9291d5a222a74f80f8"
+        },
+        {
+          "path": "vc/include/limits.h",
+          "bytes": 1919,
+          "sha256": "2ed583abdb8a052b919d4652b10839e28a6fadbe63674108dcc65f719c9ff51c"
+        },
+        {
+          "path": "vc/include/mmintrin.h",
+          "bytes": 6634,
+          "sha256": "d2dce9191fbdd235a94fc1af6bd163119dbcdfeadfb50f777b2d75b12ca1f028"
+        },
+        {
+          "path": "vc/include/nmmintrin.h",
+          "bytes": 4632,
+          "sha256": "69ecf104338622b7f1e44b0d99469adb95c46dd9e5858f5dc8279c3ef3b99421"
+        },
+        {
+          "path": "vc/include/pmmintrin.h",
+          "bytes": 3208,
+          "sha256": "2fb7131f91e5e300a7d9f2f148b6fe79a9775d06c3f1be26908e138ac6f9fbc5"
+        },
+        {
+          "path": "vc/include/sal.h",
+          "bytes": 213957,
+          "sha256": "cda06459ca38681800ce5e98703c66534c74a803aa652bd4bc2b3407dd45ed46"
+        },
+        {
+          "path": "vc/include/setjmp.h",
+          "bytes": 3810,
+          "sha256": "7e4243ef92eee5f552fe66256e4b7d6f20b9050fbc034fcc9458cae39dcecf5e"
+        },
+        {
+          "path": "vc/include/smmintrin.h",
+          "bytes": 10000,
+          "sha256": "2f773512dac1c4515c13cb9173a2c852d8c884b0cedc5814cff3956b742a1071"
+        },
+        {
+          "path": "vc/include/stdarg.h",
+          "bytes": 554,
+          "sha256": "5d61d0b6734ef0832c30064800e8d01b3f12d29d24c8b1bd07b3ece3b72a9330"
+        },
+        {
+          "path": "vc/include/stdint.h",
+          "bytes": 4114,
+          "sha256": "29fb6d4ba5e311e06877609c20a1bc49c6cdfb730f56dd0f9c53a6241c40ab5c"
+        },
+        {
+          "path": "vc/include/tmmintrin.h",
+          "bytes": 4763,
+          "sha256": "e5981ed52590bbcd7cad7d84e7ab3b47b81837136138854de0ee807332f95dab"
+        },
+        {
+          "path": "vc/include/vadefs.h",
+          "bytes": 7668,
+          "sha256": "282dcb4af7cdbbf34095235b069474621fdd82e28eec698b467f553df4759f01"
+        },
+        {
+          "path": "vc/include/vcruntime.h",
+          "bytes": 11444,
+          "sha256": "8a6e89fe85c66162d62c772d02367ae2e6530f1faaaa8d099427698a689bac7f"
+        },
+        {
+          "path": "vc/include/vcruntime_string.h",
+          "bytes": 2959,
+          "sha256": "b05204f6814d1d7b7ca729b41d4192d0e47722f162c0b1d322f994bf9650af63"
+        },
+        {
+          "path": "vc/include/wmmintrin.h",
+          "bytes": 2615,
+          "sha256": "ccee1d63e178b3dcff1625817c2a0722fbb2966956d3cbe5531feecb6afd5a9b"
+        },
+        {
+          "path": "vc/include/xmmintrin.h",
+          "bytes": 20078,
+          "sha256": "6c30762cf69f112244617f72ea7f9ef933b673c3cc8afd1866158f0143fd263c"
+        },
+        {
+          "path": "vc/include/zmmintrin.h",
+          "bytes": 501410,
+          "sha256": "12c732298b86162914cee68c5dfe2f83b5c1fe71602707eca695901443bdac01"
+        }
+      ],
+      "compilerBinaryInputs": [
+        {
+          "path": "1033/atlprovui.dll",
+          "bytes": 35128,
+          "sha256": "767c7c5c841d62ae8197048e6b405564572b90ffa896296c0ce3292baec6f952"
+        },
+        {
+          "path": "1033/bscmakeui.dll",
+          "bytes": 18744,
+          "sha256": "2908aec0eedd5749209c8e0672a1475e1241da1afe6041e73d57517a237f094d"
+        },
+        {
+          "path": "1033/clui.dll",
+          "bytes": 630072,
+          "sha256": "5271e867c8fd4f87a8c74de583ea90e81773334db1769ff7f9dcf8917ec603cf"
+        },
+        {
+          "path": "1033/cvtresui.dll",
+          "bytes": 15672,
+          "sha256": "58e349850ad7fb28e760b7894a20f639f130cef496b4b405a5b02aada3e81e15"
+        },
+        {
+          "path": "1033/linkui.dll",
+          "bytes": 108896,
+          "sha256": "85d691a31e0d49e70b111b1a3776dbe5d1dfdf689931d00266035a6e90237b17"
+        },
+        {
+          "path": "1033/mspdbcmfui.dll",
+          "bytes": 17248,
+          "sha256": "9ef32eb33c93fb8c720f8ec2da0d55c40a1b1df66671be5a6313fcb57dd9e3ec"
+        },
+        {
+          "path": "1033/mspft140ui.dll",
+          "bytes": 202592,
+          "sha256": "7b031f164ca41336bada7d8552e529552c644f6a0c2ee52f099f34b1ec6e1114"
+        },
+        {
+          "path": "1033/nmakeui.dll",
+          "bytes": 24376,
+          "sha256": "f91aa115386bb2d667fe8fbb635453e65c2a9790ce1b28d8fd2553ecf132b48f"
+        },
+        {
+          "path": "1033/pgort140ui.dll",
+          "bytes": 21344,
+          "sha256": "5e49b38b4d81fce5aa14fad14332d6df3b1ed1f1223ec7df4affa1da3b207ba4"
+        },
+        {
+          "path": "1033/pgoui.dll",
+          "bytes": 47968,
+          "sha256": "d4a72a25c0b7be65b6f3dcb4ee90a9f4ba8d39fbf62128b65806025f9067f424"
+        },
+        {
+          "path": "atlprov.dll",
+          "bytes": 211256,
+          "sha256": "b312525880cf640ddcae074f4f6935d65c0fb72298e84bcdcd40ba39c9e39fba"
+        },
+        {
+          "path": "bscmake.exe",
+          "bytes": 111504,
+          "sha256": "cf0574bc1e5926883ad304ae75d72a1f2300289b0dd096f1a64d5d9a60e8dd0e"
+        },
+        {
+          "path": "c1.dll",
+          "bytes": 3623736,
+          "sha256": "49bd8b0b1c3d814b6b39cf0d649ac8a7ffc8fea021b0c5fd363f787b158d39a5"
+        },
+        {
+          "path": "c1xx.dll",
+          "bytes": 13249848,
+          "sha256": "de129befb4cfeca19ea62c4d72162f19f2b7952545cc64b7b3f1fcfd4981c5f1"
+        },
+        {
+          "path": "c2.dll",
+          "bytes": 11492664,
+          "sha256": "1477c03a2a267effe4a40d8debb846f3e4ab42547c5b966d7d5187bb2823e2f5"
+        },
+        {
+          "path": "c2dd.dll",
+          "bytes": 11492704,
+          "sha256": "59186b7f2988c9f4bd5b81fae79cebd101fcd557cff7b409c7b0f84c632a8afc"
+        },
+        {
+          "path": "cfgpersist.dll",
+          "bytes": 1603384,
+          "sha256": "5fdbecf891f10f2720fbffffd7b2da90211188459394ab38ea35fd261a7bdafa"
+        },
+        {
+          "path": "cl.exe",
+          "bytes": 893288,
+          "sha256": "b0a1818ebae6da7f18230a84e76ce839212584ac4c2ab55b97a0d5268085da57"
+        },
+        {
+          "path": "clang_rt.asan_dbg_dynamic-x86_64.dll",
+          "bytes": 1831224,
+          "sha256": "ffc75f33331223e5970bce1f90fc9f08ff5ae14096bc0414976174a6b21826b3"
+        },
+        {
+          "path": "clang_rt.asan_dynamic-x86_64.dll",
+          "bytes": 1881912,
+          "sha256": "7f901a239979c49b36a3b18ecd1843f551f94b5879585bded41a650c5b71f35f"
+        },
+        {
+          "path": "CppBuildInsights.dll",
+          "bytes": 298560,
+          "sha256": "fd906969e481c42dbe6882973638aaf2b61dadce32dba2a942c44949090d08f7"
+        },
+        {
+          "path": "cvtres.exe",
+          "bytes": 45984,
+          "sha256": "830d09e8e4a66b2f8fb0bfaad943d0bc5ce704b990d6a57e2e1aad3ec91e8ef7"
+        },
+        {
+          "path": "d3dcompiler_47.dll",
+          "bytes": 4467904,
+          "sha256": "8c88c162010a8d6b80f2c0433d4ce973ce626afcbc8da5be68bfa2ba68341eba"
+        },
+        {
+          "path": "dpcmi.dll",
+          "bytes": 1397048,
+          "sha256": "aecbc7ed828821675ff41f10a9eb1b4386f88242466416566bbe25eaa3067e3f"
+        },
+        {
+          "path": "dumpbin.exe",
+          "bytes": 23376,
+          "sha256": "357c989e1c926841df4e6e97c25a60b205b30110cd6db39bde8d81a627e48ebb"
+        },
+        {
+          "path": "editbin.exe",
+          "bytes": 23416,
+          "sha256": "edaee7981c7f78953b0643b3ea4a77c89d2207abf97632ea5026a5b102a24bf0"
+        },
+        {
+          "path": "EspXEngine.dll",
+          "bytes": 4181856,
+          "sha256": "059938169a3abf5636450cb5937da3a14ade477b24d9f0fd9c406211245499c8"
+        },
+        {
+          "path": "ifc.exe",
+          "bytes": 216888,
+          "sha256": "985ea160e2370a0ee8ea28596531be135407d72a04b7e422d5c4821f2eff0be5"
+        },
+        {
+          "path": "KernelTraceControl.dll",
+          "bytes": 253512,
+          "sha256": "9e2477efeb3d218f4a1844afc590e6040efecca599c91f777e56ce64a1faccc5"
+        },
+        {
+          "path": "lib.exe",
+          "bytes": 23384,
+          "sha256": "d8dae02a50c7571c6c0ea5cd7a853830aaca8fad13f8f4be147828d51dd4adec"
+        },
+        {
+          "path": "libz3.dll",
+          "bytes": 15187256,
+          "sha256": "d4dbe180fdb89d6d5bfbec007bb6a6aeb335cf129285f6aed2c2054b939d6ba3"
+        },
+        {
+          "path": "link.exe",
+          "bytes": 3701088,
+          "sha256": "a8c42e25c91ca2453e1110540ac08f0fc12d7539454a11b9af8baeecb469837d"
+        },
+        {
+          "path": "llvm-symbolizer.exe",
+          "bytes": 13902136,
+          "sha256": "10409d7f56976c7c3df4248bedf26837fef99c8f2341a13024cf864fb56b2ea4"
+        },
+        {
+          "path": "math.dll",
+          "bytes": 310584,
+          "sha256": "182ca601734fbb7b5173bfdf475bce90711ed9218705d9b89d7f6637d3025976"
+        },
+        {
+          "path": "Microsoft.Diagnostics.Tracing.EventSource.dll",
+          "bytes": 170288,
+          "sha256": "a20f6d6c0dae7ac9c7c295b819d085bdfc7cfab123e8fc4ca4ddfd0a88701d04"
+        },
+        {
+          "path": "Microsoft.VisualStudio.RemoteControl.dll",
+          "bytes": 47536,
+          "sha256": "cc52e19735d6152702672feb5911c8ba77f60fdc73df5ed0d601b37415f3a7ed"
+        },
+        {
+          "path": "Microsoft.VisualStudio.Telemetry.dll",
+          "bytes": 1026088,
+          "sha256": "c6b09bdb01fb84406fb95f77befd68b4f8f0b5d715bb00df817b5e691501c50d"
+        },
+        {
+          "path": "Microsoft.VisualStudio.Utilities.Internal.dll",
+          "bytes": 62480,
+          "sha256": "4d1d5efd28d72c332ba87e1993cb35e46404753543c5563700b98a97aa3c42a6"
+        },
+        {
+          "path": "ml64.exe",
+          "bytes": 752016,
+          "sha256": "baf8f8be0e77992bb01cfd2b30ff46b1532362a649495df24966567f8517c1e1"
+        },
+        {
+          "path": "msobj140.dll",
+          "bytes": 175416,
+          "sha256": "3bb97a52d2e94ea0210443e8b0c424ec3ded0b93c7edd7ac0e1952f27253a93c"
+        },
+        {
+          "path": "mspdb140.dll",
+          "bytes": 386912,
+          "sha256": "429b03bbecf0851bd7f1922448c4ff4184d5e521af13a5ce0da6e8c54b033dff"
+        },
+        {
+          "path": "mspdbcmf.exe",
+          "bytes": 2645368,
+          "sha256": "92325876afd3becb63c423a52ac289ec92cc7f3e22b26f9dbba02c04445f205e"
+        },
+        {
+          "path": "mspdbcore.dll",
+          "bytes": 1446240,
+          "sha256": "91c61f30fafb3324b03070c4ee85f370902cf3d80240a210f7240e89777bf6be"
+        },
+        {
+          "path": "mspdbsrv.exe",
+          "bytes": 192352,
+          "sha256": "498fdb05a806e44bd564aac3263645be748a0e9cecbb0220d598a3ddd7220748"
+        },
+        {
+          "path": "mspdbst.dll",
+          "bytes": 1402208,
+          "sha256": "7956adf9b55835091f6cb304febaf6356b7ef101f76c9da2a3683650baa6c2bd"
+        },
+        {
+          "path": "mspft140.dll",
+          "bytes": 3115320,
+          "sha256": "7958bbaf5768837dacc2361d4db771f267d8f1da00130ba2afed328a2f497d14"
+        },
+        {
+          "path": "msvcdis140.dll",
+          "bytes": 2143584,
+          "sha256": "ab2dad7a0260427deab6d17797d4676e74f041d19d60d223a92c6f739c635803"
+        },
+        {
+          "path": "msvcp140.dll",
+          "bytes": 643440,
+          "sha256": "aa30f46a44704dd3d8207f5fe859b4f9ac0d4e53de486b18841fc586827ea946"
+        },
+        {
+          "path": "msvcp140_1.dll",
+          "bytes": 35776,
+          "sha256": "3703b2d0e966ce43b28f1fe8efb606c8b486b1643c7df8e5b1b3afb1059d835b"
+        },
+        {
+          "path": "msvcp140_2.dll",
+          "bytes": 274800,
+          "sha256": "2df4ba8c007568725238139e962a8f539d4c5d6321fe00e6a950ecc134f43142"
+        },
+        {
+          "path": "msvcp140_atomic_wait.dll",
+          "bytes": 57704,
+          "sha256": "bf42a95e7ff83446a3c58bde8ad95b643ca4a75ce6ed99d6043700b1dcf1c0e4"
+        },
+        {
+          "path": "msvcp140_codecvt_ids.dll",
+          "bytes": 31168,
+          "sha256": "c177906114f641bc7c56566c58d83a0d30b9904506c3f65f438addf7943516ea"
+        },
+        {
+          "path": "Newtonsoft.Json.dll",
+          "bytes": 719160,
+          "sha256": "ad537ef13183a95c4c40001f3994f751a6b0843fa812ff49d52ba861bd643cb9"
+        },
+        {
+          "path": "nmake.exe",
+          "bytes": 134040,
+          "sha256": "492b4589acd95ac3a5066fdc8898ea32bda185e2e89ffbc0e6e7b1b056e026b9"
+        },
+        {
+          "path": "onecore/pgort140.dll",
+          "bytes": 50696,
+          "sha256": "2e0cd090305346804ab50b7ed635d0fae587aa28f220389b5a06d340db505824"
+        },
+        {
+          "path": "onecore/pgosweep.exe",
+          "bytes": 79424,
+          "sha256": "1c45839477a67706459b949f74d5c2d2b5c146edbefa7291e171b58423a64503"
+        },
+        {
+          "path": "pgocvt.exe",
+          "bytes": 76216,
+          "sha256": "471c7e2934405a0a2b052003f4c6f069c0d6e70ed1ab8f4d2c5eb98df72a1e4e"
+        },
+        {
+          "path": "pgodb140.dll",
+          "bytes": 105272,
+          "sha256": "a01717cdf46b6a5c9f75dd1b2d5e85198d4bce69609c908fca8d092bdc29d578"
+        },
+        {
+          "path": "pgomgr.exe",
+          "bytes": 111552,
+          "sha256": "439800ad8c4881679da8743be12698860c56a29d3b0b5406b4221e9a70712049"
+        },
+        {
+          "path": "pgort140.dll",
+          "bytes": 48952,
+          "sha256": "8009e9ae64c5088a1c8e0eaa8ba16a1a29c38fbe36dbddb33cf674b234f38912"
+        },
+        {
+          "path": "pgosweep.exe",
+          "bytes": 77256,
+          "sha256": "e74e99f1347569f73e5181212013a21e449c210c7cf10cb33ba364e03bf95fc2"
+        },
+        {
+          "path": "spdconvert.exe",
+          "bytes": 431464,
+          "sha256": "dec754ae5667ca53e093b12457513f6f18f0d935c61529aa112ae85c969b2b06"
+        },
+        {
+          "path": "spddump.exe",
+          "bytes": 252768,
+          "sha256": "9a09faa9fa833f1810094c1a71e43217ff82e4861e3c63cea7670434b8d8229d"
+        },
+        {
+          "path": "sptaggregate.exe",
+          "bytes": 327016,
+          "sha256": "89e05ec3d327f92c7274146467df7198499296d60191200910bc6e28dca2455d"
+        },
+        {
+          "path": "sptdump.exe",
+          "bytes": 244576,
+          "sha256": "6fd2e3cd50c1c52c737a4a066bf1833709634ca3a6edf0c2bd9341d556180b48"
+        },
+        {
+          "path": "System.Memory.dll",
+          "bytes": 138144,
+          "sha256": "06ea95f8388a6b031acb2449fd5663d9d26d720ae13df80c800805f896734430"
+        },
+        {
+          "path": "System.Runtime.CompilerServices.Unsafe.dll",
+          "bytes": 16768,
+          "sha256": "3cadcb6b8a7335141c7c357a1d77af1ff49b59b872df494f5025580191d1c0d5"
+        },
+        {
+          "path": "tbbmalloc.dll",
+          "bytes": 111416,
+          "sha256": "cc333821876857302b7458533b71af66e4636918d64031112a52e920fc96f651"
+        },
+        {
+          "path": "undname.exe",
+          "bytes": 26472,
+          "sha256": "898491aea7eb002a5b165191191a696129d082315631a9738073aafcf7c52cd8"
+        },
+        {
+          "path": "vcmeta.dll",
+          "bytes": 122208,
+          "sha256": "1a448333e6b8f7e9cb4f90397e49b2b3d3c92d51dec5d564bdb13130f008f0fc"
+        },
+        {
+          "path": "vcperf.exe",
+          "bytes": 267064,
+          "sha256": "afb8f85d530b62718ecf2e678b512ab63fec6d13f031be8c8483aa83bc9cd741"
+        },
+        {
+          "path": "vcruntime140.dll",
+          "bytes": 178544,
+          "sha256": "2aa42da93ed9f3c1fe9c085666bea24a59fb4c3542d60885ea9cfcfbc11b26ea"
+        },
+        {
+          "path": "vcruntime140_1.dll",
+          "bytes": 50024,
+          "sha256": "417e18eda9b2f5dcd65b9bac6640d90e5e79d373419cf4573bd9dc35faf42e33"
+        },
+        {
+          "path": "vcruntime140_threads.dll",
+          "bytes": 38760,
+          "sha256": "2c3b345f6096b1f31d69776326ce0536c6f481a251f0688c09d570880c53cce7"
+        },
+        {
+          "path": "vctip.exe",
+          "bytes": 514528,
+          "sha256": "41fe46f8a0b41f6dd94c68c85fba20a10aacb662a9ef04784a632e37f3692371"
+        },
+        {
+          "path": "xdcmake.exe",
+          "bytes": 42920,
+          "sha256": "116d05fd0db0cc32712ba503902be1c922bc8b9807f0b7d0437d9bc82fdd5232"
+        }
+      ],
+      "linkInputs": [
+        {
+          "path": "advapi32.lib",
+          "bytes": 178306,
+          "sha256": "ecafe89a632a35b183c2129d2d8612b31a4d43a9cda78c4b2e3bc6b130ae3c6f"
+        },
+        {
+          "path": "helper.obj",
+          "bytes": 35601,
+          "sha256": "98f686c9660e846dbe4c7242ca45b979df05d231efa1ab2d8697c2550a571fe4"
+        },
+        {
+          "path": "kernel32.lib",
+          "bytes": 311908,
+          "sha256": "842f5ce7ad8cf5aab7491b791e7968d2be510ae93f4019d3311797289399d221"
+        },
+        {
+          "path": "LIBCMT.lib",
+          "bytes": 6610744,
+          "sha256": "d4cc4c224455825dec1669f9ad6a9872a4f5b37ed1daae1fd0b9044d7650d908"
+        },
+        {
+          "path": "libucrt.lib",
+          "bytes": 43370172,
+          "sha256": "c3a20426b5142bfd0848468a3b95c47440759f0391ef2764e5020672811803cb"
+        },
+        {
+          "path": "libvcruntime.lib",
+          "bytes": 2364572,
+          "sha256": "f0a898588ecb26fe4c7530b2495a6fe5e768856309a33391702a3cbcb72b0589"
+        },
+        {
+          "path": "OLDNAMES.lib",
+          "bytes": 157422,
+          "sha256": "67653ba64d59a33964a811d950c9d424f7afacba8e613af60138f64fe10c2679"
+        },
+        {
+          "path": "uuid.lib",
+          "bytes": 8969608,
+          "sha256": "bbe8429a3c8c3a950d471bea1a3252cef5b4fe137f73196c5c983e7d8d268996"
+        }
+      ],
+      "importedSystemDlls": ["ADVAPI32.dll", "KERNEL32.dll"],
+      "residentSystemModules": ["ntdll.dll"],
+      "staticAnalysis": {
+        "tool": "MSVC /analyze",
+        "warningsAsErrors": true
+      },
+      "runtimeCompilerRequired": false,
+      "runtimeDownloadRequired": false,
+      "privilegedExecutionRequired": false,
+      "actualMainOrReleaseAccepted": false
+    }
+  ],
+  "nativeLifetime": {
+    "schema": "agentic-company-os/windows-private-helper-lifetime@1",
+    "sourceSha256": "9fe2b88bd1407dad0375b5ef092cd61bf520b9d5b7feb9590ba57087c67e5407",
+    "executableSha256": "72f100903d99de66f12c83e3580418de3f5c40b535df0d0884ba34cf7fffd84f",
+    "checks": [
+      "acknowledged protected UTF16 directory survives with exact Node identity",
+      "no ACK removes only provisional empty creation and exclusive retry succeeds",
+      "forced death before ACK removes the uncommitted empty object and retry succeeds",
+      "forced death retains a populated object and its exact contents",
+      "provisional pinned handle refuses namespace replacement"
+    ],
+    "passed": true,
+    "cleanupVerified": true,
+    "fixtureRootCanonical": true,
+    "applicationOrModelStarted": false,
+    "originalCIIncidentReproduced": false,
+    "actualMainOrReleaseAccepted": false,
+    "scope": "Original local/component native creation lifetime checks only. No source/PR/main or release qualification."
+  },
+  "nativeSecurity": {
+    "schema": "agentic-company-os/windows-private-helper-security@1",
+    "sourceSha256": "9fe2b88bd1407dad0375b5ef092cd61bf520b9d5b7feb9590ba57087c67e5407",
+    "executableSha256": "72f100903d99de66f12c83e3580418de3f5c40b535df0d0884ba34cf7fffd84f",
+    "checks": [
+      "public ACL rejected without mutation",
+      "null ACL rejected without mutation",
+      "empty ACL rejected without mutation",
+      "deny ACL rejected without mutation",
+      "callback ACL rejected without mutation",
+      "object ACL rejected without mutation",
+      "inherit-only ACL rejected without mutation",
+      "incomplete ACL rejected without mutation",
+      "unprotected ACL rejected without mutation",
+      "inherited-public ACL rejected without mutation",
+      "directory create-flag misuse and file-type mismatch leave the descriptor unchanged",
+      "stale file identity, nonempty creation and type mismatch cannot mutate security or contents",
+      "canonical UTF16 directory longer than MAX_PATH can be created and checked"
+    ],
+    "passed": true,
+    "cleanupVerified": true,
+    "fixtureRootCanonical": true,
+    "applicationOrModelStarted": false,
+    "privilegesChanged": false,
+    "actualMainOrReleaseAccepted": false,
+    "untested": [
+      "foreign-owner fixture requiring another account or ownership privilege",
+      "UNC network share"
+    ]
+  },
+  "actualMainOrReleaseAccepted": false,
+  "scope": "Source-bound original Windows component evidence only; application and release qualification are separate."
+}

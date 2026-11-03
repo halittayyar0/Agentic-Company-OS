@@ -21,6 +21,10 @@ test("approval review and decisions share a socket-address limit before authenti
     }),
   );
   const server = app.listen(0, "127.0.0.1");
+  let connections = 0;
+  server.on("connection", () => {
+    connections += 1;
+  });
   await new Promise<void>((resolve) => server.once("listening", resolve));
   t.after(() => new Promise<void>((resolve) => server.close(() => resolve())));
   const address = server.address();
@@ -34,22 +38,38 @@ test("approval review and decisions share a socket-address limit before authenti
             port: address.port,
             path: `/api/approvals/1/${decision ? "decision" : "result-review"}`,
             method: decision ? "POST" : "GET",
+            // The bucket must follow the peer address across new connections.
+            // A pooled idle-socket race is unrelated to that security boundary.
+            agent: false,
             headers: {
               "Content-Type": "application/json",
               "X-Forwarded-For": `192.0.2.${(attempt % 254) + 1}`,
             },
           },
           (res) => {
-            res.resume();
+            res.once("error", fail);
             res.once("end", () =>
               resolve({
                 status: res.statusCode ?? 0,
                 retryAfter: res.headers["retry-after"],
               }),
             );
+            res.resume();
           },
         );
-        req.once("error", reject);
+        function fail(error: NodeJS.ErrnoException) {
+          const code =
+            typeof error.code === "string" &&
+            /^[A-Z0-9_]{1,40}$/u.test(error.code)
+              ? error.code
+              : "HTTP_FIXTURE_ERROR";
+          reject(
+            new Error(
+              `Approval fixture transport failed: attempt=${attempt}, decision=${decision}, reusedSocket=${req.reusedSocket}, code=${code}`,
+            ),
+          );
+        }
+        req.once("error", fail);
         req.end(decision ? "{}" : undefined);
       },
     );
@@ -69,4 +89,9 @@ test("approval review and decisions share a socket-address limit before authenti
     );
   }
   assert.equal(authenticationCalls, 150);
+  assert.equal(
+    connections,
+    302,
+    "the shared peer-address limit must hold across independent TCP connections",
+  );
 });

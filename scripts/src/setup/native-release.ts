@@ -78,7 +78,25 @@ export async function readNativeRelease(
       createHash("sha256").update(bytes).digest("hex") !== row.sha256
     )
       throw new Error("changed release bytes");
-    return validateNativeRelease(JSON.parse(bytes), distribution.commit);
+    const release = validateNativeRelease(
+      JSON.parse(bytes),
+      distribution.commit,
+    );
+    const [major, minor, patch] = stableVersionParts(
+      release.applicationVersion,
+    );
+    // Keep schema 1 readable by published upgrade launchers. The new runtime
+    // requirement belongs to the release version, never to legacy inventories.
+    if (
+      distribution.target === "win32-x64" &&
+      (major > 0 || minor > 5 || (minor === 5 && patch >= 10)) &&
+      [
+        "scripts/src/setup/windows-private-helper.exe",
+        "artifacts/api-server/dist/windows-private-helper.exe",
+      ].some((file) => !distribution.files.some((entry) => entry.path === file))
+    )
+      throw new Error("missing private checker");
+    return release;
   } catch {
     throw new Error("native_release_identity");
   }

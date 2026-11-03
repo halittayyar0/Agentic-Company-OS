@@ -64,6 +64,7 @@ export interface OperationsRuntimeInput {
   multiProcessCapable: boolean;
   emergencyStopEnabled: boolean;
   healthyWorkerCount: number;
+  minimumHealthyWorkerCount?: number;
   staleWorkerCount: number;
   schedulerTickAgeMs: number | null;
   lastSampleAt: string | null;
@@ -274,6 +275,7 @@ export interface AttemptEvidenceChain {
 
 export interface OperationsRoomTruth {
   healthyWorkerCount: number;
+  minimumHealthyWorkerCount?: number;
   live: boolean;
   backendState: RuntimeTruthState;
   transportState: OperationsTransportState;
@@ -485,6 +487,7 @@ function buildTruth(
     live:
       stream.state === "live" && runtime.state === "live" && runtime.durable,
     healthyWorkerCount: runtime.healthyWorkerCount,
+    minimumHealthyWorkerCount: runtime.minimumHealthyWorkerCount,
     backendState: runtime.state,
     transportState: stream.state,
     transportAgeMs,

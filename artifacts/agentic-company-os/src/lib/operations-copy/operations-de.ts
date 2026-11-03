@@ -180,6 +180,8 @@ const copy = {
   unknownState: "Unbekannter Eintrag: {value}",
   live: "Live · Worker: {count}",
   degradedTruth: "Eingeschränkter Betrieb · Eingriff eventuell erforderlich",
+  capacityDeficitTruth:
+    "Reduzierte Kapazität · {ready} bereit, {required} erforderlich",
   staleTruth: "Worker-Signal verspätet",
   offlineTruth: "Keine laufenden Worker",
   emergencyTruth: "Notstopp aktiv",

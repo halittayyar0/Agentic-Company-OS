@@ -16,13 +16,17 @@ import { useLocale } from "@/components/i18n/locale-provider";
 import { loadAuthCopy, type AuthCopy } from "@/lib/auth-copy";
 import {
   ControlPlaneError,
-  getAuthStatus,
+  authStatusQuery,
   login,
   logout,
   type AuthStatus,
 } from "@/lib/auth";
 
-const AUTH_QUERY_KEY = ["auth-status"] as const;
+const AUTH_QUERY_KEY = authStatusQuery.queryKey;
+const AUTH_MAIN_CLASS =
+  "flex min-h-screen items-center justify-center bg-background [overflow-wrap:anywhere]";
+const AUTH_RECOVERY_PANEL_CLASS =
+  "min-w-0 w-full max-w-md rounded-panel border bg-card px-[24px] py-7 text-center sm:px-7";
 
 interface AuthContextValue {
   enabled: boolean;
@@ -42,11 +46,9 @@ export function useAuth(): AuthContextValue {
 export function AuthGate({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const statusQuery = useQuery({
-    queryKey: AUTH_QUERY_KEY,
-    queryFn: getAuthStatus,
-    retry: false,
+    ...authStatusQuery,
     staleTime: 5_000,
-    refetchInterval: 15_000,
+    refetchInterval: (query) => (query.state.data ? 15_000 : false),
     refetchOnWindowFocus: "always",
   });
 
@@ -182,7 +184,7 @@ function LoginScreen({
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-background p-[16px] [overflow-wrap:anywhere] sm:p-8">
+    <main className={`relative ${AUTH_MAIN_CLASS} p-[16px] sm:p-8`}>
       <section
         className="relative z-10 min-w-0 w-full max-w-md overflow-hidden rounded-md border border-border bg-card px-[24px] py-6 sm:p-9"
         aria-labelledby="login-title"
@@ -204,7 +206,7 @@ function LoginScreen({
           {copy.description}
         </p>
 
-        <form className="mt-7 space-y-4" onSubmit={submit}>
+        <form className="mt-7 space-y-4" onSubmit={submit} noValidate>
           <div className="space-y-2">
             <Label htmlFor="access-token">{copy.accessKey}</Label>
             <div className="relative">
@@ -246,7 +248,8 @@ function LoginScreen({
 
           <Button
             type="submit"
-            className="h-auto min-h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90 max-sm:gap-[8px] max-sm:px-[12px]"
+            size="touch"
+            className="h-auto w-full max-sm:gap-[8px] max-sm:px-[12px]"
             disabled={!token.trim() || loginMutation.isPending}
           >
             {loginMutation.isPending ? (
@@ -269,7 +272,7 @@ function AuthLoading() {
   const { t } = useLocale();
   return (
     <main
-      className="flex min-h-screen items-center justify-center bg-background p-[24px] [overflow-wrap:anywhere] sm:p-6"
+      className={`${AUTH_MAIN_CLASS} p-[24px] sm:p-6`}
       role="status"
       aria-live="polite"
       aria-label={t("loadingScreen")}
@@ -295,33 +298,46 @@ function AuthUnavailable({
   copy: AuthCopy;
 }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-[16px] [overflow-wrap:anywhere] sm:p-6">
-      <section
-        className="min-w-0 w-full max-w-md rounded-panel border border-border bg-card px-[24px] py-7 text-center sm:px-7"
-        role="alert"
+    <AuthRecoveryPanel>
+      <KeyRound
+        className="mx-auto size-9 text-attention-foreground"
+        aria-hidden
+      />
+      <h1 className="mt-4 text-xl font-extrabold">{copy.serviceUnavailable}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {copy.serviceUnavailableDescription}
+      </p>
+      <Button
+        type="button"
+        size="touch"
+        className="mt-5"
+        onClick={retry}
+        disabled={retrying}
       >
-        <KeyRound
-          className="mx-auto size-9 text-attention-foreground"
+        <RefreshCw
+          className={`size-4 ${retrying ? "animate-spin motion-reduce:animate-none" : ""}`}
           aria-hidden
         />
-        <h1 className="mt-4 text-xl font-extrabold">
-          {copy.serviceUnavailable}
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {copy.serviceUnavailableDescription}
-        </p>
-        <Button
-          type="button"
-          className="mt-5 min-h-11"
-          onClick={retry}
-          disabled={retrying}
-        >
-          <RefreshCw
-            className={`size-4 ${retrying ? "animate-spin motion-reduce:animate-none" : ""}`}
-            aria-hidden
-          />
-          {copy.retry}
-        </Button>
+        {copy.retry}
+      </Button>
+    </AuthRecoveryPanel>
+  );
+}
+
+function AuthRecoveryPanel({
+  children,
+  attention = false,
+}: {
+  children: ReactNode;
+  attention?: boolean;
+}) {
+  return (
+    <main className={`${AUTH_MAIN_CLASS} p-[16px] sm:p-6`}>
+      <section
+        role="alert"
+        className={`${AUTH_RECOVERY_PANEL_CLASS} ${attention ? "border-attention/25" : "border-border"}`}
+      >
+        {children}
       </section>
     </main>
   );
@@ -341,21 +357,17 @@ function AuthCopyBoundary({
   });
   if (copyQuery.isError) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background p-[16px] [overflow-wrap:anywhere] sm:p-6">
-        <section
-          role="alert"
-          className="min-w-0 w-full max-w-md rounded-panel border border-attention/25 bg-card px-[24px] py-7 text-center sm:px-7"
+      <AuthRecoveryPanel attention>
+        <h1 className="text-xl font-semibold">{t("authCopyError")}</h1>
+        <Button
+          type="button"
+          size="touch"
+          className="mt-5"
+          onClick={() => window.location.reload()}
         >
-          <h1 className="text-xl font-semibold">{t("authCopyError")}</h1>
-          <Button
-            type="button"
-            className="mt-5 min-h-11"
-            onClick={() => window.location.reload()}
-          >
-            {t("checkAgain")}
-          </Button>
-        </section>
-      </main>
+          {t("checkAgain")}
+        </Button>
+      </AuthRecoveryPanel>
     );
   }
   if (!copyQuery.data) return <AuthLoading />;
