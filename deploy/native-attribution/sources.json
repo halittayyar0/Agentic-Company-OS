@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "auditedDate": "2026-10-24",
+  "auditedDate": "2026-11-03",
   "sources": [
     {
       "component": "PostgreSQL",
@@ -25,11 +25,11 @@
     },
     {
       "component": "Node.js",
-      "version": "24.22.1",
-      "url": "https://nodejs.org/dist/v24.22.1/",
-      "sourceUrl": "https://nodejs.org/dist/v24.22.1/node-v24.22.1.tar.gz",
-      "checksumUrl": "https://nodejs.org/dist/v24.22.1/SHASUMS256.txt",
-      "licenseUrl": "https://raw.githubusercontent.com/nodejs/node/v24.22.1/LICENSE",
+      "version": "24.22.2",
+      "url": "https://nodejs.org/dist/v24.22.2/",
+      "sourceUrl": "https://nodejs.org/dist/v24.22.2/node-v24.22.2.tar.gz",
+      "checksumUrl": "https://nodejs.org/dist/v24.22.2/SHASUMS256.txt",
+      "licenseUrl": "https://raw.githubusercontent.com/nodejs/node/v24.22.2/LICENSE",
       "licenseFiles": ["NODE-LICENSE.txt"],
       "licenseHandling": "Retain the LICENSE from the exact hash-verified target Node distribution; compare it with this pinned-tag reference before packaging."
     },

@@ -9,11 +9,12 @@ const available = async (command: string, args: string[]) => {
   throw new Error("unexpected command");
 };
 
-test("installation rejects Node versions predating the October security fixes", async () => {
+test("installation requires the maintained Node 24 patch line", async () => {
   for (const nodeVersion of [
     "v24.0.0",
     "v24.21.0",
     "v24.22.0",
+    "v24.22.1",
     "v24.22.01",
     "v25.0.0",
   ]) {
@@ -26,7 +27,7 @@ test("installation rejects Node versions predating the October security fixes", 
     assert.deepEqual(state.native.issues, ["node_24_required"], nodeVersion);
     assert.deepEqual(state.container.issues, ["node_24_required"], nodeVersion);
   }
-  for (const nodeVersion of ["v24.22.1", "v24.22.2", "v24.23.0"]) {
+  for (const nodeVersion of ["v24.22.2", "v24.23.0"]) {
     const state = await detectInstallCapabilities({
       platform: "linux",
       arch: "x64",
@@ -42,7 +43,7 @@ test("native installation stays available when Docker is absent", async () => {
   const state = await detectInstallCapabilities({
     platform: "win32",
     arch: "x64",
-    nodeVersion: "v24.22.1",
+    nodeVersion: "v24.22.2",
     run: async (command, args) => {
       if (command === "docker") throw new Error("ENOENT");
       return available(command, args);
@@ -103,7 +104,7 @@ test("PostgreSQL CLI is optional when an existing database is supplied", async (
   const state = await detectInstallCapabilities({
     platform: "darwin",
     arch: "arm64",
-    nodeVersion: "v24.22.1",
+    nodeVersion: "v24.22.2",
     run: async (command, args) => {
       if (command === "psql") throw Error("missing");
       return available(command, args);
@@ -125,7 +126,7 @@ test("coding capability follows the actual engine architecture and exact Compose
     const state = await detectInstallCapabilities({
       platform: "darwin",
       arch: "arm64",
-      nodeVersion: "v24.22.1",
+      nodeVersion: "v24.22.2",
       run: async (command, args) => {
         if (
           command === "docker" &&
@@ -151,7 +152,7 @@ test("an engine without AppArmor keeps ordinary installation available but canno
   const state = await detectInstallCapabilities({
     platform: "darwin",
     arch: "arm64",
-    nodeVersion: "v24.22.1",
+    nodeVersion: "v24.22.2",
     run: async (command, args) =>
       command === "docker" && args[0] === "info" && args[2] === "{{json .}}"
         ? JSON.stringify({

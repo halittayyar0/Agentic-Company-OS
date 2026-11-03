@@ -4,22 +4,22 @@ import { setTimeout as delay } from "node:timers/promises";
 // checksums/provenance, but cannot add URL paths, queries or another host.
 // A Node upgrade must update this closed set together with native-runtimes.json.
 const downloads = Object.freeze({
-  "win32-x64": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.zip",
+  "win32-x64": "https://nodejs.org/dist/v24.22.2/node-v24.22.2-win-x64.zip",
   "darwin-x64":
-    "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-x64.tar.gz",
+    "https://nodejs.org/dist/v24.22.2/node-v24.22.2-darwin-x64.tar.gz",
   "darwin-arm64":
-    "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-arm64.tar.gz",
+    "https://nodejs.org/dist/v24.22.2/node-v24.22.2-darwin-arm64.tar.gz",
   "linux-x64":
-    "https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-x64.tar.gz",
+    "https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-x64.tar.gz",
   "linux-arm64":
-    "https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-arm64.tar.gz",
+    "https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-arm64.tar.gz",
 });
 
 export function nodeArchiveDownloadUrl(target, pin) {
   const destination = Object.hasOwn(downloads, target)
     ? downloads[target]
     : undefined;
-  if (!destination || pin?.version !== "24.22.1" || pin.url !== destination)
+  if (!destination || pin?.version !== "24.22.2" || pin.url !== destination)
     throw new Error(
       "Node pin does not match the reviewed download destination",
     );

@@ -63,7 +63,7 @@ async function main() {
   );
   assert.equal(process.platform, "win32", "windows_first_task_proof_only");
   assert.equal(process.arch, "x64");
-  assert.equal(process.version, "v24.22.1");
+  assert.equal(process.version, "v24.22.2");
   const options = new Map<string, string>();
   for (let index = 2; index < process.argv.length; index += 2) {
     const key = process.argv[index],

@@ -21,7 +21,7 @@ jobs:
           run_install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: 24.22.1
+          node-version: 24.22.2
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
