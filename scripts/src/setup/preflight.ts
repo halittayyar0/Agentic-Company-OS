@@ -69,7 +69,7 @@ export async function detectInstallCapabilities(
   if (
     !nodeMatch ||
     Number(nodeMatch[1]) < 22 ||
-    (Number(nodeMatch[1]) === 22 && Number(nodeMatch[2]) < 1)
+    (Number(nodeMatch[1]) === 22 && Number(nodeMatch[2]) < 2)
   )
     common.push("node_24_required");
   const nativeIssues = [...common];

@@ -1,11 +1,11 @@
 {
   "name": "agentic-company-os",
-  "version": "0.5.10",
+  "version": "0.5.11",
   "description": "Local-first, human-governed operating system for autonomous AI agent teams.",
   "license": "MIT",
   "packageManager": "pnpm@10.17.1",
   "engines": {
-    "node": ">=24.22.1 <25",
+    "node": ">=24.22.2 <25",
     "pnpm": ">=10.17 <11"
   },
   "scripts": {

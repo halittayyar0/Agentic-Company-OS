@@ -42,7 +42,7 @@ test("setup explains the patched Node requirement in seven locales and recovers 
       await page.locator("#language").selectOption(locale);
       assert.match(
         await page.locator("#requirements-list").innerText(),
-        /24\.22\.1/,
+        /24\.22\.2/,
       );
       assert.equal(await page.locator("#next").isDisabled(), true);
       assert.equal(
@@ -58,6 +58,15 @@ test("setup explains the patched Node requirement in seven locales and recovers 
     }
   }
   nodeVersion = "v24.22.1";
+  const rejectedRuntime = page.waitForResponse((response) =>
+    response.url().endsWith("/api/capabilities"),
+  );
+  await page.locator("#recheck").click();
+  const rejectedCapabilities = await (await rejectedRuntime).json();
+  assert.equal(rejectedCapabilities.nodeVersion, "v24.22.1");
+  assert.equal(rejectedCapabilities.native.ready, false);
+  assert.equal(await page.locator("#next").isDisabled(), true);
+  nodeVersion = "v24.22.2";
   await page.locator("#recheck").click();
   await page.locator("#next:not([disabled])").waitFor();
   assert.equal(

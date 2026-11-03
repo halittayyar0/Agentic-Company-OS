@@ -15,9 +15,11 @@ Security support during alpha is best-effort and has no response-time SLA.
 
 ## Runtime security updates
 
-Source and portable-container setup require Node.js 24.22.1 or a newer 24.x release. New native packages pin Node.js 24.22.1 and PostgreSQL 17.11; the application container pins the corresponding Node security image. Check the actual package manifest and release verification before upgrading an older installation. JavaScript dependency audits do not cover these bundled runtimes.
+Source and portable-container setup require Node.js 24.22.2 or a newer 24.x release. New native packages pin Node.js 24.22.2 and PostgreSQL 17.11; all application container stages use the same reviewed Node image digest. Check the actual package manifest and release verification before upgrading an older installation. JavaScript dependency audits do not cover these bundled runtimes.
 
-The [Node October security release](https://nodejs.org/en/blog/release/v24.22.1) fixes DNS input handling, TLS identity checks and other runtime vulnerabilities. [PostgreSQL 17.11](https://www.postgresql.org/docs/17/release-17-11.html) includes security fixes for psql and the database server. Earlier published packages can contain affected runtimes even when their npm dependency audit passed.
+The [Node October security release](https://nodejs.org/en/blog/release/v24.22.1) fixes DNS input handling, TLS identity checks and other runtime vulnerabilities. [PostgreSQL 17.11](https://www.postgresql.org/docs/17/release-17-11.html) includes security fixes for psql and the database server. Packages with older runtime pins can contain affected runtimes even when their npm dependency audit passed.
+
+Node.js [24.22.2](https://nodejs.org/en/blog/release/v24.22.2) additionally corrects async context in parked stream callbacks. Controlled default/legacy-context tests check that a stream created inside an operation retains that operation's policy rather than a draining reader's policy. The actual tool entry still creates a fresh policy scope per call; this update does not claim a reproduced production permission exploit or classify 24.22.2 as a security release.
 
 Back up before upgrading. Reading an old installation's metadata remains supported for upgrade and recovery; this does not qualify its old binaries for a new release. PostgreSQL 17.x does not require dump/restore solely for this minor update. Operators using logical decoding plugins, pgcrypto, btree_gist or ltree must review PostgreSQL's migration notes for their own extensions and data. The installer does not expand plugin permissions or automatically repair encrypted data or indexes.
 

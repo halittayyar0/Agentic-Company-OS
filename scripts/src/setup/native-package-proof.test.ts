@@ -54,7 +54,7 @@ test("Windows installation CI uses the reviewed PostgreSQL security release", as
       `${name} must explicitly select its host runtime`,
     );
     assert.ok(
-      versions.every((version) => version === "24.22.1"),
+      versions.every((version) => version === "24.22.2"),
       `${name} must not reuse an affected preinstalled Node 24 cache`,
     );
   }
@@ -94,15 +94,16 @@ test("new native packages admit patched runtimes while rejecting previously vali
   ]);
   for (const [target, value] of Object.entries(pins.targets)) {
     const pin = (value as { node: { version: string; url: string } }).node;
-    assert.equal(pin.version, "24.22.1");
+    assert.equal(pin.version, "24.22.2");
     assert.equal(nodeArchiveDownloadUrl(target, pin), pin.url);
-    assert.throws(() =>
-      nodeArchiveDownloadUrl(target, {
-        ...pin,
-        version: "24.21.0",
-        url: pin.url.replaceAll("24.22.1", "24.21.0"),
-      }),
-    );
+    for (const oldVersion of ["24.22.1", "24.21.0"])
+      assert.throws(() =>
+        nodeArchiveDownloadUrl(target, {
+          ...pin,
+          version: oldVersion,
+          url: pin.url.replaceAll("24.22.2", oldVersion),
+        }),
+      );
   }
 });
 
