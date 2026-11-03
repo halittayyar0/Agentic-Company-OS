@@ -452,6 +452,8 @@ async function serializeBrowserEvidenceManifest(
         index: sample.index,
         capturedAt: sample.capturedAt,
         runtimeLabel: sample.runtimeLabel,
+        runtimeState: sample.runtimeState,
+        transportState: sample.transportState,
         incidentVisible: sample.incidentVisible,
         reconnectCursorAdvanced: sample.reconnectCursorAdvanced,
         pageErrors: sample.pageErrors,
