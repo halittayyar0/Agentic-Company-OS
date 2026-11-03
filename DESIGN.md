@@ -295,6 +295,7 @@ inherited text colors during theme changes.
 - Icon-only controls require a visible tooltip and a Turkish accessible name.
 - Toasts report bounded user mutation results. Runtime health, incidents, stale data, and connection state stay inline and persistent.
 - Loading skeletons match final geometry. Empty, filtered-empty, partial, unauthorized, stale, and disconnected are different states.
+- AuthGate reuses the existing localized session-unavailable panel after a bounded 15-second authentication status read, including a stalled response body. Initial failure stays actionable rather than cycling through a polling spinner. AuthGate and operator result review share `authStatusQuery`; browser offline hints do not prevent local recovery reads. Primary login/retry/reload controls use the canonical Button `touch` size at all widths. Server permission checks remain the access authority.
 - Desktop attempt details are a non-modal persistent inspector; mobile details use a focus-trapped Sheet with Escape and focus restoration.
 
 ## Operations information hierarchy

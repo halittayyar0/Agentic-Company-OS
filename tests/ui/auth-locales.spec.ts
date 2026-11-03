@@ -1,5 +1,107 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Route } from "@playwright/test";
 import { installStudioFixtures } from "./helpers/studio-fixtures";
+import { loadAuthCopy } from "../../artifacts/agentic-company-os/src/lib/auth-copy";
+
+for (const locale of [
+  "tr",
+  "en",
+  "de",
+  "ru",
+  "zh-CN",
+  "zh-TW",
+  "ar",
+] as const) {
+  for (const width of [320, 1024]) {
+    test(`bounded auth startup ${locale} ${width}: stable timeout and local retry despite offline hint`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width, height: 812 });
+      await page.addInitScript(
+        (value) => localStorage.setItem("acos.locale.v1", value),
+        locale,
+      );
+      const copy = await loadAuthCopy(locale),
+        harness = await installStudioFixtures(page);
+      const paused = new Set<Route>(),
+        protectedRequests: string[] = [];
+      let unavailable = true,
+        reads = 0;
+      page.on("request", (request) => {
+        const path = new URL(request.url()).pathname;
+        if (path.startsWith("/api/") && !path.startsWith("/api/auth/"))
+          protectedRequests.push(path);
+      });
+      await page.route("**/api/auth/status", (route) => {
+        reads++;
+        if (unavailable) {
+          paused.add(route);
+          return;
+        }
+        return route.fulfill({
+          json: { enabled: true, authenticated: false, sessionExpiresAt: null },
+        });
+      });
+      try {
+        await page.clock.install();
+        await page.goto("/projects");
+        const alert = page.getByRole("alert"),
+          retry = page.getByRole("button", { name: copy.retry, exact: true });
+        await expect(alert).toContainText(copy.serviceUnavailable, {
+          timeout: 20_000,
+        });
+        await expect(retry).toBeEnabled();
+        expect(reads).toBe(1);
+        expect(protectedRequests).toEqual([]);
+        const target = await retry.boundingBox();
+        expect(target?.height).toBeGreaterThanOrEqual(44);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth - window.innerWidth,
+          ),
+        ).toBeLessThanOrEqual(1);
+        expect(await page.locator("html").getAttribute("dir")).toBe(
+          locale === "ar" ? "rtl" : "ltr",
+        );
+        if (locale === "en" || locale === "ar")
+          await page.screenshot({
+            path: testInfo.outputPath(`bounded-auth-${locale}-${width}.png`),
+            fullPage: true,
+          });
+        for (const route of paused)
+          await route.abort("timedout").catch(() => undefined);
+        paused.clear();
+        await page.clock.fastForward(16_000);
+        await expect(alert).toContainText(copy.serviceUnavailable);
+        await expect(retry).toBeEnabled();
+        expect(reads).toBe(1);
+        await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+        unavailable = false;
+        await retry.focus();
+        await expect(retry).toBeFocused();
+        await page.keyboard.press("Enter");
+        await expect(
+          page.getByRole("heading", { name: copy.title, exact: true }),
+        ).toBeVisible();
+        await expect(
+          page.getByLabel(copy.accessKey, { exact: true }),
+        ).toBeVisible();
+        expect(
+          (
+            await page
+              .getByRole("button", { name: copy.signIn, exact: true })
+              .boundingBox()
+          )?.height,
+        ).toBeGreaterThanOrEqual(44);
+        expect(reads).toBe(2);
+        expect(protectedRequests).toEqual([]);
+        expect([...harness.unexpected]).toEqual([]);
+      } finally {
+        for (const route of paused)
+          await route.abort("timedout").catch(() => undefined);
+      }
+    });
+  }
+}
 
 test("English login keeps its copy after a 401, clears the key, and opens the workspace only after authentication", async ({
   page,
@@ -37,6 +139,13 @@ test("English login keeps its copy after a 401, clears the key, and opens the wo
     page.getByRole("heading", { name: "Access AgenticOS" }),
   ).toBeVisible();
   const key = page.getByLabel("Access key", { exact: true });
+  await expect(page.locator("form")).toHaveJSProperty("noValidate", true);
+  await key.fill("   ");
+  await expect(
+    page.getByRole("button", { name: "Sign in securely" }),
+  ).toBeDisabled();
+  await key.press("Enter");
+  expect(attempts).toBe(0);
   await key.fill("synthetic-test-key-not-an-operator-secret");
   await page.getByRole("button", { name: "Sign in securely" }).click();
   await expect(page.getByRole("alert")).toHaveText("Invalid access key.");
@@ -119,4 +228,39 @@ test("German session-service errors allow a safe retry", async ({ page }) => {
     page.getByLabel("Zugangsschlüssel", { exact: true }),
   ).toBeVisible();
   expect([...harness.unexpected]).toEqual([]);
+});
+
+test("auth startup automatically recovers on reconnect after initial service failure", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("acos.locale.v1", "en"));
+  await installStudioFixtures(page);
+  const copy = await loadAuthCopy("en");
+  let failed = true,
+    reads = 0;
+  const protectedRequests: string[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith("/api/") && !path.startsWith("/api/auth/"))
+      protectedRequests.push(path);
+  });
+  await page.route("**/api/auth/status", (route) => {
+    reads++;
+    return failed
+      ? route.fulfill({ status: 503, json: { error: "unavailable" } })
+      : route.fulfill({
+          json: { enabled: true, authenticated: false, sessionExpiresAt: null },
+        });
+  });
+  await page.goto("/projects");
+  await expect(page.getByRole("alert")).toContainText(copy.serviceUnavailable);
+  expect(reads).toBe(1);
+  await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+  failed = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect(
+    page.getByRole("heading", { name: copy.title, exact: true }),
+  ).toBeVisible();
+  expect(reads).toBe(2);
+  expect(protectedRequests).toEqual([]);
 });

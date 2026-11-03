@@ -2,6 +2,115 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createConnectionSaveDiagnostics } from "./connection-save-diagnostics";
 
+test("auth transport distinguishes received headers from a finished body without reviving terminal requests", () => {
+  let now = 100;
+  const diagnostics = createConnectionSaveDiagnostics(
+    "http://127.0.0.1:4173",
+    () => now,
+  );
+  const request = {
+    id: 1,
+    url: "http://127.0.0.1:4173/api/auth/status",
+    method: "GET",
+  };
+  diagnostics.requestStarted(request);
+  assert.equal(
+    diagnostics.snapshot().authTransport?.requests[0]?.phase,
+    "waiting_headers",
+  );
+  now = 110;
+  diagnostics.observe({
+    ...request,
+    requestId: request.id,
+    status: 200,
+    headers: {},
+  });
+  let observation = diagnostics.snapshot().authTransport!.requests[0]!;
+  assert.equal(observation.phase, "waiting_body");
+  assert.equal(observation.finishedAtMs, null);
+  assert.equal(observation.status, 200);
+  now = 115;
+  diagnostics.requestFinished(request);
+  diagnostics.requestFailed(request, "net::ERR_ABORTED");
+  observation = diagnostics.snapshot().authTransport!.requests[0]!;
+  assert.equal(observation.phase, "finished");
+  assert.equal(observation.finishedAtMs, 15);
+  assert.equal(diagnostics.snapshot().authTransport?.ignoredEvents, 1);
+  const next = { ...request, id: 2 };
+  diagnostics.requestStarted(next);
+  diagnostics.requestFailed(next, "net::ERR_ABORTED");
+  assert.equal(
+    diagnostics.snapshot().authTransport?.requests[1]?.failureKind,
+    "aborted",
+  );
+});
+
+test("auth lifecycle observations reject unsafe identities and retain no URL, body or arbitrary failure text", () => {
+  const diagnostics = createConnectionSaveDiagnostics("http://127.0.0.1:4173");
+  const request = {
+    id: 1,
+    url: "http://127.0.0.1:4173/api/auth/status?account=secret-query",
+    method: "GET",
+  };
+  for (const patch of [
+    { url: "http://secret:secret@127.0.0.1:4173/api/auth/status" },
+    { url: "https://outside.example/api/auth/status" },
+    { url: "http://127.0.0.1:4173/api/auth/status/secret" },
+    { url: "not a URL" },
+    { method: "POST" },
+    { id: 0 },
+    { id: NaN },
+  ])
+    diagnostics.requestStarted({ ...request, ...patch });
+  assert.equal(diagnostics.snapshot().authTransport, undefined);
+  diagnostics.requestStarted(request);
+  diagnostics.requestStarted(request);
+  diagnostics.observe({
+    ...request,
+    requestId: 1,
+    status: 200,
+    headers: {
+      authorization: "Bearer secret-token",
+      "set-cookie": "secret-cookie",
+    },
+  });
+  diagnostics.requestFailed(
+    request,
+    "Bearer secret-token at C:\\private\\account",
+  );
+  const snapshot = diagnostics.snapshot();
+  assert.equal(snapshot.authTransport?.totalRequests, 1);
+  assert.equal(snapshot.authTransport?.ignoredEvents, 1);
+  assert.equal(snapshot.authTransport?.requests[0]?.failureKind, "other");
+  assert.doesNotMatch(
+    JSON.stringify(snapshot),
+    /secret|account|Bearer|127\.0\.0\.1|outside|authorization|cookie|private/u,
+  );
+});
+
+test("auth transport keeps a bounded detached window and never recreates a dropped request", () => {
+  const diagnostics = createConnectionSaveDiagnostics("http://127.0.0.1:4173");
+  const request = {
+    id: 1,
+    url: "http://127.0.0.1:4173/api/auth/status",
+    method: "GET",
+  };
+  for (let id = 1; id <= 20; id++)
+    diagnostics.requestStarted({ ...request, id });
+  const snapshot = diagnostics.snapshot().authTransport!;
+  assert.equal(snapshot.totalRequests, 20);
+  assert.equal(snapshot.droppedRequests, 4);
+  assert.equal(snapshot.requests.length, 16);
+  assert.equal(snapshot.requests[0]?.id, 5);
+  snapshot.requests[0]!.phase = "finished";
+  snapshot.requests.pop();
+  diagnostics.requestFinished(request);
+  const fresh = diagnostics.snapshot().authTransport!;
+  assert.equal(fresh.requests.length, 16);
+  assert.equal(fresh.requests[0]?.phase, "waiting_headers");
+  assert.equal(fresh.ignoredEvents, 1);
+});
+
 test("connection save diagnostics retain only bounded status and numeric rate headers", () => {
   let now = 100;
   const diagnostics = createConnectionSaveDiagnostics(

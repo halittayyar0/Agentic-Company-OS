@@ -4,6 +4,14 @@ export interface AuthStatus {
   sessionExpiresAt: string | null;
 }
 
+export const authStatusQuery = {
+  queryKey: ["auth-status"],
+  queryFn: ({ signal }: { signal: AbortSignal }) => getAuthStatus(signal),
+  networkMode: "always",
+  refetchOnReconnect: true,
+  retry: false,
+} as const;
+
 export class ControlPlaneError extends Error {
   readonly status: number;
 
@@ -73,8 +81,13 @@ function assertAuthStatus(value: unknown): asserts value is AuthStatus {
   }
 }
 
-export async function getAuthStatus(): Promise<AuthStatus> {
-  const status = await controlPlaneFetch<unknown>("/api/auth/status");
+export async function getAuthStatus(signal?: AbortSignal): Promise<AuthStatus> {
+  const deadline = AbortSignal.timeout(15_000);
+  const readSignal = signal ? AbortSignal.any([signal, deadline]) : deadline;
+  const status = await controlPlaneFetch<unknown>("/api/auth/status", {
+    signal: readSignal,
+  });
+  readSignal.throwIfAborted();
   assertAuthStatus(status);
   return status;
 }

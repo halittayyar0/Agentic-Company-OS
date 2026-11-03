@@ -2,6 +2,14 @@
 
 Agentic Company OS can run locally or as a single-operator private service. The repository ships fail-closed single-operator authentication, reviewed versioned database migrations, liveness/readiness probes, request limits, and a hardened Docker Compose baseline. It does not ship TLS termination, multi-user authorization, or tenant isolation.
 
+If the workspace stays at the initial loading screen because the authentication
+service stops responding, the browser shows its localized recovery panel after
+15 seconds, including when response headers arrived but the body stalled. Restore
+the local server or proxy and choose **Retry**. A browser's offline indicator
+does not prevent retrying a reachable local installation. Recovery reads do not
+resubmit a login, logout, task or approval; protected workspace access still
+requires a valid server authentication result.
+
 > [!WARNING]
 > Public-internet deployment without TLS and the built-in operator token is unsupported. Every authenticated user has full operator-level application authority.
 

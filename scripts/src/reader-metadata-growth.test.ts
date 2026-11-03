@@ -52,9 +52,10 @@ test("metadata growth keeps its own limit even when total transfer has spare roo
   );
 });
 
-function aliasFixture() {
-  const helper =
-    "function Ml(e,t){const r=Ls(e,t),s=E(r);return O(s,r.queryKey)}";
+function aliasFixture(currentIdentifiers = false) {
+  const helper = currentIdentifiers
+    ? "function Bl(e,t){const r=Ks(e,t),s=E(r);return O(s,r.queryKey)}"
+    : "function Ml(e,t){const r=Ls(e,t),s=E(r);return O(s,r.queryKey)}";
   const baselineBody =
     'import{aY as j}from"./index-aaaaaaaa.js";' +
     body +
@@ -68,7 +69,10 @@ function aliasFixture() {
     { fileName: "skills-fixture.js", contents: Buffer.from(current) },
     {
       fileName: "index-bbbbbbbb.js",
-      contents: Buffer.from(helper + "export{Ml as aZ};"),
+      contents: Buffer.from(
+        helper +
+          (currentIdentifiers ? "export{Bl as aZ};" : "export{Ml as aZ};"),
+      ),
     },
   ];
   const manifest = {
@@ -99,61 +103,72 @@ function aliasFixture() {
 }
 
 test("generated export alias changes require a hash-owned unique frozen API helper and keep actual transfer measurements", () => {
-  const f = aliasFixture();
-  const result = measureReaderMetadataGrowth(
-    Buffer.from(f.current),
-    source,
-    f.aliasControl,
-    { assets: f.assets, manifest: f.manifest },
-  );
-  assert.equal(
-    result.raw,
-    Math.max(0, Buffer.byteLength(f.current) - f.aliasControl.raw),
-  );
-  assert.equal(
-    result.gzip,
-    Math.max(0, gzipSync(f.current, { level: 9 }).length - f.aliasControl.gzip),
-  );
+  for (const identifiers of [false, true]) {
+    const f = aliasFixture(identifiers);
+    const result = measureReaderMetadataGrowth(
+      Buffer.from(f.current),
+      source,
+      f.aliasControl,
+      { assets: f.assets, manifest: f.manifest },
+    );
+    assert.equal(
+      result.raw,
+      Math.max(0, Buffer.byteLength(f.current) - f.aliasControl.raw),
+    );
+    assert.equal(
+      result.gzip,
+      Math.max(
+        0,
+        gzipSync(f.current, { level: 9 }).length - f.aliasControl.gzip,
+      ),
+    );
+  }
 });
 
 test("export alias normalization cannot hide a different target, helper body, local binding, runtime expression or changed manifest bytes", () => {
-  for (const tamper of [
-    "target",
-    "body",
-    "local",
-    "runtime",
-    "hash",
-  ] as const) {
-    const f = aliasFixture();
-    if (tamper === "target")
-      f.update(
-        1,
-        f.assets[1].contents.toString().replace("Ml as aZ", "Other as aZ"),
+  for (const identifiers of [false, true]) {
+    for (const tamper of [
+      "target",
+      "body",
+      "local",
+      "runtime",
+      "hash",
+    ] as const) {
+      const f = aliasFixture(identifiers);
+      if (tamper === "target")
+        f.update(
+          1,
+          f.assets[1].contents
+            .toString()
+            .replace(identifiers ? "Bl as aZ" : "Ml as aZ", "Other as aZ"),
+        );
+      if (tamper === "body")
+        f.update(
+          1,
+          f.assets[1].contents
+            .toString()
+            .replace("return O(s,r.queryKey)", "return O(s,[] )"),
+        );
+      if (tamper === "local")
+        f.update(
+          0,
+          f.current
+            .replaceAll("as j", "as k")
+            .replace("return j(", "return k("),
+        );
+      if (tamper === "runtime")
+        f.update(0, f.current.replace("return j(", "return other("));
+      if (tamper === "hash") f.assets[1].contents = Buffer.from("changed");
+      assert.throws(
+        () =>
+          measureReaderMetadataGrowth(
+            f.assets[0].contents,
+            source,
+            f.aliasControl,
+            { assets: f.assets, manifest: f.manifest },
+          ),
+        tamper,
       );
-    if (tamper === "body")
-      f.update(
-        1,
-        f.assets[1].contents
-          .toString()
-          .replace("return O(s,r.queryKey)", "return O(s,[] )"),
-      );
-    if (tamper === "local")
-      f.update(
-        0,
-        f.current.replaceAll("as j", "as k").replace("return j(", "return k("),
-      );
-    if (tamper === "runtime")
-      f.update(0, f.current.replace("return j(", "return other("));
-    if (tamper === "hash") f.assets[1].contents = Buffer.from("changed");
-    assert.throws(
-      () =>
-        measureReaderMetadataGrowth(
-          f.assets[0].contents,
-          source,
-          f.aliasControl,
-          { assets: f.assets, manifest: f.manifest },
-        ),
-      tamper,
-    );
+    }
   }
 });

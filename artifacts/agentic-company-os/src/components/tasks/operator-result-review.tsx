@@ -9,7 +9,7 @@ import { useLocale } from "../i18n/locale-provider";
 import { LanguagePackStatus } from "../i18n/language-pack-status";
 import { useOpsControl } from "../ops/ops-control-provider";
 import { Button } from "../ui/button";
-import { getAuthStatus } from "../../lib/auth";
+import { authStatusQuery } from "../../lib/auth";
 import { loadTaskResultReviewCopy } from "../../lib/task-result-review-copy";
 import { readTaskResultReview } from "../../lib/task-result-review-input";
 import { useClock } from "../../hooks/use-clock";
@@ -46,9 +46,7 @@ export default function OperatorResultReview({
     retry: false,
   });
   const auth = useQuery({
-    queryKey: ["auth-status"],
-    queryFn: getAuthStatus,
-    retry: false,
+    ...authStatusQuery,
     staleTime: 0,
     refetchOnWindowFocus: "always",
   });

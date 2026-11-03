@@ -216,10 +216,10 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
     sourceStages++;
     assert.equal(
       stage.source.tests,
-      3155,
-      "reviewed census includes offline phone resumption, private checker guards, native usage phases and required worker health and bounded copy regressions",
+      3167,
+      "reviewed census includes offline phone resumption, private checker guards, native usage phases, required worker health and bounded auth transport and read-budget regressions",
     );
-    assert.equal(stage.source.passed, 3155 - stage.source.skippedCases.length);
+    assert.equal(stage.source.passed, 3167 - stage.source.skippedCases.length);
   }
   assert.equal(sourceStages, 4);
   assert.equal(
@@ -229,7 +229,7 @@ test("Linux guide acceptance shares the preparation runner without relaxing rele
         "utf8",
       ),
     ).linux.ui.tests,
-    1502,
+    1517,
   );
 });
 
