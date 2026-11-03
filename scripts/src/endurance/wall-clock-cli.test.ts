@@ -395,7 +395,9 @@ test("wall-clock writer always emits JSON, JSONL, and SHA evidence and forwards 
               {
                 index: 0,
                 capturedAt: "2026-09-01T00:00:00.000Z",
-                runtimeLabel: "Canlı",
+                runtimeLabel: "Canlı akış bağlanıyor",
+                runtimeState: "live",
+                transportState: "connecting",
                 incidentVisible: false,
                 reconnectCursorAdvanced: false,
                 pageErrors: [],
@@ -552,6 +554,10 @@ test("wall-clock writer always emits JSON, JSONL, and SHA evidence and forwards 
       ],
     );
     assert.equal(browserManifest.samples.length, 2);
+    assert.equal(browserManifest.samples[0].runtimeState, "live");
+    assert.equal(browserManifest.samples[0].transportState, "connecting");
+    assert.equal("runtimeState" in browserManifest.samples[1], false);
+    assert.equal("transportState" in browserManifest.samples[1], false);
     assert.deepEqual(
       browserManifest.samples.map((item: { index: number }) => item.index),
       [0, 1],

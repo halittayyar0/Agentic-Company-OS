@@ -4,6 +4,8 @@ import path from "node:path";
 
 export interface BrowserSemanticSample {
   runtimeLabel: string;
+  runtimeState?: string;
+  transportState?: string;
   incidentVisible: boolean;
   reconnectCursorAdvanced: boolean;
   pageErrors: string[];
@@ -396,6 +398,12 @@ export async function runBrowserMonitor(
           index: sampleIndex,
           capturedAt: options.now().toISOString(),
           runtimeLabel: boundedText(sample.runtimeLabel),
+          ...(sample.runtimeState !== undefined
+            ? { runtimeState: boundedText(sample.runtimeState) }
+            : {}),
+          ...(sample.transportState !== undefined
+            ? { transportState: boundedText(sample.transportState) }
+            : {}),
           incidentVisible: sample.incidentVisible,
           reconnectCursorAdvanced: sample.reconnectCursorAdvanced,
           pageErrors: sample.pageErrors.map((error) => boundedText(error)),
@@ -504,6 +512,9 @@ export function operationsNavigationWaitUntil(): "domcontentloaded" {
 interface PlaywrightLocatorAdapter {
   first(): PlaywrightLocatorAdapter;
   getAttribute(name: string): Promise<string | null>;
+  evaluate<T>(
+    read: (element: { getAttribute(name: string): string | null }) => T,
+  ): Promise<T>;
   innerText(): Promise<string>;
   textContent(): Promise<string | null>;
   waitFor(): Promise<void>;
@@ -816,16 +827,21 @@ export async function createPlaywrightOperationsSession(
     },
     sample: async () => {
       const badge = page.locator('[role="status"][data-runtime]').first();
-      const runtimeLabel =
-        (await badge.getAttribute("aria-label")) ?? "unknown";
-      const transport = await badge.getAttribute("data-transport");
+      // A reconnect can render between separate Playwright attribute reads.
+      // Read the visible claim and its supporting state in the same DOM turn.
+      const { runtimeLabel, runtimeState, transportState } =
+        await badge.evaluate((element) => ({
+          runtimeLabel: element.getAttribute("aria-label") ?? "unknown",
+          runtimeState: element.getAttribute("data-runtime") ?? "unknown",
+          transportState: element.getAttribute("data-transport") ?? "unknown",
+        }));
       const cursor = await readVisibleCursor();
-      if (transport === "disconnected" && cursor !== null) {
+      if (transportState === "disconnected" && cursor !== null) {
         disconnectedCursor = cursor;
       }
       if (
         disconnectedCursor !== null &&
-        transport === "live" &&
+        transportState === "live" &&
         cursor !== null &&
         cursor > disconnectedCursor
       ) {
@@ -837,11 +853,15 @@ export async function createPlaywrightOperationsSession(
       const capturedErrors = pageErrors.splice(0, pageErrors.length);
       return {
         runtimeLabel,
+        runtimeState,
+        transportState,
         incidentVisible: operationsTextHasIncident(bodyText),
         reconnectCursorAdvanced: cursorAdvanced,
         pageErrors: capturedErrors,
-        ...(runtimeLabel.toLocaleLowerCase("tr-TR").includes("canlı") &&
-        transport !== "live"
+        // This session explicitly fixes the UI locale to Turkish. "Canlı akış
+        // bağlanıyor" is connecting copy, not the complete live-worker label.
+        ...(/^(?:Canlı|Canlı · \d+(?:\.\d{3})* worker)$/u.test(runtimeLabel) &&
+        transportState !== "live"
           ? {
               mismatch:
                 "Runtime label claimed live while transport was not live",

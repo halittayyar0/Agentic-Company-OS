@@ -148,6 +148,8 @@ test("monitor caps mismatch screenshots and records bounded semantic failures", 
     const fake: BrowserMonitorSession = {
       sample: async () => ({
         runtimeLabel: "Canlı",
+        runtimeState: "r".repeat(2_000),
+        transportState: "t".repeat(2_000),
         incidentVisible: false,
         reconnectCursorAdvanced: false,
         pageErrors: ["x".repeat(2_000)],
@@ -171,6 +173,13 @@ test("monitor caps mismatch screenshots and records bounded semantic failures", 
     assert.equal(
       result.errors.every((item) => item.length <= 500),
       true,
+    );
+    assert.ok(
+      result.samples.every(
+        (sample) =>
+          Buffer.byteLength(sample.runtimeState!) === 500 &&
+          Buffer.byteLength(sample.transportState!) === 500,
+      ),
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -559,17 +568,32 @@ test("Playwright session gracefully closes context, browser, then server", async
   const events = new Map<string, (value: never) => void>();
   let browserClosed = false;
   let cursor = "9007199254740993";
-  let transport = "disconnected";
+  let transport = "connecting";
+  let runtimeLabel = "Canlı akış bağlanıyor";
+  let badgeSnapshots = 0;
+  let separateBadgeReads = 0;
+  const attribute = (name: string) =>
+    name === "data-operations-cursor"
+      ? cursor
+      : name === "data-transport"
+        ? transport
+        : name === "data-runtime"
+          ? "live"
+          : runtimeLabel;
   const locator = {
     first() {
       return this;
     },
-    getAttribute: async (name: string) =>
-      name === "data-operations-cursor"
-        ? cursor
-        : name === "data-transport"
-          ? transport
-          : "Canlı",
+    getAttribute: async (name: string) => {
+      if (name !== "data-operations-cursor") separateBadgeReads += 1;
+      return attribute(name);
+    },
+    evaluate: async <T>(
+      read: (element: { getAttribute(name: string): string | null }) => T,
+    ) => {
+      badgeSnapshots += 1;
+      return read({ getAttribute: attribute });
+    },
     innerText: async () => "",
     textContent: async () => null,
     waitFor: async () => undefined,
@@ -649,6 +673,26 @@ test("Playwright session gracefully closes context, browser, then server", async
       }),
     },
   );
+  // Original main13204872338 falsely classified this legitimate connecting
+  // label as live merely because it contains the Turkish word "Canlı".
+  const connecting = await session.sample();
+  assert.equal(connecting.mismatch, undefined);
+  assert.equal(connecting.runtimeState, "live");
+  assert.equal(connecting.transportState, "connecting");
+  assert.equal(connecting.reconnectCursorAdvanced, false);
+  assert.equal(badgeSnapshots, 1, "Read one coherent badge render");
+  assert.equal(separateBadgeReads, 0, "Never combine separate badge renders");
+  for (const state of ["connecting", "disconnected", "stale", "disabled"]) {
+    transport = state;
+    runtimeLabel = "Canlı · 2 worker";
+    assert.equal(
+      (await session.sample()).mismatch,
+      "Runtime label claimed live while transport was not live",
+      `A real live-worker label must still fail with ${state} transport`,
+    );
+  }
+  runtimeLabel = "Canlı";
+  transport = "disconnected";
   assert.equal((await session.sample()).reconnectCursorAdvanced, false);
   transport = "live";
   assert.equal((await session.sample()).reconnectCursorAdvanced, false);
