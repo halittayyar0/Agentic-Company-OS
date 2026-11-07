@@ -143,8 +143,6 @@ export async function runCodingContainerSmoke(image: string) {
             ...process.env,
             OPENAI_API_KEY: "",
             OPENROUTER_API_KEY: "",
-            AI_INTEGRATIONS_OPENAI_API_KEY: "",
-            AI_INTEGRATIONS_OPENAI_BASE_URL: "",
             OLLAMA_BASE_URL: "",
           },
         },

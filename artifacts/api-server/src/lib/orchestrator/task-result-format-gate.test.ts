@@ -1,3 +1,4 @@
+import { redirectDirectOpenAIForTest } from "../testing/direct-openai-fixture";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
@@ -25,7 +26,7 @@ const peer = http.createServer(async (req, res) => {
       id: randomUUID(),
       object: "chat.completion",
       created: 1,
-      model: "gpt-5.6-sol",
+      model: "openai:gpt-5.6-sol",
       choices: [
         {
           index: 0,
@@ -46,8 +47,8 @@ const peer = http.createServer(async (req, res) => {
 await new Promise<void>((resolve) => peer.listen(0, "127.0.0.1", resolve));
 const address = peer.address();
 assert.ok(address && typeof address !== "string");
-process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "local-result-format-test-key";
-process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = `http://127.0.0.1:${address.port}/v1`;
+process.env.OPENAI_API_KEY = "local-result-format-test-key";
+test.after(redirectDirectOpenAIForTest(address.port));
 const {
   db,
   dbReady,
@@ -68,8 +69,8 @@ const { toolMessage } = await import("./tool-localization");
 const config = readRuntimeOperationsConfig({ RUNTIME_ROLE: "worker" });
 const plan = () => {
   const primary = {
-    provider: "replit",
-    modelId: "gpt-5.6-sol",
+    provider: "openai",
+    modelId: "openai:gpt-5.6-sol",
     usedFallback: false,
     source: "agent_pin" as const,
     tier: "economy" as const,
@@ -102,7 +103,7 @@ async function fixture(t: TestContext, continuous = false) {
       role: "Test",
       systemPrompt: "Owned fixture only",
       modelMode: "manual",
-      modelId: "gpt-5.6-sol",
+      modelId: "openai:gpt-5.6-sol",
       status: "working",
       runLeaseOwner: leaseOwner,
       runLeaseExpiresAt: expires,
@@ -156,7 +157,7 @@ function response(
     await params.beforeRequest?.();
     const index = ++calls.count;
     return {
-      provider: "replit",
+      provider: "openai",
       completion: {
         id: randomUUID(),
         object: "chat.completion",

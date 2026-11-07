@@ -19,8 +19,6 @@ import {
 } from "./model-select";
 
 const original = {
-  key: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseUrl: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   openRouterKey: process.env.OPENROUTER_API_KEY,
   openAIKey: process.env.OPENAI_API_KEY,
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL,
@@ -96,8 +94,6 @@ test("an installation with only an eligible ChatGPT account can select its first
 
 test.beforeEach(() => {
   configureChatGPTPlan(null);
-  delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
   delete process.env.OPENROUTER_API_KEY;
   delete process.env.OPENAI_API_KEY;
   delete process.env.OLLAMA_BASE_URL;
@@ -108,12 +104,6 @@ test.beforeEach(() => {
 
 test.after(() => {
   configureChatGPTPlan(null);
-  if (original.key === undefined)
-    delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  else process.env.AI_INTEGRATIONS_OPENAI_API_KEY = original.key;
-  if (original.baseUrl === undefined)
-    delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  else process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = original.baseUrl;
   if (original.openRouterKey === undefined)
     delete process.env.OPENROUTER_API_KEY;
   else process.env.OPENROUTER_API_KEY = original.openRouterKey;
@@ -126,17 +116,50 @@ test.after(() => {
   configureOllama({ baseUrl: null });
 });
 
-test("auto routing uses the Replit fleet when it is configured", () => {
+test("removed provider credentials cannot activate a route or redirect a saved model pin", (t) => {
+  const obsoleteKeys = [
+    "AI_INTEGRATIONS_OPENAI_API_KEY",
+    "AI_INTEGRATIONS_OPENAI_BASE_URL",
+  ] as const;
+  const previous = obsoleteKeys.map((key) => process.env[key]);
+  t.after(() =>
+    obsoleteKeys.forEach((key, index) => {
+      const value = previous[index];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }),
+  );
   process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
   process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
-  configureOpenRouter({ apiKey: null });
+  configureOpenRouter({ apiKey: "test-openrouter-key" });
   const selected = selectModel({
     purpose: "chat",
     agentDepth: 1,
     agent: { modelMode: "auto", modelId: null },
   });
-  assert.equal(selected.provider, "replit");
-  assert.equal(selected.modelId, "gpt-5.6-terra");
+  assert.equal(selected.provider, "openrouter");
+  assert.equal(resolveModelProvider("gpt-5.6-terra"), null);
+  assert.deepEqual(
+    getFullModelCatalog()
+      .providers.map((provider) => provider.id)
+      .sort(),
+    ["chatgpt", "ollama", "openai", "openrouter"],
+  );
+  const agent = { modelMode: "manual", modelId: "gpt-5.6-terra" };
+  assert.throws(
+    () => selectModel({ purpose: "chat", agentDepth: 1, agent }),
+    /choose another model/i,
+  );
+  assert.throws(
+    () =>
+      selectModelPlan({
+        purpose: "execution_step",
+        agentDepth: 1,
+        agent: { modelMode: "auto", modelId: null },
+        taskExecutionModelId: "gpt-5.6-terra",
+      }),
+    /choose another model/i,
+  );
 });
 
 test("auto routing works on an OpenRouter-only self-host", () => {
@@ -222,13 +245,12 @@ test("MiniMax M3 Free is a valid manual OpenRouter selection", () => {
 });
 
 test("a persisted task pin wins over later agent defaults without paid fallback", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: "test-openrouter-key" });
   const plan = selectModelPlan({
     purpose: "execution_step",
     agentDepth: 0,
-    agent: { modelMode: "manual", modelId: "gpt-5.6-sol" },
+    agent: { modelMode: "manual", modelId: "openai:gpt-5.6-sol" },
     taskExecutionModelId: "minimax/minimax-m3:free",
     maxRoutes: 4,
   });
@@ -238,33 +260,33 @@ test("a persisted task pin wins over later agent defaults without paid fallback"
   assert.equal(plan.freeOnly, true);
   assert.ok(plan.routes.length >= 1 && plan.routes.length <= 4);
   assert.ok(plan.routes.every((route) => route.modelId.endsWith(":free")));
-  assert.ok(!plan.routes.some((route) => route.modelId === "gpt-5.6-sol"));
+  assert.ok(
+    !plan.routes.some((route) => route.modelId === "openai:gpt-5.6-sol"),
+  );
 });
 
 test("an explicit automatic override is not mislabeled as a coincident task pin", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   const plan = selectModelPlan({
     purpose: "execution_step",
     agentDepth: 2,
-    agent: { modelMode: "manual", modelId: "gpt-5.6-luna" },
-    taskExecutionModelId: "gpt-5.6-luna",
+    agent: { modelMode: "manual", modelId: "openai:gpt-5.6-luna" },
+    taskExecutionModelId: "openai:gpt-5.6-luna",
     override: { modelMode: "auto" },
     maxRoutes: 1,
   });
 
-  assert.equal(plan.primary.modelId, "gpt-5.6-luna");
+  assert.equal(plan.primary.modelId, "openai:gpt-5.6-luna");
   assert.equal(plan.primary.source, "automatic");
 });
 
 test("an unavailable free task pin fails in place instead of drifting to paid inference", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: null });
   const plan = selectModelPlan({
     purpose: "execution_step",
     agentDepth: 0,
-    agent: { modelMode: "manual", modelId: "gpt-5.6-sol" },
+    agent: { modelMode: "manual", modelId: "openai:gpt-5.6-sol" },
     taskExecutionModelId: "minimax/minimax-m3:free",
     maxRoutes: 4,
   });
@@ -279,8 +301,7 @@ test("an unavailable free task pin fails in place instead of drifting to paid in
 });
 
 test("automatic route plans are bounded and never escalate model tier", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: "test-openrouter-key" });
   const plan = selectModelPlan({
     purpose: "execution_step",
@@ -290,7 +311,7 @@ test("automatic route plans are bounded and never escalate model tier", () => {
     maxRoutes: 3,
   });
 
-  assert.equal(plan.primary.modelId, "gpt-5.6-luna");
+  assert.equal(plan.primary.modelId, "anthropic/claude-haiku-4.5");
   assert.equal(plan.routes[0], plan.primary);
   assert.ok(plan.routes.length <= 3);
   assert.ok(plan.routes.every((route) => route.tier === "economy"));
@@ -301,8 +322,7 @@ test("automatic route plans are bounded and never escalate model tier", () => {
 });
 
 test("bounded automatic plans include a genuinely independent provider", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: "test-openrouter-key" });
   const plan = selectModelPlan({
     purpose: "execution_step",
@@ -315,7 +335,7 @@ test("bounded automatic plans include a genuinely independent provider", () => {
   });
 
   assert.equal(plan.primary.provider, "openrouter");
-  assert.ok(plan.routes.some((route) => route.provider === "replit"));
+  assert.ok(plan.routes.some((route) => route.provider === "openai"));
   assert.ok(plan.routes.every((route) => route.tier === "economy"));
 });
 
@@ -410,8 +430,7 @@ test("live catalog keeps free/thinking/batch variants and coalesces refreshes", 
       false,
     );
 
-    process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+    process.env.OPENAI_API_KEY = "test-key";
     const freeNoToolsSelection = selectModel({
       purpose: "execution_step",
       agentDepth: 0,
@@ -432,9 +451,8 @@ test("live catalog keeps free/thinking/batch variants and coalesces refreshes", 
     });
     assert.notEqual(noToolsSelection.modelId, "minimax/minimax-m3:batch");
     // A paid, tool-incompatible pin may fall back to the configured automatic
-    // fleet. The stricter fail-in-place rule applies only to explicit :free
-    // spend boundaries.
-    assert.equal(noToolsSelection.provider, "replit");
+    // route. Explicit free pins keep their spend boundary.
+    assert.equal(noToolsSelection.provider, "openrouter");
     assert.equal(noToolsSelection.usedFallback, true);
 
     const liveOnlySelection = selectModel({
@@ -477,21 +495,19 @@ test("live catalog rejects spoofed ids and strips invisible display controls", (
 });
 
 test("unavailable manual provider falls back to the configured provider", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: null });
   const selected = selectModel({
     purpose: "chat",
     agentDepth: 1,
     agent: { modelMode: "manual", modelId: "anthropic/claude-sonnet-4.5" },
   });
-  assert.equal(selected.provider, "replit");
+  assert.equal(selected.provider, "openai");
   assert.equal(selected.usedFallback, true);
 });
 
 test("an unavailable manual free model never drifts to a paid provider", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: null });
 
   const selected = selectModel({

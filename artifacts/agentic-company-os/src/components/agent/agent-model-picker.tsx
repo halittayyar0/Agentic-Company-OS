@@ -48,7 +48,7 @@ export function AgentModelPicker({
     query: { queryKey: getGetModelCatalogQueryKey(), staleTime: 60_000 },
   });
   const providerLabel = (id: string, fallback: string) =>
-    id === "replit" ? copy.builtin : (PROVIDER_META[id]?.label ?? fallback);
+    PROVIDER_META[id]?.label ?? fallback;
   const locationCopy = useOllamaLocationCopy(
     locale,
     Boolean(

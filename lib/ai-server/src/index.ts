@@ -1,4 +1,3 @@
-export { openai } from "./client";
 export {
   batchProcess,
   batchProcessWithSSE,

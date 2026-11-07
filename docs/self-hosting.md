@@ -250,7 +250,7 @@ In split API/worker mode, the Settings UI persists an OpenRouter key as an authe
 
 Set `OPENAI_API_KEY` in the API process environment or a secret manager. The endpoint is code-pinned to `https://api.openai.com/v1`; the browser cannot change the base URL, headers, system prompt, or tool choice sent upstream. The server uses Bearer authentication and writes only provider/model/outcome plus OpenAI's `x-request-id` and a generated `X-Client-Request-Id` to the structured log—never the key, prompt, or response. This follows the [official OpenAI API authentication and request-ID guidance](https://developers.openai.com/api/reference/overview).
 
-Direct model IDs are publically namespaced as `openai:<upstream-id>` so they cannot collide with the legacy Replit fleet. The current first-party GPT-5.6 trio is built in. A server administrator can add reviewed aliases with comma-separated `OPENAI_MODEL_IDS`; this is not a browser setting.
+Direct model IDs are publicly namespaced as `openai:<upstream-id>`. The current first-party GPT-5.6 trio is built in. A server administrator can add reviewed aliases with comma-separated `OPENAI_MODEL_IDS`; this is not a browser setting.
 
 The Settings UI uses the same role-dependent storage as OpenRouter: encrypted PostgreSQL state in split mode, or the plaintext local compatibility file in combined development. Prefer `OPENAI_API_KEY`, `OPENAI_API_KEY_FILE`, or a platform KMS/secret manager on a server.
 
@@ -277,15 +277,6 @@ The released v0.3.13 package uses the environment configuration below.
 Set `OLLAMA_BASE_URL` to an Ollama endpoint such as `http://127.0.0.1:11434/v1`. Docker Compose can reach a host Ollama instance through `http://host.docker.internal:11434/v1`. The endpoint is server-side only and must use HTTP(S), contain no credentials/query/hash, use an empty or `/v1` path, and target exact localhost, `host.docker.internal`, an RFC1918/loopback IPv4 literal, or an IPv6 ULA/loopback literal. Public hosts, link-local/cloud-metadata ranges, redirects, and arbitrary DNS names are rejected.
 
 Catalog discovery reads Ollama's [local model list](https://docs.ollama.com/api/tags) and [model capabilities](https://docs.ollama.com/api-reference/show-model-details). A model is selectable for agent work only when Ollama explicitly reports `tools`; an unknown capability fails closed. Inference uses Ollama's documented [OpenAI-compatible chat endpoint](https://docs.ollama.com/api/openai-compatibility). Local model IDs are namespaced as `ollama:<model>`, and an explicit local pin never leaves Ollama during fallback.
-
-### Replit AI integration
-
-Set both:
-
-- `AI_INTEGRATIONS_OPENAI_API_KEY`
-- `AI_INTEGRATIONS_OPENAI_BASE_URL`
-
-The base URL is operator-controlled and receives the configured authorization credential. Only use an endpoint you trust.
 
 Configure provider-side spend limits and alerts. The application has the per-task circuit breakers described below, but no global or provider-account billing cutoff.
 
@@ -331,7 +322,7 @@ MAX_BROWSER_SESSIONS=4
 BROWSER_SESSION_IDLE_MS=900000
 ```
 
-Add the operator token, database URL, runtime-control key, and provider credentials through the process secret mechanism. The packaged start commands support `OPERATOR_AUTH_TOKEN_FILE`, `DATABASE_URL_FILE`, `RUNTIME_CONTROL_KEY_FILE`, `OPENROUTER_API_KEY_FILE`, `OPENAI_API_KEY_FILE`, and `AI_INTEGRATIONS_OPENAI_API_KEY_FILE`; a direct value and its `_FILE` variant cannot both be set. Generate `RUNTIME_CONTROL_KEY` independently from the operator bearer token. It encrypts and authenticates internal browser/provider-control payloads and must never reach the browser. For trusted local use the start commands can load a root `.env`; process variables take precedence. Never commit `.env` or `.secrets`.
+Add the operator token, database URL, runtime-control key, and provider credentials through the process secret mechanism. The packaged start commands support `OPERATOR_AUTH_TOKEN_FILE`, `DATABASE_URL_FILE`, `RUNTIME_CONTROL_KEY_FILE`, `OPENROUTER_API_KEY_FILE` and `OPENAI_API_KEY_FILE`; a direct value and its `_FILE` variant cannot both be set. Generate `RUNTIME_CONTROL_KEY` independently from the operator bearer token. It encrypts and authenticates internal browser/provider-control payloads and must never reach the browser. For trusted local use the start commands can load a root `.env`; process variables take precedence. Never commit `.env` or `.secrets`.
 
 Use `CORS_ALLOWED_ORIGINS` only for exact intended browser origins. The public hostname must be in `TRUSTED_HOSTS`. Host/origin checks remain defense in depth around authentication, not replacements for it.
 
@@ -743,7 +734,7 @@ Add the public request hostname (hostname only, comma-separated) to `TRUSTED_HOS
 
 ### UI loads but API calls fail
 
-For non-Replit local development, the UI defaults `LOCAL_API_TARGET` to `http://127.0.0.1:5000`; override it only if the API uses another local address. For a static deployment, verify that the reverse proxy forwards `/api/*` to the API without removing `/api`.
+For local development, the UI defaults `LOCAL_API_TARGET` to `http://127.0.0.1:5000`; override it only if the API uses another local address. For a static deployment, verify that the reverse proxy forwards `/api/*` to the API without removing `/api`.
 
 ### State disappears after restart
 

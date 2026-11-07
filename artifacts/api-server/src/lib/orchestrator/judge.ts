@@ -6,6 +6,7 @@ import {
 import {
   createChatCompletion,
   completionTokenControl,
+  isRetiredUnprefixedModelId,
 } from "@workspace/ai-server";
 import { db, activityEventsTable, type Agent } from "@workspace/db";
 import { logger } from "../logger";
@@ -130,7 +131,9 @@ export function selectJudgeModelPlan(params: {
   // independent automatic judge instead of duplicating a premium call.
   const requestedModelId = params.taskExecutionModelId?.trim() ?? "";
   const boundedTaskExecutionModelId =
-    requestedModelId.startsWith("ollama:") || /:free$/iu.test(requestedModelId)
+    requestedModelId.startsWith("ollama:") ||
+    /:free$/iu.test(requestedModelId) ||
+    isRetiredUnprefixedModelId(requestedModelId)
       ? requestedModelId
       : null;
   return selectModelPlan({

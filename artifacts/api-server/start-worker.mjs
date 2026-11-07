@@ -7,7 +7,6 @@ loadSecretEnvironment([
   "RUNTIME_CONTROL_KEY",
   "OPENROUTER_API_KEY",
   "OPENAI_API_KEY",
-  "AI_INTEGRATIONS_OPENAI_API_KEY",
 ]);
 
 await import("./dist/worker-entry.mjs");

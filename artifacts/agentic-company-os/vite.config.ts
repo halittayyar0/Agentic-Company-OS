@@ -5,8 +5,6 @@ import { defineConfig, type Plugin } from "vite";
 import { minify } from "terser";
 import { bundleBudgetManifest } from "./bundle-budget-manifest";
 
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-
 const rawPort = process.env.PORT ?? "5173";
 
 const port = Number(rawPort);
@@ -15,17 +13,14 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// Replit injects these values at runtime. Sensible defaults keep local builds,
-// GitHub Actions, and first-time contributor setup deterministic.
+// Use the same defaults for local builds and GitHub Actions.
 const basePath = process.env.BASE_PATH ?? "/";
 const devHost = process.env.DEV_HOST ?? "127.0.0.1";
 const previewHost = process.env.PREVIEW_HOST ?? "127.0.0.1";
 const allowedHosts = process.env.DEV_ALLOWED_HOSTS?.split(",")
   .map((value) => value.trim())
   .filter(Boolean);
-const localApiTarget =
-  process.env.LOCAL_API_TARGET ??
-  (process.env.REPL_ID === undefined ? "http://127.0.0.1:5000" : undefined);
+const localApiTarget = process.env.LOCAL_API_TARGET ?? "http://127.0.0.1:5000";
 
 /** Compress shared dependencies after the normal browser-target transform.
  * Application chunks retain the compiler used by the source ownership checks. */
@@ -70,20 +65,6 @@ export default defineConfig({
     ),
     react(),
     tailwindcss(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
   ],
   resolve: {
     alias: {
@@ -199,9 +180,7 @@ export default defineConfig({
     fs: {
       strict: true,
     },
-    // Optional local-dev proxy: when LOCAL_API_TARGET is set (e.g.
-    // http://localhost:5000) every /api request is forwarded to the locally
-    // running api-server. Unused on Replit, where routing is external.
+    // Forward API requests to the self-hosted server.
     proxy: localApiTarget
       ? {
           "/api": {

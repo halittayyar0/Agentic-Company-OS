@@ -20,10 +20,8 @@ test.after(() => closeDatabase());
 for (const purpose of ["completion", "approval"] as const)
   test(`unaccounted ${purpose} review cannot become a warning or dispatch a fallback`, async (t) => {
     await dbReady;
-    const key = process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-      url = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-    process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "owned-fixture-key";
-    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+    const key = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = "owned-fixture-key";
     const [agent] = await db
       .insert(agentsTable)
       .values({
@@ -33,10 +31,8 @@ for (const purpose of ["completion", "approval"] as const)
       })
       .returning();
     t.after(async () => {
-      if (key === undefined) delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-      else process.env.AI_INTEGRATIONS_OPENAI_API_KEY = key;
-      if (url === undefined) delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-      else process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = url;
+      if (key === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = key;
       await db
         .delete(usageEventsTable)
         .where(eq(usageEventsTable.agentId, agent.id));
@@ -102,11 +98,8 @@ for (const purpose of ["completion", "approval"] as const)
   for (const boundary of ["reserve", "dispatch"] as const)
     test(`taskless ${purpose} review preserves an emergency denial at ${boundary} without caller hooks or a fallback review`, async (t) => {
       await dbReady;
-      const key = process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-        url = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-      process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "owned-fixture-key";
-      process.env.AI_INTEGRATIONS_OPENAI_BASE_URL =
-        "https://example.invalid/v1";
+      const key = process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = "owned-fixture-key";
       const [agent] = await db
         .insert(agentsTable)
         .values({
@@ -124,12 +117,8 @@ for (const purpose of ["completion", "approval"] as const)
           })
           .where(eq(runtimeControlsTable.id, 1));
       t.after(async () => {
-        if (key === undefined)
-          delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-        else process.env.AI_INTEGRATIONS_OPENAI_API_KEY = key;
-        if (url === undefined)
-          delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-        else process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = url;
+        if (key === undefined) delete process.env.OPENAI_API_KEY;
+        else process.env.OPENAI_API_KEY = key;
         await db
           .update(runtimeControlsTable)
           .set({ emergencyStopEnabled: false, emergencyStopReason: null })

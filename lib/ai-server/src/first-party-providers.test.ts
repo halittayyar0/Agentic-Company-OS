@@ -46,7 +46,7 @@ test("provider request guard fails closed before any network call", async () => 
   }
 });
 
-test("direct OpenAI catalog is namespaced away from the Replit fleet", () => {
+test("direct OpenAI catalog is uses only explicit OpenAI model IDs", () => {
   assert.equal(OPENAI_BASE_URL, "https://api.openai.com/v1");
   const catalog = getDirectOpenAIModelCatalog();
   assert.ok(catalog.length >= 3);

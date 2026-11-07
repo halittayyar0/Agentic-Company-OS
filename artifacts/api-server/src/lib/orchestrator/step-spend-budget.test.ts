@@ -19,14 +19,12 @@ async function probeBudget(t: TestContext, shared: boolean) {
   const names = [
     "MAX_TASK_TOKENS",
     "MAX_TASK_FAMILY_TOKENS",
-    "AI_INTEGRATIONS_OPENAI_API_KEY",
-    "AI_INTEGRATIONS_OPENAI_BASE_URL",
+    "OPENAI_API_KEY",
   ] as const;
   const before = names.map((n) => process.env[n]);
   process.env.MAX_TASK_TOKENS = shared ? "100000" : "2";
   process.env.MAX_TASK_FAMILY_TOKENS = shared ? "2" : "250000";
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test";
   t.after(() =>
     names.forEach((n, i) => {
       if (before[i] === undefined) delete process.env[n];
@@ -121,7 +119,7 @@ async function probeBudget(t: TestContext, shared: boolean) {
         await params.beforeRequest?.();
         calls++;
         return {
-          provider: "replit",
+          provider: "openai",
           completion: {
             id: "budget",
             object: "chat.completion",

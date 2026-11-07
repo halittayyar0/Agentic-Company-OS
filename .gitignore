@@ -48,7 +48,7 @@ Thumbs.db
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
-# Replit
+# Local development caches
 .cache/
 .local/
 
@@ -62,7 +62,7 @@ data/
 .secrets/
 .tmp/
 
-# Local Codex/Replit conversation state may contain private context
+# Local conversation state may contain private context
 .conversation/
 
 # Local Node/pnpm launcher shim used by the Codex desktop runtime

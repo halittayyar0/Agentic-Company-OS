@@ -16,7 +16,7 @@ export async function loadFixtureTaskTools(
   if (missing.length === 0) return null;
   await params.beforeRequest?.();
   return {
-    provider: "replit",
+    provider: "openai",
     completion: {
       id: randomUUID(),
       object: "chat.completion",

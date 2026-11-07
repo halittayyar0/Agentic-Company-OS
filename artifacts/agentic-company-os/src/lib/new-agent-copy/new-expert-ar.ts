@@ -116,7 +116,6 @@ export default {
     emptyHelp: "يمكنك إضافة مزوّد نماذج من صفحة الاتصالات.",
     noMatchHelp: "جرّب اسم نموذج أو مزوّد آخر.",
     sourceDescription: "وصف الكتالوج الأصلي",
-    builtin: "النماذج المدمجة",
     tiers: {
       economy: "اقتصادي",
       standard: "قياسي",

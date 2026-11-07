@@ -1072,20 +1072,10 @@ export interface OllamaSettings {
   error: OllamaSettingsError;
 }
 
-export interface ReplitFleetSettings {
-  configured: boolean;
-  /**
-     * @maxLength 2048
-     * @nullable
-     */
-  baseUrl: string | null;
-}
-
 export type ModelProviderId = typeof ModelProviderId[keyof typeof ModelProviderId];
 
 
 export const ModelProviderId = {
-  replit: 'replit',
   openrouter: 'openrouter',
   openai: 'openai',
   ollama: 'ollama',
@@ -1168,7 +1158,6 @@ export interface LlmSettings {
   openrouter: OpenRouterSettings;
   openai: DirectOpenAISettings;
   ollama: OllamaSettings;
-  replitFleet: ReplitFleetSettings;
   catalog: ModelCatalog;
 }
 
@@ -2594,7 +2583,7 @@ export interface AgentMessageResponse {
      */
   usedModel?: string | null;
   /**
-     * Provider that served this turn (replit, openrouter, openai, ollama, or chatgpt).
+     * Provider that served this turn (openrouter, openai, ollama, or chatgpt).
      * @nullable
      */
   usedProvider?: string | null;

@@ -1,3 +1,4 @@
+import { redirectDirectOpenAIForTest } from "../testing/direct-openai-fixture";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
@@ -35,15 +36,12 @@ import { readRuntimeOperationsConfig } from "../runtime-operations-config";
 // Real SDK + owned loopback transport. No external model or account is used.
 let server: http.Server | undefined;
 let respond: http.RequestListener;
-const previousKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-const previousUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+const previousKey = process.env.OPENAI_API_KEY;
+let restoreOpenAI: (() => void) | undefined;
 test.after(async () => {
-  if (previousKey === undefined)
-    delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  else process.env.AI_INTEGRATIONS_OPENAI_API_KEY = previousKey;
-  if (previousUrl === undefined)
-    delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  else process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = previousUrl;
+  if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+  else process.env.OPENAI_API_KEY = previousKey;
+  restoreOpenAI?.();
   server?.closeAllConnections();
   if (server)
     await new Promise<void>((resolve) => server!.close(() => resolve()));
@@ -205,8 +203,8 @@ async function fixture(t: test.TestContext, entry: Entry, fault: Fault) {
   }
   const address = server.address();
   assert.ok(address && typeof address === "object");
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "owned-loopback-only";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = `http://127.0.0.1:${address.port}/v1`;
+  process.env.OPENAI_API_KEY = "owned-loopback-only";
+  restoreOpenAI ??= redirectDirectOpenAIForTest(address.port);
   const [agent] = await db
     .insert(agentsTable)
     .values({

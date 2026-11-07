@@ -14,8 +14,7 @@ import {
 } from "./model-select";
 
 const environmentFields = [
-  "AI_INTEGRATIONS_OPENAI_API_KEY",
-  "AI_INTEGRATIONS_OPENAI_BASE_URL",
+  "OPENAI_API_KEY",
   "OPENROUTER_API_KEY",
   "OPENAI_API_KEY",
   "OLLAMA_BASE_URL",

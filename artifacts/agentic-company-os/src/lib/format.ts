@@ -120,11 +120,6 @@ export const PROVIDER_META: Record<
   string,
   { label: string; short: string; dotClass: string }
 > = {
-  replit: {
-    label: "Yerleşik Filo",
-    short: "Replit AI",
-    dotClass: "bg-emerald-400",
-  },
   openrouter: {
     label: "OpenRouter Ağı",
     short: "OpenRouter",

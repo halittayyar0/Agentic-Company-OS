@@ -110,7 +110,6 @@ export type NewAgentCopy = {
     emptyHelp: string;
     noMatchHelp: string;
     sourceDescription: string;
-    builtin: string;
     tiers: {
       economy: string;
       standard: string;

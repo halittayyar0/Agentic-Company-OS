@@ -109,7 +109,6 @@ export default {
     emptyHelp: "可在连接页面添加模型服务商。",
     noMatchHelp: "请尝试其他模型或服务商名称。",
     sourceDescription: "目录原始说明",
-    builtin: "内置模型",
     tiers: {
       economy: "经济型",
       standard: "标准型",

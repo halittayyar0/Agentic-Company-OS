@@ -11,7 +11,6 @@ import {
   PlanInferenceError,
   resolveChatGPTPlanModelId,
 } from "./chatgpt-plan-responses";
-import { openai } from "./client";
 import {
   getDirectOpenAIClient,
   getDirectOpenAIModelCatalog,
@@ -27,9 +26,7 @@ import {
 } from "./first-party-providers";
 import { findOllamaBoundaryError } from "./ollama-model-boundary";
 import {
-  MODEL_CATALOG,
   getChatCompletionExtraParams,
-  isKnownModelId,
   type ModelCatalogEntry,
   type ModelTier,
 } from "./model-router";
@@ -37,19 +34,13 @@ import {
 /**
  * Provider-aware OpenAI-compatible routing.
  *
- * The Replit AI Integrations fleet stays exactly as it was. Any model id that
- * lives in the Replit fleet catalog keeps going through the existing `openai`
- * client. Vendor-prefixed ids route to OpenRouter, while direct OpenAI and
- * local Ollama use explicit public namespaces.
- *
  *   OPENROUTER_API_KEY       -- enable the provider
  *   The API origin is intentionally pinned to OpenRouter. Accepting a
  *   browser-configurable base URL would allow a malicious caller to redirect
  *   the Authorization header to an attacker-controlled server.
  */
 
-export type ModelProvider =
-  "replit" | "openrouter" | "openai" | "ollama" | "chatgpt";
+export type ModelProvider = "openrouter" | "openai" | "ollama" | "chatgpt";
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
@@ -463,7 +454,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function resolveModelProvider(modelId: string): ModelProvider | null {
   if (resolveChatGPTPlanModelId(modelId)) return "chatgpt";
   if (!modelId) return null;
-  if (isKnownModelId(modelId)) return "replit";
   if (resolveDirectOpenAIModelId(modelId)) return "openai";
   if (modelId.startsWith("ollama:") || modelId.startsWith("ollama-cloud:")) {
     return resolveOllamaModelId(modelId) || resolveOllamaCloudModelId(modelId)
@@ -651,8 +641,6 @@ function providerRequestIdFromError(error: unknown): string | null {
 /**
  * Provider-aware chat completion entrypoint.
  *
- * - Replit fleet models keep every legacy behavior intact, including the
- *   mandatory `reasoning_effort: "none"` when tools are attached.
  * - OpenRouter models are called via the OpenRouter client with plain
  *   `max_tokens` semantics and no reasoning_effort injection.
  */
@@ -698,28 +686,6 @@ export async function createChatCompletion(
       await params.beforeRequest?.();
       boundedSignal.throwIfAborted();
     };
-    // Legacy fleet always wins for known Replit model ids.
-    if (isKnownModelId(model)) {
-      const client = openai.chat.completions;
-      await dispatch();
-      const completion = await client.create(
-        {
-          model,
-          messages,
-          tools: tools && tools.length > 0 ? tools : undefined,
-          max_completion_tokens: maxTokens,
-          ...(responseFormat ? { response_format: responseFormat } : {}),
-          ...getChatCompletionExtraParams(model, Boolean(tools?.length)),
-        },
-        {
-          signal: boundedSignal,
-          maxRetries: params.disableRetries ? 0 : undefined,
-        },
-      );
-      await observeCompletionResponseUsage(params, completion, "replit");
-      return { completion, provider: "replit" as const };
-    }
-
     if (resolveModelProvider(model) === "openrouter") {
       const client = getOpenRouterClient();
       await dispatch();
@@ -855,17 +821,6 @@ export function getFullModelCatalog(): {
   >;
   liveSyncedAt: number | null;
 } {
-  const replitAvailable = Boolean(
-    process.env.AI_INTEGRATIONS_OPENAI_API_KEY &&
-    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  );
-
-  const replitModels = MODEL_CATALOG.map((m) => ({
-    ...m,
-    provider: "replit" as ModelProvider,
-    isDefault: m.id === "gpt-5.6-terra",
-  }));
-
   const sourceModels =
     liveCatalog.models.length > 0
       ? rankOpenRouterModels(liveCatalog.models)
@@ -887,11 +842,6 @@ export function getFullModelCatalog(): {
   return {
     providers: [
       {
-        id: "replit",
-        label: "Yerlesik Filo (Replit AI)",
-        available: replitAvailable,
-      },
-      {
         id: "openrouter",
         label: "OpenRouter",
         available: isOpenRouterConfigured(),
@@ -909,7 +859,6 @@ export function getFullModelCatalog(): {
       { id: "chatgpt", label: "ChatGPT plan", available: chatgpt.available },
     ],
     models: [
-      ...replitModels,
       ...openRouterModels,
       ...directOpenAIModels,
       ...ollamaModels,

@@ -19,7 +19,7 @@ Include:
 - the commit SHA or release tag;
 - operating system and architecture;
 - `node --version` and `pnpm --version`;
-- whether PostgreSQL, PGlite, OpenRouter, or Replit AI is in use;
+- whether PostgreSQL or PGlite and which model provider is in use;
 - the command that failed and the smallest reproducible steps;
 - expected and actual behavior; and
 - sanitized logs or screenshots.

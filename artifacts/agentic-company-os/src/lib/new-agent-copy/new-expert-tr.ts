@@ -120,7 +120,6 @@ export default {
     emptyHelp: "Bağlantılar sayfasından bir model sağlayıcısı ekleyebilirsin.",
     noMatchHelp: "Model veya sağlayıcı adını farklı yazarak dene.",
     sourceDescription: "Özgün katalog açıklaması",
-    builtin: "Yerleşik filo",
     tiers: {
       economy: "Ekonomik",
       standard: "Standart",

@@ -99,8 +99,7 @@ const SAFE_UPSTREAM_MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 
 /**
  * Additional direct OpenAI aliases are server-admin configuration only. They
- * are namespaced in the public catalog so they can never collide with the
- * legacy Replit fleet's model IDs.
+ * are namespaced in the public catalog to identify their billing boundary.
  */
 export function getDirectOpenAIModelCatalog(): Array<
   ModelCatalogEntry & { provider: "openai" }

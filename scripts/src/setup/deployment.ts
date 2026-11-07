@@ -52,9 +52,6 @@ function commonEnvironment(
     OPERATOR_AUTH_TOKEN_FILE: undefined,
     OPENAI_API_KEY: undefined,
     OPENROUTER_API_KEY: undefined,
-    AI_INTEGRATIONS_OPENAI_API_KEY: undefined,
-    AI_INTEGRATIONS_OPENAI_API_KEY_FILE: undefined,
-    AI_INTEGRATIONS_OPENAI_BASE_URL: undefined,
     OPENAI_API_KEY_FILE: undefined,
     OPENROUTER_API_KEY_FILE: undefined,
     OLLAMA_BASE_URL: undefined,
@@ -180,8 +177,6 @@ export function buildContainerDeployment(
       plan.settings.accessMode === "read_only" ? "false" : "true",
     OPENAI_API_KEY: "",
     OPENROUTER_API_KEY: "",
-    AI_INTEGRATIONS_OPENAI_API_KEY: "",
-    AI_INTEGRATIONS_OPENAI_BASE_URL: "",
     OLLAMA_BASE_URL: "",
   };
   if (plan.settings.provider === "ollama")

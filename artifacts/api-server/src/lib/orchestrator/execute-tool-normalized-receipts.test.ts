@@ -1,3 +1,4 @@
+import { redirectDirectOpenAIForTest } from "../testing/direct-openai-fixture";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
@@ -37,7 +38,7 @@ let normalizedJudgeLastRequest: {
   messages: Array<{ role: string; content: string }>;
 } | null = null;
 let previousJudgeKey: string | undefined;
-let previousJudgeUrl: string | undefined;
+let restoreOpenAI: (() => void) | undefined;
 
 after(async () => {
   if (normalizedJudgeServer) {
@@ -47,12 +48,9 @@ after(async () => {
     );
     normalizedJudgeServer = null;
   }
-  if (previousJudgeKey === undefined)
-    delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  else process.env.AI_INTEGRATIONS_OPENAI_API_KEY = previousJudgeKey;
-  if (previousJudgeUrl === undefined)
-    delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  else process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = previousJudgeUrl;
+  if (previousJudgeKey === undefined) delete process.env.OPENAI_API_KEY;
+  else process.env.OPENAI_API_KEY = previousJudgeKey;
+  restoreOpenAI?.();
   await closeDatabase();
 });
 
@@ -68,8 +66,7 @@ async function startPassingJudge(
       request: () => normalizedJudgeLastRequest,
     };
   }
-  previousJudgeKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  previousJudgeUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+  previousJudgeKey = process.env.OPENAI_API_KEY;
   normalizedJudgeServer = http.createServer(async (request, response) => {
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
@@ -107,8 +104,8 @@ async function startPassingJudge(
   });
   const address = normalizedJudgeServer.address();
   assert.ok(address && typeof address !== "string");
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "normalized-test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = `http://127.0.0.1:${address.port}/v1`;
+  process.env.OPENAI_API_KEY = "normalized-test-key";
+  restoreOpenAI ??= redirectDirectOpenAIForTest(address.port);
   return {
     calls: () => normalizedJudgeCalls - baselineCalls,
     request: () => normalizedJudgeLastRequest,

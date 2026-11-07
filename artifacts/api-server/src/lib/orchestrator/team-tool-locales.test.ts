@@ -1,3 +1,4 @@
+import { redirectDirectOpenAIForTest } from "../testing/direct-openai-fixture";
 import assert from "node:assert/strict";
 import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 import { randomUUID } from "node:crypto";
@@ -73,8 +74,8 @@ judge.on("connection", (socket) => {
 await new Promise<void>((resolve) => judge.listen(0, "127.0.0.1", resolve));
 const address = judge.address();
 assert.ok(address && typeof address !== "string");
-process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "local-team-test-key";
-process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = `http://127.0.0.1:${address.port}/v1`;
+process.env.OPENAI_API_KEY = "local-team-test-key";
+test.after(redirectDirectOpenAIForTest(address.port));
 const {
   db,
   dbReady,
@@ -286,7 +287,7 @@ async function finalizeClaimedTool(
     if (loading) return loading;
     await params.beforeRequest?.();
     return {
-      provider: "replit",
+      provider: "openai",
       completion: {
         id: randomUUID(),
         object: "chat.completion",

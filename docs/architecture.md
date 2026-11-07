@@ -42,7 +42,6 @@ flowchart TB
   Orchestrator --> Models
   Orchestrator --> Runtime
   Orchestrator --> Store
-  Models --> Replit["Replit AI integration"]
   Models --> OpenRouter["OpenRouter"]
   Models --> OpenAI["OpenAI direct"]
   Models --> Ollama["Ollama local"]
@@ -87,7 +86,7 @@ The UI is a single-page React application. It surfaces:
 - provider/runtime settings; and
 - system health, command palette, charts, and motion-driven status cues.
 
-The Vite dev/preview servers bind to `127.0.0.1` by default. In non-Replit local development, `/api` proxies to `http://127.0.0.1:5000` unless `LOCAL_API_TARGET` overrides it. Production builds are static files in `artifacts/agentic-company-os/dist/public`; the API can serve that directory on the same origin when `SERVE_STATIC_UI=true` and an absolute `STATIC_UI_DIR` are configured. The production container uses this mode.
+The Vite dev/preview servers bind to `127.0.0.1` by default. In local development, `/api` proxies to `http://127.0.0.1:5000` unless `LOCAL_API_TARGET` overrides it. Production builds are static files in `artifacts/agentic-company-os/dist/public`; the API can serve that directory on the same origin when `SERVE_STATIC_UI=true` and an absolute `STATIC_UI_DIR` are configured. The production container uses this mode.
 
 ### API
 
@@ -280,7 +279,7 @@ Automatic mode uses economy models for judge/routine steps, a standard model for
 
 The OpenRouter text catalog is refreshed before the API begins listening and then cached with bounded pagination, refresh coalescing, and stale-result fallback. Model IDs are normalized as untrusted metadata without collapsing suffix variants such as `:free`, `:thinking`, or `:batch`. The offline fallback includes the exact `minimax/minimax-m3:free` ID. Catalog rows declare whether OpenRouter reports function-tool support: non-tool models remain discoverable in settings, but agent pickers disable them and the server refuses to route an agent run to them.
 
-Known unprefixed built-in fleet model IDs route to the Replit AI integration. Vendor-prefixed IDs route to OpenRouter. Direct OpenAI IDs use `openai:`, and local Ollama IDs use `ollama:`; prefixes are removed only inside the selected adapter. The OpenRouter and direct OpenAI API bases are constants and cannot be set through the Settings UI, preventing a caller from redirecting their authorization headers. OpenAI requests carry a server-generated client request ID; the host logger records only provider/model/outcome and safe request IDs. Optional `APP_PUBLIC_URL` is validated as a credential-free HTTP(S) URL and only its origin is sent as OpenRouter `HTTP-Referer` attribution; it never changes the provider endpoint. The Replit integration base URL remains operator-supplied environment configuration and belongs to the trusted deployment boundary.
+Vendor-prefixed IDs route to OpenRouter. Direct OpenAI IDs use `openai:`, and local Ollama IDs use `ollama:`; prefixes are removed only inside the selected adapter. The OpenRouter and direct OpenAI API bases are constants and cannot be set through the Settings UI, preventing a caller from redirecting their authorization headers. OpenAI requests carry a server-generated client request ID; the host logger records only provider/model/outcome and safe request IDs. Optional `APP_PUBLIC_URL` is validated as a credential-free HTTP(S) URL and only its origin is sent as OpenRouter `HTTP-Referer` attribution; it never changes the provider endpoint.
 
 Ollama is a separate private-egress boundary. v0.4.0 adds a
 revision-guarded `ollamaBaseUrl` Settings override; `OLLAMA_BASE_URL` remains the

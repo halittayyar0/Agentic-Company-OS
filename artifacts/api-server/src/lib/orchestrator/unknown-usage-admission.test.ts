@@ -190,13 +190,9 @@ test("an unreported child receipt stops parent completion review before a provid
   assert.equal(result.budgetScope, "family");
   assert.equal(result.rootTaskId, root.id);
   const originalFetch = globalThis.fetch;
-  const fixtureEnv = [
-    "AI_INTEGRATIONS_OPENAI_API_KEY",
-    "AI_INTEGRATIONS_OPENAI_BASE_URL",
-  ] as const;
+  const fixtureEnv = ["OPENAI_API_KEY"] as const;
   const previous = fixtureEnv.map((name) => process.env[name]);
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "fixture";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "fixture";
   let calls = 0,
     reviews = 0;
   globalThis.fetch = async () => {

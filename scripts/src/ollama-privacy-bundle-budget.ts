@@ -6,8 +6,10 @@ import {
   type BundleAsset,
 } from "./bundle-source-map";
 const fingerprints: Readonly<Record<string, string>> = {
+  // Provider removal changes the picker, its copy type, and Settings.
+  // The privacy behavior, measurements and limits below are the same.
   "artifacts/agentic-company-os/src/components/agent/agent-model-picker.tsx":
-    "903aca940f90c8cf82d44ace653e609015b2fd57e57dd4b21e641d0e11ffbed8",
+    "8fea9d8eabb1188c058a092e9df3b701610bc9f9e908fd7e8757f8d96c4553b6",
   "artifacts/agentic-company-os/src/components/agent/ollama-model-location.tsx":
     "7e9171dc1efc923054ab9da1b008d39fe56b89366b21e68eb3d3d16dade23ec5",
   "artifacts/agentic-company-os/src/components/i18n/language-select.tsx":
@@ -15,11 +17,11 @@ const fingerprints: Readonly<Record<string, string>> = {
   "artifacts/agentic-company-os/src/lib/model-search.ts":
     "2dc88d0fc58b46e4f393674efada7022e3ee7a7a26a563b6246c79efd6515723",
   "artifacts/agentic-company-os/src/lib/new-agent-copy.ts":
-    "c5831b32192fc10c587fbbfd6a4ac9dbf2ea9185fb3e7049dafd4346df4630a7",
+    "830750b95048dd03e61ae9bef3d9f966d3d5dbd89730c529619520d7e8598fb3",
   "artifacts/agentic-company-os/src/lib/settings-copy.ts":
     "46c96546518e195b5a7dc2039d0a0bea3c413fdcb4c726d6698c35dfcfb942ef",
   "artifacts/agentic-company-os/src/pages/settings.tsx":
-    "a2733226019b4fa66bf45130c832ea689b0154cc69a4ce4979c20d32123c33fa",
+    "58a46b8247755480a5dd74b98b21edb628e004d181f510720c103007ebfbae9d",
 };
 export const OLLAMA_PRIVACY_SOURCES = Object.freeze(
   Object.keys(fingerprints).sort(),

@@ -161,7 +161,6 @@ const settings = {
     catalogSyncedAt: null,
     error: null,
   },
-  replitFleet: { configured: false, baseUrl: null },
   catalog,
 };
 

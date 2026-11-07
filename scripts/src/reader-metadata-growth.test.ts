@@ -52,10 +52,9 @@ test("metadata growth keeps its own limit even when total transfer has spare roo
   );
 });
 
-function aliasFixture(currentIdentifiers = false) {
-  const helper = currentIdentifiers
-    ? "function Bl(e,t){const r=Ks(e,t),s=E(r);return O(s,r.queryKey)}"
-    : "function Ml(e,t){const r=Ls(e,t),s=E(r);return O(s,r.queryKey)}";
+function aliasFixture(target: "Ml" | "Bl" | "Bc") {
+  const dependency = target === "Ml" ? "Ls" : "Ks";
+  const helper = `function ${target}(e,t){const r=${dependency}(e,t),s=E(r);return O(s,r.queryKey)}`;
   const baselineBody =
     'import{aY as j}from"./index-aaaaaaaa.js";' +
     body +
@@ -69,10 +68,7 @@ function aliasFixture(currentIdentifiers = false) {
     { fileName: "skills-fixture.js", contents: Buffer.from(current) },
     {
       fileName: "index-bbbbbbbb.js",
-      contents: Buffer.from(
-        helper +
-          (currentIdentifiers ? "export{Bl as aZ};" : "export{Ml as aZ};"),
-      ),
+      contents: Buffer.from(helper + `export{${target} as aZ};`),
     },
   ];
   const manifest = {
@@ -103,8 +99,8 @@ function aliasFixture(currentIdentifiers = false) {
 }
 
 test("generated export alias changes require a hash-owned unique frozen API helper and keep actual transfer measurements", () => {
-  for (const identifiers of [false, true]) {
-    const f = aliasFixture(identifiers);
+  for (const target of ["Ml", "Bl", "Bc"] as const) {
+    const f = aliasFixture(target);
     const result = measureReaderMetadataGrowth(
       Buffer.from(f.current),
       source,
@@ -126,7 +122,7 @@ test("generated export alias changes require a hash-owned unique frozen API help
 });
 
 test("export alias normalization cannot hide a different target, helper body, local binding, runtime expression or changed manifest bytes", () => {
-  for (const identifiers of [false, true]) {
+  for (const target of ["Ml", "Bl", "Bc"] as const) {
     for (const tamper of [
       "target",
       "body",
@@ -134,13 +130,13 @@ test("export alias normalization cannot hide a different target, helper body, lo
       "runtime",
       "hash",
     ] as const) {
-      const f = aliasFixture(identifiers);
+      const f = aliasFixture(target);
       if (tamper === "target")
         f.update(
           1,
           f.assets[1].contents
             .toString()
-            .replace(identifiers ? "Bl as aZ" : "Ml as aZ", "Other as aZ"),
+            .replace(`${target} as aZ`, "Other as aZ"),
         );
       if (tamper === "body")
         f.update(

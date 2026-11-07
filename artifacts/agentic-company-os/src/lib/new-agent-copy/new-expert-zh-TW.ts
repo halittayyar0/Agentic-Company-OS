@@ -109,7 +109,6 @@ export default {
     emptyHelp: "可在連線頁面新增模型供應商。",
     noMatchHelp: "請嘗試其他模型或供應商名稱。",
     sourceDescription: "目錄原始說明",
-    builtin: "內建模型",
     tiers: {
       economy: "經濟型",
       standard: "標準型",

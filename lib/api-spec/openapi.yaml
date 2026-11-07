@@ -4051,12 +4051,9 @@ components:
           $ref: "#/components/schemas/DirectOpenAISettings"
         ollama:
           $ref: "#/components/schemas/OllamaSettings"
-        replitFleet:
-          $ref: "#/components/schemas/ReplitFleetSettings"
         catalog:
           $ref: "#/components/schemas/ModelCatalog"
-      required:
-        [revision, storage, openrouter, openai, ollama, replitFleet, catalog]
+      required: [revision, storage, openrouter, openai, ollama, catalog]
 
     OpenRouterSettings:
       type: object
@@ -4077,18 +4074,6 @@ components:
           format: uri
           maxLength: 2048
       required: [configured, hasKeyInEnv, keyPreview, baseUrl, keySource]
-
-    ReplitFleetSettings:
-      type: object
-      additionalProperties: false
-      properties:
-        configured:
-          type: boolean
-        baseUrl:
-          type: [string, "null"]
-          format: uri
-          maxLength: 2048
-      required: [configured, baseUrl]
 
     DirectOpenAISettings:
       type: object
@@ -5811,7 +5796,7 @@ components:
           description: Model id that actually served this turn.
         usedProvider:
           type: [string, "null"]
-          description: Provider that served this turn (replit, openrouter, openai, ollama, or chatgpt).
+          description: Provider that served this turn (openrouter, openai, ollama, or chatgpt).
       required:
         - userMessage
         - agentMessage
@@ -7749,7 +7734,7 @@ components:
 
     ModelProviderId:
       type: string
-      enum: [replit, openrouter, openai, ollama, chatgpt]
+      enum: [openrouter, openai, ollama, chatgpt]
 
     ModelCatalogProvider:
       type: object

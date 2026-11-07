@@ -263,15 +263,11 @@ for (const mode of ["live", "abandoned", "settled"] as const)
       config,
     );
     t.after(() => runtime.stopHeartbeat());
-    const key = process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-      url = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-    process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "owned-test-key";
-    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+    const key = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = "owned-test-key";
     t.after(() => {
-      if (key === undefined) delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-      else process.env.AI_INTEGRATIONS_OPENAI_API_KEY = key;
-      if (url === undefined) delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-      else process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = url;
+      if (key === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = key;
     });
     const leaseExpiresAt = new Date(Date.now() + 900000);
     await db
@@ -280,7 +276,7 @@ for (const mode of ["live", "abandoned", "settled"] as const)
         status: "working",
         currentTaskId: f.child.id,
         modelMode: "manual",
-        modelId: "gpt-5.6-sol",
+        modelId: "openai:gpt-5.6-sol",
         runLeaseOwner: leaseOwner,
         runLeaseExpiresAt: leaseExpiresAt,
       })

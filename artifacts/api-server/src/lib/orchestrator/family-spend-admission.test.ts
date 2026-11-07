@@ -365,14 +365,9 @@ test("delegated inference shares one durable family budget", async (t) => {
       await receipt(f.root.id, 10, "0.4");
       await receipt(f.child.id, 10, "0.3");
       await receipt(f.grandchild.id, 10, "0.2");
-      const names = [
-        "AI_INTEGRATIONS_OPENAI_API_KEY",
-        "AI_INTEGRATIONS_OPENAI_BASE_URL",
-      ] as const;
+      const names = ["OPENAI_API_KEY"] as const;
       const values = names.map((name) => process.env[name]);
-      process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "fixture";
-      process.env.AI_INTEGRATIONS_OPENAI_BASE_URL =
-        "https://example.invalid/v1";
+      process.env.OPENAI_API_KEY = "fixture";
       const originalFetch = globalThis.fetch;
       let requests = 0,
         attempts = 0,
