@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="{{ locale }}" dir="{% if rtl %}rtl{% else %}ltr{% endif %}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page_title }} · {{ t.title }}</title>
+    <link rel="stylesheet" href="/assets/workbench.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">{{ t.skip }}</a>
+    <header class="masthead">
+      <div class="frame header-row">
+        <a class="brand" href="/?lang={{ locale }}">{{ t.title }}</a>
+        <span class="preview">{{ t.preview }}</span>
+      </div>
+    </header>
+    <main class="frame" id="main">
+      {% block content %}{% endblock %}
+      <footer>
+        <nav class="languages">
+          {% for lang in languages %}
+            <a href="{{ current_path }}?lang={{ lang.code }}" lang="{{ lang.code }}"{% if lang.code == locale %} aria-current="true"{% endif %}>{{ lang.name }}</a>
+          {% endfor %}
+        </nav>
+      </footer>
+    </main>
+  </body>
+</html>
