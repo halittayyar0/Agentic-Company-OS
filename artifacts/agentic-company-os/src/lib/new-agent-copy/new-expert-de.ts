@@ -121,7 +121,6 @@ export default {
     emptyHelp: "Füge unter Verbindungen einen Modellanbieter hinzu.",
     noMatchHelp: "Versuche einen anderen Modell- oder Anbieternamen.",
     sourceDescription: "Originale Katalogbeschreibung",
-    builtin: "Integrierte Modelle",
     tiers: {
       economy: "Sparsam",
       standard: "Standard",

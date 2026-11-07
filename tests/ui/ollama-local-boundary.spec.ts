@@ -117,7 +117,6 @@ function settings(supported = true) {
       cloudModelCount: 1,
       unknownModelCount: 1,
     },
-    replitFleet: { configured: false, baseUrl: null },
     catalog,
   };
 }

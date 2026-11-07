@@ -9,27 +9,20 @@ import { resolveJudgeExecutionModelBoundary } from "./execute-tool";
 import { selectJudgeModelPlan } from "./judge";
 
 const original = {
-  key: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseUrl: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  key: process.env.OPENAI_API_KEY,
 };
 
 test.after(() => {
   if (original.key === undefined) {
-    delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
   } else {
-    process.env.AI_INTEGRATIONS_OPENAI_API_KEY = original.key;
-  }
-  if (original.baseUrl === undefined) {
-    delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  } else {
-    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = original.baseUrl;
+    process.env.OPENAI_API_KEY = original.key;
   }
   configureOpenRouter({ apiKey: null });
 });
 
 test("a free task pin also constrains completion judging to free routes", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: "test-openrouter-key" });
 
   const plan = selectJudgeModelPlan({
@@ -44,24 +37,22 @@ test("a free task pin also constrains completion judging to free routes", () => 
 });
 
 test("a paid execution pin keeps the independent economy judge", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: "test-openrouter-key" });
 
   const plan = selectJudgeModelPlan({
     agent: { depth: 0 },
-    taskExecutionModelId: "gpt-5.6-sol",
+    taskExecutionModelId: "openai:gpt-5.6-sol",
   });
 
-  assert.notEqual(plan.primary.modelId, "gpt-5.6-sol");
+  assert.notEqual(plan.primary.modelId, "openai:gpt-5.6-sol");
   assert.equal(plan.primary.source, "automatic");
   assert.equal(plan.primary.tier, "economy");
   assert.equal(plan.freeOnly, false);
 });
 
 test("a legacy task inherits a manual free agent boundary for judging", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: "test-openrouter-key" });
 
   const effectiveBoundary = resolveJudgeExecutionModelBoundary({
@@ -81,8 +72,7 @@ test("a legacy task inherits a manual free agent boundary for judging", () => {
 });
 
 test("a per-message free override constrains approval judging for an automatic agent", () => {
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: "test-openrouter-key" });
 
   const effectiveBoundary = resolveJudgeExecutionModelBoundary({
@@ -105,9 +95,9 @@ test("paid chat and agent selections do not pin the economy judge", () => {
   assert.equal(
     resolveJudgeExecutionModelBoundary({
       taskExecutionModelId: null,
-      turnModelId: "gpt-5.6-sol",
+      turnModelId: "openai:gpt-5.6-sol",
       agentModelMode: "manual",
-      agentModelId: "gpt-5.6-sol",
+      agentModelId: "openai:gpt-5.6-sol",
     }),
     null,
   );
@@ -121,7 +111,7 @@ test("explicit local task, turn and manual-agent boundaries survive judging", ()
         taskExecutionModelId: source === "task" ? localModelId : null,
         turnModelId: source === "turn" ? localModelId : null,
         agentModelMode: "manual",
-        agentModelId: source === "agent" ? localModelId : "gpt-5.6-sol",
+        agentModelId: source === "agent" ? localModelId : "openai:gpt-5.6-sol",
       }),
       localModelId,
       source,
@@ -153,8 +143,7 @@ test("a local completion judge never falls back to configured cloud providers", 
           },
     );
   }) as typeof fetch;
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   configureOpenRouter({ apiKey: "test-openrouter-key" });
   configureOllama({ baseUrl: "http://127.0.0.1:11434" });
   try {

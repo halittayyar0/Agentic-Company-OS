@@ -121,7 +121,6 @@ export default {
     emptyHelp: "Add a model provider from Connections.",
     noMatchHelp: "Try another model or provider name.",
     sourceDescription: "Original catalog description",
-    builtin: "Built-in fleet",
     tiers: {
       economy: "Economy",
       standard: "Standard",

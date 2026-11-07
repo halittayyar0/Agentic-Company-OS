@@ -13,8 +13,7 @@ import type { ToolRuntimeContext } from "./execute-tool";
 delete process.env.DATABASE_URL;
 delete process.env.RUNTIME_ROLE;
 process.env.NODE_ENV = "test";
-process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+process.env.OPENAI_API_KEY = "test-key";
 const root = await fsp.mkdtemp(path.join(os.tmpdir(), "acos-terminal-outer-"));
 process.env.AGENT_SANDBOX_ROOT = root;
 const {
@@ -125,7 +124,7 @@ for (const toolName of ["vm_run_command", "vm_read_file"] as const) {
           );
           deps.locale = "ar";
           return {
-            provider: mode === "chat" ? "openrouter" : "replit",
+            provider: mode === "chat" ? "openrouter" : "openai",
             completion: {
               id: randomUUID(),
               object: "chat.completion",

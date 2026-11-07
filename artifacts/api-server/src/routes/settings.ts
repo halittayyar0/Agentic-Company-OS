@@ -262,13 +262,6 @@ export function createSettingsRouter(
           catalogSyncedAt: ollama.fetchedAt,
           error: getOllamaConfigurationError() ?? ollama.error,
         },
-        replitFleet: {
-          configured: Boolean(
-            environment.AI_INTEGRATIONS_OPENAI_BASE_URL &&
-            environment.AI_INTEGRATIONS_OPENAI_API_KEY,
-          ),
-          baseUrl: safeOrigin(environment.AI_INTEGRATIONS_OPENAI_BASE_URL),
-        },
         catalog: catalog(),
       });
     } catch {
@@ -520,15 +513,6 @@ export function maskKey(key: string | null | undefined): string | null {
   if (!key) return null;
   if (key.length <= 12) return "*".repeat(key.length);
   return `${key.slice(0, 4)}${"*".repeat(8)}${key.slice(-4)}`;
-}
-function safeOrigin(raw: string | undefined): string | null {
-  if (!raw) return null;
-  try {
-    const parsed = new URL(raw);
-    return ["https:", "http:"].includes(parsed.protocol) ? parsed.origin : null;
-  } catch {
-    return null;
-  }
 }
 function safeOllamaUrl(): string | null {
   try {

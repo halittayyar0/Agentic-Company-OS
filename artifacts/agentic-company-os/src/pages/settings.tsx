@@ -47,12 +47,11 @@ const ExecutionPolicySettings = lazy(() =>
   })),
 );
 const settingsKey = ["settings", "llm"] as const;
-const providers = ["openrouter", "openai", "ollama", "replit"] as const;
+const providers = ["openrouter", "openai", "ollama"] as const;
 const names: Record<ModelProviderId, string> = {
   openrouter: "OpenRouter",
   openai: "OpenAI",
   ollama: "Ollama",
-  replit: "Replit",
   chatgpt: "ChatGPT",
 };
 type KeyProvider = "openrouter" | "openai";

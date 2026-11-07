@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { openai } from "./client";
+import {
+  configureDirectOpenAI,
+  getDirectOpenAIClient,
+} from "./first-party-providers";
 import {
   ChatCompletionTimeoutError,
   resolveLlmRequestTimeoutMs,
@@ -8,32 +11,19 @@ import {
   createChatCompletion,
 } from "./openrouter";
 
-test("missing fleet credentials fail before the durable dispatch boundary", async () => {
-  const names = [
-    "AI_INTEGRATIONS_OPENAI_BASE_URL",
-    "AI_INTEGRATIONS_OPENAI_API_KEY",
-  ] as const;
-  const saved = names.map((name) => process.env[name]);
+test("removed model IDs fail before the durable dispatch boundary", async () => {
   let guards = 0;
-  try {
-    for (const name of names) delete process.env[name];
-    await assert.rejects(
-      createChatCompletion({
-        model: "gpt-5.6-terra",
-        messages: [],
-        beforeRequest: async () => {
-          guards++;
-        },
-      }),
-      /must be set/u,
-    );
-    assert.equal(guards, 0);
-  } finally {
-    names.forEach((name, index) => {
-      if (saved[index] === undefined) delete process.env[name];
-      else process.env[name] = saved[index];
-    });
-  }
+  await assert.rejects(
+    createChatCompletion({
+      model: "gpt-5.6-terra",
+      messages: [],
+      beforeRequest: async () => {
+        guards++;
+      },
+    }),
+    /Unknown model/u,
+  );
+  assert.equal(guards, 0);
 });
 
 test("LLM timeout configuration is finite and bounded", () => {
@@ -69,12 +59,7 @@ test("caller abort remains distinct from the runtime timeout", async () => {
   await assert.rejects(pending, (error: unknown) => error === callerError);
 });
 
-test("the actual fleet entry observes one late SDK response after caller cancellation without another request", async (t) => {
-  const names = [
-    "AI_INTEGRATIONS_OPENAI_BASE_URL",
-    "AI_INTEGRATIONS_OPENAI_API_KEY",
-  ] as const;
-  const saved = names.map((name) => process.env[name]);
+test("the direct OpenAI entry observes one late SDK response after caller cancellation without another request", async (t) => {
   let release!: (value: unknown) => void,
     entered!: () => void,
     observed!: () => void,
@@ -90,25 +75,26 @@ test("the actual fleet entry observes one late SDK response after caller cancell
       observed = resolve;
     });
   try {
-    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "http://127.0.0.1:1/v1";
-    process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "owned-offline-sdk-fixture";
-    t.mock.method(openai.chat.completions, "create", async () => {
-      calls++;
-      entered();
-      return held;
-    });
+    configureDirectOpenAI({ apiKey: "owned-offline-sdk-fixture" });
+    t.mock.method(getDirectOpenAIClient().chat.completions, "create", () => ({
+      withResponse: async () => {
+        calls++;
+        entered();
+        return { data: await held, request_id: null };
+      },
+    }));
     const controller = new AbortController(),
       failure = new Error("owned caller cancellation");
     const pending = createChatCompletion({
-      model: "gpt-5.6-terra",
+      model: "openai:gpt-5.6-terra",
       messages: [],
       signal: controller.signal,
       beforeRequest: async () => {
         dispatches++;
       },
       onResponseUsage: async (value) => {
-        assert.equal(value.provider, "replit");
-        assert.equal(value.model, "gpt-5.6-terra");
+        assert.equal(value.provider, "openai");
+        assert.equal(value.model, "openai:gpt-5.6-terra");
         assert.equal(value.usage.total_tokens, 5);
         observed();
       },
@@ -129,9 +115,6 @@ test("the actual fleet entry observes one late SDK response after caller cancell
     assert.equal(calls, 1);
     assert.equal(dispatches, 1);
   } finally {
-    names.forEach((name, i) => {
-      if (saved[i] === undefined) delete process.env[name];
-      else process.env[name] = saved[i];
-    });
+    configureDirectOpenAI({ apiKey: null });
   }
 });

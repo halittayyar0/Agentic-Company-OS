@@ -10,7 +10,6 @@ import type { LlmSettingsStorage } from './llmSettingsStorage';
 import type { ModelCatalog } from './modelCatalog';
 import type { OllamaSettings } from './ollamaSettings';
 import type { OpenRouterSettings } from './openRouterSettings';
-import type { ReplitFleetSettings } from './replitFleetSettings';
 
 export interface LlmSettings {
   /**
@@ -22,6 +21,5 @@ export interface LlmSettings {
   openrouter: OpenRouterSettings;
   openai: DirectOpenAISettings;
   ollama: OllamaSettings;
-  replitFleet: ReplitFleetSettings;
   catalog: ModelCatalog;
 }

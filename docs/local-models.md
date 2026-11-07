@@ -152,8 +152,7 @@ selection and fallback only use verified local models.
 
 An explicit Ollama selection also applies to completion and approval reviews,
 including a saved task selection, a message override, or a manually selected
-agent model. Those reviews cannot fall back to OpenRouter, direct OpenAI, or
-the Replit integration. If local review is unavailable, completion stays blocked;
+agent model. Those reviews cannot fall back to OpenRouter, direct OpenAI, or ChatGPT plan. If local review is unavailable, completion stays blocked;
 an approval warning still requires the separate human approval. A review receipt
 does not prove that the model understood the source document or completed the job.
 

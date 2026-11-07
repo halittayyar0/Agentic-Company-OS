@@ -40,13 +40,11 @@ async function setup(page: Page, locale: Locale = "en") {
       catalogSyncedAt: null,
       error: null,
     },
-    replitFleet: { configured: false, baseUrl: null },
     catalog: {
       providers: [
         { id: "openai", label: "OpenAI", available: true },
         { id: "openrouter", label: "OpenRouter", available: true },
         { id: "ollama", label: "Ollama", available: false },
-        { id: "replit", label: "Replit", available: false },
       ],
       models: Array.from({ length: 12 }, (_, index) => ({
         id: index === 0 ? "source/model:free" : "openai:fixture-" + index,

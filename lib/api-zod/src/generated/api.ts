@@ -1996,7 +1996,7 @@ export const SendAgentMessageResponse = zod.object({
   "updatedAt": zod.coerce.date()
 })),
   "usedModel": zod.string().nullish().describe('Model id that actually served this turn.'),
-  "usedProvider": zod.string().nullish().describe('Provider that served this turn (replit, openrouter, openai, ollama, or chatgpt).')
+  "usedProvider": zod.string().nullish().describe('Provider that served this turn (openrouter, openai, ollama, or chatgpt).')
 })
 
 
@@ -4520,7 +4520,7 @@ export const getModelCatalogResponseModelsItemRequiredOllamaVersionRegExp = new 
 
 export const GetModelCatalogResponse = zod.object({
   "providers": zod.array(zod.object({
-  "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
+  "id": zod.enum(['openrouter', 'openai', 'ollama', 'chatgpt']),
   "label": zod.string(),
   "available": zod.boolean()
 })),
@@ -4528,7 +4528,7 @@ export const GetModelCatalogResponse = zod.object({
   "id": zod.string(),
   "label": zod.string(),
   "tier": zod.enum(['economy', 'standard', 'premium', 'reasoning']),
-  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
+  "provider": zod.enum(['openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
   "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
@@ -4742,8 +4742,6 @@ export const getLlmSettingsResponseOllamaToolModelCountMin = 0;
 
 export const getLlmSettingsResponseOllamaCatalogSyncedAtMin = 0;
 
-export const getLlmSettingsResponseReplitFleetBaseUrlMax = 2048;
-
 export const getLlmSettingsResponseCatalogModelsItemRequiredOllamaVersionMax = 64;
 
 
@@ -4784,13 +4782,9 @@ export const GetLlmSettingsResponse = zod.object({
   "catalogSyncedAt": zod.int().min(getLlmSettingsResponseOllamaCatalogSyncedAtMin).nullable(),
   "error": zod.union([zod.literal('unreachable'),zod.literal('invalid_private_endpoint'),zod.literal(null)]).nullable()
 }),
-  "replitFleet": zod.object({
-  "configured": zod.boolean(),
-  "baseUrl": zod.url().max(getLlmSettingsResponseReplitFleetBaseUrlMax).nullable()
-}),
   "catalog": zod.object({
   "providers": zod.array(zod.object({
-  "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
+  "id": zod.enum(['openrouter', 'openai', 'ollama', 'chatgpt']),
   "label": zod.string(),
   "available": zod.boolean()
 })),
@@ -4798,7 +4792,7 @@ export const GetLlmSettingsResponse = zod.object({
   "id": zod.string(),
   "label": zod.string(),
   "tier": zod.enum(['economy', 'standard', 'premium', 'reasoning']),
-  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
+  "provider": zod.enum(['openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
   "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
@@ -4844,10 +4838,10 @@ export const UpdateLlmSettingsResponse = zod.object({
   "revision": zod.int().min(1),
   "ok": zod.literal(true),
   "configured": zod.boolean(),
-  "configuredProviders": zod.array(zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt'])),
+  "configuredProviders": zod.array(zod.enum(['openrouter', 'openai', 'ollama', 'chatgpt'])),
   "catalog": zod.object({
   "providers": zod.array(zod.object({
-  "id": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
+  "id": zod.enum(['openrouter', 'openai', 'ollama', 'chatgpt']),
   "label": zod.string(),
   "available": zod.boolean()
 })),
@@ -4855,7 +4849,7 @@ export const UpdateLlmSettingsResponse = zod.object({
   "id": zod.string(),
   "label": zod.string(),
   "tier": zod.enum(['economy', 'standard', 'premium', 'reasoning']),
-  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
+  "provider": zod.enum(['openrouter', 'openai', 'ollama', 'chatgpt']),
   "description": zod.string(),
   "supportsTools": zod.boolean().describe('Whether the model can execute the function tools required by an agent run.'),
   "executionLocation": zod.enum(['local', 'cloud', 'unknown']).optional().describe('Ollama execution boundary. Missing or unknown must never qualify as verified local or free computation.'),
@@ -4973,7 +4967,7 @@ export const testLlmConnectionResponseLatencyMsMin = 0;
 export const TestLlmConnectionResponse = zod.object({
   "revision": zod.int().min(testLlmConnectionResponseRevisionMin),
   "ok": zod.literal(true),
-  "provider": zod.enum(['replit', 'openrouter', 'openai', 'ollama', 'chatgpt']),
+  "provider": zod.enum(['openrouter', 'openai', 'ollama', 'chatgpt']),
   "model": zod.string().min(1).max(testLlmConnectionResponseModelMax),
   "sample": zod.string().max(testLlmConnectionResponseSampleMax).describe('Retained for compatibility; returned empty to avoid echoing upstream content.'),
   "latencyMs": zod.int().min(testLlmConnectionResponseLatencyMsMin)

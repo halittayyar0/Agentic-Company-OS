@@ -41,7 +41,7 @@ function emergencyCompletion(
   model: string,
 ): Awaited<ReturnType<typeof createChatCompletion>> {
   return {
-    provider: "replit",
+    provider: "openai",
     completion: {
       id: randomUUID(),
       object: "chat.completion",
@@ -308,17 +308,11 @@ test("emergency stop during a deferred provider loses the attempt without post-r
   t.after(async () => {
     await setEmergencyStop({ enabled: false, reason: null });
   });
-  const previousKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  const previousUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "emergency-attempt-test";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  const previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "emergency-attempt-test";
   t.after(() => {
-    if (previousKey === undefined)
-      delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-    else process.env.AI_INTEGRATIONS_OPENAI_API_KEY = previousKey;
-    if (previousUrl === undefined)
-      delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-    else process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = previousUrl;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
   });
 
   const timers: Array<{

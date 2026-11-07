@@ -25,8 +25,8 @@ test.after(() => closeDatabase());
 const config = readRuntimeOperationsConfig({ RUNTIME_ROLE: "worker" });
 const plan = (): ModelSelectionPlan => {
   const primary = {
-    provider: "replit",
-    modelId: "gpt-5.6-sol",
+    provider: "openai",
+    modelId: "openai:gpt-5.6-sol",
     usedFallback: false,
     source: "agent_pin" as const,
     tier: "economy" as const,
@@ -49,7 +49,7 @@ async function fixture(t: TestContext) {
       role: "Fixture",
       systemPrompt: "Fixture only",
       modelMode: "manual",
-      modelId: "gpt-5.6-sol",
+      modelId: "openai:gpt-5.6-sol",
       status: "working",
       runLeaseOwner: leaseOwner,
       runLeaseExpiresAt: leaseExpiresAt,
@@ -123,7 +123,7 @@ for (const locale of WORKSPACE_LOCALES) {
           await params.beforeRequest?.();
           calls++;
           return {
-            provider: local ? "ollama" : "replit",
+            provider: local ? "ollama" : "openai",
             completion: {
               id: randomUUID(),
               object: "chat.completion",
@@ -205,7 +205,7 @@ for (const locale of WORKSPACE_LOCALES) {
       calls++;
       sent = structuredClone(params.messages);
       return {
-        provider: "replit",
+        provider: "openai",
         completion: {
           id: randomUUID(),
           object: "chat.completion",
@@ -336,7 +336,7 @@ for (const locale of WORKSPACE_LOCALES) {
                 ? []
                 : [call("complete_task", { resultSummary: "17 × 23 = 391" })];
         return {
-          provider: "replit",
+          provider: "openai",
           completion: {
             id: randomUUID(),
             object: "chat.completion",
@@ -726,7 +726,7 @@ for (const locale of WORKSPACE_LOCALES) {
                   }),
                 ];
         return {
-          provider: "replit",
+          provider: "openai",
           completion: {
             id: `controlled-${randomUUID()}`,
             object: "chat.completion",
@@ -847,7 +847,7 @@ test("unknown model tools cause bounded recovery with no dispatch and retain eve
       await params.beforeRequest?.();
       calls++;
       return {
-        provider: "replit",
+        provider: "openai",
         completion: {
           id: randomUUID(),
           object: "chat.completion",

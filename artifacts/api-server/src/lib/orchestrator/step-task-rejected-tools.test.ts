@@ -26,13 +26,11 @@ test("malformed nonterminal tools use bounded fallback then durable backoff", as
   );
   t.after(() => runtime.stopHeartbeat());
   const previous = {
-    key: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-    url: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    key: process.env.OPENAI_API_KEY,
     rounds: process.env.MAX_AGENT_TOOL_ROUNDS,
     routes: process.env.MODEL_FALLBACK_MAX_ROUTES,
   };
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   // One schema-loading response, then the original four malformed responses.
   process.env.MAX_AGENT_TOOL_ROUNDS = "5";
   process.env.MODEL_FALLBACK_MAX_ROUTES = "2";
@@ -43,7 +41,7 @@ test("malformed nonterminal tools use bounded fallback then durable backoff", as
     .values({
       name: "Rejected tool protocol owner",
       modelMode: "manual",
-      modelId: "gpt-5.6-sol",
+      modelId: "openai:gpt-5.6-sol",
       role: "Test",
       systemPrompt: "Test only",
       createdByUser: true,
@@ -96,7 +94,7 @@ test("malformed nonterminal tools use bounded fallback then durable backoff", as
     await params.beforeRequest?.();
     attempts += 1;
     return {
-      provider: "replit",
+      provider: "openai",
       completion: {
         id: `rejected-${attempts}`,
         object: "chat.completion",
@@ -173,8 +171,7 @@ test("malformed nonterminal tools use bounded fallback then durable backoff", as
       if (value === undefined) delete process.env[envName];
       else process.env[envName] = value;
     };
-    restore("key", "AI_INTEGRATIONS_OPENAI_API_KEY");
-    restore("url", "AI_INTEGRATIONS_OPENAI_BASE_URL");
+    restore("key", "OPENAI_API_KEY");
     restore("rounds", "MAX_AGENT_TOOL_ROUNDS");
     restore("routes", "MODEL_FALLBACK_MAX_ROUTES");
   }
@@ -262,13 +259,11 @@ test("an unknown operation stops the batch and blocks before another model call"
   t.after(() => runtime.stopHeartbeat());
 
   const previous = {
-    key: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-    url: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    key: process.env.OPENAI_API_KEY,
     rounds: process.env.MAX_AGENT_TOOL_ROUNDS,
     routes: process.env.MODEL_FALLBACK_MAX_ROUTES,
   };
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  process.env.OPENAI_API_KEY = "test-key";
   process.env.MAX_AGENT_TOOL_ROUNDS = "4";
   process.env.MODEL_FALLBACK_MAX_ROUTES = "2";
 
@@ -326,7 +321,7 @@ test("an unknown operation stops the batch and blocks before another model call"
     await params.beforeRequest?.();
     providerCalls += 1;
     return {
-      provider: "replit",
+      provider: "openai",
       completion: {
         id: `unknown-${providerCalls}`,
         object: "chat.completion",
@@ -420,8 +415,7 @@ test("an unknown operation stops the batch and blocks before another model call"
       if (value === undefined) delete process.env[envName];
       else process.env[envName] = value;
     };
-    restore("key", "AI_INTEGRATIONS_OPENAI_API_KEY");
-    restore("url", "AI_INTEGRATIONS_OPENAI_BASE_URL");
+    restore("key", "OPENAI_API_KEY");
     restore("rounds", "MAX_AGENT_TOOL_ROUNDS");
     restore("routes", "MODEL_FALLBACK_MAX_ROUTES");
   }

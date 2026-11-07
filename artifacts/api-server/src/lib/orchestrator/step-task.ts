@@ -137,6 +137,18 @@ const PROVIDER_SETUP_MESSAGE: Record<WorkspaceLocale, string> = {
   ar: "لا يوجد نموذج قابل للاستخدام متصل. اربط نموذجًا في الإعدادات؛ ستُعاد محاولة هذه المهمة تلقائيًا.",
 };
 
+const REMOVED_MODEL_MESSAGE: Record<WorkspaceLocale, string> = {
+  tr: "Kayıtlı model artık desteklenmiyor. Ajan için başka bir model seçin. Görev eski modele sabitlenmişse yeni bir görev oluşturun.",
+  en: "The saved model is no longer supported. Choose a new agent model. If the task is pinned to the old model, create a new task.",
+  de: "Das gespeicherte Modell wird nicht mehr unterstützt. Wähle ein anderes Modell für den Agenten. Ist die Aufgabe an das alte Modell gebunden, erstelle eine neue Aufgabe.",
+  ru: "Сохранённая модель больше не поддерживается. Выберите другую модель для агента. Если задача закреплена за старой моделью, создайте новую задачу.",
+  "zh-CN":
+    "已保存的模型不再受支持。请为智能体选择其他模型。如果任务绑定了旧模型，请新建任务。",
+  "zh-TW":
+    "已儲存的模型不再受支援。請為代理選擇其他模型。如果任務綁定了舊模型，請新增任務。",
+  ar: "لم يعد النموذج المحفوظ مدعومًا. اختر نموذجًا آخر للوكيل. إذا كانت المهمة مرتبطة بالنموذج القديم، فأنشئ مهمة جديدة.",
+};
+
 export interface StepTaskDependencies {
   getTools?: typeof getToolsForAgent;
   runtimeOperationsConfig: RuntimeOperationsConfig;
@@ -791,7 +803,12 @@ export async function stepTask(
     try {
       modelPlan = createModelPlan(modelInput);
     } catch (error) {
-      if (!(error instanceof ModelProviderSetupRequiredError)) throw error;
+      if (
+        !(error instanceof ModelProviderSetupRequiredError) ||
+        error.reason === "removed_model"
+      ) {
+        throw error;
+      }
       await syncProviderRuntimeConfig();
       modelPlan = createModelPlan(modelInput);
     }
@@ -1455,10 +1472,13 @@ export async function stepTask(
     ) {
       stepFailureKind = "provider_setup_required";
       stepError =
-        ollamaRuntimeRecoveryMessage(
-          findOllamaBoundaryError(error)?.code,
-          locale,
-        ) ?? PROVIDER_SETUP_MESSAGE[locale];
+        error instanceof ModelProviderSetupRequiredError &&
+        error.reason === "removed_model"
+          ? REMOVED_MODEL_MESSAGE[locale]
+          : (ollamaRuntimeRecoveryMessage(
+              findOllamaBoundaryError(error)?.code,
+              locale,
+            ) ?? PROVIDER_SETUP_MESSAGE[locale]);
     } else if (error instanceof ModelRoutesExhaustedError) {
       stepFailureKind = "model_routes_exhausted";
       exhaustedModelFailures = error.failures;

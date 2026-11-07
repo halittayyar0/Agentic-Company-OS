@@ -1,3 +1,4 @@
+import { redirectDirectOpenAIForTest } from "../testing/direct-openai-fixture";
 import assert from "node:assert/strict";
 import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 import { createHash, randomUUID } from "node:crypto";
@@ -223,7 +224,7 @@ function toolCompletion(
   args: Record<string, unknown>,
 ): Awaited<ReturnType<typeof createChatCompletion>> {
   return {
-    provider: "replit",
+    provider: "openai",
     completion: {
       id: randomUUID(),
       object: "chat.completion",
@@ -276,7 +277,7 @@ function toolBatchCompletion(
 let judgeServer: http.Server | null = null;
 let judgeRequestCount = 0;
 let previousJudgeKey: string | undefined;
-let previousJudgeUrl: string | undefined;
+let restoreOpenAI: (() => void) | undefined;
 let judgeConnections = 0;
 const activeJudgeSockets = new Set<http.IncomingMessage["socket"]>();
 let disconnectNextJudgeResponse = false;
@@ -287,18 +288,14 @@ after(async () => {
     await new Promise<void>((resolve) => judgeServer!.close(() => resolve()));
     judgeServer = null;
   }
-  if (previousJudgeKey === undefined)
-    delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  else process.env.AI_INTEGRATIONS_OPENAI_API_KEY = previousJudgeKey;
-  if (previousJudgeUrl === undefined)
-    delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  else process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = previousJudgeUrl;
+  if (previousJudgeKey === undefined) delete process.env.OPENAI_API_KEY;
+  else process.env.OPENAI_API_KEY = previousJudgeKey;
+  restoreOpenAI?.();
 });
 
 async function startJudgeServer(_t: TestContext): Promise<void> {
   if (judgeServer) return;
-  previousJudgeKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  previousJudgeUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+  previousJudgeKey = process.env.OPENAI_API_KEY;
   const server = http.createServer(async (request, response) => {
     judgeRequestCount++;
     const chunks: Buffer[] = [];
@@ -349,8 +346,8 @@ async function startJudgeServer(_t: TestContext): Promise<void> {
   });
   const address = server.address();
   assert.ok(address && typeof address !== "string");
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "task4-fix-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = `http://127.0.0.1:${address.port}/v1`;
+  process.env.OPENAI_API_KEY = "task4-fix-key";
+  restoreOpenAI ??= redirectDirectOpenAIForTest(address.port);
   judgeServer = server;
 }
 

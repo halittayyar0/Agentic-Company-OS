@@ -1,11 +1,11 @@
 import {
-  chooseModel,
+  chooseModelTier,
   getFullModelCatalog,
   isDirectOpenAIConfigured,
   isChatGPTPlanConfigured,
   isOllamaConfigured,
   isOpenRouterConfigured,
-  MODEL_CATALOG,
+  isRetiredUnprefixedModelId,
   resolveModelProvider,
   type ComplexityHint,
   type ModelPurpose,
@@ -19,7 +19,7 @@ import {
  * Priority order:
  *   1. explicit per-request override (UI "chat-time" model switch)
  *   2. agent's saved manual pin (modelMode === "manual")
- *   3. automatic routing by purpose/depth/complexity (Replit fleet)
+ *   3. automatic routing by purpose/depth/complexity
  *
  * A ChatGPT or local pin preserves its billing boundary even when unavailable.
  * Other manual picks keep the existing automatic recovery policy.
@@ -54,21 +54,25 @@ export interface ModelSelectionPlan {
 export class ModelProviderSetupRequiredError extends Error {
   readonly code = "MODEL_PROVIDER_SETUP_REQUIRED";
 
-  constructor() {
-    super(
-      "No model provider is configured with a tool-capable model. Set OPENROUTER_API_KEY, OPENAI_API_KEY, OLLAMA_BASE_URL with a tool-capable local model, or both AI_INTEGRATIONS_OPENAI_* variables.",
-    );
+  constructor(
+    message = "No model provider is configured with a tool-capable model. Set OPENROUTER_API_KEY, OPENAI_API_KEY, OLLAMA_BASE_URL with a tool-capable local model, or connect a ChatGPT plan.",
+    readonly reason: "unconfigured" | "removed_model" = "unconfigured",
+  ) {
+    super(message);
     this.name = "ModelProviderSetupRequiredError";
   }
 }
 
-function providerAvailable(provider: string): boolean {
-  if (provider === "replit") {
-    return Boolean(
-      process.env.AI_INTEGRATIONS_OPENAI_API_KEY &&
-      process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+function rejectRemovedModel(modelId: string): void {
+  if (isRetiredUnprefixedModelId(modelId)) {
+    throw new ModelProviderSetupRequiredError(
+      "The saved model used a removed provider. Choose another model to continue.",
+      "removed_model",
     );
   }
+}
+
+function providerAvailable(provider: string): boolean {
   if (provider === "openrouter") return isOpenRouterConfigured();
   if (provider === "openai") return isDirectOpenAIConfigured();
   if (provider === "ollama") return isOllamaConfigured();
@@ -105,6 +109,7 @@ export function selectModel(params: {
   }
 
   for (const candidate of manualCandidates) {
+    rejectRemovedModel(candidate);
     const catalogModel = getFullModelCatalog().models.find(
       (model) => model.id === candidate,
     );
@@ -135,28 +140,12 @@ export function selectModel(params: {
     manualFallback = true;
   }
 
-  const autoModel = chooseModel({
-    purpose,
-    agentDepth,
-    modelMode: "auto",
-    complexityHint,
-  });
-  if (providerAvailable("replit")) {
-    return {
-      modelId: autoModel,
-      provider: "replit",
-      usedFallback: manualFallback,
-    };
-  }
-
+  const tier = chooseModelTier({ purpose, agentDepth, complexityHint });
   if (providerAvailable("openrouter")) {
-    const tier =
-      MODEL_CATALOG.find((entry) => entry.id === autoModel)?.tier ?? "standard";
     const openRouterByTier = {
       economy: "anthropic/claude-haiku-4.5",
       standard: "google/gemini-2.5-flash",
       premium: "anthropic/claude-sonnet-4.5",
-      reasoning: "deepseek/deepseek-r1",
     } as const;
     return {
       modelId: openRouterByTier[tier],
@@ -166,24 +155,27 @@ export function selectModel(params: {
   }
 
   if (providerAvailable("openai")) {
+    const directOpenAIByTier = {
+      economy: "openai:gpt-5.6-luna",
+      standard: "openai:gpt-5.6-terra",
+      premium: "openai:gpt-5.6-sol",
+    } as const;
     return {
-      modelId: `openai:${autoModel}`,
+      modelId: directOpenAIByTier[tier],
       provider: "openai",
       usedFallback: manualFallback,
     };
   }
 
   if (providerAvailable("ollama")) {
-    const targetTier =
-      MODEL_CATALOG.find((entry) => entry.id === autoModel)?.tier ?? "standard";
     const localModel = getFullModelCatalog()
       .models.filter(
         (model) => isVerifiedLocalModel(model) && model.supportsTools,
       )
       .sort((left, right) => {
         const tierDelta =
-          Math.abs(TIER_RANK[left.tier] - TIER_RANK[targetTier]) -
-          Math.abs(TIER_RANK[right.tier] - TIER_RANK[targetTier]);
+          Math.abs(TIER_RANK[left.tier] - TIER_RANK[tier]) -
+          Math.abs(TIER_RANK[right.tier] - TIER_RANK[tier]);
         return tierDelta || left.label.localeCompare(right.label, "en");
       })[0];
     if (localModel) {
@@ -259,6 +251,9 @@ export function selectModelPlan(params: {
   const hasRequestOverride =
     params.override?.modelMode === "manual" ||
     params.override?.modelMode === "auto";
+  if (!hasRequestOverride && params.taskExecutionModelId) {
+    rejectRemovedModel(params.taskExecutionModelId);
+  }
   const pinnedTaskProvider =
     !hasRequestOverride && params.taskExecutionModelId
       ? (getFullModelCatalog().models.find(
@@ -289,10 +284,7 @@ export function selectModelPlan(params: {
   const selectedEntry = catalog.models.find(
     (model) => model.id === selected.modelId,
   );
-  const selectedTier =
-    selectedEntry?.tier ??
-    MODEL_CATALOG.find((model) => model.id === selected.modelId)?.tier ??
-    "standard";
+  const selectedTier = selectedEntry?.tier ?? "standard";
   const source: ModelRouteSource =
     params.override?.modelMode === "manual" &&
     params.override.modelId === selected.modelId

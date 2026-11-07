@@ -14,8 +14,7 @@ import { loadFixtureTaskTools } from "../testing/task-tool-fixture";
 delete process.env.DATABASE_URL;
 delete process.env.RUNTIME_ROLE;
 process.env.NODE_ENV = "test";
-process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+process.env.OPENAI_API_KEY = "test-key";
 process.env.MODEL_RETRY_ATTEMPTS_PER_ROUTE = "1";
 process.env.MODEL_RETRY_BASE_DELAY_MS = "0";
 process.env.MAX_AGENT_TOOL_ROUNDS = "4";
@@ -57,7 +56,7 @@ const routes: ModelRouteCandidate[] = [
   "fallback-原文",
 ].map((modelId, i) => ({
   modelId,
-  provider: "replit",
+  provider: "openai",
   usedFallback: i > 0,
   source: i ? "fallback" : "automatic",
   tier: "economy",
@@ -68,7 +67,7 @@ function reply(
   model: string,
 ): Awaited<ReturnType<typeof createChatCompletion>> {
   return {
-    provider: "replit",
+    provider: "openai",
     completion: {
       id: randomUUID(),
       object: "chat.completion",

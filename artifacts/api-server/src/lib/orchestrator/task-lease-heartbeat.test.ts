@@ -125,17 +125,11 @@ async function waitFor(
 const workerConfig = readRuntimeOperationsConfig({ RUNTIME_ROLE: "worker" });
 
 function configureTestProvider(t: TestContext): void {
-  const previousKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  const previousUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "task-heartbeat-test-key";
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://example.invalid/v1";
+  const previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "task-heartbeat-test-key";
   t.after(() => {
-    if (previousKey === undefined)
-      delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-    else process.env.AI_INTEGRATIONS_OPENAI_API_KEY = previousKey;
-    if (previousUrl === undefined)
-      delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-    else process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = previousUrl;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
   });
 }
 
@@ -221,7 +215,7 @@ function lifecycleCompletion(
   toolName = "request_user_input",
 ): Awaited<ReturnType<typeof createChatCompletion>> {
   return {
-    provider: "replit",
+    provider: "openai",
     completion: {
       id: randomUUID(),
       object: "chat.completion",

@@ -72,13 +72,15 @@ function normalizeSkillsCatalogAlias(
   const targets = exports.filter((spec) => spec.name.text === external.text);
   assert.equal(targets.length, 1, "Unique owned reader API export required");
   // Shared bounded-auth query wiring changes Rollup's generated identifiers.
-  // Admit only the two reviewed complete helper bodies, never arbitrary names
+  // Admit only reviewed complete helper bodies, never arbitrary names
   // or a normalized function body. Source ownership, output hashes and the
   // original reader runtime digest still apply; no byte limit changes.
   const target = targets[0].propertyName?.text;
   const helperHashes = new Map([
     ["Ml", "0cc6d1a02a15efc88959250799602ff5cd3feb106c9d6f8a9498784a66ea3d1a"],
     ["Bl", "e39c495a4d75577ff950b49ce36ec0ed4d3c8e9db87fde5d62ea0fcda1437935"],
+    // Removing the hosted provider changes only Bl's emitted declaration name.
+    ["Bc", "7699b03aff6add5326b31946d96d957c53b0fcb2dbdc406da69d8556647cef4e"],
   ]);
   const expectedHelperHash = target && helperHashes.get(target);
   assert.ok(expectedHelperHash, "Frozen reader API export target changed");

@@ -10,7 +10,6 @@ export type ModelProviderId = typeof ModelProviderId[keyof typeof ModelProviderI
 
 
 export const ModelProviderId = {
-  replit: 'replit',
   openrouter: 'openrouter',
   openai: 'openai',
   ollama: 'ollama',
