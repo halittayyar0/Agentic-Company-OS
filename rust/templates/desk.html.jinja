@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% set page_title = t.workspace %}
+{% set current_path = "/" %}
+{% block content %}
+  <section class="intro">
+    <p class="eyebrow">{{ t.workspace }}</p>
+    <h1>{{ t.heading }}</h1>
+    <p>{{ t.intro }}</p>
+  </section>
+  <div class="desk">
+    <section class="paper" aria-labelledby="composer">
+      <h2 id="composer">{{ t.new_task }}</h2>
+      {% if error %}<p class="notice" role="alert">{{ t[error] }}</p>{% endif %}
+      {% if busy and error != "busy" %}<p class="notice" role="status">{{ t.busy }}</p>{% endif %}
+      <form action="/tasks?lang={{ locale }}" method="post">
+        <input type="hidden" name="request_id" value="{{ form.request_id }}" />
+        <div class="inputs">
+          <label>
+            <span>{{ t.provider }}</span>
+            <select name="provider">
+              <option value="ollama"{% if form.provider == "ollama" %} selected{% endif %}>{{ t.ollama }}</option>
+              <option value="openrouter"{% if form.provider == "openrouter" %} selected{% endif %}>{{ t.openrouter }}{% if not openrouter %} · {{ t.not_configured }}{% endif %}</option>
+              <option value="openai"{% if form.provider == "openai" %} selected{% endif %}>{{ t.openai }}{% if not openai %} · {{ t.not_configured }}{% endif %}</option>
+            </select>
+          </label>
+          <label>
+            <span>{{ t.model }}</span>
+            <input name="model" maxlength="180" value="{{ form.model }}" dir="ltr" required spellcheck="false" aria-describedby="model-help" />
+          </label>
+        </div>
+        <p id="model-help" class="hint">{{ t.model_hint }}</p>
+        <label class="prompt">
+          <span>{{ t.prompt }}</span>
+          <textarea name="prompt" rows="5" maxlength="12288" dir="auto" required>{{ form.prompt }}</textarea>
+        </label>
+        <label class="budget">
+          <span>{{ t.output_limit }}</span>
+          <input type="number" name="max_output" min="32" max="2048" value="{{ form.max_output }}" required dir="ltr" />
+        </label>
+        <label class="consent">
+          <input type="checkbox" name="cloud_consent" value="yes"{% if form.cloud_consent == "yes" %} checked{% endif %} />
+          <span>{{ t.consent }}</span>
+        </label>
+        <button class="primary" type="submit"{% if busy %} disabled{% endif %}>{{ t.submit }}</button>
+      </form>
+    </section>
+    <section class="history" aria-labelledby="history">
+      <h2 id="history">{{ t.history }}</h2>
+      {% if tasks %}
+        <ol class="records">
+          {% for task in tasks %}
+            <li>
+              <a class="record" href="/tasks/{{ task.id }}?lang={{ locale }}">
+                <span class="record-model" dir="ltr">{{ task.model }}</span>
+                <span class="record-meta">
+                  <span class="state {{ task.status }}">{{ t[task.status] }}</span>
+                  <span class="muted" dir="ltr">{{ task.created_at }} UTC</span>
+                </span>
+              </a>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="empty">{{ t.empty }}</p>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

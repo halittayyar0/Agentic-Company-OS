@@ -18,6 +18,8 @@ An open-source workspace for AI agents that work with tools, keep task records, 
 
 **Existing installations.** If an agent used a Replit model, choose a supported model in the agent settings. For a task pinned to the old model, create a new task with the supported model. The original task and history remain available.
 
+**Rust preview.** A separate workbench runs a first text task and saves the result. See the [Rust setup guide](./rust/README.md) and [migration scope](./docs/rust-migration.md).
+
 ## A workspace for getting work done
 
 Give an agent a defined job, or assign a responsibility that repeats on a schedule. It can use the tools you allow, save its results, and ask for missing information or approval. You can follow the work, inspect what happened, and stop execution from the same interface.

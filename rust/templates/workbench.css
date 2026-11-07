@@ -1,0 +1,327 @@
+/* The existing Agentic Company OS palette comes from the root DESIGN.md. */
+:root {
+  color-scheme: light dark;
+  --canvas: #f5f7fa;
+  --paper: #fff;
+  --ink: #192334;
+  --primary: #1a5bbc;
+  --on-primary: #fff;
+  --verified: #0b6848;
+  --attention: #815000;
+  --muted: color-mix(in srgb, var(--ink) 76%, var(--canvas));
+  --rule: color-mix(in srgb, var(--ink) 19%, var(--paper));
+  --control-border: color-mix(in srgb, var(--ink) 57%, var(--paper));
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  line-height: 1.55;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #121821;
+    --paper: #1a222e;
+    --ink: #f1f5f8;
+    --primary: #88bafb;
+    --on-primary: #192334;
+    --verified: #67c1a1;
+    --attention: #e0ad67;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+}
+a {
+  color: var(--primary);
+  text-underline-offset: 0.2em;
+}
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.frame {
+  max-inline-size: 66rem;
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 4vw, 2.75rem);
+}
+.masthead {
+  background: var(--paper);
+  border-block-end: 1px solid var(--rule);
+}
+.header-row {
+  min-block-size: 4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand {
+  font-weight: 680;
+  color: var(--ink);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+}
+.preview,
+.hint,
+.muted {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.skip {
+  position: absolute;
+  inset-inline-start: 1rem;
+  inset-block-start: -5rem;
+  z-index: 1;
+  background: var(--paper);
+  padding: 0.75rem;
+}
+.skip:focus {
+  inset-block-start: 1rem;
+}
+.intro {
+  padding-block: clamp(1.5rem, 5vw, 3rem) 1.5rem;
+}
+.intro p {
+  margin: 0;
+  color: var(--muted);
+  max-inline-size: 45rem;
+}
+.intro .eyebrow {
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--primary);
+}
+h1 {
+  font-size: clamp(1.9rem, 4.5vw, 3rem);
+  line-height: 1.14;
+  font-weight: 680;
+  margin-block: 0.3rem 0.65rem;
+}
+h2 {
+  margin-block: 0 0.85rem;
+  font-size: 1.17rem;
+  font-weight: 680;
+}
+.desk {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+  gap: clamp(1rem, 3vw, 2rem);
+  align-items: start;
+}
+.paper {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 1rem;
+  padding: clamp(1rem, 3vw, 1.6rem);
+}
+.history {
+  min-inline-size: 0;
+  border-block-start: 0.2rem solid var(--primary);
+  padding-block-start: 0.75rem;
+}
+.inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+form label {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  gap: 0.35rem;
+}
+label > span:first-child {
+  font-weight: 600;
+}
+form :is(input:not([type="checkbox"]), select, textarea) {
+  font: inherit;
+  color: var(--ink);
+  background: var(--canvas);
+  border: 1px solid var(--control-border);
+  border-radius: 0.75rem;
+  min-block-size: 2.75rem;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: 0.55rem 0.7rem;
+}
+textarea {
+  resize: vertical;
+}
+.hint {
+  margin-block: 0.35rem 0.85rem;
+}
+.budget {
+  margin-block: 1rem;
+  max-inline-size: 13rem;
+}
+form .consent {
+  flex-direction: row;
+  gap: 0.75rem;
+  min-block-size: 2.75rem;
+  align-items: flex-start;
+  margin-block: 1rem;
+  color: var(--muted);
+}
+.consent input {
+  accent-color: var(--primary);
+  inline-size: 1.1rem;
+  block-size: 1.1rem;
+  flex: none;
+  margin-block-start: 0.25rem;
+}
+.primary {
+  font: inherit;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 2.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 0.4rem 0.9rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.primary:hover:not(:disabled) {
+  filter: brightness(0.93);
+}
+.primary:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+.notice {
+  border-inline-start: 0.2rem solid var(--attention);
+  color: var(--attention);
+  padding-inline-start: 0.65rem;
+}
+.records {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.record {
+  display: grid;
+  padding-block: 0.7rem;
+  border-block-start: 1px solid var(--rule);
+  min-block-size: 2.75rem;
+  gap: 0.25rem;
+  text-decoration: none;
+}
+.record:hover .record-model {
+  text-decoration: underline;
+}
+.record-meta,
+.result-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.25rem 0.6rem;
+}
+.record-model,
+.model,
+.facts,
+.text-result {
+  overflow-wrap: anywhere;
+}
+.record-model {
+  text-align: start;
+}
+.state {
+  color: var(--muted);
+  font-weight: 650;
+}
+.state.completed {
+  color: var(--verified);
+}
+.state.failed,
+.state.interrupted {
+  color: var(--attention);
+}
+.empty {
+  color: var(--muted);
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+  margin-block-start: 0.5rem;
+}
+.back + .intro {
+  padding-block-start: 0;
+}
+.text-result {
+  white-space: pre-wrap;
+}
+details {
+  margin-block-start: 1.1rem;
+  border-block-start: 1px solid var(--rule);
+}
+summary {
+  cursor: pointer;
+  padding-block: 0.65rem;
+  min-block-size: 2.75rem;
+}
+.facts {
+  margin: 0;
+}
+.facts dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.facts dd {
+  margin-inline: 0;
+  margin-block: 0.2rem 0.65rem;
+}
+footer {
+  border-block-start: 1px solid var(--rule);
+  margin-block-start: 2rem;
+  padding-block: 0.65rem 1.25rem;
+}
+.languages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.75rem;
+}
+.languages a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+}
+.languages a[aria-current] {
+  color: var(--ink);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+@media (max-width: 45rem) {
+  .desk {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 31rem) {
+  .inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  button.primary {
+    inline-size: 100%;
+  }
+}
+
+@media (forced-colors: active) {
+  .primary {
+    border-color: ButtonText;
+  }
+}

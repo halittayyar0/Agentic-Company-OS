@@ -18,6 +18,8 @@ Araçlarla çalışan, görev kayıtlarını tutan ve seçtiğin yetkilere göre
 
 **Mevcut kurulumlar.** Bir ajan Replit modeli kullanıyorsa ajan ayarlarından desteklenen bir model seçin. Eski modele sabitlenmiş bir görev için desteklenen modelle yeni bir görev oluşturun. Önceki görev ve geçmişi korunur.
 
+**Rust önizlemesi.** Ayrı çalışma alanı, ilk metin görevini çalıştırıp sonucunu kaydediyor. [Rust kurulum rehberi](./rust/README.md) ve [geçiş kapsamı](./docs/rust-migration.md).
+
 ## Bir işi başlatmak ve takip etmek için
 
 Bir ajana belirli bir iş ver veya düzenli tekrarlanacak bir sorumluluk tanımla. Ajan, izin verdiğin araçları kullanabilir, sonuçları kaydedebilir ve eksik bilgi ya da onay gerektiğinde sana başvurabilir. Sen de aynı arayüzden işi takip edebilir, yapılanları inceleyebilir ve çalışmayı durdurabilirsin.

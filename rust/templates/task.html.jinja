@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% set page_title = t.task_heading %}
+{% set current_path = "/tasks/" ~ task.id %}
+{% block content %}
+  <a class="back" href="/?lang={{ locale }}">{{ t.back }}</a>
+  <section class="intro">
+    <p class="eyebrow">{{ t.task_heading }}</p>
+    <h1>{{ t.run_heading }}</h1>
+    <p class="model" dir="auto">{{ t[task.provider] }} <bdi dir="ltr">{{ task.model }}</bdi></p>
+  </section>
+  <div class="desk">
+    <article class="paper" aria-labelledby="outcome">
+      <div class="result-heading">
+        <h2 id="outcome">{{ t.result }}</h2>
+        <span class="state {{ task.status }}">{{ t[task.status] }}</span>
+      </div>
+      {% if task.status == "running" %}
+        <p class="notice" role="status">{{ t.running }}</p>
+        <a class="primary" href="{{ current_path }}?lang={{ locale }}">{{ t.refresh }}</a>
+      {% elif task.status == "interrupted" %}
+        <p class="notice">{{ t.interrupted_help }}</p>
+      {% elif task.error %}
+        <p class="notice">{{ t[task.error] }}</p>
+      {% elif task.result %}
+        <div class="text-result" dir="auto">{{ task.result }}</div>
+        <a class="back" href="{{ current_path }}/result.txt">{{ t.download }}</a>
+      {% endif %}
+      <details>
+        <summary>{{ t.input }}</summary>
+        <div class="text-result" dir="auto">{{ task.prompt }}</div>
+      </details>
+    </article>
+    <aside class="history" aria-labelledby="status">
+      <h2 id="status">{{ t.status }}</h2>
+      <dl class="facts">
+        <dt>{{ t.created }}</dt>
+        <dd dir="ltr">{{ task.created_at }}</dd>
+        <dt>{{ t.output_limit }}</dt>
+        <dd>{{ task.max_output }}</dd>
+        <dt>{{ t.usage }}</dt>
+        <dd>{% if task.tokens is none %}{{ t.unknown }}{% else %}{{ task.tokens }}{% endif %}</dd>
+      </dl>
+    </aside>
+  </div>
+{% endblock %}
